@@ -7,6 +7,10 @@ interface HeaderProps {
 }
 
 export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps) => {
+
+
+
+
     return (
         <header className="aldia-header">
             <div className="header-left">
@@ -32,9 +36,18 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
                 <div
                     className="profile-pic"
                     onClick={onProfileClick}
-                    style={{ cursor: 'pointer', background: 'var(--domain-orange)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '0.8rem' }}
+                    style={{
+                        cursor: 'pointer',
+                        background: 'white',
+                        border: '2px solid var(--domain-orange)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                        transition: 'transform 0.2s ease'
+                    }}
                 >
-                    JD
+                    <img src="/logo.png" alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
             </div>
         </header>

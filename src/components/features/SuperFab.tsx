@@ -14,8 +14,6 @@ export const SuperFab = ({ addMission, addTransaction, addHabit }: SuperFabProps
     const [actionType, setActionType] = useState<string | null>(null);
 
     const menuItems = [
-        { id: 'gasto', icon: <Receipt size={24} />, color: '#f87171', label: 'Gasto' },
-        { id: 'ingreso', icon: <TrendingUp size={24} />, color: '#4ade80', label: 'Ingreso' },
         { id: 'tarea', icon: <Target size={24} />, color: '#3b82f6', label: 'Misión' },
         { id: 'sueno', icon: <Moon size={24} />, color: '#a855f7', label: 'Hábito' },
         { id: 'nota', icon: <Lightbulb size={24} />, color: '#facc15', label: 'Idea' },
