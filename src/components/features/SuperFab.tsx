@@ -49,11 +49,11 @@ export const SuperFab = ({ addMission, addTransaction, addHabit }: SuperFabProps
             <div style={{ position: 'relative' }}>
                 <AnimatePresence>
                     {isOpen && menuItems.map((item, index) => {
-                        const startAngle = Math.PI * 0.95; // 180 grados aprox
-                        const endAngle = Math.PI * 1.55; // 270 grados aprox
+                        const startAngle = Math.PI * 1.0;
+                        const endAngle = Math.PI * 1.5;
                         const angle = startAngle + (index / (menuItems.length - 1)) * (endAngle - startAngle);
 
-                        const radius = 115; // Un poco más cerca que 140
+                        const radius = 105; // Más cerca todavía
                         const x = Math.cos(angle) * radius;
                         const y = Math.sin(angle) * radius;
 
