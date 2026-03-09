@@ -54,8 +54,9 @@ export const MissionList = ({ missions, toggleMission }: MissionListProps) => {
                             <p style={{ margin: 0, fontWeight: 700, color: '#AAA' }}>No hay misiones hoy</p>
                             <p style={{ margin: 0, fontSize: '0.75rem', color: '#BBB' }}>Pulsa el botón + para empezar</p>
                         </div>
-                    ) : missions.map((mission) => (
+                    ) : [...missions].sort((a, b) => Number(a.completed) - Number(b.completed)).map((mission) => (
                         <motion.div
+                            layout // Añadir layout para animación suave de reordenamiento
                             key={mission.id}
                             whileHover={{ scale: 1.01 }}
                             whileTap={{ scale: 0.98 }}
