@@ -1,4 +1,5 @@
-import { Download } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { User } from 'lucide-react';
 import { usePWA } from '../../hooks/usePWA';
 
 interface HeaderProps {
@@ -9,20 +10,31 @@ interface HeaderProps {
 
 export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps) => {
     const { canInstall, install, isInstalled } = usePWA();
+    const [profilePic, setProfilePic] = useState<string | null>(null);
+
+    useEffect(() => {
+        const savedPic = localStorage.getItem('aldia_user_pic');
+        if (savedPic) setProfilePic(savedPic);
+
+        const handleStorage = () => {
+            const updatedPic = localStorage.getItem('aldia_user_pic');
+            setProfilePic(updatedPic);
+        };
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
+    }, []);
 
     return (
         <header className="aldia-header">
             <div className="header-left">
-                {/* Logo principal alineado a la izquierda */}
                 <img
                     src="/logo.png"
                     alt="AlDia Logo"
                     style={{
-                        width: '44px',
-                        height: '44px',
-                        borderRadius: '14px', // Squircle moderno en lugar de círculo para no recortar esquinas
-                        objectFit: 'contain',
-                        background: '#fff'
+                        width: '42px',
+                        height: '42px',
+                        borderRadius: '12px',
+                        objectFit: 'contain'
                     }}
                 />
             </div>
@@ -43,28 +55,23 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
             </div>
 
             <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                {/* Botón de instalación dinámico */}
                 {canInstall && !isInstalled && (
                     <button
                         onClick={install}
                         className="install-btn-header"
                         style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
                             background: 'var(--domain-orange)',
                             color: 'white',
                             border: 'none',
                             padding: '8px 14px',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
+                            borderRadius: '11px',
+                            fontSize: '0.7rem',
                             fontWeight: 900,
                             cursor: 'pointer',
                             boxShadow: '0 4px 12px rgba(255, 140, 66, 0.3)',
                             animation: 'pulse-soft 2s infinite'
                         }}
                     >
-                        <Download size={14} />
                         INSTALAR
                     </button>
                 )}
@@ -74,18 +81,20 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
                     onClick={onProfileClick}
                     style={{
                         cursor: 'pointer',
-                        background: 'white',
+                        background: '#f0f0f0',
                         border: '2px solid var(--domain-orange)',
+                        borderRadius: '14px',
+                        width: '40px',
+                        height: '40px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         overflow: 'hidden',
-                        borderRadius: '12px', // Consistente con el logo
-                        width: '40px',
-                        height: '40px'
+                        backgroundSize: 'cover',
+                        backgroundImage: profilePic ? `url(${profilePic})` : 'none'
                     }}
                 >
-                    <img src="/logo.png" alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    {!profilePic && <User size={20} color="#CCC" />}
                 </div>
             </div>
         </header>
