@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, LogOut, Bell, Moon, Shield, Edit2, Download, Share, Camera, User } from 'lucide-react';
+import { X, Calendar, LogOut, Edit2, Download, Share, Camera, User } from 'lucide-react';
 import { usePWA } from '../../hooks/usePWA';
 
 interface ProfileOverlayProps {
@@ -40,6 +40,16 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
                 window.dispatchEvent(new Event('storage'));
             };
             reader.readAsDataURL(file);
+        }
+    };
+
+    const handleInstallClick = async () => {
+        const userAgent = window.navigator.userAgent.toLowerCase();
+        const isIOS = /iphone|ipad|ipod/.test(userAgent);
+        if (isIOS) {
+            setShowIOSGuide(true);
+        } else {
+            await install();
         }
     };
 
@@ -89,7 +99,6 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
                             <X size={20} />
                         </button>
 
-                        {/* PROFILE HEADER CON FOTO SELECCIONABLE */}
                         <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
                             <div style={{ position: 'relative', width: '110px', height: '110px', margin: '0 auto 1.5rem' }}>
                                 <div style={{
@@ -121,32 +130,34 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
                                         onKeyPress={(e) => e.key === 'Enter' && handleSaveName()}
                                         autoFocus
                                         style={{
-                                            fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-carbon)',
+                                            fontSize: '1.8rem', fontWeight: '900', color: 'var(--text-carbon)',
                                             border: 'none', borderBottom: '2px solid var(--domain-orange)',
                                             textAlign: 'center', outline: 'none', width: 'auto',
                                         }}
                                     />
                                 ) : (
                                     <>
-                                        <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-carbon)', margin: 0 }}>{name}</h2>
+                                        <h2 style={{ fontSize: '1.8rem', fontWeight: '900', color: 'var(--text-carbon)', margin: 0 }}>{name}</h2>
                                         <button onClick={() => setIsEditing(true)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#CCC' }}>
                                             <Edit2 size={18} />
                                         </button>
                                     </>
                                 )}
                             </div>
-                            <p style={{ color: '#888', fontWeight: 600 }}>Mi Cerebro Digital v1.1.0</p>
+                            <p style={{ color: '#888', fontWeight: '600' }}>Mi Cerebro Digital v1.1.0</p>
                         </div>
 
-                        {/* SETTINGS GROUPS */}
                         <div style={{ display: 'grid', gap: '1.5rem' }}>
                             {canInstall && !isInstalled && (
-                                <button onClick={() => install()} style={{ ...settingItemStyle, background: 'var(--domain-orange)', color: 'white' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <Download size={20} />
-                                        <span>Instalar App en este equipo</span>
-                                    </div>
-                                </button>
+                                <div className="settings-group">
+                                    <h4 style={{ color: '#CCC', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '10px' }}>App Nativa</h4>
+                                    <button onClick={handleInstallClick} style={{ ...settingItemStyle, background: 'var(--domain-orange)', color: 'white' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <Download size={20} />
+                                            <span>Instalar AlDía</span>
+                                        </div>
+                                    </button>
+                                </div>
                             )}
 
                             <div className="settings-group">
@@ -175,6 +186,36 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
                     </motion.div>
                 </div>
             )}
+
+            <AnimatePresence>
+                {showIOSGuide && (
+                    <div style={iosOverlayStyle}>
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            style={iosModalStyle}
+                        >
+                            <span style={{ fontSize: '3rem' }}>🍎</span>
+                            <h2 style={{ fontSize: '1.4rem', fontWeight: '900', margin: '1rem 0', color: 'var(--domain-orange)' }}>Instalar en iPhone</h2>
+                            <p style={{ fontSize: '0.95rem', color: '#666', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+                                Para llevar **AlDía** en tu pantalla de inicio:
+                            </p>
+                            <div style={guideBoxStyle}>
+                                <div style={guideItemStyle}>
+                                    <div style={numberCircleStyle}>1</div>
+                                    <p style={{ margin: 0 }}>Toca el icono <b>Compartir</b> <Share size={18} style={{ verticalAlign: 'middle', margin: '0 4px', display: 'inline' }} /> abajo.</p>
+                                </div>
+                                <div style={guideItemStyle}>
+                                    <div style={numberCircleStyle}>2</div>
+                                    <p style={{ margin: 0 }}>Elige <b>"Agregar a inicio"</b> (+).</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowIOSGuide(false)} style={closeBtnStyle}>¡ENTENDIDO! 🚀</button>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </AnimatePresence>
     );
 };
@@ -189,7 +230,7 @@ const settingItemStyle: React.CSSProperties = {
     borderRadius: '18px',
     cursor: 'pointer',
     width: '100%',
-    fontWeight: 700,
+    fontWeight: '700',
     fontSize: '0.9rem',
     color: 'var(--text-carbon)'
 };
@@ -198,5 +239,5 @@ const iosOverlayStyle: React.CSSProperties = { position: 'fixed', inset: 0, zInd
 const iosModalStyle: React.CSSProperties = { background: 'white', maxWidth: '360px', width: '100%', borderRadius: '40px', padding: '3rem 2rem', textAlign: 'center', boxShadow: '0 30px 70px rgba(0,0,0,0.15)' };
 const guideBoxStyle: React.CSSProperties = { textAlign: 'left', background: '#F9F9F9', padding: '1.5rem', borderRadius: '24px', marginBottom: '2rem' };
 const guideItemStyle: React.CSSProperties = { display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '1rem' };
-const numberCircleStyle: React.CSSProperties = { width: '24px', height: '24px', borderRadius: '50%', background: 'var(--domain-orange)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, flexShrink: 0, marginTop: '2px' };
-const closeBtnStyle: React.CSSProperties = { width: '100%', padding: '1rem', borderRadius: '18px', background: 'var(--text-carbon)', color: 'white', fontWeight: 900, border: 'none', cursor: 'pointer', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' };
+const numberCircleStyle: React.CSSProperties = { width: '24px', height: '24px', borderRadius: '50%', background: 'var(--domain-orange)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: '800', flexShrink: 0, marginTop: '2px' };
+const closeBtnStyle: React.CSSProperties = { width: '100%', padding: '1rem', borderRadius: '18px', background: 'var(--text-carbon)', color: 'white', fontWeight: '900', border: 'none', cursor: 'pointer', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' };

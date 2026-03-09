@@ -63,7 +63,7 @@ export const MissionList = ({ missions, toggleMission }: MissionListProps) => {
                             className={`mission-item ${mission.critical && !mission.completed ? 'critical-alert' : ''}`}
                             style={{
                                 opacity: mission.completed ? 0.6 : 1,
-                                background: mission.completed ? '#f5f5f5' : 'white',
+                                background: mission.completed ? '#f5f5f5' : (mission.critical ? 'var(--domain-orange)' : 'white'),
                             }}
                         >
                             {mission.critical && !mission.completed && (
