@@ -44,27 +44,27 @@ export const UpcomingList = ({ agenda }: UpcomingListProps) => {
                                     background: isLive ? 'var(--domain-orange)' : 'white',
                                     color: isLive ? 'white' : 'var(--text-carbon)',
                                     fontWeight: 800,
-                                    padding: '0.8rem 1.2rem',
-                                    borderRadius: '18px',
+                                    padding: '0.4rem 1rem', // Mucho más delgado
+                                    borderRadius: '14px',
                                     border: isLive ? 'none' : '1.5px solid #F0F0F0',
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
-                                    boxShadow: isLive ? '0 8px 20px rgba(255,140,66,0.2)' : 'none'
+                                    boxShadow: isLive ? '0 4px 12px rgba(255,140,66,0.15)' : 'none'
                                 }}
                             >
-                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <span style={{ fontSize: '0.9rem' }}>{event.title}</span>
-                                    <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>{event.startTime} - {event.endTime}</span>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                    <span style={{ fontSize: '0.85rem' }}>{event.title}</span>
+                                    <span style={{ fontSize: '0.65rem', opacity: 0.7 }}>{event.startTime}</span>
                                 </div>
                                 {isLive && (
                                     <span style={{
-                                        fontSize: '0.6rem',
+                                        fontSize: '0.55rem',
                                         background: 'rgba(255,255,255,0.2)',
-                                        padding: '2px 6px',
-                                        borderRadius: '6px',
+                                        padding: '1px 5px',
+                                        borderRadius: '4px',
                                         textTransform: 'uppercase'
-                                    }}>En Vivo</span>
+                                    }}>Live</span>
                                 )}
                             </div>
                         );
