@@ -44,82 +44,76 @@ export const MissionList = ({ missions, toggleMission, title = 'Misiones' }: Mis
                 </div>
             </div>
 
-            <div className="time-block-container" style={{ background: '#F0EBE6', padding: '0.6rem', borderRadius: '20px', position: 'relative' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.8rem', color: '#999', fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>
-                    <span>⚡ TRABAJO (14:00 - 18:00)</span>
-                </div>
+            <div className="mission-list">
+                {missions.length === 0 ? (
+                    <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', background: 'rgba(255,255,255,0.5)', border: '2px dashed #DDD' }}>
+                        <p style={{ margin: 0, fontWeight: 700, color: '#AAA' }}>No hay misiones hoy</p>
+                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#BBB' }}>Pulsa el botón + para empezar</p>
+                    </div>
+                ) : [...missions].sort((a, b) => Number(a.completed) - Number(b.completed)).map((mission) => (
+                    <motion.div
+                        layout // Añadir layout para animación suave de reordenamiento
+                        key={mission.id}
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => handleToggle(mission.id, mission.q)}
+                        className={`mission-item ${mission.critical && !mission.completed ? 'critical-alert' : ''}`}
+                        style={{
+                            opacity: mission.completed ? 0.6 : 1,
+                            background: mission.completed ? '#f5f5f5' : (mission.critical ? 'var(--domain-orange)' : 'white'),
+                        }}
+                    >
+                        {mission.critical && !mission.completed && (
+                            <div style={{ position: 'absolute', top: '-50%', left: '-20%', width: '140%', height: '200%', background: 'radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%)', pointerEvents: 'none' }}></div>
+                        )}
 
-                <div className="mission-list">
-                    {missions.length === 0 ? (
-                        <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', background: 'rgba(255,255,255,0.5)', border: '2px dashed #DDD' }}>
-                            <p style={{ margin: 0, fontWeight: 700, color: '#AAA' }}>No hay misiones hoy</p>
-                            <p style={{ margin: 0, fontSize: '0.75rem', color: '#BBB' }}>Pulsa el botón + para empezar</p>
+                        <div className="circle-check" style={{
+                            borderColor: mission.completed ? 'var(--domain-green)' : (mission.critical ? 'white' : '#DDD'),
+                            background: mission.completed ? 'var(--domain-green)' : 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            {mission.completed && <span style={{ color: 'white', fontSize: '0.8rem' }}>✓</span>}
                         </div>
-                    ) : [...missions].sort((a, b) => Number(a.completed) - Number(b.completed)).map((mission) => (
-                        <motion.div
-                            layout // Añadir layout para animación suave de reordenamiento
-                            key={mission.id}
-                            whileHover={{ scale: 1.01 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => handleToggle(mission.id, mission.q)}
-                            className={`mission-item ${mission.critical && !mission.completed ? 'critical-alert' : ''}`}
-                            style={{
-                                opacity: mission.completed ? 0.6 : 1,
-                                background: mission.completed ? '#f5f5f5' : (mission.critical ? 'var(--domain-orange)' : 'white'),
-                            }}
-                        >
-                            {mission.critical && !mission.completed && (
-                                <div style={{ position: 'absolute', top: '-50%', left: '-20%', width: '140%', height: '200%', background: 'radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%)', pointerEvents: 'none' }}></div>
-                            )}
 
-                            <div className="circle-check" style={{
-                                borderColor: mission.completed ? 'var(--domain-green)' : (mission.critical ? 'white' : '#DDD'),
-                                background: mission.completed ? 'var(--domain-green)' : 'transparent',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
-                                {mission.completed && <span style={{ color: 'white', fontSize: '0.8rem' }}>✓</span>}
-                            </div>
-
-                            <div style={{ width: '100%', zIndex: 1 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <span style={{
-                                        fontSize: '0.65rem',
-                                        fontWeight: 900,
-                                        color: mission.critical ? 'white' : (mission.completed ? '#888' : 'var(--domain-orange)'),
-                                        background: mission.critical ? 'rgba(0,0,0,0.15)' : 'transparent',
-                                        padding: mission.critical ? '2px 6px' : '0',
-                                        borderRadius: '4px',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '1px'
-                                    }}>
-                                        {mission.completed ? 'Misión Cumplida' : (mission.critical ? '🚨 Urgente (Ahora)' : 'En Curso')}
-                                    </span>
-                                    <span style={{
-                                        fontSize: '0.6rem',
-                                        color: mission.critical ? 'white' : '#888',
-                                        fontWeight: 800,
-                                        background: mission.critical ? 'rgba(255,255,255,0.2)' : '#F0EBE6',
-                                        padding: '2px 6px',
-                                        borderRadius: '8px'
-                                    }}>
-                                        {mission.q}
-                                    </span>
-                                </div>
-                                <p style={{
-                                    margin: '2px 0 0 0',
-                                    fontWeight: 800,
-                                    color: mission.critical ? 'white' : (mission.completed ? '#888' : 'var(--text-carbon)'),
-                                    fontSize: '0.95rem',
-                                    textDecoration: mission.completed ? 'line-through' : 'none'
+                        <div style={{ width: '100%', zIndex: 1 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <span style={{
+                                    fontSize: '0.65rem',
+                                    fontWeight: 900,
+                                    color: mission.critical ? 'white' : (mission.completed ? '#888' : 'var(--domain-orange)'),
+                                    background: mission.critical ? 'rgba(0,0,0,0.15)' : 'transparent',
+                                    padding: mission.critical ? '2px 6px' : '0',
+                                    borderRadius: '4px',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '1px'
                                 }}>
-                                    {mission.text}
-                                </p>
+                                    {mission.completed ? 'Misión Cumplida' : (mission.critical ? '🚨 Urgente (Ahora)' : 'En Curso')}
+                                </span>
+                                <span style={{
+                                    fontSize: '0.6rem',
+                                    color: mission.critical ? 'white' : '#888',
+                                    fontWeight: 800,
+                                    background: mission.critical ? 'rgba(255,255,255,0.2)' : '#F0EBE6',
+                                    padding: '2px 6px',
+                                    borderRadius: '8px'
+                                }}>
+                                    {mission.q}
+                                </span>
                             </div>
-                        </motion.div>
-                    ))}
-                </div>
+                            <p style={{
+                                margin: '2px 0 0 0',
+                                fontWeight: 800,
+                                color: mission.critical ? 'white' : (mission.completed ? '#888' : 'var(--text-carbon)'),
+                                fontSize: '0.95rem',
+                                textDecoration: mission.completed ? 'line-through' : 'none'
+                            }}>
+                                {mission.text}
+                            </p>
+                        </div>
+                    </motion.div>
+                ))}
             </div>
         </div>
     );
