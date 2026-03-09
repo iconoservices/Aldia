@@ -84,18 +84,17 @@ export const MissionList = ({ missions, toggleMission, title = 'Misiones', showT
 
                             <div style={{ width: '100%', zIndex: 1 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <span style={{
-                                        fontSize: '0.65rem',
-                                        fontWeight: 900,
-                                        color: mission.critical ? 'white' : (mission.completed ? '#888' : 'var(--domain-orange)'),
-                                        background: mission.critical ? 'rgba(0,0,0,0.15)' : 'transparent',
-                                        padding: mission.critical ? '2px 6px' : '0',
-                                        borderRadius: '4px',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '1px'
-                                    }}>
-                                        {mission.completed ? 'Misión Cumplida' : (mission.critical ? '🚨 Urgente (Ahora)' : 'En Curso')}
-                                    </span>
+                                    {mission.critical && !mission.completed ? <span /> : (
+                                        <span style={{
+                                            fontSize: '0.65rem',
+                                            fontWeight: 900,
+                                            color: mission.completed ? '#888' : 'var(--domain-orange)',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '1px'
+                                        }}>
+                                            {mission.completed ? 'Misión Cumplida' : 'En Curso'}
+                                        </span>
+                                    )}
                                     <span style={{
                                         fontSize: '0.6rem',
                                         color: mission.critical ? 'white' : '#888',
