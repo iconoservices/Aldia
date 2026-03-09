@@ -1,36 +1,34 @@
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
+import type { Mission } from '../../hooks/useAlDiaState';
 
-export const MissionList = () => {
-    const [missions, setMissions] = useState([
-        { id: 1, text: 'Pagar Luz (Vence Hoy)', q: 'Q1', critical: true, completed: false },
-        { id: 2, text: 'Terminar maquetación AlDía', q: 'Q2', critical: false, completed: false },
-        { id: 3, text: 'Diseñar Menú Radial (+)', q: 'Q2', critical: false, completed: false },
-        { id: 4, text: 'Revisar emails de suscripciones', q: 'Q3', critical: false, completed: false },
-    ]);
+interface MissionListProps {
+    missions: Mission[];
+    toggleMission: (id: number) => void;
+}
 
+export const MissionList = ({ missions, toggleMission }: MissionListProps) => {
     const handleToggle = (id: number, q: string) => {
-        setMissions(prev => prev.map(m => {
-            if (m.id === id) {
-                if (!m.completed) {
-                    // Disparar confeti si se está completando
-                    const scalar = 2;
-                    const triangle = confetti.shapeFromPath({ path: 'M0 10 L5 0 L10 10z' });
+        const mission = missions.find(m => m.id === id);
+        if (mission?.completed) {
+            toggleMission(id);
+            return;
+        }
 
-                    confetti({
-                        particleCount: q === 'Q1' ? 100 : 40,
-                        spread: 70,
-                        origin: { y: 0.6 },
-                        colors: ['#FF8C42', '#FFA500', '#FFD700'],
-                        shapes: [triangle, 'circle'],
-                        scalar
-                    });
-                }
-                return { ...m, completed: !m.completed };
-            }
-            return m;
-        }));
+        // Disparar confeti si se está completando
+        const scalar = 2;
+        const triangle = confetti.shapeFromPath({ path: 'M0 10 L5 0 L10 10z' });
+
+        confetti({
+            particleCount: q === 'Q1' ? 100 : 40,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#FF8C42', '#FFA500', '#FFD700'],
+            shapes: [triangle, 'circle'],
+            scalar
+        });
+
+        toggleMission(id);
     };
 
     return (
@@ -51,7 +49,12 @@ export const MissionList = () => {
                 </div>
 
                 <div className="mission-list">
-                    {missions.map((mission) => (
+                    {missions.length === 0 ? (
+                        <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', background: 'rgba(255,255,255,0.5)', border: '2px dashed #DDD' }}>
+                            <p style={{ margin: 0, fontWeight: 700, color: '#AAA' }}>No hay misiones hoy</p>
+                            <p style={{ margin: 0, fontSize: '0.75rem', color: '#BBB' }}>Pulsa el botón + para empezar</p>
+                        </div>
+                    ) : missions.map((mission) => (
                         <motion.div
                             key={mission.id}
                             whileHover={{ scale: 1.01 }}
@@ -75,7 +78,7 @@ export const MissionList = () => {
                                 <div style={{ position: 'absolute', top: '-50%', left: '-20%', width: '140%', height: '200%', background: 'radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%)', pointerEvents: 'none' }}></div>
                             )}
 
-                            <div className="circle-check" style={{ 
+                            <div className="circle-check" style={{
                                 borderColor: mission.completed ? 'var(--domain-green)' : (mission.critical ? 'white' : '#DDD'),
                                 background: mission.completed ? 'var(--domain-green)' : 'transparent',
                                 display: 'flex',
@@ -87,33 +90,33 @@ export const MissionList = () => {
 
                             <div style={{ width: '100%', zIndex: 1 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <span style={{ 
-                                        fontSize: '0.65rem', 
-                                        fontWeight: 900, 
+                                    <span style={{
+                                        fontSize: '0.65rem',
+                                        fontWeight: 900,
                                         color: mission.critical ? 'white' : (mission.completed ? '#888' : 'var(--domain-orange)'),
-                                        background: mission.critical ? 'rgba(0,0,0,0.15)' : 'transparent', 
-                                        padding: mission.critical ? '2px 6px' : '0', 
-                                        borderRadius: '4px', 
-                                        textTransform: 'uppercase', 
-                                        letterSpacing: '1px' 
+                                        background: mission.critical ? 'rgba(0,0,0,0.15)' : 'transparent',
+                                        padding: mission.critical ? '2px 6px' : '0',
+                                        borderRadius: '4px',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '1px'
                                     }}>
-                                        {mission.completed ? 'Misión Cumplida' : (mission.id === 2 ? 'En Curso' : (mission.critical ? '🏆 Hito Alcanzado' : 'Próxima'))}
+                                        {mission.completed ? 'Misión Cumplida' : (mission.critical ? '🏆 Hito Alcanzado' : 'En Curso')}
                                     </span>
-                                    <span style={{ 
-                                        fontSize: '0.6rem', 
-                                        color: mission.critical ? 'white' : '#888', 
-                                        fontWeight: 800, 
-                                        background: mission.critical ? 'rgba(255,255,255,0.2)' : '#F0EBE6', 
-                                        padding: '2px 6px', 
-                                        borderRadius: '8px' 
+                                    <span style={{
+                                        fontSize: '0.6rem',
+                                        color: mission.critical ? 'white' : '#888',
+                                        fontWeight: 800,
+                                        background: mission.critical ? 'rgba(255,255,255,0.2)' : '#F0EBE6',
+                                        padding: '2px 6px',
+                                        borderRadius: '8px'
                                     }}>
                                         {mission.q}
                                     </span>
                                 </div>
-                                <p style={{ 
-                                    margin: '2px 0 0 0', 
-                                    fontWeight: 800, 
-                                    color: mission.critical ? 'white' : (mission.completed ? '#888' : 'var(--text-carbon)'), 
+                                <p style={{
+                                    margin: '2px 0 0 0',
+                                    fontWeight: 800,
+                                    color: mission.critical ? 'white' : (mission.completed ? '#888' : 'var(--text-carbon)'),
                                     fontSize: '0.95rem',
                                     textDecoration: mission.completed ? 'line-through' : 'none'
                                 }}>

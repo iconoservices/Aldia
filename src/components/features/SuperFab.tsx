@@ -1,15 +1,23 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, X, Receipt, TrendingUp, Target, Moon, Lightbulb } from 'lucide-react';
+import { QuickActionPanel } from './QuickActionPanel';
 
-export const SuperFab = () => {
+interface SuperFabProps {
+    addMission: (text: string) => void;
+    addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean) => void;
+    addHabit: (name: string) => void;
+}
+
+export const SuperFab = ({ addMission, addTransaction, addHabit }: SuperFabProps) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [actionType, setActionType] = useState<string | null>(null);
 
     const menuItems = [
         { id: 'gasto', icon: <Receipt size={24} />, color: '#f87171', label: 'Gasto' },
         { id: 'ingreso', icon: <TrendingUp size={24} />, color: '#4ade80', label: 'Ingreso' },
         { id: 'tarea', icon: <Target size={24} />, color: '#3b82f6', label: 'Misión' },
-        { id: 'sueno', icon: <Moon size={24} />, color: '#a855f7', label: 'Vida' },
+        { id: 'sueno', icon: <Moon size={24} />, color: '#a855f7', label: 'Hábito' },
         { id: 'nota', icon: <Lightbulb size={24} />, color: '#facc15', label: 'Idea' },
     ];
 
@@ -41,14 +49,11 @@ export const SuperFab = () => {
             <div style={{ position: 'relative' }}>
                 <AnimatePresence>
                     {isOpen && menuItems.map((item, index) => {
-                        // AJUSTE PARA ESQUINA INFERIOR DERECHA:
-                        // Queremos que las burbujas salgan hacia ARRIBA y hacia la IZQUIERDA.
-                        // Ángulos entre 180° (izquierda) y 270° (arriba).
-                        const startAngle = Math.PI; // 180 grados
-                        const endAngle = 1.5 * Math.PI; // 270 grados
+                        const startAngle = Math.PI;
+                        const endAngle = 1.5 * Math.PI;
                         const angle = startAngle + (index / (menuItems.length - 1)) * (endAngle - startAngle);
 
-                        const radius = 95; // Distancia desde el centro
+                        const radius = 95;
                         const x = Math.cos(angle) * radius;
                         const y = Math.sin(angle) * radius;
 
@@ -74,6 +79,10 @@ export const SuperFab = () => {
                                     cursor: 'pointer',
                                     left: '4px',
                                     top: '4px'
+                                }}
+                                onClick={() => {
+                                    setActionType(item.id);
+                                    setIsOpen(false);
                                 }}
                             >
                                 {item.icon}
@@ -120,6 +129,16 @@ export const SuperFab = () => {
                     {isOpen ? <X size={28} /> : <Plus size={32} strokeWidth={2.5} />}
                 </motion.button>
             </div>
+
+            {/* PANEL EMERGENTE DE ACCIÓN */}
+            <QuickActionPanel
+                isOpen={!!actionType}
+                actionType={actionType}
+                onClose={() => setActionType(null)}
+                addMission={addMission}
+                addTransaction={addTransaction}
+                addHabit={addHabit}
+            />
         </div>
     );
 };

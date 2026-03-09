@@ -10,8 +10,11 @@ import { FinanzasDashboard } from './components/dashboard/FinanzasDashboard';
 import { StatsDashboard } from './components/dashboard/StatsDashboard';
 import { SuperFab } from './components/features/SuperFab';
 
+import { useAlDiaState } from './hooks/useAlDiaState';
+
 function App() {
   const [activeTab, setActiveTab] = useState('Acción');
+  const state = useAlDiaState();
 
   return (
     <div className="aldia-container">
@@ -31,18 +34,35 @@ function App() {
           >
             {activeTab === 'Acción' ? (
               <>
-                <BentoGrid />
+                <BentoGrid performanceScore={state.performanceScore} />
                 <div className="dashboard-right-col">
-                  <UpcomingList />
-                  <MissionList />
+                  <UpcomingList missions={state.missions} />
+                  <MissionList
+                    missions={state.missions}
+                    toggleMission={state.toggleMission}
+                  />
                 </div>
               </>
             ) : activeTab === 'Vida' ? (
-              <VidaDashboard />
+              <VidaDashboard
+                habits={state.habits}
+                toggleHabit={state.toggleHabit}
+              />
             ) : activeTab === 'Finanzas' ? (
-              <FinanzasDashboard />
+              <FinanzasDashboard
+                balance={state.balance}
+                income={state.todayIncome}
+                expense={state.todayExpense}
+                owe={state.debtsOwe}
+                owed={state.debtsOwed}
+                transactions={state.transactions}
+              />
             ) : activeTab === 'Stats' ? (
-              <StatsDashboard />
+              <StatsDashboard
+                performanceScore={state.performanceScore}
+                missionFocusScore={state.missionFocusScore}
+                completedMissionsCount={state.completedMissionsCount}
+              />
             ) : (
               <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>
                 <h2>Modo {activeTab} 🚧</h2>
@@ -54,7 +74,11 @@ function App() {
       </main>
 
       {/* SUPER FAB RADIAL */}
-      <SuperFab />
+      <SuperFab
+        addMission={state.addMission}
+        addTransaction={state.addTransaction}
+        addHabit={state.addHabit}
+      />
     </div>
   );
 }
