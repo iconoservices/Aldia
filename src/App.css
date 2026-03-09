@@ -16,8 +16,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.2rem 0;
-  margin-bottom: 0.8rem;
+  padding: 0.5rem 0;
+  margin-bottom: 1.5rem;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
 }
 
 .logo-placeholder {
@@ -318,12 +322,14 @@ h3 {
   /* El Dashboard se divide en 2 columnas estilo panel de control */
   .dashboard {
     display: grid;
-    grid-template-columns: 1fr 1.25fr;
-    gap: 4rem;
+    grid-template-columns: 0.8fr 1.2fr;
+    /* Columna izquierda un poco más estrecha */
+    gap: 5rem;
     overflow-y: visible;
     height: auto;
     padding-bottom: 5rem;
-    max-width: 1200px;
+    max-width: 1400px;
+    /* Aumentado para que no se vea tan comprimido al centro */
     margin: 0 auto;
     width: 100%;
   }
