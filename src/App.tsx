@@ -12,14 +12,21 @@ import { SuperFab } from './components/features/SuperFab';
 
 import { useAlDiaState } from './hooks/useAlDiaState';
 
+import { ProfileOverlay } from './components/layout/ProfileOverlay';
+
 function App() {
   const [activeTab, setActiveTab] = useState('Acción');
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const state = useAlDiaState();
 
   return (
     <div className="aldia-container">
       {/* HEADER COMPRIMIDO */}
-      <Header activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Header
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onProfileClick={() => setIsProfileOpen(true)}
+      />
 
       {/* RENDER CONDICIONAL Y DASHBOARD */}
       <main className="dashboard">
@@ -78,6 +85,12 @@ function App() {
         addMission={state.addMission}
         addTransaction={state.addTransaction}
         addHabit={state.addHabit}
+      />
+
+      {/* OVERLAY DE PERFIL */}
+      <ProfileOverlay
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
       />
     </div>
   );

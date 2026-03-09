@@ -110,6 +110,48 @@ export const SuperFab = ({ addMission, addTransaction, addHabit }: SuperFabProps
                     })}
                 </AnimatePresence>
 
+                {/* BOTONES PRINCIPALES RAPIDOS (ENCIMA DEL MAS) */}
+                <div style={{ position: 'absolute', bottom: '70px', left: '4px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <AnimatePresence>
+                        {!isOpen && (
+                            <>
+                                <motion.button
+                                    initial={{ opacity: 0, scale: 0, y: 20 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0 }}
+                                    onClick={() => setActionType('ingreso')}
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    style={{
+                                        width: '52px', height: '52px', borderRadius: '50%',
+                                        background: '#4ade80', border: 'none', color: 'white',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        boxShadow: '0 6px 20px rgba(74, 222, 128, 0.4)', cursor: 'pointer'
+                                    }}
+                                >
+                                    <TrendingUp size={24} />
+                                </motion.button>
+                                <motion.button
+                                    initial={{ opacity: 0, scale: 0, y: 20 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0 }}
+                                    onClick={() => setActionType('gasto')}
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    style={{
+                                        width: '52px', height: '52px', borderRadius: '50%',
+                                        background: '#f87171', border: 'none', color: 'white',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        boxShadow: '0 6px 20px rgba(248, 113, 113, 0.4)', cursor: 'pointer'
+                                    }}
+                                >
+                                    <Receipt size={24} />
+                                </motion.button>
+                            </>
+                        )}
+                    </AnimatePresence>
+                </div>
+
                 {/* BOTÓN PRINCIPAL (+) */}
                 <motion.button
                     onClick={() => setIsOpen(!isOpen)}
