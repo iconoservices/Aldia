@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, LogOut, Bell, Moon, Shield, Edit2, Download, Share } from 'lucide-react';
+import { usePWA } from '../../hooks/usePWA';
 
 interface ProfileOverlayProps {
     isOpen: boolean;
@@ -10,31 +11,12 @@ interface ProfileOverlayProps {
 export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
     const [name, setName] = useState('Juan Diego');
     const [isEditing, setIsEditing] = useState(false);
-    const [installPrompt, setInstallPrompt] = useState<any>(null);
-    const [isPWAInstalled, setIsPWAInstalled] = useState(false);
+    const { isInstalled, install, canInstall } = usePWA();
     const [showIOSGuide, setShowIOSGuide] = useState(false);
 
     useEffect(() => {
         const savedName = localStorage.getItem('aldia_user_name');
         if (savedName) setName(savedName);
-
-        // Detectar si ya es PWA
-        const isPWA = window.matchMedia('(display-mode: standalone)').matches;
-        setIsPWAInstalled(isPWA);
-
-        // Capturar prompt de instalación (Chrome/Android/PC)
-        const handler = (e: any) => {
-            e.preventDefault();
-            setInstallPrompt(e);
-        };
-        window.addEventListener('beforeinstallprompt', handler);
-
-        window.addEventListener('appinstalled', () => {
-            setIsPWAInstalled(true);
-            setInstallPrompt(null);
-        });
-
-        return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
 
     const handleSaveName = () => {
@@ -45,23 +27,14 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
     };
 
     const handleInstallClick = async () => {
-        // Detectar si es iOS
+        // Detectar si es iOS para mostrar la guía
         const userAgent = window.navigator.userAgent.toLowerCase();
-        const isIOS = /iphone|ipad|ipod/.test(userAgent);
-
-        if (isIOS) {
+        if (/iphone|ipad|ipod/.test(userAgent)) {
             setShowIOSGuide(true);
-        } else if (installPrompt) {
-            installPrompt.prompt();
-            const { outcome } = await installPrompt.userChoice;
-            if (outcome === 'accepted') {
-                setInstallPrompt(null);
-                setIsPWAInstalled(true);
-            }
+        } else {
+            await install();
         }
     };
-
-
 
     return (
         <AnimatePresence>
@@ -115,13 +88,13 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
                         {/* PROFILE HEADER */}
                         <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
                             <div style={{
-                                width: '90px', height: '90px', borderRadius: '50%',
+                                width: '100px', height: '100px', borderRadius: '22px', // Squircle coherente
                                 background: 'white', margin: '0 auto 1rem',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 border: '4px solid var(--domain-orange)', overflow: 'hidden',
-                                boxShadow: '0 10px 25px rgba(255, 140, 66, 0.3)'
+                                boxShadow: '0 12px 30px rgba(255, 140, 66, 0.2)'
                             }}>
-                                <img src="/logo.png" alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <img src="/logo.png" alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                             </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
@@ -148,13 +121,13 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
                                     </>
                                 )}
                             </div>
-                            <p style={{ color: '#888', fontWeight: 600, marginTop: '4px' }}>Cerebro Digital AlDía v1.0.2</p>
+                            <p style={{ color: '#888', fontWeight: 600, marginTop: '4px' }}>Cerebro Digital AlDía v1.1.0</p>
                         </div>
 
                         {/* SETTINGS GROUPS */}
                         <div style={{ display: 'grid', gap: '1.5rem' }}>
-                            {/* INSTALACIÓN PWA (BOTÓN FIJO EN PERFIL) */}
-                            {!isPWAInstalled && (
+                            {/* INSTALACIÓN PWA */}
+                            {canInstall && !isInstalled && (
                                 <div className="settings-group">
                                     <h4 style={{ color: '#CCC', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '1rem', fontWeight: 800 }}>App Nativa</h4>
                                     <button
@@ -230,7 +203,7 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
                 </div>
             )}
 
-            {/* GUÍA iOS DENTRO DEL PERFIL SI SE NECESITA */}
+            {/* GUÍA iOS */}
             <AnimatePresence>
                 {showIOSGuide && (
                     <div style={iosOverlayStyle}>

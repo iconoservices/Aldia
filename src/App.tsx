@@ -13,7 +13,6 @@ import { SuperFab } from './components/features/SuperFab';
 import { useAlDiaState } from './hooks/useAlDiaState';
 
 import { ProfileOverlay } from './components/layout/ProfileOverlay';
-import { PWAInstallPrompt } from './components/common/PWAInstallPrompt';
 
 function App() {
   const [activeTab, setActiveTab] = useState('Acción');
@@ -92,8 +91,6 @@ function App() {
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
       />
-
-      <PWAInstallPrompt />
     </div>
   );
 }
