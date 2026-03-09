@@ -10,9 +10,10 @@ interface QuickActionPanelProps {
     addMission: (text: string) => void;
     addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean) => void;
     addHabit: (name: string) => void;
+    addCalendarEvent?: (title: string, start: string, end: string, desc: string) => void;
 }
 
-export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addTransaction, addHabit }: QuickActionPanelProps) => {
+export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addTransaction, addHabit, addCalendarEvent }: QuickActionPanelProps) => {
     const [amount, setAmount] = useState('');
     const [concept, setConcept] = useState('');
     const [isDebt, setIsDebt] = useState(false);
@@ -23,7 +24,8 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
         'ingreso': { title: 'Registrar Ingreso', color: '#4ade80', isFinancial: true },
         'tarea': { title: 'Nueva Misión', color: '#3b82f6', isFinancial: false },
         'sueno': { title: 'Nuevo Hábito', color: '#a855f7', isFinancial: false },
-        'nota': { title: 'Idea Rápida', color: '#facc15', isFinancial: false }
+        'nota': { title: 'Idea Rápida', color: '#facc15', isFinancial: false },
+        'agenda': { title: 'Nueva Cita', color: '#f59e0b', isFinancial: false }
     };
 
     const currentConfig = actionType ? uiConfigs[actionType] : null;
@@ -54,6 +56,20 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                 spread: 60,
                 origin: { y: 0.6 },
                 colors: ['#a855f7', '#ffffff']
+            });
+        } else if (actionType === 'agenda' && addCalendarEvent) {
+            // Para simplificar ahora, usamos la hora actual + 1h
+            const now = new Date();
+            const start = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            now.setHours(now.getHours() + 1);
+            const end = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            addCalendarEvent(concept || 'Nueva Cita', start, end, 'Añadido desde AlDía');
+            confetti({
+                particleCount: 60,
+                spread: 50,
+                origin: { y: 0.6 },
+                colors: ['#f59e0b', '#ffffff']
             });
         } else if (actionType === 'nota') {
             // Guardar ideas rápidas como misiones en el cuadrante 4 (Baja Urgencia)

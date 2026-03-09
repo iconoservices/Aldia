@@ -19,6 +19,14 @@ export interface Transaction {
     fullDate: string; // YYYY-MM-DD
 }
 
+export interface CalendarEvent {
+    id: number;
+    title: string;
+    startTime: string; // HH:mm
+    endTime: string;   // HH:mm
+    description?: string;
+}
+
 export interface Habit {
     id: number;
     name: string;
@@ -56,6 +64,15 @@ export const useAlDiaState = () => {
         ];
     });
 
+    const [agenda, setAgenda] = useState<CalendarEvent[]>(() => {
+        const saved = localStorage.getItem('aldia_agenda');
+        return saved ? JSON.parse(saved) : [
+            { id: 1, title: 'Reunión de Maquetación', startTime: '15:00', endTime: '17:00', description: 'Avanzar en la lógica PWA de AlDía' },
+            { id: 2, title: 'Gimnasio / Entreno', startTime: '18:30', endTime: '20:00', description: 'Día de pierna y cardio' },
+            { id: 3, title: 'Cena con Equipo', startTime: '21:00', endTime: '22:30', description: 'Revisión mensual de objetivos' }
+        ];
+    });
+
     // 2. Persistencia Automática
     useEffect(() => {
         localStorage.setItem('aldia_missions', JSON.stringify(missions));
@@ -72,6 +89,10 @@ export const useAlDiaState = () => {
     useEffect(() => {
         localStorage.setItem('aldia_habits', JSON.stringify(habits));
     }, [habits]);
+
+    useEffect(() => {
+        localStorage.setItem('aldia_agenda', JSON.stringify(agenda));
+    }, [agenda]);
 
     // 3. Acciones (Cerebro)
 
@@ -104,6 +125,18 @@ export const useAlDiaState = () => {
             completed: false
         };
         setMissions(prev => [newMission, ...prev]);
+    };
+
+    // Añadir cita a la agenda
+    const addCalendarEvent = (title: string, startTime: string, endTime: string, description: string) => {
+        const newEvent: CalendarEvent = {
+            id: Date.now() + Math.random(),
+            title,
+            startTime,
+            endTime,
+            description
+        };
+        setAgenda(prev => [...prev, newEvent].sort((a, b) => a.startTime.localeCompare(b.startTime)));
     };
 
     // Añadir nuevo hábito
@@ -182,6 +215,8 @@ export const useAlDiaState = () => {
         performanceScore,
         missionFocusScore,
         completedMissionsCount,
-        addHabit
+        addHabit,
+        agenda,
+        addCalendarEvent
     };
 };

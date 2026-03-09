@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 import { Header } from './components/layout/Header';
 import { BentoGrid } from './components/dashboard/BentoGrid';
+import { NowPlayingAgenda } from './components/dashboard/NowPlayingAgenda';
 import { UpcomingList } from './components/dashboard/UpcomingList';
 import { MissionList } from './components/dashboard/MissionList';
 import { VidaDashboard } from './components/dashboard/VidaDashboard';
@@ -43,6 +44,7 @@ function App() {
               <>
                 <BentoGrid performanceScore={state.performanceScore} />
                 <div className="dashboard-right-col">
+                  <NowPlayingAgenda agenda={state.agenda} />
                   <UpcomingList missions={state.missions} />
                   <MissionList
                     missions={state.missions}
@@ -85,6 +87,7 @@ function App() {
         addMission={state.addMission}
         addTransaction={state.addTransaction}
         addHabit={state.addHabit}
+        addCalendarEvent={state.addCalendarEvent}
       />
 
       <ProfileOverlay

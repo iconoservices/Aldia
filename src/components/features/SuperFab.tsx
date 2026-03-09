@@ -1,20 +1,22 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Receipt, TrendingUp, Target, Moon, Lightbulb } from 'lucide-react';
+import { Plus, X, Receipt, TrendingUp, Target, Moon, Lightbulb, Calendar } from 'lucide-react';
 import { QuickActionPanel } from './QuickActionPanel';
 
 interface SuperFabProps {
     addMission: (text: string) => void;
     addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean) => void;
     addHabit: (name: string) => void;
+    addCalendarEvent: (title: string, start: string, end: string, desc: string) => void;
 }
 
-export const SuperFab = ({ addMission, addTransaction, addHabit }: SuperFabProps) => {
+export const SuperFab = ({ addMission, addTransaction, addHabit, addCalendarEvent }: SuperFabProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const [actionType, setActionType] = useState<string | null>(null);
 
     const menuItems = [
         { id: 'tarea', icon: <Target size={24} />, color: '#3b82f6', label: 'Misión' },
+        { id: 'agenda', icon: <Calendar size={24} />, color: '#f59e0b', label: 'Cita' },
         { id: 'sueno', icon: <Moon size={24} />, color: '#a855f7', label: 'Hábito' },
         { id: 'nota', icon: <Lightbulb size={24} />, color: '#facc15', label: 'Idea' },
     ];
@@ -182,6 +184,7 @@ export const SuperFab = ({ addMission, addTransaction, addHabit }: SuperFabProps
                 addMission={addMission}
                 addTransaction={addTransaction}
                 addHabit={addHabit}
+                addCalendarEvent={addCalendarEvent}
             />
         </div>
     );
