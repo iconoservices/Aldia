@@ -94,7 +94,7 @@ export const MissionList = ({ missions, toggleMission, title = 'Misiones' }: Mis
                                         textTransform: 'uppercase',
                                         letterSpacing: '1px'
                                     }}>
-                                        {mission.completed ? 'Misión Cumplida' : (mission.critical ? '🏆 Hito Alcanzado' : 'En Curso')}
+                                        {mission.completed ? 'Misión Cumplida' : (mission.critical ? '🚨 Urgente (Ahora)' : 'En Curso')}
                                     </span>
                                     <span style={{
                                         fontSize: '0.6rem',
