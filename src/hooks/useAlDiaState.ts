@@ -36,6 +36,14 @@ export interface Habit {
     completedDays: number[]; // Array de índices 0-6 (L-D)
 }
 
+export interface TimeBlock {
+    id: number;
+    label: string;
+    start: string; // HH:mm
+    end: string;   // HH:mm
+    color: string;
+}
+
 export const useAlDiaState = () => {
     const [user, setUser] = useState<User | null>(null);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -46,6 +54,7 @@ export const useAlDiaState = () => {
     const [balance, setBalance] = useState(4250.00);
     const [habits, setHabits] = useState<Habit[]>([]);
     const [agenda, setAgenda] = useState<CalendarEvent[]>([]);
+    const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
 
     // 2. Manejo de Autenticación y Carga Inicial
     useEffect(() => {
@@ -64,6 +73,7 @@ export const useAlDiaState = () => {
                     if (data.balance !== undefined) setBalance(data.balance);
                     if (data.habits) setHabits(data.habits);
                     if (data.agenda) setAgenda(data.agenda);
+                    if (data.timeBlocks) setTimeBlocks(data.timeBlocks);
                 } else {
                     // Si no hay datos en cloud, intentar migrar los locales
                     loadFromLocal();
@@ -109,6 +119,14 @@ export const useAlDiaState = () => {
             { id: 2, title: 'Gimnasio / Entreno', startTime: '18:30', endTime: '20:00', description: 'Día de pierna y cardio' },
             { id: 3, title: 'Cena con Equipo', startTime: '21:00', endTime: '22:30', description: 'Revisión mensual de objetivos' }
         ]);
+
+        const sTimeBlocks = localStorage.getItem('aldia_timeblocks');
+        if (sTimeBlocks) setTimeBlocks(JSON.parse(sTimeBlocks));
+        else setTimeBlocks([
+            { id: 1, label: 'Deep Work', start: '09:00', end: '12:00', color: '#3b82f6' },
+            { id: 2, label: 'Almuerzo / Break', start: '13:00', end: '14:00', color: '#facc15' },
+            { id: 3, label: 'Admin / Mails', start: '14:00', end: '15:00', color: '#10b981' }
+        ]);
     };
 
     // 3. Persistencia Unificada (Local + Cloud)
@@ -121,6 +139,7 @@ export const useAlDiaState = () => {
         localStorage.setItem('aldia_balance', JSON.stringify(balance));
         localStorage.setItem('aldia_habits', JSON.stringify(habits));
         localStorage.setItem('aldia_agenda', JSON.stringify(agenda));
+        localStorage.setItem('aldia_timeblocks', JSON.stringify(timeBlocks));
 
         // Borrar "old" LocalStorage keys if they were different (not needed here but good practice)
 
@@ -133,10 +152,11 @@ export const useAlDiaState = () => {
                 balance,
                 habits,
                 agenda,
+                timeBlocks,
                 lastSync: new Date().toISOString()
             }, { merge: true });
         }
-    }, [missions, transactions, balance, habits, agenda, user, isInitialLoad]);
+    }, [missions, transactions, balance, habits, agenda, timeBlocks, user, isInitialLoad]);
 
     // 3. Acciones (Cerebro)
 
@@ -160,12 +180,12 @@ export const useAlDiaState = () => {
     };
 
     // Añadir nueva misión
-    const addMission = (text: string) => {
+    const addMission = (text: string, q: string = 'Q2') => {
         const newMission: Mission = {
             id: Date.now() + Math.random(),
             text,
-            q: 'Q2', // Por defecto
-            critical: false,
+            q, // Usar el cuadrante proporcionado o Q2 por defecto
+            critical: q === 'Q1', // Si es Q1, marcar como crítica automáticamente
             completed: false
         };
         setMissions(prev => [newMission, ...prev]);
@@ -261,6 +281,14 @@ export const useAlDiaState = () => {
         completedMissionsCount,
         addHabit,
         agenda,
-        addCalendarEvent
+        addCalendarEvent,
+        timeBlocks,
+        addTimeBlock: (label: string, start: string, end: string, color: string) => {
+            const newBlock: TimeBlock = { id: Date.now(), label, start, end, color };
+            setTimeBlocks(prev => [...prev, newBlock].sort((a,b) => a.start.localeCompare(b.start)));
+        },
+        removeTimeBlock: (id: number) => {
+            setTimeBlocks(prev => prev.filter(b => b.id !== id));
+        }
     };
 };

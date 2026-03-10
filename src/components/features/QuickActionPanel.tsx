@@ -7,7 +7,7 @@ interface QuickActionPanelProps {
     isOpen: boolean;
     onClose: () => void;
     actionType: string | null;
-    addMission: (text: string) => void;
+    addMission: (text: string, q?: string) => void;
     addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean) => void;
     addHabit: (name: string) => void;
     addCalendarEvent?: (title: string, start: string, end: string, desc: string) => void;
@@ -17,6 +17,7 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
     const [amount, setAmount] = useState('');
     const [concept, setConcept] = useState('');
     const [isDebt, setIsDebt] = useState(false);
+    const [selectedQ, setSelectedQ] = useState('Q2');
 
     // Mapeo visual por tipo de acción
     const uiConfigs: Record<string, { title: string, color: string, isFinancial: boolean }> = {
@@ -42,7 +43,7 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                 colors: [actionType === 'gasto' ? '#f87171' : '#4ade80', '#ffffff']
             });
         } else if (actionType === 'tarea') {
-            addMission(concept || 'Nueva Misión');
+            addMission(concept || 'Nueva Misión', selectedQ);
             confetti({
                 particleCount: 50,
                 spread: 50,
@@ -193,6 +194,37 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                                     }}
                                 />
                             </div>
+
+                            {actionType === 'tarea' && (
+                                <div style={{ background: '#F9F9F9', borderRadius: '16px', padding: '12px' }}>
+                                    <p style={{ margin: '0 0 10px 0', fontWeight: 700, fontSize: '0.85rem', color: '#888', textAlign: 'center' }}>CUADRANTE RELEVANCIA</p>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                                        {['Q1', 'Q2', 'Q3', 'Q4'].map(q => (
+                                            <button
+                                                key={q}
+                                                type="button"
+                                                onClick={() => setSelectedQ(q)}
+                                                style={{
+                                                    padding: '10px 0',
+                                                    borderRadius: '12px',
+                                                    border: 'none',
+                                                    fontWeight: 900,
+                                                    fontSize: '0.8rem',
+                                                    cursor: 'pointer',
+                                                    background: selectedQ === q ? 'var(--domain-orange)' : 'white',
+                                                    color: selectedQ === q ? 'white' : '#888',
+                                                    boxShadow: selectedQ === q ? '0 4px 10px rgba(255,140,66,0.3)' : 'none'
+                                                }}
+                                            >
+                                                {q}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p style={{ margin: '10px 0 0 0', fontSize: '0.62rem', color: '#AAA', textAlign: 'center', fontWeight: 600 }}>
+                                        {selectedQ === 'Q1' ? '🔥 URGENTE / CRÍTICA' : selectedQ === 'Q2' ? '🎯 ENFOQUE / PLAN' : selectedQ === 'Q3' ? '⏱️ APOYO / DELEGAR' : '🗑️ ELIMINAR / IDEAS'}
+                                    </p>
+                                </div>
+                            )}
 
                             {currentConfig.isFinancial && (
                                 <div style={{ background: '#F9F9F9', borderRadius: '16px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -3,9 +3,10 @@ import { Clock } from 'lucide-react';
 
 interface UpcomingListProps {
     agenda: CalendarEvent[];
+    hideOnEmpty?: boolean;
 }
 
-export const UpcomingList = ({ agenda }: UpcomingListProps) => {
+export const UpcomingList = ({ agenda, hideOnEmpty = false }: UpcomingListProps) => {
     // Obtener la hora actual para filtrar eventos pasados
     const now = new Date();
     const currentHour = now.getHours();
@@ -19,11 +20,13 @@ export const UpcomingList = ({ agenda }: UpcomingListProps) => {
         return endTimeMinutes > currentTimeMinutes;
     }).sort((a, b) => a.startTime.localeCompare(b.startTime));
 
+    if (hideOnEmpty && upcomingEvents.length === 0) return null;
+
     return (
-        <div style={{ marginBottom: '1.5rem' }}>
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+        <div style={{ marginBottom: '0.3rem' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                 <Clock size={18} color="var(--domain-orange)" />
-                Próximas Citas (Agenda)
+                Agenda
             </h3>
             <div className="upcoming-list" style={{ display: 'grid', gap: '0.8rem' }}>
                 {upcomingEvents.length === 0 ? (

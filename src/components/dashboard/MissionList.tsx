@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
+import { JoyMatrixModal } from '../features/JoyMatrixModal';
 import type { Mission } from '../../hooks/useAlDiaState';
 
 interface MissionListProps {
@@ -7,9 +9,13 @@ interface MissionListProps {
     toggleMission: (id: number) => void;
     title?: string;
     showTimeBlock?: boolean;
+    showMatrixLinks?: boolean;
+    hideOnEmpty?: boolean;
 }
 
-export const MissionList = ({ missions, toggleMission, title = 'Misiones', showTimeBlock = true }: MissionListProps) => {
+export const MissionList = ({ missions, toggleMission, title = 'Tareas', showTimeBlock = true, showMatrixLinks = true, hideOnEmpty = false }: MissionListProps) => {
+    const [isMatrixOpen, setIsMatrixOpen] = useState(false);
+
     const handleToggle = (id: number, q: string) => {
         const mission = missions.find(m => m.id === id);
         if (mission?.completed) {
@@ -33,16 +39,23 @@ export const MissionList = ({ missions, toggleMission, title = 'Misiones', showT
         toggleMission(id);
     };
 
+    if (hideOnEmpty && missions.length === 0) return null;
+
     return (
-        <div style={{ marginTop: '0.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+        <div style={{ marginTop: '0.1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.15rem' }}>
                 <h3 style={{ margin: 0 }}>{title}</h3>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    <span style={{ fontSize: '0.75rem', color: '#888', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        ⊞ Matriz Joy
-                    </span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--domain-orange)', fontWeight: 600, cursor: 'pointer' }}>Timeline ⭢</span>
-                </div>
+                {showMatrixLinks && (
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                        <span 
+                            onClick={() => setIsMatrixOpen(true)}
+                            style={{ fontSize: '0.75rem', color: '#888', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
+                            ⊞ Matriz Joy
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--domain-orange)', fontWeight: 600, cursor: 'pointer' }}>Timeline ⭢</span>
+                    </div>
+                )}
             </div>
 
             <div
@@ -134,6 +147,13 @@ export const MissionList = ({ missions, toggleMission, title = 'Misiones', showT
                     ))}
                 </div>
             </div>
+
+            <JoyMatrixModal 
+                isOpen={isMatrixOpen}
+                onClose={() => setIsMatrixOpen(false)}
+                missions={missions}
+                toggleMission={handleToggle}
+            />
         </div>
     );
 };

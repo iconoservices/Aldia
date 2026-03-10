@@ -44,25 +44,24 @@ function App() {
                 <BentoGrid performanceScore={state.performanceScore} />
                 <div className="dashboard-right-col">
                   {/* 1. URGENTES (SOLO CRÍTICAS) */}
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <MissionList
-                      missions={state.missions.filter(m => m.critical && !m.completed)}
-                      toggleMission={state.toggleMission}
-                      title="Urgente (Q1)"
-                      showTimeBlock={false}
-                    />
-                  </div>
+                  <MissionList
+                    missions={state.missions.filter(m => m.critical && !m.completed)}
+                    toggleMission={state.toggleMission}
+                    title="Urgente (Q1)"
+                    showTimeBlock={false}
+                    showMatrixLinks={false}
+                    hideOnEmpty={true}
+                  />
 
                   {/* 2. AGENDA (UPCOMING LIST) */}
-                  <div style={{ marginBottom: '0.8rem' }}>
-                    <UpcomingList agenda={state.agenda} />
-                  </div>
+                  <UpcomingList agenda={state.agenda} hideOnEmpty={true} />
 
                   {/* 4. RESTO DE MISIONES (NO CRÍTICAS O COMPLETADAS) */}
                   <MissionList
                     missions={state.missions.filter(m => !m.critical || m.completed)}
                     toggleMission={state.toggleMission}
-                    title="Misiones"
+                    title="Tareas"
+                    hideOnEmpty={true}
                   />
                 </div>
               </>
@@ -70,6 +69,10 @@ function App() {
               <VidaDashboard
                 habits={state.habits}
                 toggleHabit={state.toggleHabit}
+                addHabit={state.addHabit}
+                timeBlocks={state.timeBlocks}
+                addTimeBlock={state.addTimeBlock}
+                removeTimeBlock={state.removeTimeBlock}
               />
             ) : activeTab === 'Finanzas' ? (
               <FinanzasDashboard
