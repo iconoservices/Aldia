@@ -1,7 +1,8 @@
 import { CheckCircle2, ListTodo, CreditCard, Plus, Trash2, Calendar as CalendarIcon } from 'lucide-react';
 import { useState } from 'react';
 import type { Habit, TimeBlock } from '../../hooks/useAlDiaState';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { TimeBlockModal } from '../features/TimeBlockModal';
 
 interface VidaProps {
     habits: Habit[];
@@ -21,6 +22,8 @@ export const VidaDashboard = ({
 }: VidaProps) => {
     const [selectedDay, setSelectedDay] = useState(new Date().getDate());
     const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
+    const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+    
     const days = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
     // Generar días del mes actual para el mini-calendario
@@ -125,22 +128,37 @@ export const VidaDashboard = ({
                 )}
             </div>
 
-            {/* TIME BLOCKING / TIMELINE VISUAL */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
-                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <CalendarIcon size={18} color="var(--domain-purple)" />
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 900, fontSize: '1.2rem' }}>
+                    <CalendarIcon size={20} color="var(--domain-purple)" />
                     Planificación del Día
                 </h3>
                 <button 
-                    onClick={() => {
-                        const label = prompt('Nombre del bloque (ej. Gym, Deep Work):');
-                        if (label) addTimeBlock(label, '10:00', '11:00', '#8A5CF6');
+                    onClick={() => setIsBlockModalOpen(true)}
+                    style={{ 
+                        background: 'var(--domain-purple)', 
+                        color: 'white', 
+                        border: 'none', 
+                        borderRadius: '12px', 
+                        padding: '8px 14px',
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '6px',
+                        fontSize: '0.75rem',
+                        fontWeight: 900,
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 12px rgba(138, 92, 246, 0.3)'
                     }}
-                    style={{ background: 'var(--domain-purple)', color: 'white', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                 >
-                    <Plus size={18} />
+                    <Plus size={16} /> BLOQUE
                 </button>
             </div>
+
+            <TimeBlockModal 
+                isOpen={isBlockModalOpen}
+                onClose={() => setIsBlockModalOpen(false)}
+                onAdd={addTimeBlock}
+            />
 
             <div className="glass-card" style={{ marginBottom: '2rem', padding: '1.2rem', background: '#FFF' }}>
                 <div style={{ position: 'relative', paddingLeft: '40px', borderLeft: '2px solid #F0F0F0' }}>
@@ -249,26 +267,41 @@ export const VidaDashboard = ({
             </div>
 
             {/* MOTOR DE HÁBITOS */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ margin: 0 }}>Fábrica de Hábitos</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900 }}>🌿 Fábrica de Hábitos</h3>
                 <button 
                     onClick={() => {
                         const name = prompt('Nombre del nuevo Hábito:');
                         if (name) addHabit(name);
                     }}
-                    style={{ background: '#F0EBE6', color: 'var(--domain-purpleish)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontWeight: 900 }}
+                    style={{ background: '#F0EBE6', color: 'var(--domain-purple)', border: 'none', borderRadius: '10px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontWeight: 900, fontSize: '0.7rem' }}
                 >
-                    +
+                    <Plus size={14} /> NUEVO
                 </button>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
                 {habits.map((habit) => (
-                    <div key={habit.id} className="glass-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem' }}>
-                        <div>
-                            <p style={{ margin: 0, fontWeight: 700, fontSize: '0.95rem' }}>{habit.name}</p>
-                            <p style={{ margin: 0, fontSize: '0.75rem', color: '#888' }}>Racha: {habit.completedDays.length} días</p>
+                    <motion.div 
+                        key={habit.id} 
+                        layout
+                        className="glass-card" 
+                        style={{ 
+                            padding: '1.2rem', 
+                            background: 'white',
+                            borderRadius: '24px',
+                            border: '1px solid rgba(138, 92, 246, 0.1)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '12px'
+                        }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                                <p style={{ margin: 0, fontWeight: 900, fontSize: '1rem', color: 'var(--text-carbon)' }}>{habit.name}</p>
+                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#AAA', fontWeight: 700 }}>🔥 RACHA DE {habit.completedDays.length}</p>
+                            </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '6px' }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', background: '#F9F9F9', padding: '8px', borderRadius: '16px' }}>
                             {days.map((day, idx) => {
                                 const isCompleted = habit.completedDays.includes(idx);
                                 return (
@@ -277,18 +310,19 @@ export const VidaDashboard = ({
                                         whileTap={{ scale: 0.8 }}
                                         onClick={() => toggleHabit(habit.id, idx)}
                                         style={{
-                                            width: '26px',
-                                            height: '26px',
-                                            borderRadius: '50%',
-                                            background: isCompleted ? 'var(--domain-purple)' : '#F0EBE6',
+                                            width: '30px',
+                                            height: '30px',
+                                            borderRadius: '10px',
+                                            background: isCompleted ? 'var(--domain-purple)' : 'white',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             fontSize: '0.65rem',
-                                            color: isCompleted ? 'white' : '#AAA',
-                                            fontWeight: 800,
+                                            color: isCompleted ? 'white' : '#CCC',
+                                            fontWeight: 900,
                                             cursor: 'pointer',
-                                            transition: 'background 0.3s ease'
+                                            boxShadow: isCompleted ? '0 4px 10px rgba(138, 92, 246, 0.2)' : '0 2px 5px rgba(0,0,0,0.02)',
+                                            border: isCompleted ? 'none' : '1px solid #EEE'
                                         }}
                                     >
                                         {day}
@@ -296,7 +330,7 @@ export const VidaDashboard = ({
                                 );
                             })}
                         </div>
-                    </div>
+                    </motion.div>
                 ))}
             </div>
 
