@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { JoyMatrixModal } from '../features/JoyMatrixModal';
-import { Repeat, Link, Calendar } from 'lucide-react';
+import { Repeat, Link, Calendar, Clock } from 'lucide-react';
 import type { Mission } from '../../hooks/useAlDiaState';
 
 interface MissionListProps {
@@ -211,6 +211,21 @@ export const MissionList = ({ missions, toggleMission, onOpenNote, title = 'Tare
                                             padding: '2px 6px'
                                         }}>
                                             <Calendar size={10} /> {new Date(mission.dueDate + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                                        </span>
+                                    )}
+                                    {mission.dueTime && (
+                                        <span style={{ 
+                                            fontSize: '0.6rem', 
+                                            color: mission.critical ? 'white' : 'var(--domain-orange)', 
+                                            fontWeight: 800,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '3px',
+                                            background: mission.critical ? 'rgba(255,255,255,0.1)' : 'rgba(255,140,66,0.1)',
+                                            padding: '2px 6px',
+                                            borderRadius: '6px'
+                                        }}>
+                                            <Clock size={10} /> {mission.dueTime}
                                         </span>
                                     )}
                                 </div>

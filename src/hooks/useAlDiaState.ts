@@ -12,6 +12,7 @@ export interface Mission {
     completed: boolean;
     repeat: 'none' | 'daily' | 'weekly' | 'monthly';
     dueDate?: string; // YYYY-MM-DD
+    dueTime?: string; // HH:mm
     noteId?: number; // Referencia opcional a una nota del cerebro
     labels?: string[]; // Etiquetas para categorizar
 }
@@ -237,7 +238,7 @@ export const useAlDiaState = () => {
     };
 
     // Añadir nueva misión
-    const addMission = (text: string, q: string = 'Q2', repeat: 'none' | 'daily' | 'weekly' | 'monthly' = 'none', noteId?: number, labels: string[] = [], dueDate?: string) => {
+    const addMission = (text: string, q: string = 'Q2', repeat: 'none' | 'daily' | 'weekly' | 'monthly' = 'none', noteId?: number, labels: string[] = [], dueDate?: string, dueTime?: string) => {
         const newMission: Mission = {
             id: Date.now() + Math.random(),
             text,
@@ -247,7 +248,8 @@ export const useAlDiaState = () => {
             repeat,
             noteId,
             labels,
-            dueDate: dueDate || new Date().toISOString().split('T')[0]
+            dueDate: dueDate || new Date().toISOString().split('T')[0],
+            dueTime
         };
         setMissions(prev => [newMission, ...prev]);
     };

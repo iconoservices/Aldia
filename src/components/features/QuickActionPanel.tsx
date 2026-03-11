@@ -7,7 +7,7 @@ interface QuickActionPanelProps {
     isOpen: boolean;
     onClose: () => void;
     actionType: string | null;
-    addMission: (text: string, q?: string, repeat?: 'none' | 'daily' | 'weekly' | 'monthly', noteId?: number, labels?: string[], dueDate?: string) => void;
+    addMission: (text: string, q?: string, repeat?: 'none' | 'daily' | 'weekly' | 'monthly', noteId?: number, labels?: string[], dueDate?: string, dueTime?: string) => void;
     addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean) => void;
     addHabit: (name: string) => void;
     addCalendarEvent?: (title: string, date: string, start: string, end: string, desc: string) => void;
@@ -58,7 +58,7 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
             });
         } else if (actionType === 'tarea') {
             const labelArray = labels.split(',').map(l => l.trim()).filter(l => l !== '');
-            addMission(concept || 'Nueva Tarea', selectedQ, repeat, undefined, labelArray, date);
+            addMission(concept || 'Nueva Tarea', selectedQ, repeat, undefined, labelArray, date, hasTime ? startTime : undefined);
             confetti({
                 particleCount: 50,
                 spread: 50,
@@ -284,6 +284,41 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                                                 style={{ width: '100%', padding: '18px 12px 6px 12px', borderRadius: '16px', border: '1px solid #EEE', fontSize: '0.85rem', fontWeight: 600, outline: 'none', boxSizing: 'border-box', appearance: 'none' }}
                                             />
                                         </div>
+                                    </div>
+
+                                    {/* HORA OPCIONAL PARA TAREA */}
+                                    <div style={{ background: '#F9F9F9', padding: '12px', borderRadius: '20px' }}>
+                                        <div 
+                                            onClick={() => setHasTime(!hasTime)}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', marginBottom: hasTime ? '10px' : '0' }}
+                                        >
+                                            <div style={{
+                                                width: '20px',
+                                                height: '20px',
+                                                borderRadius: '6px',
+                                                border: '2px solid #DDD',
+                                                background: hasTime ? 'var(--domain-orange)' : 'white',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}>
+                                                {hasTime && <Check size={14} color="white" strokeWidth={4} />}
+                                            </div>
+                                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: hasTime ? '#333' : '#888', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <Clock size={16} /> Definir hora específica
+                                            </span>
+                                        </div>
+                                        
+                                        {hasTime && (
+                                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                                                <input 
+                                                    type="time" 
+                                                    value={startTime} 
+                                                    onChange={(e) => setStartTime(e.target.value)} 
+                                                    style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #EEE', fontSize: '1rem', fontWeight: 600, outline: 'none' }} 
+                                                />
+                                            </motion.div>
+                                        )}
                                     </div>
                                 </div>
                             )}
