@@ -52,7 +52,26 @@ export const BentoGrid = ({ performanceScore }: BentoGridProps) => {
             }, 1000);
         } else if (timeLeft === 0) {
             setIsActive(false);
-            // Sonido o notificación aquí en el futuro
+            if (soundEnabled) {
+                // Sonido de finalización (Triple Beep)
+                const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+                const playBeep = (freq: number, startTime: number, duration: number) => {
+                    const osc = context.createOscillator();
+                    const gain = context.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, startTime);
+                    gain.gain.setValueAtTime(0.1, startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+                    osc.connect(gain);
+                    gain.connect(context.destination);
+                    osc.start(startTime);
+                    osc.stop(startTime + duration);
+                };
+                playBeep(880, context.currentTime, 0.3);
+                playBeep(880, context.currentTime + 0.4, 0.3);
+                playBeep(1100, context.currentTime + 0.8, 0.6);
+                setTimeout(() => context.close(), 2000);
+            }
         }
 
         return () => clearInterval(interval);
