@@ -15,6 +15,8 @@ import { NoteDetailsModal } from './components/features/NoteDetailsModal';
 import { useAlDiaState } from './hooks/useAlDiaState';
 
 import { ProfileOverlay } from './components/layout/ProfileOverlay';
+import { usePWA } from './hooks/usePWA';
+import { RefreshCw } from 'lucide-react';
 
 function App() {
   const [activeTab, setActiveTab] = useState('Acción');
@@ -22,6 +24,7 @@ function App() {
   const [viewingNoteId, setViewingNoteId] = useState<number | null>(null);
 
   const state = useAlDiaState();
+  const { needRefresh, updateServiceWorker } = usePWA();
   const viewingNote = state.notes.find(n => n.id === viewingNoteId) || null;
 
   return (
@@ -146,6 +149,40 @@ function App() {
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
       />
+
+      {/* NOTIFICACIÓN DE ACTUALIZACIÓN (ANTI-CACHÉ) */}
+      <AnimatePresence>
+        {needRefresh && (
+          <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 50, opacity: 0 }}
+            style={{
+              position: 'fixed', bottom: '100px', left: '20px', right: '20px',
+              zIndex: 9999, background: 'var(--domain-orange)', color: 'white',
+              padding: '12px 20px', borderRadius: '16px', display: 'flex',
+              alignItems: 'center', justifyContent: 'space-between',
+              boxShadow: '0 10px 30px rgba(255, 140, 66, 0.4)',
+              border: '2px solid rgba(255,255,255,0.2)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <RefreshCw size={20} className="spin-slow" />
+              <span style={{ fontSize: '0.85rem', fontWeight: 900 }}>¡NUEVA VERSIÓN LISTA!</span>
+            </div>
+            <button
+              onClick={() => updateServiceWorker()}
+              style={{
+                background: 'white', color: 'var(--domain-orange)', border: 'none',
+                padding: '6px 14px', borderRadius: '10px', fontSize: '0.75rem',
+                fontWeight: 900, cursor: 'pointer'
+              }}
+            >
+              ACTUALIZAR YA
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

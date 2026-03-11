@@ -1,8 +1,19 @@
 import { useState, useEffect } from 'react';
+import { registerSW } from 'virtual:pwa-register';
 
 export const usePWA = () => {
     const [installPrompt, setInstallPrompt] = useState<any>(null);
     const [isInstalled, setIsInstalled] = useState(false);
+    const [needRefresh, setNeedRefresh] = useState(false);
+
+    const updateServiceWorker = registerSW({
+        onNeedRefresh() {
+            setNeedRefresh(true);
+        },
+        onOfflineReady() {
+            console.log('App lista para uso offline');
+        },
+    });
 
     useEffect(() => {
         // Detectar si ya está instalada
@@ -44,6 +55,8 @@ export const usePWA = () => {
         installPrompt,
         isInstalled,
         install,
+        needRefresh,
+        updateServiceWorker: () => updateServiceWorker(true),
         canInstall: !!installPrompt || (isIOS() && !isInstalled)
     };
 };
