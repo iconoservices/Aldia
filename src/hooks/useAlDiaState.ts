@@ -15,6 +15,7 @@ export interface Mission {
     dueTime?: string; // HH:mm
     noteId?: number; // Referencia opcional a una nota del cerebro
     labels?: string[]; // Etiquetas para categorizar
+    habitId?: number; // Si es un hábito, ID de la fábrica
 }
 
 export interface Transaction {
@@ -238,7 +239,7 @@ export const useAlDiaState = () => {
     };
 
     // Añadir nueva misión
-    const addMission = (text: string, q: string = 'Q2', repeat: 'none' | 'daily' | 'weekly' | 'monthly' = 'none', noteId?: number, labels: string[] = [], dueDate?: string, dueTime?: string) => {
+    const addMission = (text: string, q: string = 'Q2', repeat: 'none' | 'daily' | 'weekly' | 'monthly' = 'none', noteId?: number, labels: string[] = [], dueDate?: string, dueTime?: string, habitId?: number) => {
         const newMission: Mission = {
             id: Date.now() + Math.random(),
             text,
@@ -249,7 +250,8 @@ export const useAlDiaState = () => {
             noteId,
             labels,
             dueDate: dueDate || new Date().toISOString().split('T')[0],
-            dueTime
+            dueTime,
+            habitId
         };
         setMissions(prev => [newMission, ...prev]);
     };

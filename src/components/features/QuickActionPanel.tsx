@@ -7,7 +7,7 @@ interface QuickActionPanelProps {
     isOpen: boolean;
     onClose: () => void;
     actionType: string | null;
-    addMission: (text: string, q?: string, repeat?: 'none' | 'daily' | 'weekly' | 'monthly', noteId?: number, labels?: string[], dueDate?: string, dueTime?: string) => void;
+    addMission: (text: string, q?: string, repeat?: 'none' | 'daily' | 'weekly' | 'monthly', noteId?: number, labels?: string[], dueDate?: string, dueTime?: string, habitId?: number) => void;
     addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean) => void;
     addHabit: (name: string) => void;
     addCalendarEvent?: (title: string, date: string, start: string, end: string, desc: string) => void;
@@ -20,8 +20,9 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
     const [isDebt, setIsDebt] = useState(false);
     const [selectedQ, setSelectedQ] = useState('Q2');
     const [repeat, setRepeat] = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none');
+    const [asHabit, setAsHabit] = useState(false);
     
-    // Estados para Agenda
+    // Estados para Agenda/Tiempo
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [startTime, setStartTime] = useState('09:00');
     const [endTime, setEndTime] = useState('10:00');
@@ -58,7 +59,15 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
             });
         } else if (actionType === 'tarea') {
             const labelArray = labels.split(',').map(l => l.trim()).filter(l => l !== '');
-            addMission(concept || 'Nueva Tarea', selectedQ, repeat, undefined, labelArray, date, hasTime ? startTime : undefined);
+            
+            let habitId: number | undefined;
+            if (asHabit) {
+                const newHId = Date.now();
+                addHabit(concept || 'Nuevo Hábito');
+                habitId = newHId;
+            }
+
+            addMission(concept || 'Nueva Tarea', selectedQ, repeat, undefined, labelArray, date, hasTime ? startTime : undefined, habitId);
             confetti({
                 particleCount: 50,
                 spread: 50,
@@ -107,6 +116,7 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
             setStartTime('09:00');
             setEndTime('10:00');
             setHasTime(false);
+            setAsHabit(false);
             setNoteType('text');
             setNoteItems('');
             setNoteColor('#FFFFFF');
@@ -230,10 +240,11 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                                 />
                             </div>
 
-                            {/* SECCIONES ESPECÍFICAS */}
+                            {/* SECCIONES ESPECÍFICAS TASKS */}
                             {actionType === 'tarea' && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                    {/* CUADRANTE + REPETICIÓN (FILA COMPACTA) */}
+                                    
+                                    {/* BLOQUE CUADRANTE + REPETICIÓN */}
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                                         <div style={{ background: '#F9F9F9', padding: '12px', borderRadius: '18px' }}>
                                             <p style={{ margin: '0 0 8px 10px', fontWeight: 800, fontSize: '0.6rem', color: '#BBB', textTransform: 'uppercase' }}>Importancia</p>
@@ -267,7 +278,7 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                                         </div>
                                     </div>
 
-                                    {/* CATEGORÍAS + FECHA (FILA COMPACTA) */}
+                                    {/* BLOQUE CATEGORIAS + FECHA */}
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                                         <div style={{ position: 'relative' }}>
                                             <label style={{ fontSize: '0.6rem', fontWeight: 800, color: '#BBB', position: 'absolute', top: '6px', left: '12px', textTransform: 'uppercase' }}>Etiquetas</label>
@@ -286,43 +297,77 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                                         </div>
                                     </div>
 
-                                    {/* HORA OPCIONAL PARA TAREA */}
-                                    <div style={{ background: '#F9F9F9', padding: '12px', borderRadius: '20px' }}>
+                                    {/* HORA OPCIONAL Y HÁBITO */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                        <div style={{ background: '#F9F9F9', padding: '12px', borderRadius: '20px' }}>
+                                            <div 
+                                                onClick={() => setHasTime(!hasTime)}
+                                                style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', marginBottom: hasTime ? '10px' : '0' }}
+                                            >
+                                                <div style={{
+                                                    width: '20px',
+                                                    height: '20px',
+                                                    borderRadius: '6px',
+                                                    border: '2px solid #DDD',
+                                                    background: hasTime ? 'var(--domain-orange)' : 'white',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center'
+                                                }}>
+                                                    {hasTime && <Check size={14} color="white" strokeWidth={4} />}
+                                                </div>
+                                                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: hasTime ? '#333' : '#888', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    <Clock size={16} /> Hora
+                                                </span>
+                                            </div>
+                                            
+                                            {hasTime && (
+                                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                                                    <input 
+                                                        type="time" 
+                                                        value={startTime} 
+                                                        onChange={(e) => setStartTime(e.target.value)} 
+                                                        style={{ width: '100%', padding: '8px', borderRadius: '10px', border: '1px solid #EEE', fontSize: '1rem', fontWeight: 600, outline: 'none' }} 
+                                                    />
+                                                </motion.div>
+                                            )}
+                                        </div>
+
                                         <div 
-                                            onClick={() => setHasTime(!hasTime)}
-                                            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', marginBottom: hasTime ? '10px' : '0' }}
+                                            onClick={() => setAsHabit(!asHabit)}
+                                            style={{ 
+                                                background: asHabit ? '#F5F3FF' : '#F9F9F9', 
+                                                padding: '12px', 
+                                                borderRadius: '20px',
+                                                border: asHabit ? '2px solid #8B5CF6' : '2px solid transparent',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '10px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s'
+                                            }}
                                         >
                                             <div style={{
                                                 width: '20px',
                                                 height: '20px',
                                                 borderRadius: '6px',
                                                 border: '2px solid #DDD',
-                                                background: hasTime ? 'var(--domain-orange)' : 'white',
+                                                background: asHabit ? '#8B5CF6' : 'white',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center'
                                             }}>
-                                                {hasTime && <Check size={14} color="white" strokeWidth={4} />}
+                                                {asHabit && <Check size={14} color="white" strokeWidth={4} />}
                                             </div>
-                                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: hasTime ? '#333' : '#888', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                <Clock size={16} /> Definir hora específica
+                                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: asHabit ? '#7C3AED' : '#AAA', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                🔄 Hábito
                                             </span>
                                         </div>
-                                        
-                                        {hasTime && (
-                                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
-                                                <input 
-                                                    type="time" 
-                                                    value={startTime} 
-                                                    onChange={(e) => setStartTime(e.target.value)} 
-                                                    style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #EEE', fontSize: '1rem', fontWeight: 600, outline: 'none' }} 
-                                                />
-                                            </motion.div>
-                                        )}
                                     </div>
                                 </div>
                             )}
 
+                            {/* SECCIÓN NOTA */}
                             {actionType === 'nota' && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     <div style={{ display: 'flex', background: '#F5F5F5', padding: '4px', borderRadius: '14px', gap: '4px' }}>
@@ -357,6 +402,7 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                                 </div>
                             )}
 
+                            {/* SECCIÓN AGENDA */}
                             {actionType === 'agenda' && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -434,6 +480,7 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                                 </div>
                             )}
 
+                            {/* SECCIÓN FINANZAS */}
                             {currentConfig.isFinancial && (
                                 <div style={{ background: '#F9F9F9', borderRadius: '20px', padding: '6px', display: 'flex', gap: '4px' }}>
                                     <button
