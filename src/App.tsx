@@ -52,7 +52,7 @@ function App() {
                   <UpcomingList 
                     agenda={state.agenda} 
                     title="Agenda" 
-                    hideOnEmpty={false} 
+                    hideOnEmpty={true} 
                   />
 
                   <MissionList
