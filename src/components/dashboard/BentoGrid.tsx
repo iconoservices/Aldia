@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Flame, Target, MoreVertical, Play, Pause, RotateCcw } from 'lucide-react';
+import { Flame, Target, MoreVertical, Play, Pause, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 
 interface BentoGridProps {
     performanceScore: number;
@@ -10,6 +10,38 @@ export const BentoGrid = ({ performanceScore }: BentoGridProps) => {
     const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 minutos por defecto
     const [isActive, setIsActive] = useState(false);
     const [initialTime] = useState(15 * 60);
+    const [soundEnabled, setSoundEnabled] = useState(true);
+    const [soundType, setSoundType] = useState<'tictac' | 'soft' | 'digital'>('tictac');
+    const [audio] = useState<HTMLAudioElement | null>(typeof Audio !== 'undefined' ? new Audio() : null);
+
+    // Reproducir tictac cada segundo
+    useEffect(() => {
+        if (isActive && soundEnabled && audio && timeLeft > 0) {
+            // Generar un pequeño tono tipo tictac (Beep)
+            const playTick = () => {
+                const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+                const currTime = context.currentTime;
+                const osc = context.createOscillator();
+                const gain = context.createGain();
+
+                osc.type = soundType === 'tictac' ? 'sine' : soundType === 'soft' ? 'triangle' : 'square';
+                osc.frequency.setValueAtTime(soundType === 'tictac' ? 800 : 400, currTime);
+                
+                gain.gain.setValueAtTime(0.05, currTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, currTime + 0.1);
+
+                osc.connect(gain);
+                gain.connect(context.destination);
+
+                osc.start(currTime);
+                osc.stop(currTime + 0.1);
+                
+                setTimeout(() => context.close(), 200);
+            };
+            
+            playTick();
+        }
+    }, [timeLeft, isActive, soundEnabled, soundType]);
 
     useEffect(() => {
         let interval: number | undefined;
@@ -57,8 +89,36 @@ export const BentoGrid = ({ performanceScore }: BentoGridProps) => {
                         size={18} 
                         className="icon-subtle clickable" 
                         onClick={resetTimer}
-                        style={{ cursor: 'pointer', marginRight: 'auto' }}
+                        style={{ cursor: 'pointer', marginRight: '6px' }}
                     />
+                    <div style={{ marginRight: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <div 
+                            onClick={() => setSoundEnabled(!soundEnabled)}
+                            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                        >
+                            {soundEnabled ? <Volume2 size={16} color="#888" /> : <VolumeX size={16} color="#CCC" />}
+                        </div>
+                        {soundEnabled && (
+                            <select 
+                                value={soundType} 
+                                onChange={(e) => setSoundType(e.target.value as any)}
+                                style={{ 
+                                    fontSize: '0.6rem', 
+                                    background: '#F5F5F5', 
+                                    border: 'none', 
+                                    borderRadius: '6px',
+                                    color: '#666',
+                                    fontWeight: 700,
+                                    outline: 'none',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <option value="tictac">Tika-Tak</option>
+                                <option value="soft">Zen</option>
+                                <option value="digital">Digital</option>
+                            </select>
+                        )}
+                    </div>
                     <MoreVertical size={20} className="icon-subtle" />
                 </div>
                 

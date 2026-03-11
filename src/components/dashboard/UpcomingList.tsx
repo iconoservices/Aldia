@@ -12,9 +12,9 @@ export const UpcomingList = ({ agenda, hideOnEmpty = false }: UpcomingListProps)
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
     const currentTimeMinutes = currentHour * 60 + currentMinute;
-
-    // Filtrar eventos de la agenda que aún no han terminado o que son futuros
+    const todayStr = now.toLocaleDateString('en-CA');
     const upcomingEvents = agenda.filter(event => {
+        if (event.date && event.date !== todayStr) return false;
         const [endH, endM] = event.endTime.split(':').map(Number);
         const endTimeMinutes = endH * 60 + endM;
         return endTimeMinutes > currentTimeMinutes;

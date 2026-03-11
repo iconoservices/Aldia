@@ -26,21 +26,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
 
     return (
         <header className="aldia-header">
-            <div className="header-left">
-                <img
-                    src="/logo.png"
-                    alt="AlDia Logo"
-                    style={{
-                        width: '42px',
-                        height: '42px',
-                        borderRadius: '12px',
-                        objectFit: 'contain'
-                    }}
-                />
-            </div>
-
-            <div className="tabs-container">
-                {['🔥 Acción', '🌿 Vida', '💸 Finanzas', '🧠 Stats'].map((tab) => {
+            <div className="tabs-container" style={{ flex: 1, justifyContent: 'center' }}>
+                {['🔥 Acción', '🧠 Cerebro', '🌿 Vida', '💸 Finanzas', '📊 Stats'].map((tab) => {
                     const tabValue = tab.split(' ')[1];
                     return (
                         <button

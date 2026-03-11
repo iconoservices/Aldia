@@ -4,20 +4,21 @@ import { Plus, X, Receipt, TrendingUp, Target, Lightbulb, Calendar } from 'lucid
 import { QuickActionPanel } from './QuickActionPanel';
 
 interface SuperFabProps {
-    addMission: (text: string) => void;
+    addMission: (text: string, q?: string, repeat?: 'none' | 'daily' | 'weekly' | 'monthly', noteId?: number, labels?: string[]) => void;
     addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean) => void;
     addHabit: (name: string) => void;
-    addCalendarEvent: (title: string, start: string, end: string, desc: string) => void;
+    addCalendarEvent: (title: string, date: string, start: string, end: string, desc: string) => void;
+    addNote: (title: string, content: string, type: 'text' | 'checklist', items: { text: string; completed: boolean }[], q: string, color: string) => void;
 }
 
-export const SuperFab = ({ addMission, addTransaction, addHabit, addCalendarEvent }: SuperFabProps) => {
+export const SuperFab = ({ addMission, addTransaction, addHabit, addCalendarEvent, addNote }: SuperFabProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const [actionType, setActionType] = useState<string | null>(null);
 
     const menuItems = [
-        { id: 'tarea', icon: <Target size={24} />, color: '#3b82f6', label: 'Tarea' },
-        { id: 'agenda', icon: <Calendar size={24} />, color: '#f59e0b', label: 'Agenda' },
         { id: 'nota', icon: <Lightbulb size={24} />, color: '#facc15', label: 'Nota' },
+        { id: 'agenda', icon: <Calendar size={24} />, color: '#f59e0b', label: 'Agenda' },
+        { id: 'tarea', icon: <Target size={24} />, color: '#3b82f6', label: 'Tarea' },
     ];
 
     return (
@@ -52,9 +53,9 @@ export const SuperFab = ({ addMission, addTransaction, addHabit, addCalendarEven
                         const endAngle = Math.PI * 1.55; // Pasa los 270 grados (arriba)
                         const angle = startAngle + (index / (menuItems.length - 1)) * (endAngle - startAngle);
 
-                        const radius = 150; // Mucho más alejado para evitar que se pisen las etiquetas y burbujas
+                        const radius = 160; 
                         const x = Math.cos(angle) * radius;
-                        const y = Math.sin(angle) * radius;
+                        const y = Math.sin(angle) * (radius + 20); // Empujar más alto en el eje Y
 
                         return (
                             <motion.button
@@ -191,6 +192,7 @@ export const SuperFab = ({ addMission, addTransaction, addHabit, addCalendarEven
                 addTransaction={addTransaction}
                 addHabit={addHabit}
                 addCalendarEvent={addCalendarEvent}
+                addNote={addNote}
             />
         </div>
     );

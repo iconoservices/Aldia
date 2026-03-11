@@ -7,26 +7,40 @@ interface QuickActionPanelProps {
     isOpen: boolean;
     onClose: () => void;
     actionType: string | null;
-    addMission: (text: string, q?: string) => void;
+    addMission: (text: string, q?: string, repeat?: 'none' | 'daily' | 'weekly' | 'monthly', noteId?: number, labels?: string[], dueDate?: string) => void;
     addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean) => void;
     addHabit: (name: string) => void;
-    addCalendarEvent?: (title: string, start: string, end: string, desc: string) => void;
+    addCalendarEvent?: (title: string, date: string, start: string, end: string, desc: string) => void;
+    addNote: (title: string, content: string, type: 'text' | 'checklist', items: { text: string; completed: boolean }[], q: string, color: string) => void;
 }
 
-export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addTransaction, addHabit, addCalendarEvent }: QuickActionPanelProps) => {
+export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addTransaction, addHabit, addCalendarEvent, addNote }: QuickActionPanelProps) => {
     const [amount, setAmount] = useState('');
     const [concept, setConcept] = useState('');
     const [isDebt, setIsDebt] = useState(false);
     const [selectedQ, setSelectedQ] = useState('Q2');
+    const [repeat, setRepeat] = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none');
+    
+    // Estados para Agenda
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [startTime, setStartTime] = useState('09:00');
+    const [endTime, setEndTime] = useState('10:00');
+    const [hasTime, setHasTime] = useState(false);
+
+    // Estados para Notas (Cerebro)
+    const [noteType, setNoteType] = useState<'text' | 'checklist'>('text');
+    const [noteItems, setNoteItems] = useState<string>(''); // Texto crudo para convertir
+    const [noteColor, setNoteColor] = useState('#FFFFFF');
+    const [labels, setLabels] = useState<string>(''); // Comma separated labels
 
     // Mapeo visual por tipo de acción
     const uiConfigs: Record<string, { title: string, color: string, isFinancial: boolean }> = {
         'gasto': { title: 'Registrar Gasto', color: '#f87171', isFinancial: true },
         'ingreso': { title: 'Registrar Ingreso', color: '#4ade80', isFinancial: true },
-        'tarea': { title: 'Nueva Misión', color: '#3b82f6', isFinancial: false },
+        'tarea': { title: 'Nueva Tarea', color: '#3b82f6', isFinancial: false },
         'sueno': { title: 'Nuevo Hábito', color: '#a855f7', isFinancial: false },
-        'nota': { title: 'Idea Rápida', color: '#facc15', isFinancial: false },
-        'agenda': { title: 'Nueva Cita', color: '#f59e0b', isFinancial: false }
+        'nota': { title: 'Nuevo Bloque (Cerebro)', color: '#facc15', isFinancial: false },
+        'agenda': { title: 'Nueva Agenda', color: '#f59e0b', isFinancial: false }
     };
 
     const currentConfig = actionType ? uiConfigs[actionType] : null;
@@ -43,7 +57,8 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                 colors: [actionType === 'gasto' ? '#f87171' : '#4ade80', '#ffffff']
             });
         } else if (actionType === 'tarea') {
-            addMission(concept || 'Nueva Misión', selectedQ);
+            const labelArray = labels.split(',').map(l => l.trim()).filter(l => l !== '');
+            addMission(concept || 'Nueva Tarea', selectedQ, repeat, undefined, labelArray, date);
             confetti({
                 particleCount: 50,
                 spread: 50,
@@ -59,13 +74,9 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                 colors: ['#a855f7', '#ffffff']
             });
         } else if (actionType === 'agenda' && addCalendarEvent) {
-            // Para simplificar ahora, usamos la hora actual + 1h
-            const now = new Date();
-            const start = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            now.setHours(now.getHours() + 1);
-            const end = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-            addCalendarEvent(concept || 'Nueva Cita', start, end, 'Añadido desde AlDía');
+            const finalStart = hasTime ? startTime : '00:00';
+            const finalEnd = hasTime ? endTime : '23:59';
+            addCalendarEvent(concept || 'Agenda', date, finalStart, finalEnd, 'Añadido desde AlDía');
             confetti({
                 particleCount: 60,
                 spread: 50,
@@ -73,13 +84,17 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                 colors: ['#f59e0b', '#ffffff']
             });
         } else if (actionType === 'nota') {
-            // Guardar ideas rápidas como misiones en el cuadrante 4 (Baja Urgencia)
-            addMission("💡 " + (concept || 'Sin título'));
+            const items = noteType === 'checklist' 
+                ? noteItems.split('\n').filter(it => it.trim()).map(text => ({ text: text.trim(), completed: false }))
+                : [];
+            
+            addNote(concept, noteType === 'text' ? noteItems : '', noteType, items, selectedQ, noteColor);
+
             confetti({
-                particleCount: 30,
+                particleCount: 50,
                 spread: 40,
                 origin: { y: 0.6 },
-                colors: ['#facc15', '#ffffff']
+                colors: [noteColor === '#FFFFFF' ? '#facc15' : noteColor, '#ffffff']
             });
         }
 
@@ -88,6 +103,15 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
             setAmount('');
             setConcept('');
             setIsDebt(false);
+            setDate(new Date().toISOString().split('T')[0]);
+            setStartTime('09:00');
+            setEndTime('10:00');
+            setHasTime(true);
+            setNoteType('text');
+            setNoteItems('');
+            setNoteColor('#FFFFFF');
+            setRepeat('none');
+            setLabels('');
             onClose();
         }, 150);
     };
@@ -137,7 +161,7 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                             <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-carbon)' }}>
-                                {currentConfig.title}
+                                {actionType === 'nota' ? (noteType === 'text' ? '📝 Nota' : '✅ Lista') : currentConfig.title}
                             </h2>
                             <button onClick={onClose} style={{ background: '#F5F5F5', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                                 <X size={20} color="#888" />
@@ -175,7 +199,7 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
 
                             <div>
                                 <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#888', marginLeft: '12px', marginBottom: '4px', display: 'block' }}>
-                                    {currentConfig.isFinancial ? 'CONCEPTO' : (actionType === 'sueno' ? 'NOMBRE DEL HÁBITO' : 'QUÉ VAS A HACER')}
+                                    {currentConfig.isFinancial ? 'CONCEPTO' : (actionType === 'sueno' ? 'NOMBRE DEL HÁBITO' : (actionType === 'nota' ? 'TÍTULO' : 'QUÉ VAS A HACER'))}
                                 </label>
                                 <input
                                     type="text"
@@ -194,6 +218,69 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                                     }}
                                 />
                             </div>
+
+                            {actionType === 'nota' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <div style={{ display: 'flex', background: '#F5F5F5', padding: '4px', borderRadius: '14px', gap: '4px' }}>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setNoteType('text')}
+                                            style={{ flex: 1, padding: '8px', border: 'none', borderRadius: '11px', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', background: noteType === 'text' ? 'white' : 'transparent', color: noteType === 'text' ? '#333' : '#888' }}
+                                        >
+                                            TEXTO
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setNoteType('checklist')}
+                                            style={{ flex: 1, padding: '8px', border: 'none', borderRadius: '11px', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', background: noteType === 'checklist' ? 'white' : 'transparent', color: noteType === 'checklist' ? '#333' : '#888' }}
+                                        >
+                                            LISTA (Keep)
+                                        </button>
+                                    </div>
+
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#888', marginLeft: '12px', marginBottom: '4px', display: 'block' }}>
+                                            {noteType === 'text' ? 'CONTENIDO' : 'ITEMS (Uno por línea)'}
+                                        </label>
+                                        <textarea
+                                            value={noteItems}
+                                            onChange={(e) => setNoteItems(e.target.value)}
+                                            placeholder={noteType === 'text' ? 'Escribe tu idea...' : 'Avena\nCafé\nHuevos...'}
+                                            rows={5}
+                                            style={{
+                                                width: '100%',
+                                                padding: '16px',
+                                                borderRadius: '16px',
+                                                border: '2px solid #F0F0F0',
+                                                fontSize: '0.95rem',
+                                                fontWeight: 500,
+                                                outline: 'none',
+                                                resize: 'none',
+                                                boxSizing: 'border-box',
+                                                fontFamily: 'inherit'
+                                            }}
+                                        />
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '4px 0' }}>
+                                        {['#FFFFFF', '#FEF9C3', '#DBEAFE', '#F3E8FF', '#DCFCE7', '#FEE2E2'].map(color => (
+                                            <button
+                                                key={color}
+                                                type="button"
+                                                onClick={() => setNoteColor(color)}
+                                                style={{
+                                                    minWidth: '32px',
+                                                    height: '32px',
+                                                    borderRadius: '50%',
+                                                    border: noteColor === color ? '2px solid #888' : '1px solid #E0E0E0',
+                                                    background: color,
+                                                    cursor: 'pointer'
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {actionType === 'tarea' && (
                                 <div style={{ background: '#F9F9F9', borderRadius: '16px', padding: '12px' }}>
@@ -223,6 +310,124 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                                     <p style={{ margin: '10px 0 0 0', fontSize: '0.62rem', color: '#AAA', textAlign: 'center', fontWeight: 600 }}>
                                         {selectedQ === 'Q1' ? '🔥 URGENTE / CRÍTICA' : selectedQ === 'Q2' ? '🎯 ENFOQUE / PLAN' : selectedQ === 'Q3' ? '⏱️ APOYO / DELEGAR' : '🗑️ ELIMINAR / IDEAS'}
                                     </p>
+
+                                    <div style={{ marginTop: '1.2rem', borderTop: '1px solid #EEE', paddingTop: '1rem' }}>
+                                        <p style={{ margin: '0 0 8px 0', fontWeight: 700, fontSize: '0.85rem', color: '#888', textAlign: 'center' }}>🔄 REPETIR</p>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                                            {[
+                                                { id: 'none', label: 'Una vez' },
+                                                { id: 'daily', label: 'Diario' },
+                                                { id: 'weekly', label: 'Semanal' },
+                                                { id: 'monthly', label: 'Mensual' }
+                                            ].map(opt => (
+                                                <button
+                                                    key={opt.id}
+                                                    type="button"
+                                                    onClick={() => setRepeat(opt.id as any)}
+                                                    style={{
+                                                        padding: '8px 0',
+                                                        borderRadius: '10px',
+                                                        border: '1px solid #EEE',
+                                                        fontWeight: 800,
+                                                        fontSize: '0.6rem',
+                                                        cursor: 'pointer',
+                                                        background: repeat === opt.id ? '#333' : 'white',
+                                                        color: repeat === opt.id ? 'white' : '#888'
+                                                    }}
+                                                >
+                                                    {opt.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div style={{ marginTop: '1.2rem', borderTop: '1px solid #EEE', paddingTop: '1rem' }}>
+                                        <p style={{ margin: '0 0 8px 0', fontWeight: 700, fontSize: '0.85rem', color: '#888', textAlign: 'center' }}>🏷️ CATEGORÍAS (Separadas por coma)</p>
+                                        <input
+                                            type="text"
+                                            value={labels}
+                                            onChange={(e) => setLabels(e.target.value)}
+                                            placeholder="Ej. Casa, Trabajo, Urgente..."
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px',
+                                                borderRadius: '12px',
+                                                border: '2px solid #F0F0F0',
+                                                fontSize: '0.9rem',
+                                                fontWeight: 600,
+                                                outline: 'none',
+                                                boxSizing: 'border-box'
+                                            }}
+                                        />
+                                    </div>
+
+                                    <div style={{ marginTop: '1.2rem', borderTop: '1px solid #EEE', paddingTop: '1rem' }}>
+                                        <p style={{ margin: '0 0 8px 0', fontWeight: 700, fontSize: '0.85rem', color: '#888', textAlign: 'center' }}>📅 FECHA INICIO / META</p>
+                                        <input
+                                            type="date"
+                                            value={date}
+                                            onChange={(e) => setDate(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px',
+                                                borderRadius: '12px',
+                                                border: '2px solid #F0F0F0',
+                                                fontSize: '0.9rem',
+                                                fontWeight: 600,
+                                                outline: 'none',
+                                                boxSizing: 'border-box'
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {actionType === 'agenda' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#888', marginLeft: '12px', marginBottom: '4px', display: 'block' }}>FECHA</label>
+                                        <input
+                                            type="date"
+                                            value={date}
+                                            onChange={(e) => setDate(e.target.value)}
+                                            style={{ width: '100%', padding: '16px', borderRadius: '16px', border: '2px solid #F0F0F0', fontSize: '1rem', fontWeight: 600, outline: 'none', appearance: 'none', boxSizing: 'border-box' }}
+                                        />
+                                    </div>
+                                    
+                                    <div style={{ background: '#F9F9F9', borderRadius: '16px', padding: '12px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-carbon)' }}>¿Tiene hora específica?</span>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={hasTime} 
+                                                onChange={(e) => setHasTime(e.target.checked)}
+                                                style={{ width: '20px', height: '20px', accentColor: '#f59e0b' }}
+                                            />
+                                        </div>
+                                        
+                                        {hasTime && (
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                                <div>
+                                                    <label style={{ fontSize: '0.65rem', fontWeight: 700, color: '#AAA', marginBottom: '4px', display: 'block' }}>INICIO</label>
+                                                    <input
+                                                        type="time"
+                                                        value={startTime}
+                                                        onChange={(e) => setStartTime(e.target.value)}
+                                                        style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #E0E0E0', fontSize: '0.9rem', fontWeight: 600, outline: 'none' }}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label style={{ fontSize: '0.65rem', fontWeight: 700, color: '#AAA', marginBottom: '4px', display: 'block' }}>FIN</label>
+                                                    <input
+                                                        type="time"
+                                                        value={endTime}
+                                                        onChange={(e) => setEndTime(e.target.value)}
+                                                        style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #E0E0E0', fontSize: '0.9rem', fontWeight: 600, outline: 'none' }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 

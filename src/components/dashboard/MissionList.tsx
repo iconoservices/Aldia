@@ -2,18 +2,20 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { JoyMatrixModal } from '../features/JoyMatrixModal';
+import { Repeat, Link, Calendar } from 'lucide-react';
 import type { Mission } from '../../hooks/useAlDiaState';
 
 interface MissionListProps {
     missions: Mission[];
     toggleMission: (id: number) => void;
+    onOpenNote?: (id: number) => void;
     title?: string;
     showTimeBlock?: boolean;
     showMatrixLinks?: boolean;
     hideOnEmpty?: boolean;
 }
 
-export const MissionList = ({ missions, toggleMission, title = 'Tareas', showTimeBlock = true, showMatrixLinks = true, hideOnEmpty = false }: MissionListProps) => {
+export const MissionList = ({ missions, toggleMission, onOpenNote, title = 'Tareas', showTimeBlock = true, showMatrixLinks = true, hideOnEmpty = false }: MissionListProps) => {
     const [isMatrixOpen, setIsMatrixOpen] = useState(false);
 
     const handleToggle = (id: number, q: string) => {
@@ -139,6 +141,70 @@ export const MissionList = ({ missions, toggleMission, title = 'Tareas', showTim
                                             borderRadius: '8px'
                                         }}>
                                             {mission.q}
+                                        </span>
+                                    )}
+                                </div>
+                                <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                                    {mission.repeat !== 'none' && (
+                                        <span style={{ 
+                                            fontSize: '0.6rem', 
+                                            color: mission.critical ? 'white' : 'var(--domain-orange)', 
+                                            fontWeight: 800,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '3px',
+                                            background: mission.critical ? 'rgba(255,255,255,0.1)' : '#F9F9F9',
+                                            padding: '2px 6px',
+                                            borderRadius: '6px'
+                                        }}>
+                                            <Repeat size={10} /> {mission.repeat === 'daily' ? 'Diaria' : mission.repeat === 'weekly' ? 'Semanal' : 'Mensual'}
+                                        </span>
+                                    )}
+                                    {mission.noteId && (
+                                        <span 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onOpenNote && onOpenNote(mission.noteId!);
+                                            }}
+                                            style={{ 
+                                                fontSize: '0.6rem', 
+                                                color: mission.critical ? 'white' : '#666', 
+                                                fontWeight: 800,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '3px',
+                                                background: mission.critical ? 'rgba(255,255,255,0.1)' : '#F5F5F5',
+                                                padding: '2px 6px',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            <Link size={10} /> Nota
+                                        </span>
+                                    )}
+                                    {mission.labels?.map((label, idx) => (
+                                        <span key={idx} style={{ 
+                                            fontSize: '0.6rem', 
+                                            color: mission.critical ? 'white' : 'var(--domain-green)', 
+                                            fontWeight: 800,
+                                            background: mission.critical ? 'rgba(255,255,255,0.1)' : '#ECFDF5',
+                                            padding: '2px 6px',
+                                            borderRadius: '6px'
+                                        }}>
+                                            #{label}
+                                        </span>
+                                    ))}
+                                    {mission.dueDate && (
+                                        <span style={{ 
+                                            fontSize: '0.6rem', 
+                                            color: mission.critical ? 'white' : '#888', 
+                                            fontWeight: 800,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '3px',
+                                            padding: '2px 6px'
+                                        }}>
+                                            <Calendar size={10} /> {new Date(mission.dueDate + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
                                         </span>
                                     )}
                                 </div>

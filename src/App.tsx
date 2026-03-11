@@ -6,9 +6,11 @@ import { BentoGrid } from './components/dashboard/BentoGrid';
 import { UpcomingList } from './components/dashboard/UpcomingList';
 import { MissionList } from './components/dashboard/MissionList';
 import { VidaDashboard } from './components/dashboard/VidaDashboard';
+import { CerebroDashboard } from './components/dashboard/CerebroDashboard';
 import { FinanzasDashboard } from './components/dashboard/FinanzasDashboard';
 import { StatsDashboard } from './components/dashboard/StatsDashboard';
 import { SuperFab } from './components/features/SuperFab';
+import { NoteDetailsModal } from './components/features/NoteDetailsModal';
 
 import { useAlDiaState } from './hooks/useAlDiaState';
 
@@ -17,7 +19,10 @@ import { ProfileOverlay } from './components/layout/ProfileOverlay';
 function App() {
   const [activeTab, setActiveTab] = useState('Acción');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [viewingNoteId, setViewingNoteId] = useState<number | null>(null);
+
   const state = useAlDiaState();
+  const viewingNote = state.notes.find(n => n.id === viewingNoteId) || null;
 
   return (
     <div className="aldia-container">
@@ -47,6 +52,7 @@ function App() {
                   <MissionList
                     missions={state.missions.filter(m => m.critical && !m.completed)}
                     toggleMission={state.toggleMission}
+                    onOpenNote={setViewingNoteId}
                     title="Urgente (Q1)"
                     showTimeBlock={false}
                     showMatrixLinks={false}
@@ -58,9 +64,15 @@ function App() {
 
                   {/* 4. RESTO DE MISIONES (NO CRÍTICAS O COMPLETADAS) */}
                   <MissionList
-                    missions={state.missions.filter(m => !m.critical || m.completed)}
+                    missions={state.missions.filter(m => {
+                      const isRelevantQuadrant = m.q === 'Q1' || m.q === 'Q2';
+                      const today = new Date().toISOString().split('T')[0];
+                      const isTodayOrPast = !m.dueDate || m.dueDate <= today;
+                      return isRelevantQuadrant && isTodayOrPast;
+                    })}
                     toggleMission={state.toggleMission}
-                    title="Tareas"
+                    onOpenNote={setViewingNoteId}
+                    title="Tareas de Hoy"
                     hideOnEmpty={true}
                   />
                 </div>
@@ -73,6 +85,13 @@ function App() {
                 timeBlocks={state.timeBlocks}
                 addTimeBlock={state.addTimeBlock}
                 removeTimeBlock={state.removeTimeBlock}
+              />
+            ) : activeTab === 'Cerebro' ? (
+              <CerebroDashboard 
+                notes={state.notes} 
+                removeNote={state.removeNote} 
+                toggleNoteItem={state.toggleNoteItem}
+                onOpenNote={setViewingNoteId}
               />
             ) : activeTab === 'Finanzas' ? (
               <FinanzasDashboard
@@ -99,12 +118,22 @@ function App() {
         </AnimatePresence>
       </main>
 
+      <NoteDetailsModal 
+        isOpen={viewingNoteId !== null} 
+        onClose={() => setViewingNoteId(null)}
+        note={viewingNote}
+        removeNote={state.removeNote}
+        toggleNoteItem={state.toggleNoteItem}
+        addMission={state.addMission}
+      />
+
       {/* SUPER FAB RADIAL */}
       <SuperFab
         addMission={state.addMission}
         addTransaction={state.addTransaction}
         addHabit={state.addHabit}
         addCalendarEvent={state.addCalendarEvent}
+        addNote={state.addNote}
       />
 
       <ProfileOverlay
