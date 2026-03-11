@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Flame, Target, MoreVertical, Play, Pause, RotateCcw, Volume2, VolumeX } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface BentoGridProps {
     performanceScore: number;
@@ -7,9 +8,14 @@ interface BentoGridProps {
 
 export const BentoGrid = ({ performanceScore }: BentoGridProps) => {
     // --- LÓGICA POMODORO ---
-    const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 minutos por defecto
+    const [currentSession, setCurrentSession] = useState(1);
+    const [isBreak, setIsBreak] = useState(false);
+    const WORK_TIME = 12 * 60; // 12 minutos de trabajo
+    const BREAK_TIME = 3 * 60;  // 3 minutos de descanso
+    
+    const [timeLeft, setTimeLeft] = useState(WORK_TIME); 
     const [isActive, setIsActive] = useState(false);
-    const [initialTime] = useState(15 * 60);
+    const [initialTime, setInitialTime] = useState(WORK_TIME);
     const [soundEnabled, setSoundEnabled] = useState(true);
     const [soundType, setSoundType] = useState<'tictac' | 'soft' | 'digital'>('tictac');
     const [audio] = useState<HTMLAudioElement | null>(typeof Audio !== 'undefined' ? new Audio() : null);
@@ -48,10 +54,32 @@ export const BentoGrid = ({ performanceScore }: BentoGridProps) => {
 
         if (isActive && timeLeft > 0) {
             interval = window.setInterval(() => {
-                setTimeLeft((prev) => prev - 1);
+                setTimeLeft((prev: number) => prev - 1);
             }, 1000);
         } else if (timeLeft === 0) {
             setIsActive(false);
+            
+            // Lógica de cambio de sesión
+            if (!isBreak) {
+                // Terminó trabajo -> Empezar descanso
+                setIsBreak(true);
+                setTimeLeft(BREAK_TIME);
+                setInitialTime(BREAK_TIME);
+            } else {
+                // Terminó descanso -> Siguiente sesión de trabajo
+                setIsBreak(false);
+                if (currentSession < 4) {
+                    setCurrentSession((prev: number) => prev + 1);
+                    setTimeLeft(WORK_TIME);
+                    setInitialTime(WORK_TIME);
+                } else {
+                    // Terminó el ciclo de 1 hora
+                    setCurrentSession(1);
+                    setTimeLeft(WORK_TIME);
+                    setInitialTime(WORK_TIME);
+                }
+            }
+
             if (soundEnabled) {
                 // Sonido de finalización (Triple Beep)
                 const context = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -80,7 +108,10 @@ export const BentoGrid = ({ performanceScore }: BentoGridProps) => {
     const toggleTimer = () => setIsActive(!isActive);
     const resetTimer = () => {
         setIsActive(false);
-        setTimeLeft(15 * 60);
+        setIsBreak(false);
+        setCurrentSession(1);
+        setTimeLeft(WORK_TIME);
+        setInitialTime(WORK_TIME);
     };
 
     const formatTime = (seconds: number) => {
@@ -89,7 +120,8 @@ export const BentoGrid = ({ performanceScore }: BentoGridProps) => {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const progress = ((initialTime - timeLeft) / initialTime) * 360;
+    const progress = ((initialTime - timeLeft) / initialTime) * 100; // En porcentaje ahora
+    const circleProgress = ((initialTime - timeLeft) / initialTime) * 360; // Para el gradiente
 
     // --- CÁLCULO PROGRESO AÑO ---
     const now = new Date();
@@ -146,7 +178,7 @@ export const BentoGrid = ({ performanceScore }: BentoGridProps) => {
                     onClick={toggleTimer}
                     style={{ 
                         cursor: 'pointer',
-                        background: `conic-gradient(var(--domain-orange) ${progress}deg, #FFF5EB 0deg)`,
+                        background: `conic-gradient(${isBreak ? 'var(--domain-green)' : 'var(--domain-orange)'} ${circleProgress}deg, #FFF5EB 0deg)`,
                         border: 'none',
                         position: 'relative',
                         display: 'flex',
@@ -165,12 +197,48 @@ export const BentoGrid = ({ performanceScore }: BentoGridProps) => {
                     
                     <div style={{ zIndex: 1, textAlign: 'center' }}>
                         <h2 className="pomodoro-time" style={{ margin: 0 }}>{formatTime(timeLeft)}</h2>
-                        {isActive ? <Pause size={16} color="#DDD" fill="#DDD" /> : <Play size={16} color="var(--domain-orange)" fill="var(--domain-orange)" />}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                            {isActive ? <Pause size={14} color="#DDD" fill="#DDD" /> : <Play size={14} color="var(--domain-orange)" fill="var(--domain-orange)" />}
+                            <span style={{ fontSize: '0.65rem', fontWeight: 900, color: isBreak ? 'var(--domain-green)' : 'var(--domain-orange)', textTransform: 'uppercase' }}>
+                                {isBreak ? 'Descanso' : 'Enfoque'}
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                <p className="widget-label">Enfoque Actual</p>
-                <span className="badge-active" style={{ color: performanceScore > 50 ? 'var(--domain-green)' : 'var(--domain-orange)' }}>
+                {/* SESIONES (BLOQUES) */}
+                <div style={{ display: 'flex', gap: '6px', width: '100%', padding: '0 10px', marginBottom: '10px' }}>
+                    {[1, 2, 3, 4].map((s) => (
+                        <div key={s} style={{ 
+                            flex: 1, 
+                            height: '6px', 
+                            borderRadius: '3px', 
+                            background: s < currentSession ? 'var(--domain-orange)' : (s === currentSession ? '#F0EBE6' : '#F9F9F9'),
+                            overflow: 'hidden',
+                            position: 'relative',
+                            border: s === currentSession ? '1.5px solid #EEE' : 'none'
+                        }}>
+                            {s === currentSession && (
+                                <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: progress + '%' }} // Usar porcentaje para la barra
+                                    style={{ 
+                                        height: '100%', 
+                                        background: isBreak ? 'var(--domain-green)' : 'var(--domain-orange)',
+                                        position: 'absolute',
+                                        left: 0,
+                                        top: 0
+                                    }} 
+                                />
+                            )}
+                        </div>
+                    ))}
+                </div>
+
+                <p className="widget-label" style={{ marginBottom: '2px' }}>
+                    Bloque {currentSession} de 4
+                </p>
+                <span className="badge-active" style={{ color: performanceScore > 50 ? 'var(--domain-green)' : 'var(--domain-orange)', marginTop: 0 }}>
                     {performanceScore > 70 ? 'Ultra Foco' : 'Productivo'}
                 </span>
             </div>
