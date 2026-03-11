@@ -143,41 +143,45 @@ export const BentoGrid = ({ performanceScore }: BentoGridProps) => {
         <div className="bento-grid">
             {/* HERO WIDGET (Pomodoro) */}
             <div className="glass-card hero-widget">
-                <div className="widget-header">
-                    <RotateCcw 
-                        size={18} 
-                        className="icon-subtle clickable" 
-                        onClick={resetTimer}
-                        style={{ cursor: 'pointer', marginRight: '6px' }}
-                    />
-                    <div style={{ marginRight: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div className="widget-header" style={{ justifyContent: 'space-between', padding: '0 4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <RotateCcw 
+                            size={18} 
+                            className="icon-subtle clickable" 
+                            onClick={resetTimer}
+                            style={{ cursor: 'pointer' }}
+                        />
                         <select 
                             value={pomoMode} 
                             onChange={(e) => {
                                 setIsActive(false);
                                 setPomoMode(e.target.value as any);
-                                // El useEffect de reset se encargará del resto si lo forzamos
                             }}
+                            className="pomo-mode-select"
                             style={{ 
-                                fontSize: '0.6rem', 
-                                background: 'var(--domain-orange)', 
-                                border: 'none', 
-                                borderRadius: '6px',
-                                color: 'white',
-                                fontWeight: 800,
+                                fontSize: '0.65rem', 
+                                background: 'rgba(255, 140, 66, 0.15)', 
+                                border: '1px solid rgba(255, 140, 66, 0.3)', 
+                                borderRadius: '8px',
+                                color: 'var(--domain-orange)',
+                                fontWeight: 900,
                                 outline: 'none',
                                 cursor: 'pointer',
-                                padding: '2px 4px'
+                                padding: '4px 8px',
+                                textTransform: 'uppercase'
                             }}
                         >
-                            <option value="blocks">Bloques (1h)</option>
-                            <option value="classic">Clásico (25m)</option>
+                            <option value="blocks">MODO BLOQUES (1H)</option>
+                            <option value="classic">MODO CLÁSICO (25M)</option>
                         </select>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <div 
                             onClick={() => setSoundEnabled(!soundEnabled)}
                             style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                         >
-                            {soundEnabled ? <Volume2 size={16} color="#888" /> : <VolumeX size={16} color="#CCC" />}
+                            {soundEnabled ? <Volume2 size={16} color="var(--domain-orange)" /> : <VolumeX size={16} color="#CCC" />}
                         </div>
                         {soundEnabled && (
                             <select 
@@ -191,7 +195,7 @@ export const BentoGrid = ({ performanceScore }: BentoGridProps) => {
                                     color: '#666',
                                     fontWeight: 700,
                                     outline: 'none',
-                                    cursor: 'pointer'
+                                    padding: '2px 4px'
                                 }}
                             >
                                 <option value="tictac">Tika-Tak</option>
@@ -199,8 +203,8 @@ export const BentoGrid = ({ performanceScore }: BentoGridProps) => {
                                 <option value="digital">Digital</option>
                             </select>
                         )}
+                        <MoreVertical size={20} className="icon-subtle" />
                     </div>
-                    <MoreVertical size={20} className="icon-subtle" />
                 </div>
                 
                 <div 
