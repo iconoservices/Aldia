@@ -162,28 +162,28 @@ export const VidaDashboard = ({
 
             <div className="glass-card" style={{ marginBottom: '2rem', padding: '1.2rem', background: '#FFF' }}>
                 <div style={{ position: 'relative', paddingLeft: '40px', borderLeft: '2px solid #F0F0F0' }}>
-                    {/* Horas de fondo (VISTA COMPACTA) */}
+                    {/* Horas de fondo (VISTA ESPACIADA Y PREMIUM) */}
                     {[8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22].map(hour => (
-                        <div key={hour} style={{ height: '35px', position: 'relative' }}>
-                            <span style={{ position: 'absolute', left: '-40px', top: '-6px', fontSize: '0.6rem', fontWeight: 800, color: '#BBB' }}>
+                        <div key={hour} style={{ height: '50px', position: 'relative' }}>
+                            <span style={{ position: 'absolute', left: '-40px', top: '-6px', fontSize: '0.65rem', fontWeight: 900, color: '#CCC' }}>
                                 {hour.toString().padStart(2, '0')}:00
                             </span>
-                            <div style={{ position: 'absolute', left: 0, right: 0, top: 0, borderBottom: '1px dashed #F8F8F8', width: '100%' }}></div>
+                            <div style={{ position: 'absolute', left: 0, right: 0, top: 0, borderBottom: '1px solid #F6F6F6', width: '100%' }}></div>
                         </div>
                     ))}
 
                     {/* Bloques Flotantes, Agenda y Tareas con Hora */}
-                    <div style={{ position: 'absolute', top: 0, left: '6px', right: '6px', height: '100%' }}>
-                        {/* 1. Bloques de Tiempo Manuales */}
+                    <div style={{ position: 'absolute', top: 0, left: '0px', right: '0px', height: '100%' }}>
+                        {/* 1. Bloques de Tiempo Manuales (OCUPAN LA PARTE IZQUIERDA - 60%) */}
                         {timeBlocks.map((block) => {
                             const [startH, startM] = block.start.split(':').map(Number);
                             const [endH, endM] = block.end.split(':').map(Number);
                             const startTotal = (startH - 8) * 60 + startM;
                             const endTotal = (endH - 8) * 60 + endM;
                             const duration = endTotal - startTotal;
-                            const pixelsPerMinute = 35 / 60;
+                            const pixelsPerMinute = 50 / 60;
                             const topPos = startTotal * pixelsPerMinute;
-                            const heightPos = Math.max(duration * pixelsPerMinute, 25);
+                            const heightPos = Math.max(duration * pixelsPerMinute, 30);
 
                             return (
                                 <motion.div 
@@ -191,24 +191,24 @@ export const VidaDashboard = ({
                                     initial={{ opacity: 0, x: -5 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     style={{ 
-                                        position: 'absolute', top: topPos, left: 0, right: 0, height: heightPos,
-                                        background: block.color + '15',
+                                        position: 'absolute', top: topPos, left: '2px', width: '55%', height: heightPos - 2,
+                                        background: block.color + '12',
                                         borderLeft: `4px solid ${block.color}`,
-                                        borderRadius: '8px', padding: '4px 10px',
+                                        borderRadius: '12px', padding: '6px 12px',
                                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                        zIndex: 1, boxShadow: '0 4px 10px rgba(0,0,0,0.03)'
+                                        zIndex: 1, boxShadow: `0 4px 15px ${block.color}10`
                                     }}
                                 >
                                     <div style={{ overflow: 'hidden' }}>
-                                        <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 900, color: block.color, whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{block.label}</p>
-                                        <p style={{ margin: 0, fontSize: '0.55rem', fontWeight: 700, opacity: 0.6, color: block.color }}>{block.start} - {block.end}</p>
+                                        <p style={{ margin: 0, fontSize: '0.7rem', fontWeight: 900, color: block.color, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{block.label}</p>
+                                        <p style={{ margin: 0, fontSize: '0.55rem', fontWeight: 700, opacity: 0.7, color: block.color }}>{block.start} - {block.end}</p>
                                     </div>
                                     <Trash2 size={12} color={block.color} style={{ cursor: 'pointer', opacity: 0.5 }} onClick={() => removeTimeBlock(block.id)} />
                                 </motion.div>
                             );
                         })}
 
-                        {/* 2. Eventos de Agenda */}
+                        {/* 2. Eventos de Agenda (OCUPAN LA PARTE DERECHA - 40%) */}
                         {agenda.filter(event => {
                             const todayStr = new Date().toISOString().split('T')[0];
                             return !event.date || event.date === todayStr;
@@ -218,47 +218,50 @@ export const VidaDashboard = ({
                             const startTotal = (startH - 8) * 60 + startM;
                             const endTotal = (endH - 8) * 60 + endM;
                             const duration = endTotal - startTotal;
-                            const topPos = startTotal * (35/60);
-                            const heightPos = Math.max(duration * (35/60), 30);
+                            const pixelsPerMinute = 50 / 60;
+                            const topPos = startTotal * pixelsPerMinute;
+                            const heightPos = Math.max(duration * pixelsPerMinute, 35);
 
                             return (
                                 <motion.div 
                                     key={`agenda-${event.id}`}
                                     style={{ 
-                                        position: 'absolute', top: topPos, left: '15px', right: '2px', height: heightPos,
-                                        background: 'var(--domain-orange)',
+                                        position: 'absolute', top: topPos, right: '2px', width: '40%', height: heightPos - 2,
+                                        background: 'linear-gradient(135deg, var(--domain-orange), #ff6b3d)',
                                         color: 'white',
-                                        borderRadius: '10px', padding: '6px 12px',
-                                        zIndex: 2, boxShadow: '0 6px 15px rgba(255, 140, 66, 0.2)',
-                                        display: 'flex', flexDirection: 'column', justifyContent: 'center'
+                                        borderRadius: '14px', padding: '8px 12px',
+                                        zIndex: 2, boxShadow: '0 8px 20px rgba(255, 140, 66, 0.25)',
+                                        display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                                        border: '1px solid rgba(255,255,255,0.2)'
                                     }}
                                 >
-                                    <p style={{ margin: 0, fontSize: '0.7rem', fontWeight: 900, whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>🗓️ {event.title}</p>
+                                    <p style={{ margin: 0, fontSize: '0.65rem', fontWeight: 900, whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>🗓️ {event.title}</p>
                                     <p style={{ margin: 0, fontSize: '0.5rem', fontWeight: 700, opacity: 0.9 }}>{event.startTime}</p>
                                 </motion.div>
                             );
                         })}
 
-                        {/* 3. Tareas con Hora específica */}
+                        {/* 3. Tareas con Hora específica (MODALIDADES FLOTANTES ELEGANTES) */}
                         {missions.filter(m => m.dueTime && !m.completed).map((m) => {
                             const [startH, startM] = (m.dueTime || '12:00').split(':').map(Number);
                             const startTotal = (startH - 8) * 60 + startM;
-                            const topPos = startTotal * (35/60);
+                            const topPos = (startTotal * (50/60)) - 10;
 
                             return (
                                 <motion.div 
                                     key={`task-${m.id}`}
                                     style={{ 
-                                        position: 'absolute', top: topPos, left: '5px', height: '26px',
+                                        position: 'absolute', top: topPos, left: '45%', transform: 'translateX(-50%)',
                                         background: 'white', border: '1.5px solid #EEE',
-                                        borderRadius: '20px', padding: '2px 12px',
-                                        zIndex: 3, boxShadow: '0 4px 10px rgba(0,0,0,0.05)',
-                                        display: 'flex', alignItems: 'center', gap: '6px'
+                                        borderRadius: '12px', padding: '4px 12px',
+                                        zIndex: 3, boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
+                                        display: 'flex', alignItems: 'center', gap: '8px',
+                                        minWidth: '120px'
                                     }}
                                 >
-                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: m.critical ? 'var(--domain-orange)' : 'var(--domain-purple)' }}></div>
-                                    <p style={{ margin: 0, fontSize: '0.65rem', fontWeight: 800, color: '#333' }}>{m.text}</p>
-                                    <span style={{ fontSize: '0.55rem', fontWeight: 600, color: '#AAA' }}>{m.dueTime}</span>
+                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: m.critical ? 'var(--domain-orange)' : 'var(--domain-purple)' }}></div>
+                                    <p style={{ margin: 0, fontSize: '0.65rem', fontWeight: 800, color: '#1A1A1A', whiteSpace: 'nowrap' }}>{m.text}</p>
+                                    <span style={{ fontSize: '0.55rem', fontWeight: 700, color: '#999', marginLeft: 'auto' }}>{m.dueTime}</span>
                                 </motion.div>
                             );
                         })}
