@@ -139,6 +139,7 @@ function App() {
         addHabit={state.addHabit}
         addCalendarEvent={state.addCalendarEvent}
         addNote={state.addNote}
+        addTimeBlock={state.addTimeBlock}
       />
 
       <ProfileOverlay

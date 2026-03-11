@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Receipt, TrendingUp, Target, Lightbulb, Calendar } from 'lucide-react';
+import { Plus, X, Receipt, TrendingUp, Target, Lightbulb, Calendar, Clock } from 'lucide-react';
 import { QuickActionPanel } from './QuickActionPanel';
 
 interface SuperFabProps {
@@ -9,15 +9,17 @@ interface SuperFabProps {
     addHabit: (name: string) => void;
     addCalendarEvent: (title: string, date: string, start: string, end: string, desc: string) => void;
     addNote: (title: string, content: string, type: 'text' | 'checklist', items: { text: string; completed: boolean }[], q: string, color: string) => void;
+    addTimeBlock: (label: string, start: string, end: string, color: string) => void;
 }
 
-export const SuperFab = ({ addMission, addTransaction, addHabit, addCalendarEvent, addNote }: SuperFabProps) => {
+export const SuperFab = ({ addMission, addTransaction, addHabit, addCalendarEvent, addNote, addTimeBlock }: SuperFabProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const [actionType, setActionType] = useState<string | null>(null);
 
     const menuItems = [
         { id: 'nota', icon: <Lightbulb size={24} />, color: '#facc15', label: 'Nota' },
         { id: 'agenda', icon: <Calendar size={24} />, color: '#f59e0b', label: 'Agenda' },
+        { id: 'bloque', icon: <Clock size={24} />, color: '#8b5cf6', label: 'Bloque' },
         { id: 'tarea', icon: <Target size={24} />, color: '#3b82f6', label: 'Tarea' },
     ];
 
@@ -193,6 +195,7 @@ export const SuperFab = ({ addMission, addTransaction, addHabit, addCalendarEven
                 addHabit={addHabit}
                 addCalendarEvent={addCalendarEvent}
                 addNote={addNote}
+                addTimeBlock={addTimeBlock}
             />
         </div>
     );
