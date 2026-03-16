@@ -202,6 +202,7 @@ function App() {
         addMission={state.addMission}
         addTransaction={state.addTransaction}
         addHabit={state.addHabit}
+        addRoutineItem={state.addRoutineItem}
         addCalendarEvent={state.addCalendarEvent}
         addNote={state.addNote}
         addTimeBlock={state.addTimeBlock}

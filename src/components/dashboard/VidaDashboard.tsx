@@ -185,8 +185,15 @@ export const VidaDashboard = ({
                                     {/* Color Indicator Accent */}
                                     <div style={{ position: 'absolute', left: '-1.2rem', top: '1.2rem', bottom: '1.2rem', width: '4px', borderRadius: '0 4px 4px 0', background: rutina.color }}></div>
 
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div style={{ 
+                                        display: 'flex', 
+                                        justifyContent: 'space-between', 
+                                        alignItems: 'center', 
+                                        marginBottom: '12px',
+                                        flexWrap: 'wrap',
+                                        gap: '12px'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 'min-content' }}>
                                             <div 
                                                 onClick={() => removeRoutine(rutina.id)}
                                                 style={{ cursor: 'pointer', opacity: 0.2, transition: 'opacity 0.2s' }}
@@ -197,7 +204,7 @@ export const VidaDashboard = ({
                                             </div>
                                             <div>
                                                 <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{rutina.title}</h4>
-                                                <div style={{ display: 'flex', gap: '3px', marginTop: '4px' }}>
+                                                <div style={{ display: 'flex', gap: '3px', marginTop: '4px', flexWrap: 'wrap' }}>
                                                     {days.map((day, dIdx) => {
                                                         const isSet = rutina.repeatDays?.includes(dIdx);
                                                         return (
@@ -224,7 +231,7 @@ export const VidaDashboard = ({
                                             </div>
                                         </div>
                                         
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
                                             {/* Editable Times */}
                                             <div style={{ display: 'flex', gap: '4px', padding: '4px 8px', background: '#F9F9F9', borderRadius: '8px', alignItems: 'center' }}>
                                                 <Clock size={10} color="#AAA" />
@@ -232,14 +239,14 @@ export const VidaDashboard = ({
                                                     type="time" 
                                                     value={rutina.startTime || ''} 
                                                     onChange={(e) => updateRoutine(rutina.id, { startTime: e.target.value })}
-                                                    style={{ border: 'none', background: 'transparent', fontSize: '0.65rem', fontWeight: 800, color: '#666', outline: 'none' }}
+                                                    style={{ border: 'none', background: 'transparent', fontSize: '0.65rem', fontWeight: 800, color: '#666', outline: 'none', width: '45px' }}
                                                 />
                                                 <span style={{ fontSize: '0.65rem', color: '#CCC' }}>-</span>
                                                 <input 
                                                     type="time" 
                                                     value={rutina.endTime || ''} 
                                                     onChange={(e) => updateRoutine(rutina.id, { endTime: e.target.value })}
-                                                    style={{ border: 'none', background: 'transparent', fontSize: '0.65rem', fontWeight: 800, color: '#666', outline: 'none' }}
+                                                    style={{ border: 'none', background: 'transparent', fontSize: '0.65rem', fontWeight: 800, color: '#666', outline: 'none', width: '45px' }}
                                                 />
                                             </div>
                                             {/* FB Style Switch */}
@@ -248,7 +255,8 @@ export const VidaDashboard = ({
                                                 style={{ 
                                                     width: '32px', height: '18px', borderRadius: '20px', 
                                                     background: rutina.isActive ? 'var(--domain-green)' : '#DDD', 
-                                                    position: 'relative', cursor: 'pointer', transition: 'all 0.3s ease'
+                                                    position: 'relative', cursor: 'pointer', transition: 'all 0.3s ease',
+                                                    flexShrink: 0
                                                 }}
                                             >
                                                 <motion.div 

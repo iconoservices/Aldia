@@ -7,6 +7,7 @@ interface SuperFabProps {
     addMission: (text: string, q?: string, repeat?: 'none' | 'daily' | 'weekly' | 'monthly', noteId?: number, labels?: string[], dueDate?: string, dueTime?: string, habitId?: number, projectId?: number) => void;
     addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number) => void;
     addHabit: (name: string) => void;
+    addRoutineItem?: (routineId: number, text: string) => void;
     addCalendarEvent: (title: string, date: string, start: string, end: string, desc: string) => void;
     addNote: (title: string, content: string, type: 'text' | 'checklist', items: { text: string; completed: boolean }[], q: string, color: string) => void;
     addTimeBlock: (label: string, start: string, end: string, color: string, projectId?: number) => void;
@@ -17,7 +18,7 @@ interface SuperFabProps {
     onForceOpenClose?: () => void;
 }
 
-export const SuperFab = ({ addMission, addTransaction, addHabit, addCalendarEvent, addNote, addTimeBlock, addProject, projects = [], rutinas = [], forceOpenType = null, onForceOpenClose }: SuperFabProps) => {
+export const SuperFab = ({ addMission, addTransaction, addHabit, addRoutineItem, addCalendarEvent, addNote, addTimeBlock, addProject, projects = [], rutinas = [], forceOpenType = null, onForceOpenClose }: SuperFabProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const [actionType, setActionType] = useState<string | null>(null);
 
@@ -205,6 +206,7 @@ export const SuperFab = ({ addMission, addTransaction, addHabit, addCalendarEven
                 addMission={addMission}
                 addTransaction={addTransaction}
                 addHabit={addHabit}
+                addRoutineItem={addRoutineItem}
                 addCalendarEvent={addCalendarEvent}
                 addNote={addNote}
                 addTimeBlock={addTimeBlock}
