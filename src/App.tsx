@@ -113,6 +113,7 @@ function App() {
                 missions={state.missions}
                 timeBlocks={state.timeBlocks}
                 onAddProject={() => setIsAddingProject(true)}
+                deleteProject={state.deleteProject}
               />
             ) : activeTab === 'Stats' ? (
               <StatsDashboard

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Receipt, TrendingUp, Target, Lightbulb, Calendar, Clock } from 'lucide-react';
+import { Plus, X, Receipt, TrendingUp, Target, Lightbulb, Calendar } from 'lucide-react';
 import { QuickActionPanel } from './QuickActionPanel';
 
 interface SuperFabProps {
@@ -31,7 +31,6 @@ export const SuperFab = ({ addMission, addTransaction, addHabit, addCalendarEven
     const menuItems = [
         { id: 'nota', icon: <Lightbulb size={24} />, color: '#facc15', label: 'Nota' },
         { id: 'agenda', icon: <Calendar size={24} />, color: '#f59e0b', label: 'Agenda' },
-        { id: 'bloque', icon: <Clock size={24} />, color: '#8b5cf6', label: 'Bloque' },
         { id: 'tarea', icon: <Target size={24} />, color: '#3b82f6', label: 'Tarea' },
     ];
 

@@ -1,5 +1,6 @@
-import { motion } from 'framer-motion';
-import { Target, Zap, Plus, MoreVertical, Trophy } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Target, Zap, Plus, MoreVertical, Trophy, Trash2 } from 'lucide-react';
 import type { Project, Mission, TimeBlock } from '../../hooks/useAlDiaState';
 
 interface ProyectosDashboardProps {
@@ -7,17 +8,17 @@ interface ProyectosDashboardProps {
     missions: Mission[];
     timeBlocks: TimeBlock[];
     onAddProject: () => void;
+    deleteProject?: (id: number) => void;
 }
 
-export const ProyectosDashboard = ({ projects, missions, timeBlocks, onAddProject }: ProyectosDashboardProps) => {
+export const ProyectosDashboard = ({ projects, missions, timeBlocks, onAddProject, deleteProject }: ProyectosDashboardProps) => {
+    const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
+
     // Calculo del tiempo dedicado esta semana (simplificado para el demo)
-    // En una app real filtraríamos por fecha, aquí asumimos que missions completadas
-    // valen 1 hora (o lo que esté definido) y timeblocks = diff.
     const projectStats = projects.map(p => {
         const pMissionsCompleted = missions.filter(m => m.projectId === p.id && m.completed).length;
         const pTimeBlocks = timeBlocks.filter(b => b.projectId === p.id);
         
-        // Simulación: Cada misión = 0.5 horas, cada bloque = 1 hora
         const estimatedHours = (pMissionsCompleted * 0.5) + (pTimeBlocks.length * 1);
         const progress = p.targetHoursPerWeek ? Math.min(100, Math.round((estimatedHours / p.targetHoursPerWeek) * 100)) : 0;
 
@@ -58,13 +59,14 @@ export const ProyectosDashboard = ({ projects, missions, timeBlocks, onAddProjec
                     {projectStats.map(p => (
                         <motion.div 
                             key={p.id}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
                             className="glass-card"
-                            style={{ padding: '1.2rem', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
+                            style={{ padding: '1.2rem', cursor: 'pointer', position: 'relative', overflow: 'visible' }}
+                            onClick={() => setActiveMenuId(null)}
                         >
                             {/* Accent line top */}
-                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: p.color }} />
+                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: p.color, borderTopLeftRadius: '24px', borderTopRightRadius: '24px' }} />
                             
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -73,7 +75,53 @@ export const ProyectosDashboard = ({ projects, missions, timeBlocks, onAddProjec
                                     </div>
                                     <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-carbon)' }}>{p.name}</h4>
                                 </div>
-                                <MoreVertical size={18} color="#CCC" />
+                                
+                                <div style={{ position: 'relative' }}>
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setActiveMenuId(activeMenuId === p.id ? null : p.id);
+                                        }}
+                                        style={{ background: 'transparent', border: 'none', padding: '4px', cursor: 'pointer', borderRadius: '50%' }}
+                                    >
+                                        <MoreVertical size={18} color="#CCC" />
+                                    </button>
+
+                                    <AnimatePresence>
+                                        {activeMenuId === p.id && (
+                                            <motion.div
+                                                initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                                                style={{
+                                                    position: 'absolute', top: '100%', right: 0, zIndex: 50,
+                                                    background: 'white', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                                                    border: '1px solid #EEE', minWidth: '140px', padding: '6px', overflow: 'hidden'
+                                                }}
+                                            >
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (confirm('¿Eliminar este proyecto?') && deleteProject) {
+                                                            deleteProject(p.id);
+                                                        }
+                                                        setActiveMenuId(null);
+                                                    }}
+                                                    style={{
+                                                        width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
+                                                        padding: '8px 12px', background: 'transparent', border: 'none',
+                                                        color: '#f87171', fontWeight: 700, fontSize: '0.75rem',
+                                                        cursor: 'pointer', borderRadius: '8px'
+                                                    }}
+                                                    onMouseEnter={(e) => (e.currentTarget.style.background = '#FEF2F2')}
+                                                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                                                >
+                                                    <Trash2 size={14} /> Eliminar Proyecto
+                                                </button>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
                             </div>
 
                             <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
