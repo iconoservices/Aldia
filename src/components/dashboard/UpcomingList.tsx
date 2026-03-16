@@ -64,36 +64,34 @@ export const UpcomingList = ({ agenda, title = "Agenda" }: UpcomingListProps) =>
                                     background: isLive ? 'var(--domain-orange)' : 'rgba(255, 140, 66, 0.08)',
                                     color: isLive ? 'white' : 'var(--text-carbon)',
                                     fontWeight: 800,
-                                    padding: '1rem', // Más padding como las misiones
-                                    borderRadius: '20px',
+                                    padding: '0.6rem 1rem', // Reducido de 1rem
+                                    borderRadius: '16px',
                                     border: isLive ? 'none' : '1px solid rgba(255, 140, 66, 0.2)',
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
                                     boxShadow: isLive ? '0 8px 20px rgba(255,140,66,0.25)' : 'none',
-                                    marginBottom: '8px'
+                                    marginBottom: '4px' // Reducido de 8px
                                 }}
                             >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '10px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
                                         <div style={{ 
-                                            width: '24px', 
-                                            height: '24px', 
+                                            width: '20px', // Reducido de 24px
+                                            height: '20px', 
                                             borderRadius: '50%', 
-                                            border: isLive ? '2px solid white' : '2px solid var(--domain-orange)',
+                                            border: isLive ? '1.5px solid white' : '1.5px solid var(--domain-orange)',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            justifyContent: 'center'
+                                            justifyContent: 'center',
+                                            flexShrink: 0
                                         }}>
-                                            <Clock size={14} color={isLive ? 'white' : 'var(--domain-orange)'} />
+                                            <Clock size={12} color={isLive ? 'white' : 'var(--domain-orange)'} />
                                         </div>
-                                        {isLive && (
-                                            <div className="pulse-dot" style={{ minWidth: '6px', height: '6px', borderRadius: '50%', background: 'white' }}></div>
-                                        )}
-                                        <span style={{ fontSize: '0.82rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.title}</span>
+                                        <span style={{ fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 800 }}>{event.title}</span>
                                     </div>
-                                    <span style={{ fontSize: '0.62rem', opacity: 0.8, fontWeight: 700, whiteSpace: 'nowrap' }}>
-                                        {event.startTime} - {event.endTime}
+                                    <span style={{ fontSize: '0.6rem', opacity: 0.8, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                        {event.startTime}
                                     </span>
                                 </div>
                             </div>
