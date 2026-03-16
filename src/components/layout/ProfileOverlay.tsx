@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, LogOut, Edit2, Download, Share, Camera, User } from 'lucide-react';
+import { X, Calendar, LogOut, Edit2, Download, Share, Camera, User, RefreshCw } from 'lucide-react';
 import { usePWA } from '../../hooks/usePWA';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -13,11 +13,14 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
     const [name, setName] = useState('Juan Diego');
     const [isEditing, setIsEditing] = useState(false);
     const { isInstalled, install, canInstall } = usePWA();
-    const { user, loginWithGoogle, logout } = useAuth();
+    const { user, loginWithGoogle, logout, updateProfile, loading: authLoading } = useAuth();
     const [showIOSGuide, setShowIOSGuide] = useState(false);
     const [profilePic, setProfilePic] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        if (authLoading) return;
+        
         // Prioritize Firebase data
         if (user) {
             if (user.displayName) setName(user.displayName);
@@ -29,10 +32,17 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
             const savedPic = localStorage.getItem('aldia_user_pic');
             if (savedPic) setProfilePic(savedPic);
         }
-    }, [user]);
+        setIsLoading(false);
+    }, [user, authLoading]);
 
-    const handleSaveName = () => {
-        if (!user) {
+    const handleSaveName = async () => {
+        if (user) {
+            try {
+                await updateProfile({ displayName: name });
+            } catch (error) {
+                console.error("Error updating profile name:", error);
+            }
+        } else {
             localStorage.setItem('aldia_user_name', name);
             window.dispatchEvent(new Event('storage'));
         }
@@ -43,11 +53,20 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
-            reader.onloadend = () => {
+            reader.onloadend = async () => {
                 const base64String = reader.result as string;
                 setProfilePic(base64String);
-                localStorage.setItem('aldia_user_pic', base64String);
-                window.dispatchEvent(new Event('storage'));
+                
+                if (user) {
+                    try {
+                        await updateProfile({ photoURL: base64String });
+                    } catch (error) {
+                        console.error("Error updating profile pic in Firebase:", error);
+                    }
+                } else {
+                    localStorage.setItem('aldia_user_pic', base64String);
+                    window.dispatchEvent(new Event('storage'));
+                }
             };
             reader.readAsDataURL(file);
         }
@@ -118,114 +137,126 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
                             <X size={20} />
                         </button>
 
-                        <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-                            <div style={{ position: 'relative', width: '110px', height: '110px', margin: '0 auto 1.5rem' }}>
-                                <div style={{
-                                    width: '100%', height: '100%', borderRadius: '35%',
-                                    background: '#f0f0f0', border: '4px solid var(--domain-orange)',
-                                    overflow: 'hidden', display: 'flex', alignItems: 'center',
-                                    justifyContent: 'center', backgroundSize: 'cover',
-                                    backgroundImage: profilePic ? `url(${profilePic})` : 'none'
-                                }}>
-                                    {!profilePic && <User size={50} color="#CCC" />}
-                                </div>
-                                <label style={{
-                                    position: 'absolute', bottom: '-5px', right: '-5px',
-                                    background: 'var(--domain-orange)', color: 'white',
-                                    padding: '8px', borderRadius: '50%', cursor: 'pointer',
-                                    boxShadow: '0 4px 10px rgba(0,0,0,0.2)', display: 'flex'
-                                }}>
-                                    <Camera size={18} />
-                                    <input type="file" hidden accept="image/*" onChange={handleFileChange} />
-                                </label>
+                        {(isLoading || authLoading) ? (
+                            <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem' }}>
+                                <RefreshCw size={40} className="spin-slow" color="var(--domain-orange)" />
+                                <span style={{ fontWeight: 800, color: '#AAA' }}>VERIFICANDO SESIÓN...</span>
                             </div>
-
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                                {isEditing ? (
-                                    <input
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        onBlur={handleSaveName}
-                                        onKeyPress={(e) => e.key === 'Enter' && handleSaveName()}
-                                        autoFocus
-                                        style={{
-                                            fontSize: '1.8rem', fontWeight: '900', color: 'var(--text-carbon)',
-                                            border: 'none', borderBottom: '2px solid var(--domain-orange)',
-                                            textAlign: 'center', outline: 'none', width: 'auto',
-                                        }}
-                                    />
-                                ) : (
-                                    <>
-                                        <h2 style={{ fontSize: '1.8rem', fontWeight: '900', color: 'var(--text-carbon)', margin: 0 }}>{name}</h2>
-                                        <button onClick={() => setIsEditing(true)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#CCC' }}>
-                                            <Edit2 size={18} />
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-                            <p style={{ color: '#888', fontWeight: '600' }}>Mi Cerebro Digital v1.1.0</p>
-                        </div>
-
-                        <div style={{ display: 'grid', gap: '1.5rem' }}>
-                            {canInstall && !isInstalled && (
-                                <div className="settings-group">
-                                    <h4 style={{ color: '#CCC', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '10px' }}>App Nativa</h4>
-                                    <button onClick={handleInstallClick} style={{ ...settingItemStyle, background: 'var(--domain-orange)', color: 'white' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                            <Download size={20} />
-                                            <span>Instalar AlDía</span>
+                        ) : (
+                            <>
+                                <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+                                    <div style={{ position: 'relative', width: '110px', height: '110px', margin: '0 auto 1.5rem' }}>
+                                        <div style={{
+                                            width: '100%', height: '100%', borderRadius: '35%',
+                                            background: '#f0f0f0', border: '4px solid var(--domain-orange)',
+                                            overflow: 'hidden', display: 'flex', alignItems: 'center',
+                                            justifyContent: 'center', backgroundSize: 'cover',
+                                            backgroundImage: profilePic ? `url(${profilePic})` : 'none'
+                                        }}>
+                                            {!profilePic && <User size={50} color="#CCC" />}
                                         </div>
-                                    </button>
-                                </div>
-                            )}
+                                        <label style={{
+                                            position: 'absolute', bottom: '-5px', right: '-5px',
+                                            background: 'var(--domain-orange)', color: 'white',
+                                            padding: '8px', borderRadius: '50%', cursor: 'pointer',
+                                            boxShadow: '0 4px 10px rgba(0,0,0,0.2)', display: 'flex'
+                                        }}>
+                                            <Camera size={18} />
+                                            <input type="file" hidden accept="image/*" onChange={handleFileChange} />
+                                        </label>
+                                    </div>
 
-                            <div className="settings-group">
-                                <h4 style={{ color: '#CCC', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '10px' }}>Conectividad</h4>
-                                <div style={{ display: 'grid', gap: '0.8rem' }}>
-                                    {!user ? (
-                                        <button onClick={loginWithGoogle} style={{ ...settingItemStyle, background: 'var(--domain-blue)', color: 'white' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                <User size={20} />
-                                                <span>Sincronizar Cuenta de Google</span>
-                                            </div>
-                                        </button>
-                                    ) : (
-                                        <div style={{ ...settingItemStyle, background: '#F0F7FF', cursor: 'default' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--domain-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: 'white' }}>✓</div>
-                                                <span>Cloud Sync Activo ({user.email})</span>
-                                            </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                        {isEditing ? (
+                                            <input
+                                                value={name}
+                                                onChange={(e) => setName(e.target.value)}
+                                                onBlur={handleSaveName}
+                                                onKeyPress={(e) => e.key === 'Enter' && handleSaveName()}
+                                                autoFocus
+                                                style={{
+                                                    fontSize: '1.8rem', fontWeight: '900', color: 'var(--text-carbon)',
+                                                    border: 'none', borderBottom: '2px solid var(--domain-orange)',
+                                                    textAlign: 'center', outline: 'none', width: 'auto',
+                                                }}
+                                            />
+                                        ) : (
+                                            <>
+                                                <h2 style={{ fontSize: '1.8rem', fontWeight: '900', color: 'var(--text-carbon)', margin: 0 }}>{name}</h2>
+                                                <button onClick={() => setIsEditing(true)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#CCC' }}>
+                                                    <Edit2 size={18} />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                    <p style={{ color: '#888', fontWeight: '600' }}>Mi Cerebro Digital v1.1.0</p>
+                                </div>
+
+                                <div style={{ display: 'grid', gap: '1.5rem' }}>
+                                    {canInstall && !isInstalled && (
+                                        <div className="settings-group">
+                                            <h4 style={{ color: '#CCC', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '10px' }}>App Nativa</h4>
+                                            <button onClick={handleInstallClick} style={{ ...settingItemStyle, background: 'var(--domain-orange)', color: 'white' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    <Download size={20} />
+                                                    <span>Instalar AlDía</span>
+                                                </div>
+                                            </button>
                                         </div>
                                     )}
-                                    <button style={settingItemStyle}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                            <Calendar size={20} color="var(--domain-orange)" />
-                                            <span>Sincronizar con Google</span>
-                                        </div>
-                                        <span style={{ fontSize: '0.7rem', color: '#888' }}>PRÓXIMAMENTE</span>
-                                    </button>
-                                </div>
-                            </div>
 
-                            <div className="settings-group">
-                                <h4 style={{ color: '#CCC', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '10px' }}>General</h4>
-                                {user ? (
-                                    <button onClick={logout} style={{ ...settingItemStyle, color: '#f87171' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                            <LogOut size={20} />
-                                            <span>Cerrar Sesión</span>
+                                    <div className="settings-group">
+                                        <h4 style={{ color: '#CCC', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '10px' }}>Conectividad</h4>
+                                        <div style={{ display: 'grid', gap: '0.8rem' }}>
+                                            {!user ? (
+                                                <button onClick={loginWithGoogle} style={{ ...settingItemStyle, background: 'var(--domain-orange)', color: 'white' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                        <User size={20} />
+                                                        <span>Conectar con Google Cloud</span>
+                                                    </div>
+                                                </button>
+                                            ) : (
+                                                <div style={{ ...settingItemStyle, background: '#F0F7FF', cursor: 'default', border: '1px solid #BEE3F8' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--domain-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: 'white' }}>✓</div>
+                                                        <div>
+                                                            <span style={{ display: 'block' }}>Google Cloud Activo</span>
+                                                            <span style={{ fontSize: '0.7rem', color: '#666', fontWeight: '500' }}>{user.email}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <button style={settingItemStyle}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    <Calendar size={20} color="var(--domain-orange)" />
+                                                    <span>Sincronizar Calendario</span>
+                                                </div>
+                                                <span style={{ fontSize: '0.7rem', color: '#888' }}>PRÓXIMAMENTE</span>
+                                            </button>
                                         </div>
-                                    </button>
-                                ) : (
-                                    <button onClick={handleClearCache} style={{ ...settingItemStyle, color: '#f87171' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                            <LogOut size={20} />
-                                            <span>Limpiar caché local</span>
-                                        </div>
-                                    </button>
-                                )}
-                            </div>
-                        </div>
+                                    </div>
+
+                                    <div className="settings-group">
+                                        <h4 style={{ color: '#CCC', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '10px' }}>General</h4>
+                                        {user ? (
+                                            <button onClick={logout} style={{ ...settingItemStyle, color: '#f87171' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    <LogOut size={20} />
+                                                    <span>Cerrar Sesión</span>
+                                                </div>
+                                            </button>
+                                        ) : (
+                                            <button onClick={handleClearCache} style={{ ...settingItemStyle, color: '#f87171' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    <LogOut size={20} />
+                                                    <span>Limpiar caché local</span>
+                                                </div>
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </motion.div>
                 </div>
             )}

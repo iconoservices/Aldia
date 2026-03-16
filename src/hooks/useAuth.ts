@@ -5,6 +5,7 @@ import {
     signOut, 
     onAuthStateChanged, 
     getRedirectResult,
+    updateProfile,
     type User 
 } from 'firebase/auth';
 
@@ -47,5 +48,16 @@ export const useAuth = () => {
         }
     };
 
-    return { user, loginWithGoogle, logout, loading };
+    const updateProfileWrapper = async (data: { displayName?: string, photoURL?: string }) => {
+        if (!auth.currentUser) return;
+        try {
+            await updateProfile(auth.currentUser, data);
+            setUser({ ...auth.currentUser }); // Trigger refresh
+        } catch (error) {
+            console.error("Error updating profile:", error);
+            throw error;
+        }
+    };
+
+    return { user, loginWithGoogle, logout, loading, updateProfile: updateProfileWrapper };
 };

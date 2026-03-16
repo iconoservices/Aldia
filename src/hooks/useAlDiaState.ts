@@ -582,6 +582,8 @@ export const useAlDiaState = () => {
         },
         updateFixedExpense: (id: number, updates: Partial<FixedExpense>) => {
             setFixedExpenses(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
-        }
+        },
+        user,
+        isInitialLoad
     };
 };

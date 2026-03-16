@@ -29,7 +29,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
         };
         window.addEventListener('storage', handleStorage);
         return () => window.removeEventListener('storage', handleStorage);
-    }, []);
+    }, [user]);
 
     const allTabs = ['🔥 Acción', '📅 Calendario', '🧠 Cerebro', '🌿 Vida', '📁 Proyectos', '💸 Finanzas', '📊 Stats'];
     const mainTabs = allTabs.slice(0, 6);

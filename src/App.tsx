@@ -36,6 +36,27 @@ function App() {
   const { needRefresh, updateServiceWorker } = usePWA();
   const viewingNote = state.notes.find(n => n.id === viewingNoteId) || null;
 
+  if (state.isInitialLoad) {
+    return (
+      <div style={{ 
+        height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', 
+        alignItems: 'center', justifyContent: 'center', background: '#FDF8F5', gap: '1.5rem' 
+      }}>
+        <motion.div
+          animate={{ scale: [1, 1.1, 1], rotate: [0, 10, -10, 0] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          style={{ fontSize: '4rem' }}
+        >
+          🧠
+        </motion.div>
+        <div style={{ textAlign: 'center' }}>
+          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-carbon)' }}>AlDía</h1>
+          <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: '#AAA' }}>SINCRONIZANDO TU MENTE...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="aldia-container">
       {/* HEADER COMPRIMIDO */}
