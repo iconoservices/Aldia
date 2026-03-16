@@ -55,6 +55,15 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
         }
     };
 
+    const handleClearCache = () => {
+        if (confirm("¿Estás seguro de que quieres borrar todos los datos locales no sincronizados? Esto no se puede deshacer.")) {
+            localStorage.removeItem('aldia_state');
+            localStorage.removeItem('aldia_user_name');
+            localStorage.removeItem('aldia_user_pic');
+            window.location.reload();
+        }
+    };
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -200,7 +209,7 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
                                         </div>
                                     </button>
                                 ) : (
-                                    <button style={{ ...settingItemStyle, color: '#f87171' }}>
+                                    <button onClick={handleClearCache} style={{ ...settingItemStyle, color: '#f87171' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                             <LogOut size={20} />
                                             <span>Limpiar caché local</span>

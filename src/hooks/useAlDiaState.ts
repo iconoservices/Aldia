@@ -16,6 +16,7 @@ export interface Mission {
     noteId?: number; // Referencia opcional a una nota del cerebro
     labels?: string[]; // Etiquetas para categorizar
     habitId?: number; // Si es un hábito, ID de la fábrica
+    projectId?: number; // Referencia opcional a un proyecto
 }
 
 export interface Transaction {
@@ -49,6 +50,15 @@ export interface TimeBlock {
     start: string; // HH:mm
     end: string;   // HH:mm
     color: string;
+    projectId?: number;
+}
+
+export interface Project {
+    id: number;
+    name: string;
+    color: string;
+    status: 'activo' | 'pausado' | 'completado';
+    targetHoursPerWeek?: number;
 }
 
 export interface Note {
@@ -74,6 +84,7 @@ export const useAlDiaState = () => {
     const [agenda, setAgenda] = useState<CalendarEvent[]>([]);
     const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
     const [notes, setNotes] = useState<Note[]>([]);
+    const [projects, setProjects] = useState<Project[]>([]);
 
     // 2. Manejo de Autenticación y Carga Inicial
     useEffect(() => {
@@ -94,6 +105,7 @@ export const useAlDiaState = () => {
                     if (data.agenda) setAgenda(data.agenda);
                     if (data.timeBlocks) setTimeBlocks(data.timeBlocks);
                     if (data.notes) setNotes(data.notes);
+                    if (data.projects) setProjects(data.projects);
                 } else {
                     // Si no hay datos en cloud, intentar migrar los locales
                     loadFromLocal();
@@ -155,6 +167,14 @@ export const useAlDiaState = () => {
             { id: 1, title: 'Ideas de Contenido', content: 'Hablar de minimalismo digital en el siguiente video.', type: 'text', items: [], q: 'Q2', color: '#FEF9C3', date: new Date().toISOString() },
             { id: 2, title: 'Supermercado', content: '', type: 'checklist', items: [{ id: 1, text: 'Avena', completed: false }, { id: 2, text: 'Café', completed: true }], q: 'Q4', color: '#DBEAFE', date: new Date().toISOString() }
         ]);
+
+        const sProjects = localStorage.getItem('aldia_projects');
+        if (sProjects) setProjects(JSON.parse(sProjects));
+        else setProjects([
+            { id: 1, name: 'AlDía App', color: '#ff8c42', status: 'activo', targetHoursPerWeek: 10 },
+            { id: 2, name: 'Personal/Life', color: '#3b82f6', status: 'activo', targetHoursPerWeek: 5 },
+            { id: 3, name: 'Trabajo / Oficina', color: '#10b981', status: 'activo', targetHoursPerWeek: 40 }
+        ]);
     };
 
     // 3. Persistencia Unificada (Local + Cloud)
@@ -169,6 +189,7 @@ export const useAlDiaState = () => {
         localStorage.setItem('aldia_agenda', JSON.stringify(agenda));
         localStorage.setItem('aldia_timeblocks', JSON.stringify(timeBlocks));
         localStorage.setItem('aldia_notes', JSON.stringify(notes));
+        localStorage.setItem('aldia_projects', JSON.stringify(projects));
 
         // Borrar "old" LocalStorage keys if they were different (not needed here but good practice)
 
@@ -183,10 +204,11 @@ export const useAlDiaState = () => {
                 agenda,
                 timeBlocks,
                 notes,
+                projects,
                 lastSync: new Date().toISOString()
             }, { merge: true });
         }
-    }, [missions, transactions, balance, habits, agenda, timeBlocks, notes, user, isInitialLoad]);
+    }, [missions, transactions, balance, habits, agenda, timeBlocks, notes, projects, user, isInitialLoad]);
 
     // 3. Acciones (Cerebro)
 
@@ -239,7 +261,7 @@ export const useAlDiaState = () => {
     };
 
     // Añadir nueva misión
-    const addMission = (text: string, q: string = 'Q2', repeat: 'none' | 'daily' | 'weekly' | 'monthly' = 'none', noteId?: number, labels: string[] = [], dueDate?: string, dueTime?: string, habitId?: number) => {
+    const addMission = (text: string, q: string = 'Q2', repeat: 'none' | 'daily' | 'weekly' | 'monthly' = 'none', noteId?: number, labels: string[] = [], dueDate?: string, dueTime?: string, habitId?: number, projectId?: number) => {
         const newMission: Mission = {
             id: Date.now() + Math.random(),
             text,
@@ -251,7 +273,8 @@ export const useAlDiaState = () => {
             labels,
             dueDate: dueDate || new Date().toISOString().split('T')[0],
             dueTime,
-            habitId
+            habitId,
+            projectId
         };
         setMissions(prev => [newMission, ...prev]);
     };
@@ -352,12 +375,29 @@ export const useAlDiaState = () => {
         agenda,
         addCalendarEvent,
         timeBlocks,
-        addTimeBlock: (label: string, start: string, end: string, color: string) => {
-            const newBlock: TimeBlock = { id: Date.now(), label, start, end, color };
+        addTimeBlock: (label: string, start: string, end: string, color: string, projectId?: number) => {
+            const newBlock: TimeBlock = { id: Date.now(), label, start, end, color, projectId };
             setTimeBlocks(prev => [...prev, newBlock].sort((a,b) => a.start.localeCompare(b.start)));
         },
         removeTimeBlock: (id: number) => {
             setTimeBlocks(prev => prev.filter(b => b.id !== id));
+        },
+        projects,
+        addProject: (name: string, color: string, targetHoursPerWeek?: number) => {
+            const newProject: Project = { 
+                id: Date.now() + Math.random(), 
+                name, 
+                color, 
+                status: 'activo',
+                targetHoursPerWeek
+            };
+            setProjects(prev => [newProject, ...prev]);
+        },
+        updateProject: (id: number, updates: Partial<Project>) => {
+            setProjects(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+        },
+        deleteProject: (id: number) => {
+            setProjects(prev => prev.filter(p => p.id !== id));
         },
         notes,
         addNote: (title: string, content: string, type: 'text' | 'checklist', items: { text: string; completed: boolean }[], q: string, color: string) => {

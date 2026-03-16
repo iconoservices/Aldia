@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { JoyMatrixModal } from '../features/JoyMatrixModal';
 import { Repeat, Link, Calendar, Clock } from 'lucide-react';
-import type { Mission } from '../../hooks/useAlDiaState';
+import type { Mission, Project } from '../../hooks/useAlDiaState';
 
 interface MissionListProps {
     missions: Mission[];
@@ -14,9 +14,10 @@ interface MissionListProps {
     showMatrixLinks?: boolean;
     hideOnEmpty?: boolean;
     onTimelineClick?: () => void;
+    projects?: Project[];
 }
 
-export const MissionList = ({ missions, toggleMission, onOpenNote, title = 'Tareas', showTimeBlock = true, showMatrixLinks = true, hideOnEmpty = false, onTimelineClick }: MissionListProps) => {
+export const MissionList = ({ missions, toggleMission, onOpenNote, title = 'Tareas', showTimeBlock = true, showMatrixLinks = true, hideOnEmpty = false, onTimelineClick, projects = [] }: MissionListProps) => {
     const [isMatrixOpen, setIsMatrixOpen] = useState(false);
 
     const handleToggle = (id: number, q: string) => {
@@ -136,7 +137,7 @@ export const MissionList = ({ missions, toggleMission, onOpenNote, title = 'Tare
                                         textDecoration: mission.completed ? 'line-through' : 'none'
                                     }}>
                                         {mission.text}
-                                    </p>
+                                </p>
                                     {(mission.critical && !mission.completed) && (
                                         <span style={{
                                             fontSize: '0.6rem',
@@ -150,7 +151,26 @@ export const MissionList = ({ missions, toggleMission, onOpenNote, title = 'Tare
                                         </span>
                                     )}
                                 </div>
-                                <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                                <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
+                                    {/* BADGE DE PROYECTO */}
+                                    {mission.projectId && projects.find(p => p.id === mission.projectId) && (
+                                        <span style={{ 
+                                            fontSize: '0.6rem', 
+                                            color: mission.critical ? 'white' : projects.find(p => p.id === mission.projectId)!.color, 
+                                            fontWeight: 900,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '3px',
+                                            background: mission.critical ? 'rgba(255,255,255,0.1)' : `${projects.find(p => p.id === mission.projectId)!.color}20`,
+                                            padding: '2px 6px',
+                                            borderRadius: '6px',
+                                            border: mission.critical ? 'none' : `1px solid ${projects.find(p => p.id === mission.projectId)!.color}40`,
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.5px'
+                                        }}>
+                                            {projects.find(p => p.id === mission.projectId)!.name}
+                                        </span>
+                                    )}
                                     {mission.repeat !== 'none' && (
                                         <span style={{ 
                                             fontSize: '0.6rem', 

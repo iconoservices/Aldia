@@ -4,15 +4,16 @@ import { Plus, X, Receipt, TrendingUp, Target, Lightbulb, Calendar, Clock } from
 import { QuickActionPanel } from './QuickActionPanel';
 
 interface SuperFabProps {
-    addMission: (text: string, q?: string, repeat?: 'none' | 'daily' | 'weekly' | 'monthly', noteId?: number, labels?: string[]) => void;
+    addMission: (text: string, q?: string, repeat?: 'none' | 'daily' | 'weekly' | 'monthly', noteId?: number, labels?: string[], dueDate?: string, dueTime?: string, habitId?: number, projectId?: number) => void;
     addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean) => void;
     addHabit: (name: string) => void;
     addCalendarEvent: (title: string, date: string, start: string, end: string, desc: string) => void;
     addNote: (title: string, content: string, type: 'text' | 'checklist', items: { text: string; completed: boolean }[], q: string, color: string) => void;
-    addTimeBlock: (label: string, start: string, end: string, color: string) => void;
+    addTimeBlock: (label: string, start: string, end: string, color: string, projectId?: number) => void;
+    projects?: { id: number, name: string, color: string }[];
 }
 
-export const SuperFab = ({ addMission, addTransaction, addHabit, addCalendarEvent, addNote, addTimeBlock }: SuperFabProps) => {
+export const SuperFab = ({ addMission, addTransaction, addHabit, addCalendarEvent, addNote, addTimeBlock, projects = [] }: SuperFabProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const [actionType, setActionType] = useState<string | null>(null);
 
@@ -196,6 +197,7 @@ export const SuperFab = ({ addMission, addTransaction, addHabit, addCalendarEven
                 addCalendarEvent={addCalendarEvent}
                 addNote={addNote}
                 addTimeBlock={addTimeBlock}
+                projects={projects}
             />
         </div>
     );

@@ -27,7 +27,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
     return (
         <header className="aldia-header">
             <div className="tabs-container" style={{ flex: 1, justifyContent: 'center' }}>
-                {['🔥 Acción', '🧠 Cerebro', '🌿 Vida', '💸 Finanzas', '📊 Stats'].map((tab) => {
+                {['🔥 Acción', '🧠 Cerebro', '🌿 Vida', '📁 Proyectos', '💸 Finanzas', '📊 Stats'].map((tab) => {
                     const tabValue = tab.split(' ')[1];
                     return (
                         <button

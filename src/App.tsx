@@ -9,6 +9,7 @@ import { VidaDashboard } from './components/dashboard/VidaDashboard';
 import { CerebroDashboard } from './components/dashboard/CerebroDashboard';
 import { FinanzasDashboard } from './components/dashboard/FinanzasDashboard';
 import { StatsDashboard } from './components/dashboard/StatsDashboard';
+import { ProyectosDashboard } from './components/dashboard/ProyectosDashboard';
 import { SuperFab } from './components/features/SuperFab';
 import { NoteDetailsModal } from './components/features/NoteDetailsModal';
 
@@ -65,6 +66,7 @@ function App() {
                     showTimeBlock={false}
                     showMatrixLinks={false}
                     hideOnEmpty={true}
+                    projects={state.projects}
                   />
 
                   {/* 4. RESTO DE MISIONES (NO CRÍTICAS O COMPLETADAS) */}
@@ -80,6 +82,7 @@ function App() {
                     title="Tareas de Hoy"
                     hideOnEmpty={true}
                     onTimelineClick={() => setActiveTab('Vida')}
+                    projects={state.projects}
                   />
                 </div>
               </>
@@ -109,6 +112,12 @@ function App() {
                 owe={state.debtsOwe}
                 owed={state.debtsOwed}
                 transactions={state.transactions}
+              />
+            ) : activeTab === 'Proyectos' ? (
+              <ProyectosDashboard
+                projects={state.projects}
+                missions={state.missions}
+                timeBlocks={state.timeBlocks}
               />
             ) : activeTab === 'Stats' ? (
               <StatsDashboard
@@ -143,6 +152,7 @@ function App() {
         addCalendarEvent={state.addCalendarEvent}
         addNote={state.addNote}
         addTimeBlock={state.addTimeBlock}
+        projects={state.projects}
       />
 
       <ProfileOverlay

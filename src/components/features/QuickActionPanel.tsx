@@ -1,27 +1,29 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, Clock, Calendar } from 'lucide-react';
+import { X, Check, Clock } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface QuickActionPanelProps {
     isOpen: boolean;
     onClose: () => void;
     actionType: string | null;
-    addMission: (text: string, q?: string, repeat?: 'none' | 'daily' | 'weekly' | 'monthly', noteId?: number, labels?: string[], dueDate?: string, dueTime?: string, habitId?: number) => void;
+    addMission: (text: string, q?: string, repeat?: 'none' | 'daily' | 'weekly' | 'monthly', noteId?: number, labels?: string[], dueDate?: string, dueTime?: string, habitId?: number, projectId?: number) => void;
     addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean) => void;
     addHabit: (name: string) => void;
     addCalendarEvent?: (title: string, date: string, start: string, end: string, desc: string) => void;
     addNote: (title: string, content: string, type: 'text' | 'checklist', items: { text: string; completed: boolean }[], q: string, color: string) => void;
-    addTimeBlock: (label: string, start: string, end: string, color: string) => void;
+    addTimeBlock: (label: string, start: string, end: string, color: string, projectId?: number) => void;
+    projects?: { id: number, name: string, color: string }[];
 }
 
-export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addTransaction, addHabit, addCalendarEvent, addNote, addTimeBlock }: QuickActionPanelProps) => {
+export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addTransaction, addHabit, addCalendarEvent, addNote, addTimeBlock, projects = [] }: QuickActionPanelProps) => {
     const [amount, setAmount] = useState('');
     const [concept, setConcept] = useState('');
     const [isDebt, setIsDebt] = useState(false);
     const [selectedQ, setSelectedQ] = useState('Q2');
     const [repeat, setRepeat] = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none');
     const [asHabit, setAsHabit] = useState(false);
+    const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(undefined);
     
     // Estados para Agenda/Tiempo
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -69,7 +71,7 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                 habitId = newHId;
             }
 
-            addMission(concept || 'Nueva Tarea', selectedQ, repeat, undefined, labelArray, date, hasTime ? startTime : undefined, habitId);
+            addMission(concept || 'Nueva Tarea', selectedQ, repeat, undefined, labelArray, date, hasTime ? startTime : undefined, habitId, selectedProjectId);
             confetti({
                 particleCount: 50,
                 spread: 50,
@@ -108,7 +110,7 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                 colors: [noteColor === '#FFFFFF' ? '#facc15' : noteColor, '#ffffff']
             });
         } else if (actionType === 'bloque') {
-            addTimeBlock(concept || 'Bloque', startTime, endTime, noteColor === '#FFFFFF' ? '#8b5cf6' : noteColor);
+            addTimeBlock(concept || 'Bloque', startTime, endTime, noteColor === '#FFFFFF' ? '#8b5cf6' : noteColor, selectedProjectId);
             confetti({
                 particleCount: 60,
                 spread: 50,
@@ -132,6 +134,7 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
             setNoteColor('#FFFFFF');
             setRepeat('none');
             setLabels('');
+            setSelectedProjectId(undefined);
             onClose();
         }, 150);
     };
@@ -249,6 +252,43 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                                     }}
                                 />
                             </div>
+
+                            {/* SELECTOR DE PROYECTO (Para Tareas y Bloques) */}
+                            {(actionType === 'tarea' || actionType === 'bloque') && projects.length > 0 && (
+                                <div style={{ background: '#F9F9F9', padding: '12px', borderRadius: '18px' }}>
+                                    <p style={{ margin: '0 0 8px 10px', fontWeight: 800, fontSize: '0.6rem', color: '#BBB', textTransform: 'uppercase' }}>Proyecto (Opcional)</p>
+                                    <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedProjectId(undefined)}
+                                            style={{
+                                                padding: '6px 12px', borderRadius: '12px', border: '1px solid #EEE',
+                                                background: selectedProjectId === undefined ? '#333' : 'white',
+                                                color: selectedProjectId === undefined ? 'white' : '#888',
+                                                fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap'
+                                            }}
+                                        >
+                                            Ninguno
+                                        </button>
+                                        {projects.map(p => (
+                                            <button
+                                                key={p.id}
+                                                type="button"
+                                                onClick={() => setSelectedProjectId(p.id)}
+                                                style={{
+                                                    padding: '6px 12px', borderRadius: '12px', border: `1px solid ${p.color}40`,
+                                                    background: selectedProjectId === p.id ? p.color : `${p.color}10`,
+                                                    color: selectedProjectId === p.id ? 'white' : p.color,
+                                                    fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap',
+                                                    boxShadow: selectedProjectId === p.id ? `0 4px 10px ${p.color}40` : 'none'
+                                                }}
+                                            >
+                                                {p.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* SECCIONES ESPECÍFICAS TASKS */}
                             {actionType === 'tarea' && (
