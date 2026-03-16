@@ -15,6 +15,7 @@ import { CalendarioView } from './components/dashboard/CalendarioView';
 import { SuperFab } from './components/features/SuperFab';
 import { NoteDetailsModal } from './components/features/NoteDetailsModal';
 import { MissionEditOverlay } from './components/features/MissionEditOverlay';
+import { DayTimelineView } from './components/dashboard/DayTimelineView';
 import type { Mission } from './hooks/useAlDiaState';
 
 import { useAlDiaState } from './hooks/useAlDiaState';
@@ -29,6 +30,7 @@ function App() {
   const [viewingNoteId, setViewingNoteId] = useState<number | null>(null);
   const [isAddingProject, setIsAddingProject] = useState(false);
   const [editingMission, setEditingMission] = useState<Mission | null>(null);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
 
   const state = useAlDiaState();
   const { needRefresh, updateServiceWorker } = usePWA();
@@ -75,7 +77,7 @@ function App() {
                     onEditMission={setEditingMission}
                     removeMission={state.removeMission}
                     title="Misiones"
-                    onTimelineClick={() => setActiveTab('Vida')}
+                    onTimelineClick={() => setIsTimelineOpen(true)}
                     projects={state.projects}
                   />
                 </div>
@@ -162,6 +164,14 @@ function App() {
         updateMission={state.updateMission}
         removeMission={state.removeMission}
         projects={state.projects}
+      />
+
+      <DayTimelineView
+        isOpen={isTimelineOpen}
+        onClose={() => setIsTimelineOpen(false)}
+        missions={state.missions}
+        rutinas={state.rutinas}
+        agenda={state.agenda}
       />
 
       {/* SUPER FAB RADIAL */}
