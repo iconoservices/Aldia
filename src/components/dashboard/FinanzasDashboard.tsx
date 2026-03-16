@@ -160,8 +160,9 @@ export const FinanzasDashboard = ({
                             <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#888' }}>INGRESO BASE</span>
                             <input 
                                 type="number" 
-                                value={monthlyBudget} 
-                                onChange={(e) => updateMonthlyBudget(Number(e.target.value))}
+                                value={monthlyBudget || ''} 
+                                onChange={(e) => updateMonthlyBudget(e.target.value === '' ? 0 : Number(e.target.value))}
+                                onFocus={(e) => e.target.select()}
                                 style={{ border: 'none', background: 'transparent', width: '60px', fontSize: '0.8rem', fontWeight: 900, outline: 'none', color: 'var(--domain-blue)' }}
                             />
                         </div>
