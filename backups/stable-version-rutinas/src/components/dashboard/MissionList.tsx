@@ -91,7 +91,7 @@ export const MissionList = ({
 
             <div
                 className={showTimeBlock ? "time-block-container" : ""}
-                style={showTimeBlock ? { background: '#F0EBE6', padding: '0.5rem', borderRadius: '20px', position: 'relative' } : {}}
+                style={showTimeBlock ? { background: '#F0EBE6', padding: '0.6rem', borderRadius: '20px', position: 'relative' } : {}}
             >
                 <div className="mission-list" style={{ gap: '0.3rem' }}>
                     {missions.length === 0 ? (
@@ -100,10 +100,12 @@ export const MissionList = ({
                             <p style={{ margin: 0, fontSize: '0.75rem', color: '#BBB' }}>Pulsa el botón + para empezar</p>
                         </div>
                     ) : [...missions].sort((a, b) => {
+                        // 1. Q1 no completadas primero
                         const aQ1 = a.q === 'Q1' && !a.completed;
                         const bQ1 = b.q === 'Q1' && !b.completed;
                         if (aQ1 && !bQ1) return -1;
                         if (!aQ1 && bQ1) return 1;
+                        // 2. Por estado completado
                         return Number(a.completed) - Number(b.completed);
                     }).map((mission) => {
                         const isPinnedQ1 = mission.q === 'Q1' && !mission.completed;
@@ -137,20 +139,19 @@ export const MissionList = ({
                                     {mission.completed && <span style={{ color: 'white', fontSize: '0.8rem' }}>✓</span>}
                                 </div>
 
-                                <div style={{ width: '100%', zIndex: 1, display: 'flex', flexDirection: 'column' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <p style={{
-                                            margin: '0',
-                                            fontWeight: 800,
-                                            color: isPinnedQ1 ? 'white' : (mission.completed ? '#888' : 'var(--text-carbon)'),
-                                            fontSize: '0.85rem',
-                                            textDecoration: mission.completed ? 'line-through' : 'none',
-                                            lineHeight: 1.1,
-                                            flex: 1
+                                <div style={{ width: '100%', zIndex: 1 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <span style={{
+                                            fontSize: '0.65rem',
+                                            fontWeight: 900,
+                                            color: mission.completed ? '#888' : (isPinnedQ1 ? 'white' : 'var(--domain-orange)'),
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '1px',
+                                            opacity: isPinnedQ1 ? 0.9 : 1
                                         }}>
-                                            {mission.text}
-                                        </p>
-                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginLeft: '6px' }}>
+                                            {mission.completed ? 'Misión Cumplida' : 'En Curso'}
+                                        </span>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                             {!mission.completed && onEditMission && (
                                                 <button 
                                                     onClick={(e) => { e.stopPropagation(); onEditMission(mission); }}
@@ -167,18 +168,48 @@ export const MissionList = ({
                                                     <Trash2 size={12} />
                                                 </button>
                                             )}
+                                            <span style={{
+                                                fontSize: '0.6rem',
+                                                color: isPinnedQ1 ? 'white' : '#888',
+                                                fontWeight: 800,
+                                                background: isPinnedQ1 ? 'rgba(255,255,255,0.2)' : '#F0EBE6',
+                                                padding: '2px 6px',
+                                                borderRadius: '8px'
+                                            }}>
+                                                {mission.q}
+                                            </span>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '4px', marginTop: '2px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
+                                        <p style={{
+                                            margin: '0',
+                                            fontWeight: 800,
+                                            color: isPinnedQ1 ? 'white' : (mission.completed ? '#888' : 'var(--text-carbon)'),
+                                            fontSize: '0.9rem',
+                                            textDecoration: mission.completed ? 'line-through' : 'none',
+                                            lineHeight: 1.2
+                                        }}>
+                                            {mission.text}
+                                        </p>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
                                         {/* BADGE DE PROYECTO */}
                                         {mission.projectId && projects.find(p => p.id === mission.projectId) && (
                                             <span style={{ 
                                                 fontSize: '0.6rem', 
                                                 color: isPinnedQ1 ? 'white' : projects.find(p => p.id === mission.projectId)!.color, 
                                                 fontWeight: 900,
-                                                opacity: 0.8
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '3px',
+                                                background: isPinnedQ1 ? 'rgba(255,255,255,0.1)' : `${projects.find(p => p.id === mission.projectId)!.color}20`,
+                                                padding: '2px 6px',
+                                                borderRadius: '6px',
+                                                border: isPinnedQ1 ? 'none' : `1px solid ${projects.find(p => p.id === mission.projectId)!.color}40`,
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.5px'
                                             }}>
-                                                @{projects.find(p => p.id === mission.projectId)!.name}
+                                                {projects.find(p => p.id === mission.projectId)!.name}
                                             </span>
                                         )}
                                         {mission.isRoutine && (
@@ -188,20 +219,78 @@ export const MissionList = ({
                                                 fontWeight: 800,
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                gap: '3px'
+                                                gap: '3px',
+                                                background: isPinnedQ1 ? 'rgba(255,255,255,0.1)' : 'rgba(52, 211, 153, 0.1)',
+                                                padding: '2px 6px',
+                                                borderRadius: '6px'
                                             }}>
-                                                <Repeat size={10} />
+                                                <Repeat size={10} /> Rutina
                                             </span>
                                         )}
                                         {mission.isHabit && (
                                             <span style={{ 
                                                 fontSize: '0.6rem', 
                                                 color: isPinnedQ1 ? 'white' : 'var(--domain-green)', 
-                                                fontWeight: 800
+                                                fontWeight: 800,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '3px',
+                                                background: isPinnedQ1 ? 'rgba(255,255,255,0.1)' : '#ECFDF5',
+                                                padding: '2px 6px',
+                                                borderRadius: '6px'
                                             }}>
-                                                🌱
+                                                🌱 Hábito {mission.habitCount !== undefined && `(${mission.habitCount}/7)`}
                                             </span>
                                         )}
+                                        {mission.repeat !== 'none' && (
+                                            <span style={{ 
+                                                fontSize: '0.6rem', 
+                                                color: isPinnedQ1 ? 'white' : 'var(--domain-orange)', 
+                                                fontWeight: 800,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '3px',
+                                                background: isPinnedQ1 ? 'rgba(255,255,255,0.1)' : '#F9F9F9',
+                                                padding: '2px 6px',
+                                                borderRadius: '6px'
+                                            }}>
+                                                <Repeat size={10} /> {mission.repeat === 'daily' ? 'Diaria' : mission.repeat === 'weekly' ? 'Semanal' : 'Mensual'}
+                                            </span>
+                                        )}
+                                        {mission.noteId && (
+                                            <span 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onOpenNote && onOpenNote(mission.noteId!);
+                                                }}
+                                                style={{ 
+                                                    fontSize: '0.6rem', 
+                                                    color: isPinnedQ1 ? 'white' : '#666', 
+                                                    fontWeight: 800,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '3px',
+                                                    background: isPinnedQ1 ? 'rgba(255,255,255,0.1)' : '#F5F5F5',
+                                                    padding: '2px 6px',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                <Link size={10} /> Nota
+                                            </span>
+                                        )}
+                                        {mission.labels?.map((label, idx) => (
+                                            <span key={idx} style={{ 
+                                                fontSize: '0.6rem', 
+                                                color: isPinnedQ1 ? 'white' : 'var(--domain-green)', 
+                                                fontWeight: 800,
+                                                background: isPinnedQ1 ? 'rgba(255,255,255,0.1)' : '#ECFDF5',
+                                                padding: '2px 6px',
+                                                borderRadius: '6px'
+                                            }}>
+                                                #{label}
+                                            </span>
+                                        ))}
                                         {mission.dueDate && (
                                             <span style={{ 
                                                 fontSize: '0.6rem', 
@@ -209,7 +298,8 @@ export const MissionList = ({
                                                 fontWeight: 800,
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                gap: '3px'
+                                                gap: '3px',
+                                                padding: '2px 6px'
                                             }}>
                                                 <Calendar size={10} /> {new Date(mission.dueDate + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
                                             </span>
@@ -221,7 +311,10 @@ export const MissionList = ({
                                                 fontWeight: 800,
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                gap: '3px'
+                                                gap: '3px',
+                                                background: isPinnedQ1 ? 'rgba(255,255,255,0.1)' : 'rgba(255,140,66,0.1)',
+                                                padding: '2px 6px',
+                                                borderRadius: '6px'
                                             }}>
                                                 <Clock size={10} /> {mission.dueTime}
                                             </span>

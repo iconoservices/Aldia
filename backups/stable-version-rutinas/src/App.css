@@ -34,8 +34,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.4rem 1rem 0.1rem;
-  margin-bottom: 0.1rem;
+  padding: 0.8rem 1rem 0.2rem;
+  margin-bottom: 0.2rem;
   max-width: 1100px;
   margin-left: auto;
   margin-right: auto;
@@ -152,15 +152,15 @@
 /* BENTO GRID */
 .bento-grid {
   display: flex;
-  gap: 0.3rem;
-  margin-bottom: 0.3rem;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
 }
 
 .glass-card {
   background-color: var(--white);
-  border-radius: 20px;
+  border-radius: 28px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
-  padding: 0.5rem;
+  padding: 0.7rem;
   overflow: hidden;
   position: relative;
 }
@@ -171,7 +171,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 0.6rem;
+  padding-bottom: 1.2rem;
 }
 
 .widget-header {
@@ -185,17 +185,17 @@
 }
 
 .pomodoro-visual {
-  width: 85px;
-  height: 85px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
-  border: 4px solid #FFF5EB;
+  border: 5px solid #FFF5EB;
   /* Color de fondo del track */
   border-top-color: var(--domain-orange);
   border-right-color: var(--domain-orange);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.5rem;
   transform: rotate(-45deg);
   /* Para que inicie arriba */
 }
@@ -206,7 +206,7 @@
 }
 
 .pomodoro-time {
-  font-size: 1.6rem;
+  font-size: 1.8rem;
   font-weight: 800;
   color: var(--text-carbon);
   letter-spacing: -1px;
@@ -219,10 +219,10 @@
 }
 
 .badge-active {
-  margin-top: 4px;
+  margin-top: 10px;
   color: var(--domain-orange);
   font-weight: 800;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
 }
 
 /* RIGHT WIDGETS */
@@ -245,8 +245,8 @@
   justify-content: center;
   align-items: center;
   color: white;
-  min-height: 70px;
-  gap: 2px;
+  min-height: 85px;
+  gap: 4px;
 }
 
 .streak-widget p {
@@ -355,10 +355,10 @@ h3 {
 .mission-item {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.8rem;
   background: white;
-  padding: 0.45rem 0.7rem;
-  border-radius: 14px;
+  padding: 0.55rem 0.8rem;
+  border-radius: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
   border: 1px solid #f0f0f0;
   cursor: pointer;
@@ -387,7 +387,7 @@ h3 {
   display: flex;
   flex-direction: column;
   flex: 1;
-  padding: 0.5rem 1rem;
+  padding: 1rem;
   padding-bottom: 7rem;
 }
 

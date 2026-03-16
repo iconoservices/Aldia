@@ -1,0 +1,70 @@
+:root {
+  /* 🎨 Paleta de Colores de AlDía */
+  --bg-cream: #FDF8F5;
+  --text-carbon: #3D312E;
+
+  /* Agrupamos la lista de misiones y upcoming a la derecha */
+  .dashboard-right-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+  /* 🏛️ Dominios de Vida */
+  --domain-orange: #FF8C42;
+  /* Acción / Escenario / Icono */
+  --domain-green: #A8DADC;
+  /* Vida / Hábitos / Personal */
+  --domain-blue: #0055FF;
+  /* Stats / Auditoría / Finanzas */
+  --domain-purple: #D4C4FB;
+  /* Relajación / Extra */
+
+  --white: #FFFFFF;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+body {
+  background-color: var(--bg-cream);
+  color: var(--text-carbon);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+.mission-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: white;
+  padding: 0.4rem 0.7rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  border: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Clases Útiles */
+.glass-card {
+  background-color: var(--white);
+  border-radius: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.capsule {
+  border-radius: 9999px;
+}
