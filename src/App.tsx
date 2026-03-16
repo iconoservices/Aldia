@@ -1,3 +1,4 @@
+// Final deployment build - Aldia App
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
