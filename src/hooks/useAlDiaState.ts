@@ -41,6 +41,13 @@ export interface Transaction {
     fullDate: string; // YYYY-MM-DD
 }
 
+export interface FixedExpense {
+    id: number;
+    text: string;
+    amount: number;
+    active: boolean;
+}
+
 export interface CalendarEvent {
     id: number;
     title: string;
@@ -99,6 +106,8 @@ export const useAlDiaState = () => {
     const [notes, setNotes] = useState<Note[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [rutinas, setRutinas] = useState<Routine[]>([]);
+    const [monthlyBudget, setMonthlyBudget] = useState<number>(0);
+    const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
 
     // 2. Manejo de Autenticación y Carga Inicial
     useEffect(() => {
@@ -112,21 +121,27 @@ export const useAlDiaState = () => {
                 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    if (data.missions) setMissions(data.missions);
-                    if (data.transactions) setTransactions(data.transactions);
-                    if (data.balance !== undefined) setBalance(data.balance);
-                    if (data.habits) setHabits(data.habits);
-                    if (data.agenda) setAgenda(data.agenda);
-                    if (data.timeBlocks) setTimeBlocks(data.timeBlocks);
-                    if (data.notes) setNotes(data.notes);
-                    if (data.projects) setProjects(data.projects);
-                    if (data.rutinas) setRutinas(data.rutinas);
+                    
+                    // Lógica de "Mezcla" (Merge): Priorizar Cloud, pero si falta algo, usar Local
+                    const localData = getLocalBackup();
+
+                    setMissions(data.missions || localData.missions);
+                    setTransactions(data.transactions || localData.transactions);
+                    setBalance(data.balance !== undefined ? data.balance : localData.balance);
+                    setHabits(data.habits || localData.habits);
+                    setAgenda(data.agenda || localData.agenda);
+                    setTimeBlocks(data.timeBlocks || localData.timeBlocks);
+                    setNotes(data.notes || localData.notes);
+                    setProjects(data.projects || localData.projects);
+                    setRutinas(data.rutinas || localData.rutinas);
+                    setMonthlyBudget(data.monthlyBudget !== undefined ? data.monthlyBudget : localData.monthlyBudget);
+                    setFixedExpenses(data.fixedExpenses || localData.fixedExpenses);
                 } else {
-                    // Si no hay datos en cloud, intentar migrar los locales
+                    // Si no hay documento en cloud, cargar todo de local
                     loadFromLocal();
                 }
             } else {
-                // Cargar desde LocalStorage si no hay usuario
+                // Si no hay usuario, cargar de local
                 loadFromLocal();
             }
             setIsInitialLoad(false);
@@ -198,6 +213,40 @@ export const useAlDiaState = () => {
             { id: 2, title: 'Rutina Tarde', color: '#8b5cf6', isActive: true, repeatDays: [0,1,2,3,4,5,6], startTime: '13:00', endTime: '15:00', items: [] },
             { id: 3, title: 'Rutina Noche', color: '#3b82f6', isActive: true, repeatDays: [0,1,2,3,4,5,6], startTime: '21:00', endTime: '23:00', items: [] }
         ]);
+
+        const sMonthlyBudget = localStorage.getItem('aldia_monthly_budget');
+        if (sMonthlyBudget) setMonthlyBudget(parseFloat(sMonthlyBudget));
+
+        const sFixedExpenses = localStorage.getItem('aldia_fixed_expenses');
+        if (sFixedExpenses) setFixedExpenses(JSON.parse(sFixedExpenses));
+    };
+
+    const getLocalBackup = () => {
+        const sMissions = localStorage.getItem('aldia_missions');
+        const sTransactions = localStorage.getItem('aldia_transactions');
+        const sBalance = localStorage.getItem('aldia_balance');
+        const sHabits = localStorage.getItem('aldia_habits');
+        const sAgenda = localStorage.getItem('aldia_agenda');
+        const sTimeBlocks = localStorage.getItem('aldia_timeblocks');
+        const sNotes = localStorage.getItem('aldia_notes');
+        const sProjects = localStorage.getItem('aldia_projects');
+        const sRutinas = localStorage.getItem('aldia_rutinas');
+        const sMonthlyBudget = localStorage.getItem('aldia_monthly_budget');
+        const sFixedExpenses = localStorage.getItem('aldia_fixed_expenses');
+
+        return {
+            missions: sMissions ? JSON.parse(sMissions) : [],
+            transactions: sTransactions ? JSON.parse(sTransactions) : [],
+            balance: sBalance ? parseFloat(sBalance) : 4250.00,
+            habits: sHabits ? JSON.parse(sHabits) : [],
+            agenda: sAgenda ? JSON.parse(sAgenda) : [],
+            timeBlocks: sTimeBlocks ? JSON.parse(sTimeBlocks) : [],
+            notes: sNotes ? JSON.parse(sNotes) : [],
+            projects: sProjects ? JSON.parse(sProjects) : [],
+            rutinas: sRutinas ? JSON.parse(sRutinas) : [],
+            monthlyBudget: sMonthlyBudget ? parseFloat(sMonthlyBudget) : 0,
+            fixedExpenses: sFixedExpenses ? JSON.parse(sFixedExpenses) : []
+        };
     };
 
     // 3. Persistencia Unificada (Local + Cloud)
@@ -214,6 +263,8 @@ export const useAlDiaState = () => {
         localStorage.setItem('aldia_notes', JSON.stringify(notes));
         localStorage.setItem('aldia_projects', JSON.stringify(projects));
         localStorage.setItem('aldia_rutinas', JSON.stringify(rutinas));
+        localStorage.setItem('aldia_monthly_budget', JSON.stringify(monthlyBudget));
+        localStorage.setItem('aldia_fixed_expenses', JSON.stringify(fixedExpenses));
 
         // Borrar "old" LocalStorage keys if they were different (not needed here but good practice)
 
@@ -230,10 +281,12 @@ export const useAlDiaState = () => {
                 notes,
                 projects,
                 rutinas,
+                monthlyBudget,
+                fixedExpenses,
                 lastSync: new Date().toISOString()
             }, { merge: true });
         }
-    }, [missions, transactions, balance, habits, agenda, timeBlocks, notes, projects, rutinas, user, isInitialLoad]);
+    }, [missions, transactions, balance, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, user, isInitialLoad]);
 
     // 3. Acciones (Cerebro)
 
@@ -269,6 +322,14 @@ export const useAlDiaState = () => {
 
             return updated;
         });
+    };
+
+    const updateMission = (id: number, updates: Partial<Mission>) => {
+        setMissions(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
+    };
+
+    const removeMission = (id: number) => {
+        setMissions(prev => prev.filter(m => m.id !== id));
     };
 
     // Girar hábito para un día específico
@@ -385,7 +446,9 @@ export const useAlDiaState = () => {
     return {
         missions,
         toggleMission,
+        updateMission,
         addMission,
+        removeMission,
         transactions,
         addTransaction,
         balance,
@@ -500,6 +563,19 @@ export const useAlDiaState = () => {
         },
         removeRoutine: (id: number) => {
             setRutinas(prev => prev.filter(r => r.id !== id));
+        },
+        monthlyBudget,
+        updateMonthlyBudget: (amount: number) => setMonthlyBudget(amount),
+        fixedExpenses,
+        addFixedExpense: (text: string, amount: number) => {
+            const newExpense: FixedExpense = { id: Date.now() + Math.random(), text, amount, active: true };
+            setFixedExpenses(prev => [...prev, newExpense]);
+        },
+        removeFixedExpense: (id: number) => {
+            setFixedExpenses(prev => prev.filter(e => e.id !== id));
+        },
+        toggleFixedExpense: (id: number) => {
+            setFixedExpenses(prev => prev.map(e => e.id === id ? { ...e, active: !e.active } : e));
         }
     };
 };

@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { JoyMatrixModal } from '../features/JoyMatrixModal';
-import { Repeat, Link, Calendar, Clock } from 'lucide-react';
+import { Repeat, Link, Calendar, Clock, Edit2, Trash2 } from 'lucide-react';
 import type { Mission, Project } from '../../hooks/useAlDiaState';
 
 interface MissionListProps {
     missions: Mission[];
     toggleMission: (id: number) => void;
     onOpenNote?: (id: number) => void;
+    onEditMission?: (mission: Mission) => void;
+    removeMission?: (id: number) => void;
     title?: string;
     showTimeBlock?: boolean;
     showMatrixLinks?: boolean;
@@ -17,7 +19,11 @@ interface MissionListProps {
     projects?: Project[];
 }
 
-export const MissionList = ({ missions, toggleMission, onOpenNote, title = 'Tareas', showTimeBlock = true, showMatrixLinks = true, hideOnEmpty = false, onTimelineClick, projects = [] }: MissionListProps) => {
+export const MissionList = ({ 
+    missions, toggleMission, onOpenNote, onEditMission, removeMission,
+    title = 'Tareas', showTimeBlock = true, showMatrixLinks = true, 
+    hideOnEmpty = false, onTimelineClick, projects = [] 
+}: MissionListProps) => {
     const [isMatrixOpen, setIsMatrixOpen] = useState(false);
 
     const handleToggle = (id: number, q: string) => {
@@ -129,16 +135,34 @@ export const MissionList = ({ missions, toggleMission, onOpenNote, title = 'Tare
                                         }}>
                                             {mission.completed ? 'Misión Cumplida' : 'En Curso'}
                                         </span>
-                                        <span style={{
-                                            fontSize: '0.6rem',
-                                            color: isPinnedQ1 ? 'white' : '#888',
-                                            fontWeight: 800,
-                                            background: isPinnedQ1 ? 'rgba(255,255,255,0.2)' : '#F0EBE6',
-                                            padding: '2px 6px',
-                                            borderRadius: '8px'
-                                        }}>
-                                            {mission.q}
-                                        </span>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                            {!mission.completed && onEditMission && (
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); onEditMission(mission); }}
+                                                    style={{ background: 'transparent', border: 'none', color: isPinnedQ1 ? 'white' : '#CCC', cursor: 'pointer', padding: '2px', display: 'flex' }}
+                                                >
+                                                    <Edit2 size={12} />
+                                                </button>
+                                            )}
+                                            {removeMission && (
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); removeMission(mission.id); }}
+                                                    style={{ background: 'transparent', border: 'none', color: isPinnedQ1 ? 'white' : '#CCC', cursor: 'pointer', padding: '2px', display: 'flex' }}
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            )}
+                                            <span style={{
+                                                fontSize: '0.6rem',
+                                                color: isPinnedQ1 ? 'white' : '#888',
+                                                fontWeight: 800,
+                                                background: isPinnedQ1 ? 'rgba(255,255,255,0.2)' : '#F0EBE6',
+                                                padding: '2px 6px',
+                                                borderRadius: '8px'
+                                            }}>
+                                                {mission.q}
+                                            </span>
+                                        </div>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
                                         <p style={{

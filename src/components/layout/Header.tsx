@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User } from 'lucide-react';
 import { usePWA } from '../../hooks/usePWA';
+import { useAuth } from '../../hooks/useAuth';
 
 interface HeaderProps {
     activeTab: string;
@@ -10,11 +11,17 @@ interface HeaderProps {
 
 export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps) => {
     const { canInstall, install, isInstalled } = usePWA();
+    const { user } = useAuth();
     const [profilePic, setProfilePic] = useState<string | null>(null);
 
     useEffect(() => {
-        const savedPic = localStorage.getItem('aldia_user_pic');
-        if (savedPic) setProfilePic(savedPic);
+        // Only set local if no firebase user pic
+        if (user?.photoURL) {
+            setProfilePic(user.photoURL);
+        } else {
+            const savedPic = localStorage.getItem('aldia_user_pic');
+            if (savedPic) setProfilePic(savedPic);
+        }
 
         const handleStorage = () => {
             const updatedPic = localStorage.getItem('aldia_user_pic');

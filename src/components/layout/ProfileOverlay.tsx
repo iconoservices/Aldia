@@ -18,17 +18,25 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
     const [profilePic, setProfilePic] = useState<string | null>(null);
 
     useEffect(() => {
-        const savedName = localStorage.getItem('aldia_user_name');
-        if (savedName) setName(savedName);
+        // Prioritize Firebase data
+        if (user) {
+            if (user.displayName) setName(user.displayName);
+            if (user.photoURL) setProfilePic(user.photoURL);
+        } else {
+            const savedName = localStorage.getItem('aldia_user_name');
+            if (savedName) setName(savedName);
 
-        const savedPic = localStorage.getItem('aldia_user_pic');
-        if (savedPic) setProfilePic(savedPic);
-    }, []);
+            const savedPic = localStorage.getItem('aldia_user_pic');
+            if (savedPic) setProfilePic(savedPic);
+        }
+    }, [user]);
 
     const handleSaveName = () => {
-        localStorage.setItem('aldia_user_name', name);
+        if (!user) {
+            localStorage.setItem('aldia_user_name', name);
+            window.dispatchEvent(new Event('storage'));
+        }
         setIsEditing(false);
-        window.dispatchEvent(new Event('storage'));
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

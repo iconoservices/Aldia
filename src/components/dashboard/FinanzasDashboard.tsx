@@ -1,6 +1,6 @@
-import { TrendingUp, Wallet, ArrowUpCircle, ArrowDownCircle, UserMinus, UserPlus, BarChart3 } from 'lucide-react';
+import { TrendingUp, Wallet, ArrowUpCircle, ArrowDownCircle, UserMinus, UserPlus, BarChart3, Plus, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import type { Transaction } from '../../hooks/useAlDiaState';
+import type { Transaction, FixedExpense } from '../../hooks/useAlDiaState';
 
 interface FinanzasProps {
     balance: number;
@@ -9,9 +9,19 @@ interface FinanzasProps {
     owe: number;
     owed: number;
     transactions: Transaction[];
+    monthlyBudget: number;
+    updateMonthlyBudget: (amount: number) => void;
+    fixedExpenses: FixedExpense[];
+    addFixedExpense: (text: string, amount: number) => void;
+    removeFixedExpense: (id: number) => void;
+    toggleFixedExpense: (id: number) => void;
 }
 
-export const FinanzasDashboard = ({ balance, income, expense, owe, owed, transactions }: FinanzasProps) => {
+export const FinanzasDashboard = ({ 
+    balance, income, expense, owe, owed, transactions,
+    monthlyBudget, updateMonthlyBudget, fixedExpenses, 
+    addFixedExpense, removeFixedExpense, toggleFixedExpense 
+}: FinanzasProps) => {
     return (
         <div style={{ paddingBottom: '5rem' }}>
             {/* CARD PRINCIPAL: BALANCE GENERAL */}
@@ -134,6 +144,108 @@ export const FinanzasDashboard = ({ balance, income, expense, owe, owed, transac
                     <p style={{ margin: 0, fontSize: '0.65rem', color: '#888' }}>
                         {transactions.filter(tx => tx.type === 'ingreso' && tx.isDebt).length} cobros activos
                     </p>
+                </div>
+            </div>
+
+            {/* PLANIFICADOR MENSUAL: GASTOS FIJOS */}
+            <div style={{ marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>📊 Planificador Mensual</h3>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <div style={{ background: '#F0EBE6', padding: '4px 10px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#888' }}>INGRESO BASE</span>
+                            <input 
+                                type="number" 
+                                value={monthlyBudget} 
+                                onChange={(e) => updateMonthlyBudget(Number(e.target.value))}
+                                style={{ border: 'none', background: 'transparent', width: '60px', fontSize: '0.8rem', fontWeight: 900, outline: 'none', color: 'var(--domain-blue)' }}
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="glass-card" style={{ padding: '1.2rem', background: '#FFF' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {fixedExpenses.map((expense) => (
+                            <div key={expense.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: expense.active ? 1 : 0.4, transition: 'opacity 0.3s' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <div 
+                                        onClick={() => toggleFixedExpense(expense.id)}
+                                        style={{ width: '32px', height: '18px', borderRadius: '20px', background: expense.active ? 'var(--domain-blue)' : '#DDD', position: 'relative', cursor: 'pointer' }}
+                                    >
+                                        <motion.div 
+                                            animate={{ x: expense.active ? 16 : 2 }}
+                                            style={{ width: '14px', height: '14px', borderRadius: '50%', background: 'white', position: 'absolute', top: '2px' }}
+                                        />
+                                    </div>
+                                    <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-carbon)' }}>{expense.text}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#666' }}>${expense.amount}</span>
+                                    <button 
+                                        onClick={() => removeFixedExpense(expense.id)}
+                                        style={{ background: 'transparent', border: 'none', color: '#EEE', cursor: 'pointer' }}
+                                        onMouseEnter={(e) => e.currentTarget.style.color = '#f87171'}
+                                        onMouseLeave={(e) => e.currentTarget.style.color = '#EEE'}
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px', paddingTop: '12px', borderTop: '1px dashed #EEE' }}>
+                            <Plus size={16} color="#CCC" />
+                            <input 
+                                placeholder="Nuevo gasto fijo (ej. Alquiler)..."
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && e.currentTarget.value) {
+                                        const parts = e.currentTarget.value.split(':');
+                                        const text = parts[0];
+                                        const amount = parts[1] ? Number(parts[1]) : 0;
+                                        if (text && !isNaN(amount)) {
+                                            addFixedExpense(text, amount);
+                                            e.currentTarget.value = '';
+                                        }
+                                    }
+                                }}
+                                style={{ border: 'none', background: 'transparent', fontSize: '0.85rem', fontWeight: 600, outline: 'none', width: '100%' }}
+                            />
+                            <span style={{ fontSize: '0.6rem', color: '#BBB', whiteSpace: 'nowrap' }}>usa "Nombre: 500"</span>
+                        </div>
+                    </div>
+
+                    {/* Balance Proyectado */}
+                    <div style={{ 
+                        marginTop: '1.5rem', 
+                        padding: '1rem', 
+                        borderRadius: '16px', 
+                        background: '#F9F9F9',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                    }}>
+                        <div>
+                            <p style={{ margin: 0, fontSize: '0.65rem', fontWeight: 900, color: '#888', textTransform: 'uppercase' }}>Balance Proyectado</p>
+                            <p style={{ margin: 0, fontSize: '0.75rem', color: '#AAA' }}>Lo que te queda después de gastos fijos</p>
+                        </div>
+                        {(() => {
+                            const totalFixed = fixedExpenses.filter(e => e.active).reduce((acc, e) => acc + e.amount, 0);
+                            const projected = monthlyBudget - totalFixed;
+                            const isNegative = projected < 0;
+                            return (
+                                <div style={{ textAlign: 'right' }}>
+                                    <span style={{ 
+                                        fontSize: '1.4rem', 
+                                        fontWeight: 900, 
+                                        color: isNegative ? '#f87171' : 'var(--domain-green)'
+                                    }}>
+                                        {isNegative ? '-' : ''}${Math.abs(projected).toLocaleString()}
+                                    </span>
+                                </div>
+                            );
+                        })()}
+                    </div>
                 </div>
             </div>
 

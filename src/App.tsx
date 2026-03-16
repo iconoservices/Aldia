@@ -14,6 +14,8 @@ import { ProyectosDashboard } from './components/dashboard/ProyectosDashboard';
 import { CalendarioView } from './components/dashboard/CalendarioView';
 import { SuperFab } from './components/features/SuperFab';
 import { NoteDetailsModal } from './components/features/NoteDetailsModal';
+import { MissionEditOverlay } from './components/features/MissionEditOverlay';
+import type { Mission } from './hooks/useAlDiaState';
 
 import { useAlDiaState } from './hooks/useAlDiaState';
 
@@ -26,6 +28,7 @@ function App() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [viewingNoteId, setViewingNoteId] = useState<number | null>(null);
   const [isAddingProject, setIsAddingProject] = useState(false);
+  const [editingMission, setEditingMission] = useState<Mission | null>(null);
 
   const state = useAlDiaState();
   const { needRefresh, updateServiceWorker } = usePWA();
@@ -69,6 +72,8 @@ function App() {
                     })}
                     toggleMission={state.toggleMission}
                     onOpenNote={setViewingNoteId}
+                    onEditMission={setEditingMission}
+                    removeMission={state.removeMission}
                     title="Misiones"
                     onTimelineClick={() => setActiveTab('Vida')}
                     projects={state.projects}
@@ -110,6 +115,12 @@ function App() {
                 owe={state.debtsOwe}
                 owed={state.debtsOwed}
                 transactions={state.transactions}
+                monthlyBudget={state.monthlyBudget}
+                updateMonthlyBudget={state.updateMonthlyBudget}
+                fixedExpenses={state.fixedExpenses}
+                addFixedExpense={state.addFixedExpense}
+                removeFixedExpense={state.removeFixedExpense}
+                toggleFixedExpense={state.toggleFixedExpense}
               />
             ) : activeTab === 'Proyectos' ? (
               <ProyectosDashboard
@@ -142,6 +153,15 @@ function App() {
         removeNote={state.removeNote}
         toggleNoteItem={state.toggleNoteItem}
         addMission={state.addMission}
+      />
+
+      <MissionEditOverlay 
+        isOpen={editingMission !== null}
+        onClose={() => setEditingMission(null)}
+        mission={editingMission}
+        updateMission={state.updateMission}
+        removeMission={state.removeMission}
+        projects={state.projects}
       />
 
       {/* SUPER FAB RADIAL */}
