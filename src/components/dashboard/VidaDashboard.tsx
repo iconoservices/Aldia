@@ -13,6 +13,7 @@ interface VidaProps {
     toggleRoutineItem: (routineId: number, itemId: number) => void;
     removeRoutineItem: (routineId: number, itemId: number) => void;
     updateRoutine: (id: number, updates: Partial<Routine>) => void;
+    updateRoutineItem: (routineId: number, itemId: number, updates: Partial<{ text: string, completed: boolean, time: string }>) => void;
     addRoutine: (title: string) => void;
     removeRoutine: (id: number) => void;
 }
@@ -20,7 +21,7 @@ interface VidaProps {
 export const VidaDashboard = ({ 
     habits, toggleHabit, addHabit, removeHabit,
     rutinas, addRoutineItem, toggleRoutineItem, removeRoutineItem, updateRoutine,
-    addRoutine, removeRoutine
+    updateRoutineItem, addRoutine, removeRoutine
 }: VidaProps) => {
     const [viewMode, setViewMode] = useState<'hoy' | 'semana'>('hoy');
     const days = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
@@ -292,6 +293,19 @@ export const VidaDashboard = ({
                                                         <span style={{ fontSize: '0.75rem', fontWeight: 800, color: isDone ? '#CCC' : 'var(--text-carbon)', textDecoration: isDone ? 'line-through' : 'none', flex: 1 }}>
                                                             {item.text}
                                                         </span>
+                                                        
+                                                        {/* Item Time */}
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#F0F0F0', padding: '2px 6px', borderRadius: '6px' }}>
+                                                            <Clock size={10} color="#888" />
+                                                            <input 
+                                                                type="time" 
+                                                                value={item.time || ''} 
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                onChange={(e) => updateRoutineItem(rutina.id, item.id, { time: e.target.value })}
+                                                                style={{ border: 'none', background: 'transparent', fontSize: '0.65rem', fontWeight: 850, color: '#555', outline: 'none', width: '45px' }}
+                                                            />
+                                                        </div>
+
                                                         <button 
                                                             onClick={(e) => { e.stopPropagation(); removeRoutineItem(rutina.id, item.id); }}
                                                             style={{ background: 'transparent', border: 'none', color: '#EEE', cursor: 'pointer', padding: '4px', opacity: 0.1 }}

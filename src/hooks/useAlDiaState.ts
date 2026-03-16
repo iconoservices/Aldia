@@ -18,6 +18,9 @@ export interface Mission {
     habitId?: number; // Si es un hábito, ID de la fábrica
     projectId?: number; // Referencia opcional a un proyecto
     repeatDays?: number[]; // Índices 0-6 (L-D) para repetición personalizada
+    isRoutine?: boolean; // Para identificar tareas que vienen de una rutina
+    routineId?: number; // Referencia a la rutina de origen
+    isHabit?: boolean; // Para identificar habitos en la lista de misiones
 }
 
 export interface Routine {
@@ -28,7 +31,7 @@ export interface Routine {
     repeatDays?: number[]; // [0,1,2,3,4,5,6]
     startTime?: string;
     endTime?: string;
-    items: { id: number; text: string; completed: boolean }[];
+    items: { id: number; text: string; completed: boolean; time?: string }[];
 }
 
 export interface Transaction {
@@ -522,12 +525,21 @@ export const useAlDiaState = () => {
             }));
         },
         rutinas,
-        addRoutineItem: (routineId: number, text: string) => {
+        addRoutineItem: (routineId: number, text: string, time?: string) => {
             setRutinas(prev => prev.map(r => {
                 if (r.id !== routineId) return r;
                 return {
                     ...r,
-                    items: [...r.items, { id: Date.now() + Math.random(), text, completed: false }]
+                    items: [...r.items, { id: Date.now() + Math.random(), text, completed: false, time }]
+                };
+            }));
+        },
+        updateRoutineItem: (routineId: number, itemId: number, updates: Partial<{ text: string, completed: boolean, time: string }>) => {
+            setRutinas(prev => prev.map(r => {
+                if (r.id !== routineId) return r;
+                return {
+                    ...r,
+                    items: r.items.map(it => it.id === itemId ? { ...it, ...updates } : it)
                 };
             }));
         },

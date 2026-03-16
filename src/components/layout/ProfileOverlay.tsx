@@ -10,7 +10,7 @@ interface ProfileOverlayProps {
 }
 
 export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
-    const [name, setName] = useState('Juan Diego');
+    const [name, setName] = useState('Usuario AlDía');
     const [isEditing, setIsEditing] = useState(false);
     const { isInstalled, install, canInstall } = usePWA();
     const { user, loginWithGoogle, logout, updateProfile, loading: authLoading } = useAuth();
@@ -189,7 +189,7 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
                                             </>
                                         )}
                                     </div>
-                                    <p style={{ color: '#888', fontWeight: '600' }}>Mi Cerebro Digital v1.1.0</p>
+                                    <p style={{ color: '#888', fontWeight: '600' }}>Mi Mente Digital v1.1.0</p>
                                 </div>
 
                                 <div style={{ display: 'grid', gap: '1.5rem' }}>

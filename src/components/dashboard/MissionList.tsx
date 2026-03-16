@@ -8,6 +8,8 @@ import type { Mission, Project } from '../../hooks/useAlDiaState';
 interface MissionListProps {
     missions: Mission[];
     toggleMission: (id: number) => void;
+    toggleHabit?: (id: number, dayIndex: number) => void;
+    toggleRoutineItem?: (routineId: number, itemId: number) => void;
     onOpenNote?: (id: number) => void;
     onEditMission?: (mission: Mission) => void;
     removeMission?: (id: number) => void;
@@ -20,16 +22,23 @@ interface MissionListProps {
 }
 
 export const MissionList = ({ 
-    missions, toggleMission, onOpenNote, onEditMission, removeMission,
+    missions, toggleMission, toggleHabit, toggleRoutineItem, onOpenNote, onEditMission, removeMission,
     title = 'Tareas', showTimeBlock = true, showMatrixLinks = true, 
     hideOnEmpty = false, onTimelineClick, projects = [] 
 }: MissionListProps) => {
     const [isMatrixOpen, setIsMatrixOpen] = useState(false);
 
-    const handleToggle = (id: number, q: string) => {
+    const handleToggle = (id: number, q: string, isRoutine?: boolean, routineId?: number, isHabit?: boolean) => {
         const mission = missions.find(m => m.id === id);
         if (mission?.completed) {
-            toggleMission(id);
+            if (isRoutine && routineId && toggleRoutineItem) {
+                toggleRoutineItem(routineId, id);
+            } else if (isHabit && toggleHabit) {
+                const todayIndex = (new Date().getDay() + 6) % 7;
+                toggleHabit(id, todayIndex);
+            } else {
+                toggleMission(id);
+            }
             return;
         }
 
@@ -46,7 +55,14 @@ export const MissionList = ({
             scalar
         });
 
-        toggleMission(id);
+        if (isRoutine && routineId && toggleRoutineItem) {
+            toggleRoutineItem(routineId, id);
+        } else if (isHabit && toggleHabit) {
+            const todayIndex = (new Date().getDay() + 6) % 7;
+            toggleHabit(id, todayIndex);
+        } else {
+            toggleMission(id);
+        }
     };
 
     if (hideOnEmpty && missions.length === 0) return null;
@@ -100,7 +116,7 @@ export const MissionList = ({
                                 key={mission.id}
                                 whileHover={{ scale: 1.01 }}
                                 whileTap={{ scale: 0.98 }}
-                                onClick={() => handleToggle(mission.id, mission.q)}
+                                onClick={() => handleToggle(mission.id, mission.q, mission.isRoutine, mission.routineId, mission.isHabit)}
                                 className={`mission-item ${isPinnedQ1 ? 'critical-alert' : ''}`}
                                 style={{
                                     opacity: mission.completed ? 0.6 : 1,
@@ -194,6 +210,36 @@ export const MissionList = ({
                                                 letterSpacing: '0.5px'
                                             }}>
                                                 {projects.find(p => p.id === mission.projectId)!.name}
+                                            </span>
+                                        )}
+                                        {mission.isRoutine && (
+                                            <span style={{ 
+                                                fontSize: '0.6rem', 
+                                                color: isPinnedQ1 ? 'white' : 'var(--domain-green)', 
+                                                fontWeight: 800,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '3px',
+                                                background: isPinnedQ1 ? 'rgba(255,255,255,0.1)' : 'rgba(52, 211, 153, 0.1)',
+                                                padding: '2px 6px',
+                                                borderRadius: '6px'
+                                            }}>
+                                                <Repeat size={10} /> Rutina
+                                            </span>
+                                        )}
+                                        {mission.isHabit && (
+                                            <span style={{ 
+                                                fontSize: '0.6rem', 
+                                                color: isPinnedQ1 ? 'white' : 'var(--domain-green)', 
+                                                fontWeight: 800,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '3px',
+                                                background: isPinnedQ1 ? 'rgba(255,255,255,0.1)' : '#ECFDF5',
+                                                padding: '2px 6px',
+                                                borderRadius: '6px'
+                                            }}>
+                                                🌱 Hábito
                                             </span>
                                         )}
                                         {mission.repeat !== 'none' && (

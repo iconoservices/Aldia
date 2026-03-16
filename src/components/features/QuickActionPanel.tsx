@@ -10,7 +10,7 @@ interface QuickActionPanelProps {
     addMission: (text: string, q?: string, repeat?: 'none' | 'daily' | 'weekly' | 'monthly', noteId?: number, labels?: string[], dueDate?: string, dueTime?: string, habitId?: number, projectId?: number, repeatDays?: number[]) => void;
     addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number) => void;
     addHabit: (name: string) => void;
-    addRoutineItem?: (routineId: number, text: string) => void;
+    addRoutineItem?: (routineId: number, text: string, time?: string) => void;
     addCalendarEvent?: (title: string, date: string, start: string, end: string, desc: string, projectId?: number) => void;
     addNote: (title: string, content: string, type: 'text' | 'checklist', items: { text: string; completed: boolean }[], q: string, color: string) => void;
     addTimeBlock: (label: string, start: string, end: string, color: string, projectId?: number) => void;
@@ -88,7 +88,7 @@ export const QuickActionPanel = ({
             }
 
             if (asRoutine && addRoutineItem) {
-                addRoutineItem(routineId, concept || 'Nueva Rutina');
+                addRoutineItem(routineId, concept || 'Nueva Rutina', hasTime ? startTime : undefined);
             } else {
                 addMission(concept || 'Nueva Tarea', selectedQ, repeat, undefined, labelArray, date, hasTime ? startTime : undefined, habitId, selectedProjectId, repeatDays.length > 0 ? repeatDays : undefined);
             }

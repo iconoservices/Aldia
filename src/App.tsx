@@ -87,20 +87,50 @@ function App() {
                     title="Agenda" 
                   />
 
-                  <MissionList
-                    missions={state.missions.filter(m => {
-                      const today = new Date().toISOString().split('T')[0];
-                      const isTodayOrPast = !m.dueDate || m.dueDate <= today;
-                      return isTodayOrPast;
-                    })}
-                    toggleMission={state.toggleMission}
-                    onOpenNote={setViewingNoteId}
-                    onEditMission={setEditingMission}
-                    removeMission={state.removeMission}
-                    title="Misiones"
-                    onTimelineClick={() => setIsTimelineOpen(true)}
-                    projects={state.projects}
-                  />
+                  {(() => {
+                    const today = new Date().toISOString().split('T')[0];
+                    const todayIndex = (new Date().getDay() + 6) % 7;
+                    const routineMissions = state.rutinas
+                      .filter(r => r.isActive && r.repeatDays?.includes(todayIndex))
+                      .flatMap(r => r.items.map(item => ({
+                        id: item.id,
+                        text: item.text,
+                        completed: item.completed,
+                        dueTime: item.time || r.startTime,
+                        q: 'Q2',
+                        isRoutine: true,
+                        routineId: r.id
+                      })));
+
+                    const habitMissions = state.habits.map(h => ({
+                      id: h.id,
+                      text: h.name,
+                      completed: h.completedDays.includes(todayIndex),
+                      q: 'Q2',
+                      isHabit: true
+                    }));
+
+                    const filteredMissions = [
+                      ...state.missions.filter(m => !m.dueDate || m.dueDate <= today),
+                      ...routineMissions,
+                      ...habitMissions
+                    ];
+
+                    return (
+                      <MissionList
+                        missions={filteredMissions as any}
+                        toggleMission={state.toggleMission}
+                        toggleHabit={state.toggleHabit}
+                        toggleRoutineItem={state.toggleRoutineItem}
+                        onOpenNote={setViewingNoteId}
+                        onEditMission={setEditingMission}
+                        removeMission={state.removeMission}
+                        title="Misiones"
+                        onTimelineClick={() => setIsTimelineOpen(true)}
+                        projects={state.projects}
+                      />
+                    );
+                  })()}
                 </div>
               </>
             ) : activeTab === 'Calendario' ? (
@@ -120,6 +150,7 @@ function App() {
                 toggleRoutineItem={state.toggleRoutineItem}
                 removeRoutineItem={state.removeRoutineItem}
                 updateRoutine={state.updateRoutine}
+                updateRoutineItem={state.updateRoutineItem}
                 addRoutine={state.addRoutine}
                 removeRoutine={state.removeRoutine}
               />
