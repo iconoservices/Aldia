@@ -16,9 +16,14 @@ interface QuickActionPanelProps {
     addTimeBlock: (label: string, start: string, end: string, color: string, projectId?: number) => void;
     addProject?: (name: string, color: string, targetHoursPerWeek?: number) => void;
     projects?: { id: number, name: string, color: string }[];
+    rutinas?: { id: number, title: string, color: string }[];
 }
 
-export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addTransaction, addHabit, addRoutineItem, addCalendarEvent, addNote, addTimeBlock, addProject, projects = [] }: QuickActionPanelProps) => {
+export const QuickActionPanel = ({ 
+    isOpen, onClose, actionType, addMission, addTransaction, addHabit, 
+    addRoutineItem, addCalendarEvent, addNote, addTimeBlock, addProject, 
+    projects = [], rutinas = [] 
+}: QuickActionPanelProps) => {
     const [amount, setAmount] = useState('');
     const [concept, setConcept] = useState('');
     const [isDebt, setIsDebt] = useState(false);
@@ -469,12 +474,8 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                                         </div>
                                         
                                         {asRoutine && (
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                                                {[
-                                                    { id: 1, label: 'Mañana', color: '#F59E0B' },
-                                                    { id: 2, label: 'Tarde', color: '#8B5CF6' },
-                                                    { id: 3, label: 'Noche', color: '#3B82F6' }
-                                                ].map(r => (
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '8px' }}>
+                                                {rutinas.map(r => (
                                                     <button
                                                         key={r.id} type="button"
                                                         onClick={() => setRoutineId(r.id)}
@@ -483,10 +484,11 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                                                             background: routineId === r.id ? r.color : 'white',
                                                             color: routineId === r.id ? 'white' : '#AAA',
                                                             fontWeight: 800, fontSize: '0.7rem', cursor: 'pointer',
-                                                            boxShadow: routineId === r.id ? `0 4px 12px ${r.color}40` : 'none'
+                                                            boxShadow: routineId === r.id ? `0 4px 12px ${r.color}40` : 'none',
+                                                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
                                                         }}
                                                     >
-                                                        {r.label}
+                                                        {r.title}
                                                     </button>
                                                 ))}
                                             </div>

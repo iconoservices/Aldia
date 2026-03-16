@@ -12,11 +12,12 @@ interface SuperFabProps {
     addTimeBlock: (label: string, start: string, end: string, color: string, projectId?: number) => void;
     addProject?: (name: string, color: string, targetHoursPerWeek?: number) => void;
     projects?: { id: number, name: string, color: string }[];
+    rutinas?: { id: number, title: string, color: string }[];
     forceOpenType?: string | null;
     onForceOpenClose?: () => void;
 }
 
-export const SuperFab = ({ addMission, addTransaction, addHabit, addCalendarEvent, addNote, addTimeBlock, addProject, projects = [], forceOpenType = null, onForceOpenClose }: SuperFabProps) => {
+export const SuperFab = ({ addMission, addTransaction, addHabit, addCalendarEvent, addNote, addTimeBlock, addProject, projects = [], rutinas = [], forceOpenType = null, onForceOpenClose }: SuperFabProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const [actionType, setActionType] = useState<string | null>(null);
 
@@ -209,6 +210,7 @@ export const SuperFab = ({ addMission, addTransaction, addHabit, addCalendarEven
                 addTimeBlock={addTimeBlock}
                 addProject={addProject}
                 projects={projects}
+                rutinas={rutinas}
             />
         </div>
     );

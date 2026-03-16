@@ -24,6 +24,10 @@ export interface Routine {
     id: number;
     title: string; // "Mañana", "Tarde", "Noche"
     color: string;
+    isActive: boolean;
+    repeatDays?: number[]; // [0,1,2,3,4,5,6]
+    startTime?: string;
+    endTime?: string;
     items: { id: number; text: string; completed: boolean }[];
 }
 
@@ -190,9 +194,9 @@ export const useAlDiaState = () => {
         const sRutinas = localStorage.getItem('aldia_rutinas');
         if (sRutinas) setRutinas(JSON.parse(sRutinas));
         else setRutinas([
-            { id: 1, title: 'Rutina Mañana', color: '#f59e0b', items: [] },
-            { id: 2, title: 'Rutina Tarde', color: '#8b5cf6', items: [] },
-            { id: 3, title: 'Rutina Noche', color: '#3b82f6', items: [] }
+            { id: 1, title: 'Rutina Mañana', color: '#f59e0b', isActive: true, repeatDays: [0,1,2,3,4,5,6], startTime: '07:00', endTime: '09:00', items: [] },
+            { id: 2, title: 'Rutina Tarde', color: '#8b5cf6', isActive: true, repeatDays: [0,1,2,3,4,5,6], startTime: '13:00', endTime: '15:00', items: [] },
+            { id: 3, title: 'Rutina Noche', color: '#3b82f6', isActive: true, repeatDays: [0,1,2,3,4,5,6], startTime: '21:00', endTime: '23:00', items: [] }
         ]);
     };
 
@@ -395,6 +399,9 @@ export const useAlDiaState = () => {
         missionFocusScore,
         completedMissionsCount,
         addHabit,
+        removeHabit: (id: number) => {
+            setHabits(prev => prev.filter(h => h.id !== id));
+        },
         agenda,
         addCalendarEvent,
         timeBlocks,
@@ -475,6 +482,24 @@ export const useAlDiaState = () => {
                     items: r.items.filter(it => it.id !== itemId)
                 };
             }));
+        },
+        updateRoutine: (id: number, updates: Partial<Routine>) => {
+            setRutinas(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
+        },
+        addRoutine: (title: string, color: string = '#8a5cf6') => {
+            setRutinas(prev => [...prev, {
+                id: Date.now(),
+                title,
+                color,
+                isActive: true,
+                repeatDays: [0,1,2,3,4,5,6],
+                startTime: '09:00',
+                endTime: '10:00',
+                items: []
+            }]);
+        },
+        removeRoutine: (id: number) => {
+            setRutinas(prev => prev.filter(r => r.id !== id));
         }
     };
 };

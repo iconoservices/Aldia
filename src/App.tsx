@@ -79,16 +79,21 @@ function App() {
               <CalendarioView 
                 agenda={state.agenda}
                 timeBlocks={state.timeBlocks}
+                rutinas={state.rutinas}
               />
             ) : activeTab === 'Vida' ? (
               <VidaDashboard
                 habits={state.habits}
                 toggleHabit={state.toggleHabit}
                 addHabit={state.addHabit}
+                removeHabit={state.removeHabit}
                 rutinas={state.rutinas}
                 addRoutineItem={state.addRoutineItem}
                 toggleRoutineItem={state.toggleRoutineItem}
                 removeRoutineItem={state.removeRoutineItem}
+                updateRoutine={state.updateRoutine}
+                addRoutine={state.addRoutine}
+                removeRoutine={state.removeRoutine}
               />
             ) : activeTab === 'Cerebro' ? (
               <CerebroDashboard 
@@ -149,6 +154,7 @@ function App() {
         addTimeBlock={state.addTimeBlock}
         addProject={state.addProject}
         projects={state.projects}
+        rutinas={state.rutinas}
         forceOpenType={isAddingProject ? 'proyecto' : undefined}
         onForceOpenClose={() => setIsAddingProject(false)}
       />

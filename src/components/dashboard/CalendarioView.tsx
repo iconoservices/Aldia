@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock } from 'lucide-react';
-import type { CalendarEvent, TimeBlock } from '../../hooks/useAlDiaState';
+import type { CalendarEvent, TimeBlock, Routine } from '../../hooks/useAlDiaState';
 
 interface CalendarioViewProps {
     agenda: CalendarEvent[];
     timeBlocks: TimeBlock[];
+    rutinas: Routine[];
 }
 
-export const CalendarioView = ({ agenda, timeBlocks }: CalendarioViewProps) => {
+export const CalendarioView = ({ agenda, timeBlocks, rutinas }: CalendarioViewProps) => {
     // console.log('TimeBlocks ready for V2 visualization:', timeBlocks.length);
     const [viewMode, setViewMode] = useState<'month' | 'week'>('week');
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -197,6 +198,29 @@ export const CalendarioView = ({ agenda, timeBlocks }: CalendarioViewProps) => {
                                                         }}
                                                     >
                                                         {block.label}
+                                                    </div>
+                                                );
+                                            })}
+                                            {/* Render routine blocks */}
+                                            {rutinas.filter(r => r.isActive && r.repeatDays?.includes(idx)).map(rutina => {
+                                                if (!rutina.startTime || !rutina.endTime) return null;
+                                                const [h, m] = rutina.startTime.split(':').map(Number);
+                                                const [eh, em] = rutina.endTime.split(':').map(Number);
+                                                const top = h * 50 + (m / 60) * 50;
+                                                const duration = (eh * 60 + em) - (h * 60 + m);
+                                                const height = (duration / 60) * 50;
+
+                                                return (
+                                                    <div 
+                                                        key={`r-${rutina.id}`}
+                                                        style={{ 
+                                                            position: 'absolute', top: `${top}px`, left: '8px', right: '8px', height: `${height}px`, 
+                                                            background: `${rutina.color}20`, borderLeft: `4px solid ${rutina.color}`,
+                                                            borderRadius: '8px', color: '#444', padding: '6px 10px', fontSize: '0.65rem', fontWeight: 900, 
+                                                            zIndex: 1, pointerEvents: 'none', overflow: 'hidden'
+                                                        }}
+                                                    >
+                                                        {rutina.title.toUpperCase()}
                                                     </div>
                                                 );
                                             })}
