@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import type { CalendarEvent, TimeBlock } from '../../hooks/useAlDiaState';
 
@@ -14,29 +14,49 @@ export const CalendarioView = ({ agenda, timeBlocks }: CalendarioViewProps) => {
     const [nowLinePos, setNowLinePos] = useState(new Date().getHours() * 50 + (new Date().getMinutes() / 60) * 50);
 
     // Actualizar la línea de "Ahora" cada minuto
-    useState(() => {
+    useEffect(() => {
         const interval = setInterval(() => {
             const now = new Date();
             setNowLinePos(now.getHours() * 50 + (now.getMinutes() / 60) * 50);
         }, 60000);
         return () => clearInterval(interval);
-    });
+    }, []);
 
     const goToToday = () => setCurrentDate(new Date());
 
     // Auxiliares para cálculo de fechas
-    /* const startOfWeek = (date: Date) => {
+    const startOfWeek = (date: Date) => {
         const d = new Date(date);
         const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Ajuste para que empiece en Lunes
-        return new Date(d.setDate(diff));
+        const diff = d.getDate() - (day === 0 ? 6 : day - 1); // Ajuste para que empiece en Lunes
+        const monday = new Date(d.setDate(diff));
+        monday.setHours(0, 0, 0, 0);
+        return monday;
     };
 
+    const weekDays = useMemo(() => {
+        const start = startOfWeek(currentDate);
+        return Array.from({ length: 7 }).map((_, i) => {
+            const d = new Date(start);
+            d.setDate(start.getDate() + i);
+            return d;
+        });
+    }, [currentDate]);
+
     const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
-    const getFirstDayOfMonth = (year: number, month: number) => {
-        const first = new Date(year, month, 1).getDay();
-        return first === 0 ? 6 : first - 1; // Ajuste para Lunes
-    }; */
+    
+    const monthDays = useMemo(() => {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const daysCount = getDaysInMonth(year, month);
+        const firstDay = new Date(year, month, 1).getDay();
+        const startPadding = firstDay === 0 ? 6 : firstDay - 1; // Lunes = 0
+        
+        return {
+            padding: Array.from({ length: startPadding }),
+            days: Array.from({ length: daysCount }).map((_, i) => i + 1)
+        };
+    }, [currentDate]);
 
     const nextPeriod = () => {
         const next = new Date(currentDate);
@@ -119,21 +139,71 @@ export const CalendarioView = ({ agenda, timeBlocks }: CalendarioViewProps) => {
                                 <div style={{ position: 'absolute', left: '-5px', top: '-4px', width: '10px', height: '10px', borderRadius: '50%', background: '#FF4D4D' }} />
                             </div>
 
-                            {dayNames.map((name, idx) => (
-                                <div key={idx} style={{ background: 'white', minHeight: '1200px', position: 'relative' }}>
-                                    <div style={{ textAlign: 'center', padding: '8px', borderBottom: '1px solid #F0F0F0', fontWeight: 900, color: 'var(--text-carbon)', fontSize: '0.75rem' }}>
-                                        {name}
+                            {weekDays.map((date, idx) => {
+                                const isToday = date.toDateString() === new Date().toDateString();
+                                const dateStr = date.toISOString().split('T')[0];
+                                const dayEvents = agenda.filter(e => e.date === dateStr);
+                                const dayBlocks = timeBlocks.filter(() => {
+                                    // Por ahora los timeBlocks son diarios recurrentes o necesitan fecha?
+                                    // El hook actual no tiene fecha en TimeBlock, asumimos diarios.
+                                    return true; 
+                                });
+
+                                return (
+                                    <div key={idx} style={{ background: isToday ? 'rgba(255,140,66,0.02)' : 'white', minHeight: '1200px', position: 'relative', borderRight: '1px solid #F0F0F0' }}>
+                                        <div style={{ textAlign: 'center', padding: '8px', borderBottom: isToday ? '2px solid var(--domain-orange)' : '1px solid #F0F0F0', fontWeight: 900, color: isToday ? 'var(--domain-orange)' : 'var(--text-carbon)', fontSize: '0.75rem' }}>
+                                            {dayNames[idx]} {date.getDate()}
+                                        </div>
+                                        <div style={{ position: 'relative', height: '1200px' }}>
+                                            {/* Render real events */}
+                                            {dayEvents.map(event => {
+                                                const [h, m] = event.startTime.split(':').map(Number);
+                                                const [eh, em] = event.endTime.split(':').map(Number);
+                                                const top = h * 50 + (m / 60) * 50;
+                                                const duration = (eh * 60 + em) - (h * 60 + m);
+                                                const height = (duration / 60) * 50;
+
+                                                return (
+                                                    <div 
+                                                        key={event.id}
+                                                        style={{ 
+                                                            position: 'absolute', top: `${top}px`, left: '4px', right: '4px', height: `${Math.max(25, height)}px`, 
+                                                            background: 'rgba(255, 140, 66, 0.15)', borderLeft: '3px solid var(--domain-orange)',
+                                                            borderRadius: '6px', color: 'var(--text-carbon)', padding: '4px 8px', fontSize: '0.65rem', fontWeight: 800, 
+                                                            zIndex: 2, overflow: 'hidden'
+                                                        }}
+                                                    >
+                                                        {event.title}
+                                                    </div>
+                                                );
+                                            })}
+
+                                            {/* Render time blocks */}
+                                            {dayBlocks.map(block => {
+                                                const [h, m] = block.start.split(':').map(Number);
+                                                const [eh, em] = block.end.split(':').map(Number);
+                                                const top = h * 50 + (m / 60) * 50;
+                                                const duration = (eh * 60 + em) - (h * 60 + m);
+                                                const height = (duration / 60) * 50;
+
+                                                return (
+                                                    <div 
+                                                        key={block.id}
+                                                        style={{ 
+                                                            position: 'absolute', top: `${top}px`, left: '4px', right: '4px', height: `${height}px`, 
+                                                            background: `${block.color}15`, borderLeft: `3px solid ${block.color}`,
+                                                            borderRadius: '6px', color: '#666', padding: '4px 8px', fontSize: '0.6rem', fontWeight: 700, 
+                                                            opacity: 0.6, pointerEvents: 'none'
+                                                        }}
+                                                    >
+                                                        {block.label}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                    <div style={{ position: 'relative', height: '1200px' }}>
-                                        {/* Ejemplo de bloques (simulado) */}
-                                        {idx === 0 && (
-                                            <div style={{ position: 'absolute', top: '450px', left: '2px', right: '2px', height: '100px', background: 'var(--domain-orange)', borderRadius: '8px', color: 'white', padding: '6px', fontSize: '0.6rem', fontWeight: 900, boxShadow: '0 4px 10px rgba(255,140,66,0.3)', zIndex: 2 }}>
-                                                ENFOQUE ALPHA
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                             {/* Líneas horizontales de hora */}
                             {Array.from({ length: 24 }).map((_, i) => (
                                 <div key={i} style={{ position: 'absolute', top: `${(i)*50}px`, left: 0, right: 0, height: '1px', background: 'rgba(0,0,0,0.03)', pointerEvents: 'none' }} />
@@ -145,20 +215,28 @@ export const CalendarioView = ({ agenda, timeBlocks }: CalendarioViewProps) => {
                         {dayNames.map(day => (
                             <div key={day} style={{ textAlign: 'center', color: '#888', fontWeight: 900, fontSize: '0.7rem', padding: '10px 0' }}>{day}</div>
                         ))}
-                        {/* Placeholder para días del mes */}
-                        {Array.from({ length: 31 }).map((_, i) => (
-                            <div key={i} style={{ 
-                                height: '100px', 
-                                border: '1px solid #F0F0F0', 
-                                borderRadius: '16px', 
-                                padding: '8px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '4px'
-                            }}>
-                                <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#BBB' }}>{i + 1}</span>
-                            </div>
+                        {/* Padding days */}
+                        {monthDays.padding.map((_, i) => (
+                            <div key={`p-${i}`} style={{ height: '80px', opacity: 0 }} />
                         ))}
+                        {/* Selected month days */}
+                        {monthDays.days.map(day => {
+                            const isToday = day === new Date().getDate() && currentDate.getMonth() === new Date().getMonth() && currentDate.getFullYear() === new Date().getFullYear();
+                            return (
+                                <div key={day} style={{ 
+                                    height: '80px', 
+                                    border: isToday ? '2px solid var(--domain-orange)' : '1px solid #F0F0F0', 
+                                    borderRadius: '16px', 
+                                    padding: '8px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '4px',
+                                    background: isToday ? 'rgba(255,140,66,0.05)' : 'white'
+                                }}>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 900, color: isToday ? 'var(--domain-orange)' : '#BBB' }}>{day}</span>
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>

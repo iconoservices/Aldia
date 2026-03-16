@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, X, Receipt, TrendingUp, Target, Lightbulb, Calendar, Clock } from 'lucide-react';
 import { QuickActionPanel } from './QuickActionPanel';
@@ -21,12 +21,12 @@ export const SuperFab = ({ addMission, addTransaction, addHabit, addCalendarEven
     const [actionType, setActionType] = useState<string | null>(null);
 
     // Efecto para abrir forzado desde afuera (ej: botón NUEVO en proyectos)
-    useState(() => {
+    useEffect(() => {
         if (forceOpenType) {
             setActionType(forceOpenType);
             onForceOpenClose && onForceOpenClose();
         }
-    });
+    }, [forceOpenType, onForceOpenClose]);
 
     const menuItems = [
         { id: 'nota', icon: <Lightbulb size={24} />, color: '#facc15', label: 'Nota' },
