@@ -123,6 +123,7 @@ function App() {
                 addFixedExpense={state.addFixedExpense}
                 removeFixedExpense={state.removeFixedExpense}
                 toggleFixedExpense={state.toggleFixedExpense}
+                projects={state.projects}
               />
             ) : activeTab === 'Proyectos' ? (
               <ProyectosDashboard

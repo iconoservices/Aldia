@@ -15,12 +15,14 @@ interface FinanzasProps {
     addFixedExpense: (text: string, amount: number) => void;
     removeFixedExpense: (id: number) => void;
     toggleFixedExpense: (id: number) => void;
+    projects: { id: number, name: string, color: string }[];
 }
 
 export const FinanzasDashboard = ({ 
     balance, income, expense, owe, owed, transactions,
     monthlyBudget, updateMonthlyBudget, fixedExpenses, 
-    addFixedExpense, removeFixedExpense, toggleFixedExpense 
+    addFixedExpense, removeFixedExpense, toggleFixedExpense,
+    projects 
 }: FinanzasProps) => {
     return (
         <div style={{ paddingBottom: '5rem' }}>
@@ -263,7 +265,22 @@ export const FinanzasDashboard = ({
                                 </div>
                                 <div>
                                     <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>{tx.text} {tx.isDebt && <span style={{ color: 'var(--domain-orange)', fontSize: '0.6rem' }}>[DEUDA]</span>}</p>
-                                    <p style={{ margin: 0, fontSize: '0.7rem', color: '#888' }}>{tx.date}</p>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <p style={{ margin: 0, fontSize: '0.7rem', color: '#888' }}>{tx.date}</p>
+                                        {tx.projectId && projects.find(p => p.id === tx.projectId) && (
+                                            <span style={{ 
+                                                fontSize: '0.6rem', 
+                                                fontWeight: 900, 
+                                                color: projects.find(p => p.id === tx.projectId)!.color,
+                                                background: `${projects.find(p => p.id === tx.projectId)!.color}15`,
+                                                padding: '1px 6px',
+                                                borderRadius: '6px',
+                                                textTransform: 'uppercase'
+                                            }}>
+                                                {projects.find(p => p.id === tx.projectId)!.name}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                             <span style={{ fontWeight: 800, color: tx.type === 'ingreso' ? '#4ade80' : 'var(--text-carbon)' }}>

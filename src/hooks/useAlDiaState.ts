@@ -39,6 +39,7 @@ export interface Transaction {
     isDebt: boolean;
     date: string;     // HH:mm
     fullDate: string; // YYYY-MM-DD
+    projectId?: number;
 }
 
 export interface FixedExpense {
@@ -394,7 +395,7 @@ export const useAlDiaState = () => {
     };
 
     // Registrar dinero
-    const addTransaction = (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean) => {
+    const addTransaction = (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number) => {
         const value = Math.abs(amount);
 
         // Si no es deuda, impacta el balance real ahora
@@ -409,7 +410,8 @@ export const useAlDiaState = () => {
             type,
             isDebt,
             date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            fullDate: new Date().toISOString().split('T')[0]
+            fullDate: new Date().toISOString().split('T')[0],
+            projectId
         };
         setTransactions(prev => [newTx, ...prev]);
     };

@@ -8,7 +8,7 @@ interface QuickActionPanelProps {
     onClose: () => void;
     actionType: string | null;
     addMission: (text: string, q?: string, repeat?: 'none' | 'daily' | 'weekly' | 'monthly', noteId?: number, labels?: string[], dueDate?: string, dueTime?: string, habitId?: number, projectId?: number, repeatDays?: number[]) => void;
-    addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean) => void;
+    addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number) => void;
     addHabit: (name: string) => void;
     addRoutineItem?: (routineId: number, text: string) => void;
     addCalendarEvent?: (title: string, date: string, start: string, end: string, desc: string, projectId?: number) => void;
@@ -70,7 +70,7 @@ export const QuickActionPanel = ({
         e.preventDefault();
 
         if (actionType === 'gasto' || actionType === 'ingreso') {
-            addTransaction(concept || (actionType === 'gasto' ? 'Gasto' : 'Ingreso'), parseFloat(amount) || 0, actionType, isDebt);
+            addTransaction(concept || (actionType === 'gasto' ? 'Gasto' : 'Ingreso'), parseFloat(amount) || 0, actionType, isDebt, selectedProjectId);
             confetti({
                 particleCount: 80,
                 spread: 70,
@@ -285,8 +285,8 @@ export const QuickActionPanel = ({
                                 />
                             </div>
 
-                            {/* SELECTOR DE PROYECTO (Para Tareas, Bloques y Agenda) */}
-                            {(actionType === 'tarea' || actionType === 'bloque' || actionType === 'agenda') && (
+                            {/* SELECTOR DE PROYECTO (Para Tareas, Bloques, Agenda y Finanzas) */}
+                            {(actionType === 'tarea' || actionType === 'bloque' || actionType === 'agenda' || currentConfig.isFinancial) && (
                                 <div style={{ background: '#F9F9F9', padding: '12px', borderRadius: '18px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                                         <p style={{ margin: '0 0 0 10px', fontWeight: 800, fontSize: '0.6rem', color: '#BBB', textTransform: 'uppercase' }}>Proyecto (Opcional)</p>
