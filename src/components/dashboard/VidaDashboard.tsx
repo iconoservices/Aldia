@@ -1,359 +1,173 @@
-import { CheckCircle2, ListTodo, CreditCard, Plus, Trash2, Calendar as CalendarIcon } from 'lucide-react';
+import { CheckCircle2, ListTodo, CreditCard, Plus, Check } from 'lucide-react';
 import { useState } from 'react';
-import type { Habit, TimeBlock } from '../../hooks/useAlDiaState';
+import type { Habit } from '../../hooks/useAlDiaState';
 import { motion } from 'framer-motion';
-import { TimeBlockModal } from '../features/TimeBlockModal';
 
 interface VidaProps {
     habits: Habit[];
     toggleHabit: (id: number, dayIndex: number) => void;
     addHabit: (name: string) => void;
-    timeBlocks: TimeBlock[];
-    addTimeBlock: (label: string, start: string, end: string, color: string) => void;
-    removeTimeBlock: (id: number) => void;
-    missions: any[];
-    agenda: any[];
 }
 
 export const VidaDashboard = ({ 
-    habits, toggleHabit, addHabit, 
-    timeBlocks, addTimeBlock, removeTimeBlock,
-    missions, agenda
+    habits, toggleHabit, addHabit
 }: VidaProps) => {
-    const [selectedDay, setSelectedDay] = useState(new Date().getDate());
-    const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
-    const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
-    
     const days = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
-    // Generar días del mes actual para el mini-calendario
-    const currentMonth = new Date().toLocaleString('es-ES', { month: 'long' });
-    const today = new Date().getDate();
-    const currentYear = new Date().getFullYear();
-    const currentMonthIdx = new Date().getMonth();
+    // Estado para rutinas locales (simulado para el demo)
+    const [rutinas] = useState([
+        { id: 1, title: 'Rutina Mañana', items: ['Meditar', 'Agua', 'Lectura'], color: '#f59e0b' },
+        { id: 2, title: 'Rutina Tarde', items: ['Deep Work', 'Entreno', 'Review'], color: '#8b5cf6' },
+        { id: 3, title: 'Rutina Noche', items: ['Sin Pantallas', 'Journaling', 'Plan Mañana'], color: '#3b82f6' }
+    ]);
+    
+    const [completedItems, setCompletedItems] = useState<Record<string, boolean>>({});
 
-    // Helper para generar días del mes
-    const daysInMonth = new Date(currentYear, currentMonthIdx + 1, 0).getDate();
-    const firstDayOfMonth = new Date(currentYear, currentMonthIdx, 1).getDay(); // 0-6 (Dom-Sab)
-    // Ajustar a Lunes inicio (0=Lu, 6=Do)
-    const startOffset = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
+    const toggleRutinaItem = (rutinaId: number, item: string) => {
+        const key = `${rutinaId}-${item}`;
+        setCompletedItems(prev => ({ ...prev, [key]: !prev[key] }));
+    };
 
     return (
-        <div style={{ paddingBottom: '5rem' }}>
-            {/* MINI CALENDARIO / VISTA MES INTERACTIVA */}
-            <div className="glass-card" style={{ marginBottom: '1.2rem', padding: '1rem', background: 'white' }}>
+        <div style={{ paddingBottom: '5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            
+            {/* MOTOR DE HÁBITOS (SECCIÓN PRINCIPAL) */}
+            <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, textTransform: 'capitalize', color: 'var(--text-carbon)' }}>{currentMonth} 2026</h2>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <button 
-                            onClick={() => setViewMode(viewMode === 'week' ? 'month' : 'week')}
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>🌿 Fábrica de Hábitos</h3>
+                    <button 
+                        onClick={() => {
+                            const name = prompt('Nombre del nuevo Hábito:');
+                            if (name) addHabit(name);
+                        }}
+                        style={{ background: '#F0EBE6', color: 'var(--domain-purple)', border: 'none', borderRadius: '10px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontWeight: 900, fontSize: '0.7rem' }}
+                    >
+                        <Plus size={14} /> NUEVO
+                    </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                    {habits.map((habit) => (
+                        <motion.div 
+                            key={habit.id} 
+                            layout
+                            className="glass-card" 
                             style={{ 
-                                background: '#F0EBE6', 
-                                border: 'none', 
-                                borderRadius: '12px', 
-                                padding: '4px 10px', 
-                                fontSize: '0.65rem', 
-                                fontWeight: 800, 
-                                color: 'var(--domain-purple)',
-                                cursor: 'pointer'
+                                padding: '1.2rem', 
+                                background: 'white',
+                                borderRadius: '24px',
+                                border: '1px solid rgba(138, 92, 246, 0.1)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '12px'
                             }}
                         >
-                            {viewMode === 'week' ? 'Ver Mes' : 'Ver Semana'}
-                        </button>
-                    </div>
-                </div>
-
-                {viewMode === 'week' ? (
-                    <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '0.5rem', scrollbarWidth: 'none', justifyContent: 'space-between' }}>
-                        {[...Array(7)].map((_, i) => {
-                            const date = new Date(currentYear, currentMonthIdx, today - 1 + i);
-                            const dayNum = date.getDate();
-                            const isSelected = selectedDay === dayNum;
-                            return (
-                                <motion.div 
-                                    key={i} 
-                                    whileTap={{ scale: 0.9 }}
-                                    onClick={() => setSelectedDay(dayNum)}
-                                    style={{ 
-                                        minWidth: '45px', 
-                                        textAlign: 'center', 
-                                        background: isSelected ? 'var(--domain-purple)' : '#F9F9F9', 
-                                        color: isSelected ? 'white' : '#888',
-                                        borderRadius: '16px', 
-                                        padding: '10px 4px', 
-                                        cursor: 'pointer',
-                                        boxShadow: isSelected ? '0 4px 12px rgba(138, 92, 246, 0.3)' : 'none',
-                                        transition: 'all 0.2s ease'
-                                    }}
-                                >
-                                    <p style={{ margin: 0, fontSize: '0.6rem', fontWeight: 700, opacity: 0.8 }}>{['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'][ date.getDay() ]}</p>
-                                    <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900 }}>{dayNum}</p>
-                                </motion.div>
-                            );
-                        })}
-                    </div>
-                ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
-                        {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(d => (
-                            <div key={d} style={{ textAlign: 'center', fontSize: '0.6rem', fontWeight: 800, color: '#CCC', marginBottom: '4px' }}>{d}</div>
-                        ))}
-                        {[...Array(startOffset)].map((_, i) => <div key={`empty-${i}`} />)}
-                        {[...Array(daysInMonth)].map((_, i) => {
-                            const dayNum = i + 1;
-                            const isToday = dayNum === today;
-                            const isSelected = selectedDay === dayNum;
-                            return (
-                                <div 
-                                    key={dayNum}
-                                    onClick={() => { setSelectedDay(dayNum); setViewMode('week'); }}
-                                    style={{
-                                        aspectRatio: '1',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        borderRadius: '10px',
-                                        fontSize: '0.75rem',
-                                        fontWeight: 800,
-                                        cursor: 'pointer',
-                                        background: isSelected ? 'var(--domain-purple)' : (isToday ? '#FFF5EB' : 'transparent'),
-                                        color: isSelected ? 'white' : (isToday ? 'var(--domain-orange)' : '#555'),
-                                        border: isToday && !isSelected ? '1px solid var(--domain-orange)' : 'none'
-                                    }}
-                                >
-                                    {dayNum}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div>
+                                    <p style={{ margin: 0, fontWeight: 900, fontSize: '1rem', color: 'var(--text-carbon)' }}>{habit.name}</p>
+                                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#AAA', fontWeight: 700 }}>🔥 RACHA DE {habit.completedDays.length}</p>
                                 </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
-                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 900, fontSize: '1.2rem' }}>
-                    <CalendarIcon size={20} color="var(--domain-purple)" />
-                    Planificación del Día
-                </h3>
-                <button 
-                    onClick={() => setIsBlockModalOpen(true)}
-                    style={{ 
-                        background: 'var(--domain-purple)', 
-                        color: 'white', 
-                        border: 'none', 
-                        borderRadius: '12px', 
-                        padding: '8px 14px',
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '6px',
-                        fontSize: '0.75rem',
-                        fontWeight: 900,
-                        cursor: 'pointer',
-                        boxShadow: '0 4px 12px rgba(138, 92, 246, 0.3)'
-                    }}
-                >
-                    <Plus size={16} /> BLOQUE
-                </button>
-            </div>
-
-            <TimeBlockModal 
-                isOpen={isBlockModalOpen}
-                onClose={() => setIsBlockModalOpen(false)}
-                onAdd={addTimeBlock}
-            />
-
-            <div className="glass-card" style={{ marginBottom: '2rem', padding: '1.2rem', background: '#FFF' }}>
-                <div style={{ position: 'relative', paddingLeft: '40px', borderLeft: '2px solid #F0F0F0' }}>
-                    {/* Horas de fondo (VISTA ESPACIADA Y PREMIUM) */}
-                    {[8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22].map(hour => (
-                        <div key={hour} style={{ height: '50px', position: 'relative' }}>
-                            <span style={{ position: 'absolute', left: '-40px', top: '-6px', fontSize: '0.65rem', fontWeight: 900, color: '#CCC' }}>
-                                {hour.toString().padStart(2, '0')}:00
-                            </span>
-                            <div style={{ position: 'absolute', left: 0, right: 0, top: 0, borderBottom: '1px solid #F6F6F6', width: '100%' }}></div>
-                        </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', background: '#F9F9F9', padding: '8px', borderRadius: '16px' }}>
+                                {days.map((day, idx) => {
+                                    const isCompleted = habit.completedDays.includes(idx);
+                                    return (
+                                        <motion.div
+                                            key={idx}
+                                            whileTap={{ scale: 0.8 }}
+                                            onClick={() => toggleHabit(habit.id, idx)}
+                                            style={{
+                                                width: '32px',
+                                                height: '32px',
+                                                borderRadius: '10px',
+                                                background: isCompleted ? 'var(--domain-purple)' : 'white',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontSize: '0.65rem',
+                                                color: isCompleted ? 'white' : '#CCC',
+                                                fontWeight: 900,
+                                                cursor: 'pointer',
+                                                boxShadow: isCompleted ? '0 4px 10px rgba(138, 92, 246, 0.2)' : '0 2px 5px rgba(0,0,0,0.02)',
+                                                border: isCompleted ? 'none' : '1px solid #EEE'
+                                            }}
+                                        >
+                                            {day}
+                                        </motion.div>
+                                    );
+                                })}
+                            </div>
+                        </motion.div>
                     ))}
-
-                    {/* Bloques Flotantes, Agenda y Tareas con Hora */}
-                    <div style={{ position: 'absolute', top: 0, left: '0px', right: '0px', height: '100%' }}>
-                        {/* 1. Bloques de Tiempo Manuales (OCUPAN LA PARTE IZQUIERDA - 60%) */}
-                        {timeBlocks.map((block) => {
-                            const [startH, startM] = block.start.split(':').map(Number);
-                            const [endH, endM] = block.end.split(':').map(Number);
-                            const startTotal = (startH - 8) * 60 + startM;
-                            const endTotal = (endH - 8) * 60 + endM;
-                            const duration = endTotal - startTotal;
-                            const pixelsPerMinute = 50 / 60;
-                            const topPos = startTotal * pixelsPerMinute;
-                            const heightPos = Math.max(duration * pixelsPerMinute, 30);
-
-                            return (
-                                <motion.div 
-                                    key={`block-${block.id}`}
-                                    initial={{ opacity: 0, x: -5 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    style={{ 
-                                        position: 'absolute', top: topPos, left: '2px', width: '55%', height: heightPos - 2,
-                                        background: block.color + '12',
-                                        borderLeft: `4px solid ${block.color}`,
-                                        borderRadius: '12px', padding: '6px 12px',
-                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                        zIndex: 1, boxShadow: `0 4px 15px ${block.color}10`
-                                    }}
-                                >
-                                    <div style={{ overflow: 'hidden' }}>
-                                        <p style={{ margin: 0, fontSize: '0.7rem', fontWeight: 900, color: block.color, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{block.label}</p>
-                                        <p style={{ margin: 0, fontSize: '0.55rem', fontWeight: 700, opacity: 0.7, color: block.color }}>{block.start} - {block.end}</p>
-                                    </div>
-                                    <Trash2 size={12} color={block.color} style={{ cursor: 'pointer', opacity: 0.5 }} onClick={() => removeTimeBlock(block.id)} />
-                                </motion.div>
-                            );
-                        })}
-
-                        {/* 2. Eventos de Agenda (OCUPAN LA PARTE DERECHA - 40%) */}
-                        {agenda.filter(event => {
-                            const todayStr = new Date().toISOString().split('T')[0];
-                            return !event.date || event.date === todayStr;
-                        }).map((event) => {
-                            const [startH, startM] = event.startTime.split(':').map(Number);
-                            const [endH, endM] = event.endTime.split(':').map(Number);
-                            const startTotal = (startH - 8) * 60 + startM;
-                            const endTotal = (endH - 8) * 60 + endM;
-                            const duration = endTotal - startTotal;
-                            const pixelsPerMinute = 50 / 60;
-                            const topPos = startTotal * pixelsPerMinute;
-                            const heightPos = Math.max(duration * pixelsPerMinute, 35);
-
-                            return (
-                                <motion.div 
-                                    key={`agenda-${event.id}`}
-                                    style={{ 
-                                        position: 'absolute', top: topPos, right: '2px', width: '40%', height: heightPos - 2,
-                                        background: 'linear-gradient(135deg, var(--domain-orange), #ff6b3d)',
-                                        color: 'white',
-                                        borderRadius: '14px', padding: '8px 12px',
-                                        zIndex: 2, boxShadow: '0 8px 20px rgba(255, 140, 66, 0.25)',
-                                        display: 'flex', flexDirection: 'column', justifyContent: 'center',
-                                        border: '1px solid rgba(255,255,255,0.2)'
-                                    }}
-                                >
-                                    <p style={{ margin: 0, fontSize: '0.65rem', fontWeight: 900, whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>🗓️ {event.title}</p>
-                                    <p style={{ margin: 0, fontSize: '0.5rem', fontWeight: 700, opacity: 0.9 }}>{event.startTime}</p>
-                                </motion.div>
-                            );
-                        })}
-
-                        {/* 3. Tareas con Hora específica (MODALIDADES FLOTANTES ELEGANTES) */}
-                        {missions.filter(m => m.dueTime && !m.completed).map((m) => {
-                            const [startH, startM] = (m.dueTime || '12:00').split(':').map(Number);
-                            const startTotal = (startH - 8) * 60 + startM;
-                            const topPos = (startTotal * (50/60)) - 10;
-
-                            return (
-                                <motion.div 
-                                    key={`task-${m.id}`}
-                                    style={{ 
-                                        position: 'absolute', top: topPos, left: '45%', transform: 'translateX(-50%)',
-                                        background: 'white', border: '1.5px solid #EEE',
-                                        borderRadius: '12px', padding: '4px 12px',
-                                        zIndex: 3, boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
-                                        display: 'flex', alignItems: 'center', gap: '8px',
-                                        minWidth: '120px'
-                                    }}
-                                >
-                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: m.critical ? 'var(--domain-orange)' : 'var(--domain-purple)' }}></div>
-                                    <p style={{ margin: 0, fontSize: '0.65rem', fontWeight: 800, color: '#1A1A1A', whiteSpace: 'nowrap' }}>{m.text}</p>
-                                    <span style={{ fontSize: '0.55rem', fontWeight: 700, color: '#999', marginLeft: 'auto' }}>{m.dueTime}</span>
-                                </motion.div>
-                            );
-                        })}
-                    </div>
                 </div>
             </div>
 
-            {/* MOTOR DE HÁBITOS */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900 }}>🌿 Fábrica de Hábitos</h3>
-                <button 
-                    onClick={() => {
-                        const name = prompt('Nombre del nuevo Hábito:');
-                        if (name) addHabit(name);
-                    }}
-                    style={{ background: '#F0EBE6', color: 'var(--domain-purple)', border: 'none', borderRadius: '10px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontWeight: 900, fontSize: '0.7rem' }}
-                >
-                    <Plus size={14} /> NUEVO
-                </button>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-                {habits.map((habit) => (
-                    <motion.div 
-                        key={habit.id} 
-                        layout
-                        className="glass-card" 
-                        style={{ 
-                            padding: '1.2rem', 
-                            background: 'white',
-                            borderRadius: '24px',
-                            border: '1px solid rgba(138, 92, 246, 0.1)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '12px'
-                        }}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div>
-                                <p style={{ margin: 0, fontWeight: 900, fontSize: '1rem', color: 'var(--text-carbon)' }}>{habit.name}</p>
-                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#AAA', fontWeight: 700 }}>🔥 RACHA DE {habit.completedDays.length}</p>
+            {/* SECCIÓN DE RUTINAS (AHORA MÁS VISUAL) */}
+            <div>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>⚡ Rutinas Diarias</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
+                    {rutinas.map(rutina => (
+                        <div key={rutina.id} className="glass-card" style={{ padding: '1rem', background: '#FFF' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                <div style={{ width: '4px', height: '16px', borderRadius: '4px', background: rutina.color }}></div>
+                                <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{rutina.title}</h4>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {rutina.items.map(item => {
+                                    const isDone = completedItems[`${rutina.id}-${item}`];
+                                    return (
+                                        <div 
+                                            key={item}
+                                            onClick={() => toggleRutinaItem(rutina.id, item)}
+                                            style={{ 
+                                                display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', 
+                                                background: isDone ? '#F9F9F9' : 'transparent', borderRadius: '12px', 
+                                                cursor: 'pointer', border: isDone ? '1px solid #EEE' : '1px solid transparent',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                        >
+                                            <div style={{ 
+                                                width: '18px', height: '18px', borderRadius: '6px', 
+                                                border: `2px solid ${isDone ? 'var(--domain-green)' : '#DDD'}`,
+                                                background: isDone ? 'var(--domain-green)' : 'transparent',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                            }}>
+                                                {isDone && <Check size={12} color="white" strokeWidth={4} />}
+                                            </div>
+                                            <span style={{ 
+                                                fontSize: '0.8rem', fontWeight: 700, 
+                                                color: isDone ? '#AAA' : 'var(--text-carbon)',
+                                                textDecoration: isDone ? 'line-through' : 'none'
+                                            }}>
+                                                {item}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', background: '#F9F9F9', padding: '8px', borderRadius: '16px' }}>
-                            {days.map((day, idx) => {
-                                const isCompleted = habit.completedDays.includes(idx);
-                                return (
-                                    <motion.div
-                                        key={idx}
-                                        whileTap={{ scale: 0.8 }}
-                                        onClick={() => toggleHabit(habit.id, idx)}
-                                        style={{
-                                            width: '30px',
-                                            height: '30px',
-                                            borderRadius: '10px',
-                                            background: isCompleted ? 'var(--domain-purple)' : 'white',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            fontSize: '0.65rem',
-                                            color: isCompleted ? 'white' : '#CCC',
-                                            fontWeight: 900,
-                                            cursor: 'pointer',
-                                            boxShadow: isCompleted ? '0 4px 10px rgba(138, 92, 246, 0.2)' : '0 2px 5px rgba(0,0,0,0.02)',
-                                            border: isCompleted ? 'none' : '1px solid #EEE'
-                                        }}
-                                    >
-                                        {day}
-                                    </motion.div>
-                                );
-                            })}
-                        </div>
-                    </motion.div>
-                ))}
+                    ))}
+                </div>
             </div>
 
-            {/* CHECKLISTS (Maestros / Asíncronos) */}
-            <h3 style={{ marginBottom: '1rem' }}>Listas Maestras</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="glass-card" style={{ padding: '1.2rem', textAlign: 'center', border: '1px solid #EAE0FE' }}>
-                    <CreditCard size={28} color="var(--domain-orange)" style={{ marginBottom: '8px' }} />
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>Pagos / Recur.</p>
-                    <p style={{ margin: 0, fontSize: '0.7rem', color: '#888' }}>2 pendientes ⭢</p>
-                </div>
-                <div className="glass-card" style={{ padding: '1.2rem', textAlign: 'center', border: '1px solid #EAE0FE' }}>
-                    <ListTodo size={28} color="var(--domain-purple)" style={{ marginBottom: '8px' }} />
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>Súper / Mercado</p>
-                    <p style={{ margin: 0, fontSize: '0.7rem', color: '#888' }}>12 items ⭢</p>
-                </div>
-                <div className="glass-card" style={{ padding: '1.2rem', textAlign: 'center', border: '1px solid #EAE0FE' }}>
-                    <CheckCircle2 size={28} color="var(--domain-purple)" style={{ marginBottom: '8px' }} />
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>Rutina Mañana</p>
-                    <p style={{ margin: 0, fontSize: '0.7rem', color: '#888' }}>4 pasos ⭢</p>
+            {/* CHECKLISTS (MAESTROS / ASÍNCRONOS) */}
+            <div>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>📋 Listas Maestras</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '1rem' }}>
+                    <div className="glass-card" style={{ padding: '1.2rem', textAlign: 'center', border: '1px solid #EAE0FE', cursor: 'pointer' }}>
+                        <CreditCard size={28} color="var(--domain-orange)" style={{ marginBottom: '8px' }} />
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: '0.85rem' }}>Pagos / Recur.</p>
+                        <p style={{ margin: 0, fontSize: '0.65rem', color: '#888', fontWeight: 700 }}>2 pendientes</p>
+                    </div>
+                    <div className="glass-card" style={{ padding: '1.2rem', textAlign: 'center', border: '1px solid #EAE0FE', cursor: 'pointer' }}>
+                        <ListTodo size={28} color="var(--domain-purple)" style={{ marginBottom: '8px' }} />
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: '0.85rem' }}>Súper / Mercado</p>
+                        <p style={{ margin: 0, fontSize: '0.65rem', color: '#888', fontWeight: 700 }}>12 items</p>
+                    </div>
+                    <div className="glass-card" style={{ padding: '1.2rem', textAlign: 'center', border: '1px solid #EAE0FE', cursor: 'pointer' }}>
+                        <CheckCircle2 size={28} color="var(--domain-green)" style={{ marginBottom: '8px' }} />
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: '0.85rem' }}>Procesos OK</p>
+                        <p style={{ margin: 0, fontSize: '0.65rem', color: '#888', fontWeight: 700 }}>Verificado</p>
+                    </div>
                 </div>
             </div>
         </div>

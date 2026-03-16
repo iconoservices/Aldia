@@ -85,11 +85,6 @@ function App() {
                 habits={state.habits}
                 toggleHabit={state.toggleHabit}
                 addHabit={state.addHabit}
-                timeBlocks={state.timeBlocks}
-                addTimeBlock={state.addTimeBlock}
-                removeTimeBlock={state.removeTimeBlock}
-                missions={state.missions}
-                agenda={state.agenda}
               />
             ) : activeTab === 'Cerebro' ? (
               <CerebroDashboard 
