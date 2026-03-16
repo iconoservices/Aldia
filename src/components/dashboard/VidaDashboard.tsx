@@ -1,32 +1,22 @@
-import { CheckCircle2, ListTodo, CreditCard, Plus, Check } from 'lucide-react';
-import { useState } from 'react';
-import type { Habit } from '../../hooks/useAlDiaState';
+import { CheckCircle2, ListTodo, CreditCard, Plus, Check, Trash2 } from 'lucide-react';
+import type { Habit, Routine } from '../../hooks/useAlDiaState';
 import { motion } from 'framer-motion';
 
 interface VidaProps {
     habits: Habit[];
     toggleHabit: (id: number, dayIndex: number) => void;
     addHabit: (name: string) => void;
+    rutinas: Routine[];
+    addRoutineItem: (routineId: number, text: string) => void;
+    toggleRoutineItem: (routineId: number, itemId: number) => void;
+    removeRoutineItem: (routineId: number, itemId: number) => void;
 }
 
 export const VidaDashboard = ({ 
-    habits, toggleHabit, addHabit
+    habits, toggleHabit, addHabit,
+    rutinas, addRoutineItem, toggleRoutineItem, removeRoutineItem
 }: VidaProps) => {
     const days = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-
-    // Estado para rutinas locales (simulado para el demo)
-    const [rutinas] = useState([
-        { id: 1, title: 'Rutina Mañana', items: ['Meditar', 'Agua', 'Lectura'], color: '#f59e0b' },
-        { id: 2, title: 'Rutina Tarde', items: ['Deep Work', 'Entreno', 'Review'], color: '#8b5cf6' },
-        { id: 3, title: 'Rutina Noche', items: ['Sin Pantallas', 'Journaling', 'Plan Mañana'], color: '#3b82f6' }
-    ]);
-    
-    const [completedItems, setCompletedItems] = useState<Record<string, boolean>>({});
-
-    const toggleRutinaItem = (rutinaId: number, item: string) => {
-        const key = `${rutinaId}-${item}`;
-        setCompletedItems(prev => ({ ...prev, [key]: !prev[key] }));
-    };
 
     return (
         <div style={{ paddingBottom: '5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -113,11 +103,11 @@ export const VidaDashboard = ({
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                 {rutina.items.map(item => {
-                                    const isDone = completedItems[`${rutina.id}-${item}`];
+                                    const isDone = item.completed;
                                     return (
                                         <div 
-                                            key={item}
-                                            onClick={() => toggleRutinaItem(rutina.id, item)}
+                                            key={item.id}
+                                            onClick={() => toggleRoutineItem(rutina.id, item.id)}
                                             style={{ 
                                                 display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', 
                                                 background: isDone ? '#F9F9F9' : 'transparent', borderRadius: '12px', 
@@ -129,20 +119,54 @@ export const VidaDashboard = ({
                                                 width: '18px', height: '18px', borderRadius: '6px', 
                                                 border: `2px solid ${isDone ? 'var(--domain-green)' : '#DDD'}`,
                                                 background: isDone ? 'var(--domain-green)' : 'transparent',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                flexShrink: 0
                                             }}>
                                                 {isDone && <Check size={12} color="white" strokeWidth={4} />}
                                             </div>
                                             <span style={{ 
                                                 fontSize: '0.8rem', fontWeight: 700, 
                                                 color: isDone ? '#AAA' : 'var(--text-carbon)',
-                                                textDecoration: isDone ? 'line-through' : 'none'
+                                                textDecoration: isDone ? 'line-through' : 'none',
+                                                flex: 1
                                             }}>
-                                                {item}
+                                                {item.text}
                                             </span>
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); removeRoutineItem(rutina.id, item.id); }}
+                                                style={{ background: 'transparent', border: 'none', color: '#EEE', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
                                         </div>
                                     );
                                 })}
+
+                                {/* Input para añadir item rápido */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '4px 12px' }}>
+                                    <div style={{ width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#CCC' }}>
+                                        <Plus size={14} />
+                                    </div>
+                                    <input 
+                                        type="text"
+                                        placeholder="Añadir..."
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && e.currentTarget.value) {
+                                                addRoutineItem(rutina.id, e.currentTarget.value);
+                                                e.currentTarget.value = '';
+                                            }
+                                        }}
+                                        style={{
+                                            border: 'none',
+                                            background: 'transparent',
+                                            fontSize: '0.8rem',
+                                            fontWeight: 600,
+                                            color: 'var(--text-carbon)',
+                                            outline: 'none',
+                                            width: '100%'
+                                        }}
+                                    />
+                                </div>
                             </div>
                         </div>
                     ))}

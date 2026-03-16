@@ -85,6 +85,10 @@ function App() {
                 habits={state.habits}
                 toggleHabit={state.toggleHabit}
                 addHabit={state.addHabit}
+                rutinas={state.rutinas}
+                addRoutineItem={state.addRoutineItem}
+                toggleRoutineItem={state.toggleRoutineItem}
+                removeRoutineItem={state.removeRoutineItem}
               />
             ) : activeTab === 'Cerebro' ? (
               <CerebroDashboard 

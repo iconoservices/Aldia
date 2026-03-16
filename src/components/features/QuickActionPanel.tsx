@@ -7,9 +7,10 @@ interface QuickActionPanelProps {
     isOpen: boolean;
     onClose: () => void;
     actionType: string | null;
-    addMission: (text: string, q?: string, repeat?: 'none' | 'daily' | 'weekly' | 'monthly', noteId?: number, labels?: string[], dueDate?: string, dueTime?: string, habitId?: number, projectId?: number) => void;
+    addMission: (text: string, q?: string, repeat?: 'none' | 'daily' | 'weekly' | 'monthly', noteId?: number, labels?: string[], dueDate?: string, dueTime?: string, habitId?: number, projectId?: number, repeatDays?: number[]) => void;
     addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean) => void;
     addHabit: (name: string) => void;
+    addRoutineItem?: (routineId: number, text: string) => void;
     addCalendarEvent?: (title: string, date: string, start: string, end: string, desc: string, projectId?: number) => void;
     addNote: (title: string, content: string, type: 'text' | 'checklist', items: { text: string; completed: boolean }[], q: string, color: string) => void;
     addTimeBlock: (label: string, start: string, end: string, color: string, projectId?: number) => void;
@@ -17,14 +18,17 @@ interface QuickActionPanelProps {
     projects?: { id: number, name: string, color: string }[];
 }
 
-export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addTransaction, addHabit, addCalendarEvent, addNote, addTimeBlock, addProject, projects = [] }: QuickActionPanelProps) => {
+export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addTransaction, addHabit, addRoutineItem, addCalendarEvent, addNote, addTimeBlock, addProject, projects = [] }: QuickActionPanelProps) => {
     const [amount, setAmount] = useState('');
     const [concept, setConcept] = useState('');
     const [isDebt, setIsDebt] = useState(false);
     const [selectedQ, setSelectedQ] = useState('Q2');
     const [repeat, setRepeat] = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none');
     const [asHabit, setAsHabit] = useState(false);
+    const [asRoutine, setAsRoutine] = useState(false);
+    const [routineId, setRoutineId] = useState<number>(1); // Default to Mañana
     const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(undefined);
+    const [repeatDays, setRepeatDays] = useState<number[]>([]);
     
     // Quick Project Creation
     const [isCreatingProject, setIsCreatingProject] = useState(false);
@@ -71,14 +75,19 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
         } else if (actionType === 'tarea') {
             const labelArray = labels.split(',').map(l => l.trim()).filter(l => l !== '');
             
-            let habitId: number | undefined;
+            let habitId: number | undefined = undefined;
             if (asHabit) {
                 const newHId = Date.now();
                 addHabit(concept || 'Nuevo Hábito');
                 habitId = newHId;
             }
 
-            addMission(concept || 'Nueva Tarea', selectedQ, repeat, undefined, labelArray, date, hasTime ? startTime : undefined, habitId, selectedProjectId);
+            if (asRoutine && addRoutineItem) {
+                addRoutineItem(routineId, concept || 'Nueva Rutina');
+            } else {
+                addMission(concept || 'Nueva Tarea', selectedQ, repeat, undefined, labelArray, date, hasTime ? startTime : undefined, habitId, selectedProjectId, repeatDays.length > 0 ? repeatDays : undefined);
+            }
+
             confetti({
                 particleCount: 50,
                 spread: 50,
@@ -144,6 +153,9 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
             setEndTime('10:00');
             setHasTime(false);
             setAsHabit(false);
+            setAsRoutine(false);
+            setRoutineId(1);
+            setRepeatDays([]);
             setNoteType('text');
             setNoteItems('');
             setNoteColor('#FFFFFF');
@@ -414,12 +426,71 @@ export const QuickActionPanel = ({ isOpen, onClose, actionType, addMission, addT
                                             </div>
                                             {hasTime && <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '10px', border: '1px solid #EEE', fontSize: '1rem', fontWeight: 600 }} />}
                                         </div>
-                                        <div onClick={() => setAsHabit(!asHabit)} style={{ background: asHabit ? '#F5F3FF' : '#F9F9F9', padding: '12px', borderRadius: '20px', border: asHabit ? '2px solid #8B5CF6' : '2px solid transparent', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                                        <div onClick={() => { setAsHabit(!asHabit); if(!asHabit) setAsRoutine(false); }} style={{ background: asHabit ? '#F5F3FF' : '#F9F9F9', padding: '12px', borderRadius: '20px', border: asHabit ? '2px solid #8B5CF6' : '2px solid transparent', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
                                             <div style={{ width: '20px', height: '20px', borderRadius: '6px', border: '2px solid #DDD', background: asHabit ? '#8B5CF6' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                 {asHabit && <Check size={14} color="white" strokeWidth={4} />}
                                             </div>
                                             <span style={{ fontSize: '0.85rem', fontWeight: 800, color: asHabit ? '#7C3AED' : '#AAA' }}>🔄 Hábito</span>
                                         </div>
+                                    </div>
+
+                                    {/* SELECTOR DE DÍAS (Si es repetir o Hábito) */}
+                                    {(repeat === 'weekly' || asHabit) && (
+                                        <div style={{ background: '#F9F9F9', padding: '12px', borderRadius: '18px' }}>
+                                            <p style={{ margin: '0 0 8px 10px', fontWeight: 800, fontSize: '0.6rem', color: '#BBB', textTransform: 'uppercase' }}>Días específicos</p>
+                                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'space-between' }}>
+                                                {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, idx) => {
+                                                    const isSel = repeatDays.includes(idx);
+                                                    return (
+                                                        <button
+                                                            key={idx} type="button" 
+                                                            onClick={() => setRepeatDays(prev => isSel ? prev.filter(d => d !== idx) : [...prev, idx])}
+                                                            style={{
+                                                                width: '32px', height: '32px', borderRadius: '10px', border: 'none',
+                                                                fontWeight: 900, fontSize: '0.7rem', cursor: 'pointer',
+                                                                background: isSel ? 'var(--domain-purple)' : 'white',
+                                                                color: isSel ? 'white' : '#CCC',
+                                                                boxShadow: isSel ? '0 4px 10px rgba(138,92,246,0.3)' : 'none'
+                                                            }}
+                                                        >{day}</button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* SELECTOR DE RUTINA */}
+                                    <div style={{ background: asRoutine ? '#FFFBEB' : '#F9F9F9', padding: '12px', borderRadius: '24px', border: asRoutine ? '2px solid #F59E0B' : '2px solid transparent' }}>
+                                        <div onClick={() => { setAsRoutine(!asRoutine); if(!asRoutine) setAsHabit(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', marginBottom: asRoutine ? '12px' : '0' }}>
+                                            <div style={{ width: '20px', height: '20px', borderRadius: '6px', border: '2px solid #DDD', background: asRoutine ? '#F59E0B' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                {asRoutine && <Check size={14} color="white" strokeWidth={4} />}
+                                            </div>
+                                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: asRoutine ? '#B45309' : '#AAA' }}>⚡ Convertir en Rutina</span>
+                                        </div>
+                                        
+                                        {asRoutine && (
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                                                {[
+                                                    { id: 1, label: 'Mañana', color: '#F59E0B' },
+                                                    { id: 2, label: 'Tarde', color: '#8B5CF6' },
+                                                    { id: 3, label: 'Noche', color: '#3B82F6' }
+                                                ].map(r => (
+                                                    <button
+                                                        key={r.id} type="button"
+                                                        onClick={() => setRoutineId(r.id)}
+                                                        style={{
+                                                            padding: '8px', borderRadius: '12px', border: 'none',
+                                                            background: routineId === r.id ? r.color : 'white',
+                                                            color: routineId === r.id ? 'white' : '#AAA',
+                                                            fontWeight: 800, fontSize: '0.7rem', cursor: 'pointer',
+                                                            boxShadow: routineId === r.id ? `0 4px 12px ${r.color}40` : 'none'
+                                                        }}
+                                                    >
+                                                        {r.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}

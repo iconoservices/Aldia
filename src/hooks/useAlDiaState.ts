@@ -17,6 +17,14 @@ export interface Mission {
     labels?: string[]; // Etiquetas para categorizar
     habitId?: number; // Si es un hábito, ID de la fábrica
     projectId?: number; // Referencia opcional a un proyecto
+    repeatDays?: number[]; // Índices 0-6 (L-D) para repetición personalizada
+}
+
+export interface Routine {
+    id: number;
+    title: string; // "Mañana", "Tarde", "Noche"
+    color: string;
+    items: { id: number; text: string; completed: boolean }[];
 }
 
 export interface Transaction {
@@ -86,6 +94,7 @@ export const useAlDiaState = () => {
     const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
     const [notes, setNotes] = useState<Note[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
+    const [rutinas, setRutinas] = useState<Routine[]>([]);
 
     // 2. Manejo de Autenticación y Carga Inicial
     useEffect(() => {
@@ -107,6 +116,7 @@ export const useAlDiaState = () => {
                     if (data.timeBlocks) setTimeBlocks(data.timeBlocks);
                     if (data.notes) setNotes(data.notes);
                     if (data.projects) setProjects(data.projects);
+                    if (data.rutinas) setRutinas(data.rutinas);
                 } else {
                     // Si no hay datos en cloud, intentar migrar los locales
                     loadFromLocal();
@@ -176,6 +186,14 @@ export const useAlDiaState = () => {
             { id: 2, name: 'Personal/Life', color: '#3b82f6', status: 'activo', targetHoursPerWeek: 5 },
             { id: 3, name: 'Trabajo / Oficina', color: '#10b981', status: 'activo', targetHoursPerWeek: 40 }
         ]);
+
+        const sRutinas = localStorage.getItem('aldia_rutinas');
+        if (sRutinas) setRutinas(JSON.parse(sRutinas));
+        else setRutinas([
+            { id: 1, title: 'Rutina Mañana', color: '#f59e0b', items: [] },
+            { id: 2, title: 'Rutina Tarde', color: '#8b5cf6', items: [] },
+            { id: 3, title: 'Rutina Noche', color: '#3b82f6', items: [] }
+        ]);
     };
 
     // 3. Persistencia Unificada (Local + Cloud)
@@ -191,6 +209,7 @@ export const useAlDiaState = () => {
         localStorage.setItem('aldia_timeblocks', JSON.stringify(timeBlocks));
         localStorage.setItem('aldia_notes', JSON.stringify(notes));
         localStorage.setItem('aldia_projects', JSON.stringify(projects));
+        localStorage.setItem('aldia_rutinas', JSON.stringify(rutinas));
 
         // Borrar "old" LocalStorage keys if they were different (not needed here but good practice)
 
@@ -206,10 +225,11 @@ export const useAlDiaState = () => {
                 timeBlocks,
                 notes,
                 projects,
+                rutinas,
                 lastSync: new Date().toISOString()
             }, { merge: true });
         }
-    }, [missions, transactions, balance, habits, agenda, timeBlocks, notes, projects, user, isInitialLoad]);
+    }, [missions, transactions, balance, habits, agenda, timeBlocks, notes, projects, rutinas, user, isInitialLoad]);
 
     // 3. Acciones (Cerebro)
 
@@ -262,7 +282,7 @@ export const useAlDiaState = () => {
     };
 
     // Añadir nueva misión
-    const addMission = (text: string, q: string = 'Q2', repeat: 'none' | 'daily' | 'weekly' | 'monthly' = 'none', noteId?: number, labels: string[] = [], dueDate?: string, dueTime?: string, habitId?: number, projectId?: number) => {
+    const addMission = (text: string, q: string = 'Q2', repeat: 'none' | 'daily' | 'weekly' | 'monthly' = 'none', noteId?: number, labels: string[] = [], dueDate?: string, dueTime?: string, habitId?: number, projectId?: number, repeatDays?: number[]) => {
         const newMission: Mission = {
             id: Date.now() + Math.random(),
             text,
@@ -275,7 +295,8 @@ export const useAlDiaState = () => {
             dueDate: dueDate || new Date().toISOString().split('T')[0],
             dueTime,
             habitId,
-            projectId
+            projectId,
+            repeatDays
         };
         setMissions(prev => [newMission, ...prev]);
     };
@@ -424,6 +445,34 @@ export const useAlDiaState = () => {
                 return {
                     ...n,
                     items: n.items.map(it => it.id === itemId ? { ...it, completed: !it.completed } : it)
+                };
+            }));
+        },
+        rutinas,
+        addRoutineItem: (routineId: number, text: string) => {
+            setRutinas(prev => prev.map(r => {
+                if (r.id !== routineId) return r;
+                return {
+                    ...r,
+                    items: [...r.items, { id: Date.now() + Math.random(), text, completed: false }]
+                };
+            }));
+        },
+        toggleRoutineItem: (routineId: number, itemId: number) => {
+            setRutinas(prev => prev.map(r => {
+                if (r.id !== routineId) return r;
+                return {
+                    ...r,
+                    items: r.items.map(it => it.id === itemId ? { ...it, completed: !it.completed } : it)
+                };
+            }));
+        },
+        removeRoutineItem: (routineId: number, itemId: number) => {
+            setRutinas(prev => prev.map(r => {
+                if (r.id !== routineId) return r;
+                return {
+                    ...r,
+                    items: r.items.filter(it => it.id !== itemId)
                 };
             }));
         }
