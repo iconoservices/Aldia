@@ -41,7 +41,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
                 })}
             </div>
 
-            <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div className="header-right">
                 {canInstall && !isInstalled && (
                     <button
                         onClick={install}
