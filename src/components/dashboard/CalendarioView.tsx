@@ -122,19 +122,19 @@ export const CalendarioView = ({ agenda, timeBlocks, rutinas }: CalendarioViewPr
             </div>
 
             {/* GRID DEL CALENDARIO */}
-            <div className="glass-card" style={{ padding: '0.8rem', background: 'white', minHeight: '400px', overflowY: 'auto' }}>
+            <div className="glass-card" style={{ padding: '0.8rem', background: 'white', minHeight: '600px', overflowY: 'auto', scrollSnapType: 'y mandatory' }}>
                 {viewMode === 'week' ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr', gap: '0', maxHeight: '500px', overflowY: 'auto', position: 'relative' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr', gap: '0', maxHeight: '600px', overflowY: 'auto', position: 'relative', scrollSnapType: 'y proximity' }}>
                         {/* Horas */}
-                        <div style={{ display: 'grid', gridTemplateRows: 'repeat(24, 50px)' }}>
+                        <div style={{ display: 'grid', gridTemplateRows: 'repeat(24, 50px)', position: 'sticky', left: 0, zIndex: 20, background: 'white' }}>
                             {Array.from({ length: 24 }).map((_, i) => (
-                                <div key={i} style={{ fontSize: '0.65rem', color: '#CCC', fontWeight: 800, textAlign: 'right', paddingRight: '10px' }}>
+                                <div key={i} style={{ fontSize: '0.65rem', color: '#CCC', fontWeight: 800, textAlign: 'right', paddingRight: '10px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', scrollSnapAlign: 'start' }}>
                                     {String(i).padStart(2, '0')}:00
                                 </div>
                             ))}
                         </div>
                         {/* Columnas de Días */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: '#F9F9F9', position: 'relative' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: '#F9F9F9', position: 'relative', overflowX: 'auto', scrollSnapType: 'x mandatory' }}>
                             {/* Línea de tiempo "Ahora" */}
                             <div style={{ position: 'absolute', top: `${nowLinePos}px`, left: 0, right: 0, height: '2px', background: '#FF4D4D', zIndex: 10, pointerEvents: 'none' }}>
                                 <div style={{ position: 'absolute', left: '-5px', top: '-4px', width: '10px', height: '10px', borderRadius: '50%', background: '#FF4D4D' }} />
@@ -152,7 +152,7 @@ export const CalendarioView = ({ agenda, timeBlocks, rutinas }: CalendarioViewPr
 
                                 return (
                                     <div key={idx} style={{ background: isToday ? 'rgba(255,140,66,0.02)' : 'white', minHeight: '1200px', position: 'relative', borderRight: '1px solid #F0F0F0' }}>
-                                        <div style={{ textAlign: 'center', padding: '8px', borderBottom: isToday ? '2px solid var(--domain-orange)' : '1px solid #F0F0F0', fontWeight: 900, color: isToday ? 'var(--domain-orange)' : 'var(--text-carbon)', fontSize: '0.75rem' }}>
+                                        <div style={{ textAlign: 'center', padding: '12px 0', borderBottom: isToday ? '2px solid var(--domain-orange)' : '1px solid #F0F0F0', fontWeight: 900, color: isToday ? 'var(--domain-orange)' : 'var(--text-carbon)', fontSize: '0.75rem', position: 'sticky', top: 0, background: 'white', zIndex: 10 }}>
                                             {dayNames[idx]} {date.getDate()}
                                         </div>
                                         <div style={{ position: 'relative', height: '1200px' }}>

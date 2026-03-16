@@ -1,7 +1,8 @@
-import { CheckCircle2, ListTodo, CreditCard, Plus, Check, Trash2, Calendar, LayoutGrid, Clock } from 'lucide-react';
+import { CheckCircle2, ListTodo, CreditCard, Plus, Check, Trash2, Calendar, LayoutGrid, Clock, Edit2 } from 'lucide-react';
 import type { Habit, Routine } from '../../hooks/useAlDiaState';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
+import { RoutineEditOverlay } from '../features/RoutineEditOverlay';
 
 interface VidaProps {
     habits: Habit[];
@@ -24,6 +25,7 @@ export const VidaDashboard = ({
     updateRoutineItem, addRoutine, removeRoutine
 }: VidaProps) => {
     const [viewMode, setViewMode] = useState<'hoy' | 'semana'>('hoy');
+    const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
     const days = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
     return (
@@ -204,7 +206,15 @@ export const VidaDashboard = ({
                                                 <Trash2 size={12} color="#f87171" style={{ marginRight: '4px' }} />
                                             </div>
                                             <div>
-                                                <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{rutina.title}</h4>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{rutina.title}</h4>
+                                                    <button 
+                                                        onClick={() => setEditingRoutine(rutina)}
+                                                        style={{ background: 'transparent', border: 'none', color: '#CCC', cursor: 'pointer', padding: '4px', display: 'flex' }}
+                                                    >
+                                                        <Edit2 size={12} />
+                                                    </button>
+                                                </div>
                                                 <div style={{ display: 'flex', gap: '3px', marginTop: '4px', flexWrap: 'wrap' }}>
                                                     {days.map((day, dIdx) => {
                                                         const isSet = rutina.repeatDays?.includes(dIdx);
@@ -415,6 +425,15 @@ export const VidaDashboard = ({
                     </div>
                 </div>
             </div>
+
+            {editingRoutine && (
+                <RoutineEditOverlay 
+                    isOpen={!!editingRoutine}
+                    onClose={() => setEditingRoutine(null)}
+                    routine={editingRoutine}
+                    onSave={updateRoutine}
+                />
+            )}
         </div>
     );
 };

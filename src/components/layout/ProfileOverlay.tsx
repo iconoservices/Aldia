@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, LogOut, Edit2, Download, Share, Camera, User, RefreshCw } from 'lucide-react';
+import { X, LogOut, Download, Share, Camera, User, RefreshCw, Settings, Grid, Shield } from 'lucide-react';
 import { usePWA } from '../../hooks/usePWA';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -10,43 +10,31 @@ interface ProfileOverlayProps {
 }
 
 export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
-    const [name, setName] = useState('Usuario AlDía');
-    const [isEditing, setIsEditing] = useState(false);
-    const { isInstalled, install, canInstall } = usePWA();
     const { user, loginWithGoogle, logout, updateProfile, loading: authLoading } = useAuth();
+    const { isInstalled, install, canInstall } = usePWA();
     const [showIOSGuide, setShowIOSGuide] = useState(false);
-    const [profilePic, setProfilePic] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isUpdating, setIsUpdating] = useState(false);
 
-    useEffect(() => {
-        if (authLoading) return;
-        
-        // Prioritize Firebase data
+    // Syncing local identity for guest users (simplified)
+    const [guestName, setGuestName] = useState(() => localStorage.getItem('aldia_user_name') || 'Usuario AlDía');
+    const [guestPic, setGuestPic] = useState(() => localStorage.getItem('aldia_user_pic') || null);
+
+    const handleUpdateName = async () => {
+        const newName = prompt('Tu nombre:', user?.displayName || guestName);
+        if (!newName) return;
+
         if (user) {
-            if (user.displayName) setName(user.displayName);
-            if (user.photoURL) setProfilePic(user.photoURL);
-        } else {
-            const savedName = localStorage.getItem('aldia_user_name');
-            if (savedName) setName(savedName);
-
-            const savedPic = localStorage.getItem('aldia_user_pic');
-            if (savedPic) setProfilePic(savedPic);
-        }
-        setIsLoading(false);
-    }, [user, authLoading]);
-
-    const handleSaveName = async () => {
-        if (user) {
+            setIsUpdating(true);
             try {
-                await updateProfile({ displayName: name });
-            } catch (error) {
-                console.error("Error updating profile name:", error);
+                await updateProfile({ displayName: newName });
+            } finally {
+                setIsUpdating(false);
             }
         } else {
-            localStorage.setItem('aldia_user_name', name);
+            setGuestName(newName);
+            localStorage.setItem('aldia_user_name', newName);
             window.dispatchEvent(new Event('storage'));
         }
-        setIsEditing(false);
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,15 +43,15 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
             const reader = new FileReader();
             reader.onloadend = async () => {
                 const base64String = reader.result as string;
-                setProfilePic(base64String);
-                
                 if (user) {
+                    setIsUpdating(true);
                     try {
                         await updateProfile({ photoURL: base64String });
-                    } catch (error) {
-                        console.error("Error updating profile pic in Firebase:", error);
+                    } finally {
+                        setIsUpdating(false);
                     }
                 } else {
+                    setGuestPic(base64String);
                     localStorage.setItem('aldia_user_pic', base64String);
                     window.dispatchEvent(new Event('storage'));
                 }
@@ -73,23 +61,13 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
     };
 
     const handleInstallClick = async () => {
-        const userAgent = window.navigator.userAgent.toLowerCase();
-        const isIOS = /iphone|ipad|ipod/.test(userAgent);
-        if (isIOS) {
-            setShowIOSGuide(true);
-        } else {
-            await install();
-        }
+        const isIOS = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+        if (isIOS) setShowIOSGuide(true);
+        else await install();
     };
 
-    const handleClearCache = () => {
-        if (confirm("¿Estás seguro de que quieres borrar todos los datos locales no sincronizados? Esto no se puede deshacer.")) {
-            localStorage.removeItem('aldia_state');
-            localStorage.removeItem('aldia_user_name');
-            localStorage.removeItem('aldia_user_pic');
-            window.location.reload();
-        }
-    };
+    const displayName = user?.displayName || guestName;
+    const photoURL = user?.photoURL || guestPic;
 
     return (
         <AnimatePresence>
@@ -100,163 +78,96 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        style={{
-                            position: 'absolute',
-                            inset: 0,
-                            background: 'rgba(253, 248, 245, 0.85)',
-                            backdropFilter: 'blur(12px)'
-                        }}
+                        style={overlayBackdropStyle}
                     />
 
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        transition={{ duration: 0.3, ease: 'easeOut' }}
-                        style={{
-                            position: 'relative',
-                            width: '90%',
-                            maxWidth: '600px',
-                            margin: '4rem auto',
-                            background: 'white',
-                            borderRadius: '35px',
-                            padding: '2.5rem',
-                            boxShadow: '0 25px 80px rgba(0,0,0,0.1)',
-                            maxHeight: '85vh',
-                            overflowY: 'auto'
-                        }}
+                        initial={{ opacity: 0, y: '100%' }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: '100%' }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        style={modalContainerStyle}
                     >
-                        <button
-                            onClick={onClose}
-                            style={{
-                                position: 'absolute', top: '1.5rem', right: '1.5rem',
-                                border: 'none', background: '#f5f5f5', borderRadius: '50%',
-                                padding: '12px', cursor: 'pointer', color: '#888'
-                            }}
-                        >
-                            <X size={20} />
-                        </button>
+                        {/* Header Handle for Mobile feel */}
+                        <div style={handleStyle} />
 
-                        {(isLoading || authLoading) ? (
-                            <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem' }}>
-                                <RefreshCw size={40} className="spin-slow" color="var(--domain-orange)" />
-                                <span style={{ fontWeight: 800, color: '#AAA' }}>VERIFICANDO SESIÓN...</span>
+                        <button onClick={onClose} style={closeButtonStyle}><X size={20} /></button>
+
+                        <div style={{ padding: '2rem 1.5rem' }}>
+                            {/* Profile Section */}
+                            <div style={profileHeaderStyle}>
+                                <div style={avatarWrapperStyle}>
+                                    <div style={{ ...avatarStyle, backgroundImage: photoURL ? `url(${photoURL})` : 'none' }}>
+                                        {!photoURL && <User size={40} color="#AAA" />}
+                                        {(authLoading || isUpdating) && (
+                                            <div style={avatarOverlayStyle}><RefreshCw size={24} className="spin-slow" color="white" /></div>
+                                        )}
+                                    </div>
+                                    <label style={cameraButtonStyle}>
+                                        <Camera size={16} />
+                                        <input type="file" hidden accept="image/*" onChange={handleFileChange} />
+                                    </label>
+                                </div>
+
+                                <h2 onClick={handleUpdateName} style={nameStyle}>{displayName}</h2>
+                                <p style={versionStyle}>Mi Mente Digital v1.1.0</p>
                             </div>
-                        ) : (
-                            <>
-                                <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-                                    <div style={{ position: 'relative', width: '110px', height: '110px', margin: '0 auto 1.5rem' }}>
-                                        <div style={{
-                                            width: '100%', height: '100%', borderRadius: '35%',
-                                            background: '#f0f0f0', border: '4px solid var(--domain-orange)',
-                                            overflow: 'hidden', display: 'flex', alignItems: 'center',
-                                            justifyContent: 'center', backgroundSize: 'cover',
-                                            backgroundImage: profilePic ? `url(${profilePic})` : 'none'
-                                        }}>
-                                            {!profilePic && <User size={50} color="#CCC" />}
-                                        </div>
-                                        <label style={{
-                                            position: 'absolute', bottom: '-5px', right: '-5px',
-                                            background: 'var(--domain-orange)', color: 'white',
-                                            padding: '8px', borderRadius: '50%', cursor: 'pointer',
-                                            boxShadow: '0 4px 10px rgba(0,0,0,0.2)', display: 'flex'
-                                        }}>
-                                            <Camera size={18} />
-                                            <input type="file" hidden accept="image/*" onChange={handleFileChange} />
-                                        </label>
-                                    </div>
 
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                                        {isEditing ? (
-                                            <input
-                                                value={name}
-                                                onChange={(e) => setName(e.target.value)}
-                                                onBlur={handleSaveName}
-                                                onKeyPress={(e) => e.key === 'Enter' && handleSaveName()}
-                                                autoFocus
-                                                style={{
-                                                    fontSize: '1.8rem', fontWeight: '900', color: 'var(--text-carbon)',
-                                                    border: 'none', borderBottom: '2px solid var(--domain-orange)',
-                                                    textAlign: 'center', outline: 'none', width: 'auto',
-                                                }}
-                                            />
-                                        ) : (
-                                            <>
-                                                <h2 style={{ fontSize: '1.8rem', fontWeight: '900', color: 'var(--text-carbon)', margin: 0 }}>{name}</h2>
-                                                <button onClick={() => setIsEditing(true)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#CCC' }}>
-                                                    <Edit2 size={18} />
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
-                                    <p style={{ color: '#888', fontWeight: '600' }}>Mi Mente Digital v1.1.0</p>
+                            {/* Action Cards */}
+                            <div style={actionGridStyle}>
+                                <div onClick={handleUpdateName} style={actionCardStyle}>
+                                    <Grid size={20} color="var(--domain-orange)" />
+                                    <span>Editar Perfil</span>
                                 </div>
-
-                                <div style={{ display: 'grid', gap: '1.5rem' }}>
-                                    {canInstall && !isInstalled && (
-                                        <div className="settings-group">
-                                            <h4 style={{ color: '#CCC', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '10px' }}>App Nativa</h4>
-                                            <button onClick={handleInstallClick} style={{ ...settingItemStyle, background: 'var(--domain-orange)', color: 'white' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                    <Download size={20} />
-                                                    <span>Instalar AlDía</span>
-                                                </div>
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    <div className="settings-group">
-                                        <h4 style={{ color: '#CCC', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '10px' }}>Conectividad</h4>
-                                        <div style={{ display: 'grid', gap: '0.8rem' }}>
-                                            {!user ? (
-                                                <button onClick={loginWithGoogle} style={{ ...settingItemStyle, background: 'var(--domain-orange)', color: 'white' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                        <User size={20} />
-                                                        <span>Conectar con Google Cloud</span>
-                                                    </div>
-                                                </button>
-                                            ) : (
-                                                <div style={{ ...settingItemStyle, background: '#F0F7FF', cursor: 'default', border: '1px solid #BEE3F8' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--domain-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: 'white' }}>✓</div>
-                                                        <div>
-                                                            <span style={{ display: 'block' }}>Google Cloud Activo</span>
-                                                            <span style={{ fontSize: '0.7rem', color: '#666', fontWeight: '500' }}>{user.email}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            <button style={settingItemStyle}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                    <Calendar size={20} color="var(--domain-orange)" />
-                                                    <span>Sincronizar Calendario</span>
-                                                </div>
-                                                <span style={{ fontSize: '0.7rem', color: '#888' }}>PRÓXIMAMENTE</span>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="settings-group">
-                                        <h4 style={{ color: '#CCC', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '10px' }}>General</h4>
-                                        {user ? (
-                                            <button onClick={logout} style={{ ...settingItemStyle, color: '#f87171' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                    <LogOut size={20} />
-                                                    <span>Cerrar Sesión</span>
-                                                </div>
-                                            </button>
-                                        ) : (
-                                            <button onClick={handleClearCache} style={{ ...settingItemStyle, color: '#f87171' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                    <LogOut size={20} />
-                                                    <span>Limpiar caché local</span>
-                                                </div>
-                                            </button>
-                                        )}
-                                    </div>
+                                <div onClick={() => alert('Próximamente...')} style={actionCardStyle}>
+                                    <Shield size={20} color="var(--domain-purple)" />
+                                    <span>Seguridad</span>
                                 </div>
-                            </>
-                        )}
+                            </div>
+
+                            {/* Settings List */}
+                            <div style={settingsListStyle}>
+                                {canInstall && !isInstalled && (
+                                    <button onClick={handleInstallClick} style={settingButtonStyle}>
+                                        <div style={settingIconWrapper(true)}><Download size={18} /></div>
+                                        <span style={{ flex: 1, textAlign: 'left' }}>Instalar App Nativa</span>
+                                        <div style={badgeStyle}>NUEVO</div>
+                                    </button>
+                                )}
+
+                                {!user ? (
+                                    <button onClick={loginWithGoogle} style={settingButtonStyle}>
+                                        <div style={settingIconWrapper()}><User size={18} /></div>
+                                        <span style={{ flex: 1, textAlign: 'left' }}>Conectar Google Cloud</span>
+                                    </button>
+                                ) : (
+                                    <div style={activeSessionStyle}>
+                                        <div style={settingIconWrapper(false, true)}><Shield size={18} /></div>
+                                        <div style={{ flex: 1 }}>
+                                            <p style={sessionTitleStyle}>Google Sync Activo</p>
+                                            <p style={sessionEmailStyle}>{user.email}</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <button onClick={() => alert('Próximamente')} style={settingButtonStyle}>
+                                    <div style={settingIconWrapper()}><Settings size={18} /></div>
+                                    <span style={{ flex: 1, textAlign: 'left' }}>Preferencias</span>
+                                </button>
+
+                                <div style={{ marginTop: '1rem', borderTop: '1px solid #EEE', paddingTop: '1rem' }}>
+                                    <button onClick={user ? logout : () => {
+                                        if(confirm("¿Borrar caché local?")) {
+                                            localStorage.clear();
+                                            window.location.reload();
+                                        }
+                                    }} style={{ ...settingButtonStyle, color: '#f87171' }}>
+                                        <div style={{ ...settingIconWrapper(), background: '#FEF2F2', color: '#f87171' }}><LogOut size={18} /></div>
+                                        <span style={{ flex: 1, textAlign: 'left' }}>{user ? 'Cerrar Sesión' : 'Limpiar Datos'}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </motion.div>
                 </div>
             )}
@@ -264,28 +175,21 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
             <AnimatePresence>
                 {showIOSGuide && (
                     <div style={iosOverlayStyle}>
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            style={iosModalStyle}
-                        >
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} style={iosModalStyle}>
                             <span style={{ fontSize: '3rem' }}>🍎</span>
-                            <h2 style={{ fontSize: '1.4rem', fontWeight: '900', margin: '1rem 0', color: 'var(--domain-orange)' }}>Instalar en iPhone</h2>
-                            <p style={{ fontSize: '0.95rem', color: '#666', lineHeight: 1.6, marginBottom: '1.5rem' }}>
-                                Para llevar **AlDía** en tu pantalla de inicio:
-                            </p>
+                            <h2 style={iosTitleStyle}>Instalar en iPhone</h2>
+                            <p style={iosTextStyle}>Para llevar **AlDía** en tu pantalla de inicio:</p>
                             <div style={guideBoxStyle}>
                                 <div style={guideItemStyle}>
                                     <div style={numberCircleStyle}>1</div>
-                                    <p style={{ margin: 0 }}>Toca el icono <b>Compartir</b> <Share size={18} style={{ verticalAlign: 'middle', margin: '0 4px', display: 'inline' }} /> abajo.</p>
+                                    <p style={{ margin: 0 }}>Toca <b>Compartir</b> <Share size={18} style={{ verticalAlign: 'middle' }} />.</p>
                                 </div>
                                 <div style={guideItemStyle}>
                                     <div style={numberCircleStyle}>2</div>
                                     <p style={{ margin: 0 }}>Elige <b>"Agregar a inicio"</b> (+).</p>
                                 </div>
                             </div>
-                            <button onClick={() => setShowIOSGuide(false)} style={closeBtnStyle}>¡ENTENDIDO! 🚀</button>
+                            <button onClick={() => setShowIOSGuide(false)} style={closeIOSButtonStyle}>¡ENTENDIDO!</button>
                         </motion.div>
                     </div>
                 )}
@@ -294,24 +198,32 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
     );
 };
 
-const settingItemStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '1.2rem',
-    background: '#F9F9F9',
-    border: 'none',
-    borderRadius: '18px',
-    cursor: 'pointer',
-    width: '100%',
-    fontWeight: '700',
-    fontSize: '0.9rem',
-    color: 'var(--text-carbon)'
-};
-
-const iosOverlayStyle: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(253, 248, 245, 0.95)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' };
-const iosModalStyle: React.CSSProperties = { background: 'white', maxWidth: '360px', width: '100%', borderRadius: '40px', padding: '3rem 2rem', textAlign: 'center', boxShadow: '0 30px 70px rgba(0,0,0,0.15)' };
-const guideBoxStyle: React.CSSProperties = { textAlign: 'left', background: '#F9F9F9', padding: '1.5rem', borderRadius: '24px', marginBottom: '2rem' };
-const guideItemStyle: React.CSSProperties = { display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '1rem' };
-const numberCircleStyle: React.CSSProperties = { width: '24px', height: '24px', borderRadius: '50%', background: 'var(--domain-orange)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: '800', flexShrink: 0, marginTop: '2px' };
-const closeBtnStyle: React.CSSProperties = { width: '100%', padding: '1rem', borderRadius: '18px', background: 'var(--text-carbon)', color: 'white', fontWeight: '900', border: 'none', cursor: 'pointer', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' };
+// Styles
+const overlayBackdropStyle: React.CSSProperties = { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.15)', backdropFilter: 'blur(8px)' };
+const modalContainerStyle: React.CSSProperties = { position: 'absolute', bottom: 0, left: 0, right: 0, background: 'white', borderRadius: '40px 40px 0 0', boxShadow: '0 -20px 60px rgba(0,0,0,0.1)', maxWidth: '500px', margin: '0 auto', maxHeight: '90vh', overflowY: 'auto' };
+const handleStyle: React.CSSProperties = { width: '40px', height: '4px', background: '#DDD', borderRadius: '2px', margin: '0.8rem auto 0' };
+const closeButtonStyle: React.CSSProperties = { position: 'absolute', top: '1.2rem', right: '1.2rem', border: 'none', background: '#F5F5F5', padding: '10px', borderRadius: '50%', cursor: 'pointer', color: '#666' };
+const profileHeaderStyle: React.CSSProperties = { textAlign: 'center', marginBottom: '2rem' };
+const avatarWrapperStyle: React.CSSProperties = { position: 'relative', width: '100px', height: '100px', margin: '0 auto 1.2rem' };
+const avatarStyle: React.CSSProperties = { width: '100%', height: '100%', borderRadius: '35%', background: '#F9F9F9', border: '3px solid var(--domain-orange)', backgroundSize: 'cover', backgroundPosition: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' };
+const avatarOverlayStyle: React.CSSProperties = { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const cameraButtonStyle: React.CSSProperties = { position: 'absolute', bottom: '-5px', right: '-5px', background: 'var(--domain-orange)', color: 'white', padding: '8px', borderRadius: '50%', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', display: 'flex' };
+const nameStyle: React.CSSProperties = { fontSize: '1.6rem', fontWeight: 900, color: 'var(--text-carbon)', margin: 0, cursor: 'pointer' };
+const versionStyle: React.CSSProperties = { fontSize: '0.75rem', fontWeight: 750, color: '#AAA', marginTop: '4px' };
+const actionGridStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' };
+const actionCardStyle: React.CSSProperties = { background: '#FDF8F5', padding: '1.2rem', borderRadius: '24px', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'pointer', fontWeight: 800, fontSize: '0.85rem' };
+const settingsListStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.5rem' };
+const settingButtonStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'transparent', border: 'none', width: '100%', cursor: 'pointer', fontSize: '1rem', fontWeight: 750, color: 'var(--text-carbon)', borderRadius: '16px', transition: 'background 0.2s' };
+const settingIconWrapper = (orange = false, green = false): React.CSSProperties => ({ width: '40px', height: '40px', borderRadius: '12px', background: orange ? '#FFF7ED' : (green ? '#F0FDF4' : '#F5F5F5'), color: orange ? 'var(--domain-orange)' : (green ? 'var(--domain-green)' : '#666'), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 });
+const badgeStyle: React.CSSProperties = { background: 'var(--domain-orange)', color: 'white', fontSize: '0.6rem', padding: '2px 8px', borderRadius: '6px', fontWeight: 900 };
+const activeSessionStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: '#F8FAFC', borderRadius: '16px', border: '1px solid #E2E8F0' };
+const sessionTitleStyle: React.CSSProperties = { fontSize: '0.9rem', fontWeight: 800, margin: 0, color: 'var(--domain-green)' };
+const sessionEmailStyle: React.CSSProperties = { fontSize: '0.75rem', color: '#666', margin: 0, fontWeight: 600 };
+const iosOverlayStyle: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', background: 'rgba(0,0,0,0.4)' };
+const iosModalStyle: React.CSSProperties = { background: 'white', maxWidth: '360px', width: '100%', borderRadius: '40px', padding: '2.5rem 2rem', textAlign: 'center' };
+const iosTitleStyle: React.CSSProperties = { fontSize: '1.5rem', fontWeight: 900, marginBottom: '0.5rem' };
+const iosTextStyle: React.CSSProperties = { fontSize: '0.9rem', color: '#666', marginBottom: '1.5rem' };
+const guideBoxStyle: React.CSSProperties = { textAlign: 'left', background: '#F9F9F9', padding: '1.5rem', borderRadius: '24px', marginBottom: '1.5rem' };
+const guideItemStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '0.8rem' };
+const numberCircleStyle: React.CSSProperties = { width: '22px', height: '22px', borderRadius: '50%', background: 'var(--domain-orange)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 900 };
+const closeIOSButtonStyle: React.CSSProperties = { width: '100%', padding: '1rem', borderRadius: '16px', background: 'var(--text-carbon)', color: 'white', border: 'none', fontWeight: 900, cursor: 'pointer', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' };

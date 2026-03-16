@@ -97,7 +97,8 @@ function App() {
                         text: item.text,
                         completed: item.completed,
                         dueTime: item.time || r.startTime,
-                        q: 'Q2',
+                        q: 'Q2' as const,
+                        repeat: 'none' as const,
                         isRoutine: true,
                         routineId: r.id
                       })));
@@ -106,7 +107,8 @@ function App() {
                       id: h.id,
                       text: h.name,
                       completed: h.completedDays.includes(todayIndex),
-                      q: 'Q2',
+                      q: 'Q2' as const,
+                      repeat: 'none' as const,
                       isHabit: true,
                       habitCount: h.completedDays.length
                     }));
@@ -115,7 +117,7 @@ function App() {
                       ...state.missions.filter(m => !m.dueDate || m.dueDate <= today),
                       ...routineMissions,
                       ...habitMissions
-                    ];
+                    ] as Mission[];
 
                     return (
                       <MissionList
@@ -125,7 +127,20 @@ function App() {
                         toggleRoutineItem={state.toggleRoutineItem}
                         onOpenNote={setViewingNoteId}
                         onEditMission={setEditingMission}
-                        removeMission={state.removeMission}
+                        removeMission={(id) => {
+                          const mission = filteredMissions.find(m => m.id === id);
+                          if (mission?.isRoutine) {
+                            if (confirm('¿Eliminar esta tarea de la rutina?')) {
+                              state.removeRoutineItem(mission.routineId!, id);
+                            }
+                          } else if (mission?.isHabit) {
+                            if (confirm('¿Eliminar este hábito por completo?')) {
+                              state.removeHabit(id);
+                            }
+                          } else {
+                            state.removeMission(id);
+                          }
+                        }}
                         title="Misiones"
                         onTimelineClick={() => setIsTimelineOpen(true)}
                         projects={state.projects}
