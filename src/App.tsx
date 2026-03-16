@@ -99,6 +99,7 @@ function App() {
                         dueTime: item.time || r.startTime,
                         q: 'Q2' as const,
                         repeat: 'none' as const,
+                        critical: false as const,
                         isRoutine: true,
                         routineId: r.id
                       })));
@@ -109,6 +110,7 @@ function App() {
                       completed: h.completedDays.includes(todayIndex),
                       q: 'Q2' as const,
                       repeat: 'none' as const,
+                      critical: false as const,
                       isHabit: true,
                       habitCount: h.completedDays.length
                     }));
@@ -121,7 +123,7 @@ function App() {
 
                     return (
                       <MissionList
-                        missions={filteredMissions as any}
+                        missions={filteredMissions}
                         toggleMission={state.toggleMission}
                         toggleHabit={state.toggleHabit}
                         toggleRoutineItem={state.toggleRoutineItem}

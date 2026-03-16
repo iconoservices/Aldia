@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, LogOut, Download, Share, Camera, User, RefreshCw, Settings, Grid, Shield } from 'lucide-react';
 import { usePWA } from '../../hooks/usePWA';
