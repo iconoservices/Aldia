@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { JoyMatrixModal } from '../features/JoyMatrixModal';
-import { Repeat, Link, Calendar, Clock, Edit2, Trash2 } from 'lucide-react';
+import { Repeat, Calendar, Clock, Edit2, Trash2 } from 'lucide-react';
 import type { Mission, Project } from '../../hooks/useAlDiaState';
 
 interface MissionListProps {
@@ -22,7 +22,7 @@ interface MissionListProps {
 }
 
 export const MissionList = ({ 
-    missions, toggleMission, toggleHabit, toggleRoutineItem, onOpenNote, onEditMission, removeMission,
+    missions, toggleMission, toggleHabit, toggleRoutineItem, onEditMission, removeMission,
     title = 'Tareas', showTimeBlock = true, showMatrixLinks = true, 
     hideOnEmpty = false, onTimelineClick, projects = [] 
 }: MissionListProps) => {
