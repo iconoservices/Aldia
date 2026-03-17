@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { auth, googleProvider } from '../firebase';
 import { 
-    signInWithRedirect, 
+    signInWithPopup, 
     signOut, 
     onAuthStateChanged, 
-    getRedirectResult,
     updateProfile,
     type User 
 } from 'firebase/auth';
@@ -14,15 +13,10 @@ export const useAuth = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // 1. Listen for auth state changes
+        // Listen for auth state changes
         const unsubscribe = onAuthStateChanged(auth, (u) => {
             setUser(u);
             setLoading(false);
-        });
-
-        // 2. Check for redirect result (important for loginWithRedirect)
-        getRedirectResult(auth).catch((error) => {
-            console.error("Error recovering from Google Redirect:", error);
         });
 
         return unsubscribe;
@@ -30,8 +24,8 @@ export const useAuth = () => {
 
     const loginWithGoogle = async () => {
         try {
-            // signInWithRedirect is much better for mobile/PWAs
-            await signInWithRedirect(auth, googleProvider);
+            // signInWithPopup is more reliable for development and matches Selvaflix
+            await signInWithPopup(auth, googleProvider);
         } catch (error) {
             console.error("Error starting Google Login:", error);
             alert("Error al iniciar sesión: " + (error instanceof Error ? error.message : "Desconocido"));
