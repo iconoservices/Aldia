@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged, type User } from 'firebase/auth';
+import { useFinanzasState } from './state/useFinanzasState';
+import { useMisionesState } from './state/useMisionesState';
+import { useProyectosState } from './state/useProyectosState';
+import { useCerebroState } from './state/useCerebroState';
 
 // Tipos de datos
 export interface Mission {
@@ -22,6 +26,7 @@ export interface Mission {
     routineId?: number; // Referencia a la rutina de origen
     isHabit?: boolean; // Para identificar habitos en la lista de misiones
     habitCount?: number; // Para mostrar cuántas veces se ha completado el hábito
+    uid?: string; // ID único para renderizado (evitar colisiones)
 }
 
 export interface Routine {
@@ -104,17 +109,35 @@ export const useAlDiaState = () => {
     const [isInitialLoad, setIsInitialLoad] = useState(true);
 
     // 1. Estados Iniciales
-    const [missions, setMissions] = useState<Mission[]>([]);
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
-    const [balance, setBalance] = useState(4250.00);
-    const [habits, setHabits] = useState<Habit[]>([]);
-    const [agenda, setAgenda] = useState<CalendarEvent[]>([]);
-    const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
-    const [notes, setNotes] = useState<Note[]>([]);
-    const [projects, setProjects] = useState<Project[]>([]);
-    const [rutinas, setRutinas] = useState<Routine[]>([]);
-    const [monthlyBudget, setMonthlyBudget] = useState<number>(0);
-    const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
+    
+    // Módulos Modularizados
+    const { 
+        transactions, setTransactions, balance, setBalance, 
+        monthlyBudget, setMonthlyBudget, fixedExpenses, setFixedExpenses,
+        addTransaction, addFixedExpense, removeFixedExpense, toggleFixedExpense, 
+        updateFixedExpense, todayIncome, todayExpense, debtsOwe, debtsOwed 
+    } = useFinanzasState();
+
+    const {
+        missions: misionesState, setMissions: setMisionesDirect,
+        habits, setHabits, agenda, setAgenda,
+        toggleMission, updateMission, removeMission, addMission,
+        toggleHabit, addHabit, removeHabit, addCalendarEvent,
+        performanceScore, missionFocusScore, completedMissionsCount
+    } = useMisionesState();
+    
+    const {
+        projects, setProjects, timeBlocks, setTimeBlocks, rutinas, setRutinas,
+        addProject, addProjectTask, toggleProjectTask, removeProjectTask,
+        promoteTaskToRoutine, updateProject, deleteProject,
+        addTimeBlock, removeTimeBlock,
+        addRoutineItem, updateRoutineItem, toggleRoutineItem, removeRoutineItem,
+        updateRoutine, addRoutine, removeRoutine
+    } = useProyectosState();
+
+    const {
+        notes, setNotes, addNote, removeNote, toggleNoteItem
+    } = useCerebroState();
 
     // 2. Manejo de Autenticación y Carga Inicial
     useEffect(() => {
@@ -132,7 +155,7 @@ export const useAlDiaState = () => {
                     // Lógica de "Mezcla" (Merge): Priorizar Cloud, pero si falta algo, usar Local
                     const localData = getLocalBackup();
 
-                    setMissions(data.missions || localData.missions);
+                    setMisionesDirect(data.missions || localData.missions);
                     setTransactions(data.transactions || localData.transactions);
                     setBalance(data.balance !== undefined ? data.balance : localData.balance);
                     setHabits(data.habits || localData.habits);
@@ -159,8 +182,8 @@ export const useAlDiaState = () => {
 
     const loadFromLocal = () => {
         const sMissions = localStorage.getItem('aldia_missions');
-        if (sMissions) setMissions(JSON.parse(sMissions));
-        else setMissions([
+        if (sMissions) setMisionesDirect(JSON.parse(sMissions));
+        else setMisionesDirect([
             { id: 1, text: 'Pagar Luz (Vence Hoy)', q: 'Q1', critical: true, completed: false, repeat: 'monthly' },
             { id: 2, text: 'Terminar maquetación AlDía', q: 'Q2', critical: false, completed: false, repeat: 'none' },
             { id: 3, text: 'Diseñar Menú Radial (+)', q: 'Q2', critical: false, completed: false, repeat: 'none' },
@@ -261,7 +284,7 @@ export const useAlDiaState = () => {
         if (isInitialLoad) return;
 
         // Siempre guardar en LocalStorage por seguridad / offline
-        localStorage.setItem('aldia_missions', JSON.stringify(missions));
+        localStorage.setItem('aldia_missions', JSON.stringify(misionesState));
         localStorage.setItem('aldia_transactions', JSON.stringify(transactions));
         localStorage.setItem('aldia_balance', JSON.stringify(balance));
         localStorage.setItem('aldia_habits', JSON.stringify(habits));
@@ -279,7 +302,7 @@ export const useAlDiaState = () => {
         if (user) {
             const docRef = doc(db, 'users', user.uid);
             setDoc(docRef, {
-                missions,
+                missions: misionesState,
                 transactions,
                 balance,
                 habits,
@@ -293,372 +316,70 @@ export const useAlDiaState = () => {
                 lastSync: new Date().toISOString()
             }, { merge: true });
         }
-    }, [missions, transactions, balance, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, user, isInitialLoad]);
+    }, [misionesState, transactions, balance, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, user, isInitialLoad]);
 
-    // 3. Acciones (Cerebro)
-
-    // Girar misiones (completar/deshacer)
-    const toggleMission = (id: number) => {
-        setMissions(prev => {
-            const mission = prev.find(m => m.id === id);
-            if (!mission) return prev;
-
-            const isCompleting = !mission.completed;
-            let updated = prev.map(m => m.id === id ? { ...m, completed: isCompleting } : m);
-
-            // Si se está completando y es repetitiva, crear la siguiente instancia
-            if (isCompleting && mission.repeat !== 'none') {
-                let nextDate = mission.dueDate ? new Date(mission.dueDate + 'T12:00:00') : new Date();
-                
-                if (mission.repeat === 'daily') {
-                    nextDate.setDate(nextDate.getDate() + 1);
-                } else if (mission.repeat === 'weekly') {
-                    nextDate.setDate(nextDate.getDate() + 7);
-                } else if (mission.repeat === 'monthly') {
-                    nextDate.setMonth(nextDate.getMonth() + 1);
-                }
-
-                const newInstance: Mission = {
-                    ...mission,
-                    id: Date.now() + Math.random(),
-                    completed: false,
-                    dueDate: nextDate.toISOString().split('T')[0]
-                };
-                updated = [newInstance, ...updated];
-            }
-
-            return updated;
-        });
-    };
-
-    const updateMission = (id: number, updates: Partial<Mission>) => {
-        setMissions(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
-    };
-
-    const removeMission = (id: number) => {
-        setMissions(prev => prev.filter(m => m.id !== id));
-    };
-
-    // Girar hábito para un día específico
-    const toggleHabit = (habitId: number, dayIndex: number) => {
-        setHabits(prev => prev.map(h => {
-            if (h.id !== habitId) return h;
-            const alreadyCompleted = h.completedDays.includes(dayIndex);
-            return {
-                ...h,
-                completedDays: alreadyCompleted
-                    ? h.completedDays.filter(d => d !== dayIndex)
-                    : [...h.completedDays, dayIndex]
-            };
-        }));
-    };
-
-    // Añadir nueva misión
-    const addMission = (text: string, q: string = 'Q2', repeat: 'none' | 'daily' | 'weekly' | 'monthly' = 'none', noteId?: number, labels: string[] = [], dueDate?: string, dueTime?: string, habitId?: number, projectId?: number, repeatDays?: number[]) => {
-        const newMission: Mission = {
-            id: Date.now() + Math.random(),
-            text,
-            q,
-            critical: q === 'Q1',
-            completed: false,
-            repeat,
-            noteId,
-            labels,
-            dueDate: dueDate || new Date().toISOString().split('T')[0],
-            dueTime,
-            habitId,
-            projectId,
-            repeatDays
-        };
-        setMissions(prev => [newMission, ...prev]);
-    };
-
-    // Añadir cita a la agenda
-    const addCalendarEvent = (title: string, date: string, startTime: string, endTime: string, description: string, projectId?: number) => {
-        const newEvent: CalendarEvent = {
-            id: Date.now() + Math.random(),
-            title,
-            date,
-            startTime,
-            endTime,
-            description,
-            projectId
-        };
-        setAgenda(prev => [...prev, newEvent].sort((a, b) => {
-            if (a.date !== b.date) return a.date.localeCompare(b.date);
-            return a.startTime.localeCompare(b.startTime);
-        }));
-    };
-
-    // Añadir nuevo hábito
-    const addHabit = (name: string) => {
-        const newHabit: Habit = {
-            id: Date.now() + Math.random(),
-            name,
-            completedDays: []
-        };
-        setHabits(prev => [newHabit, ...prev]);
-    };
-
-    // Registrar dinero
-    const addTransaction = (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number) => {
-        const value = Math.abs(amount);
-
-        // Si no es deuda, impacta el balance real ahora
-        if (!isDebt) {
-            setBalance(prev => type === 'ingreso' ? prev + value : prev - value);
-        }
-
-        const newTx: Transaction = {
-            id: Date.now() + Math.random(),
-            text,
-            amount: type === 'ingreso' ? value : -value,
-            type,
-            isDebt,
-            date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            fullDate: new Date().toISOString().split('T')[0],
-            projectId
-        };
-        setTransactions(prev => [newTx, ...prev]);
-    };
-
-    // Cálculo de métricas
+    // 3. Lógica Derivada (Calculada)
     const todayStr = new Date().toISOString().split('T')[0];
+    const todayIndex = (new Date().getDay() + 6) % 7; // 0=Mon, 6=Sun
 
-    const todayIncome = transactions
-        .filter(t => t.type === 'ingreso' && !t.isDebt && t.fullDate === todayStr)
-        .reduce((acc, t) => acc + t.amount, 0);
+    const routineMissions = (rutinas || [])
+        .filter(r => r.isActive && r.repeatDays?.includes(todayIndex))
+        .flatMap(r => (r.items || []).map(item => ({
+            id: item.id,
+            uid: `routine-${r.id}-${item.id}`,
+            text: item.text,
+            completed: item.completed,
+            dueTime: item.time || r.startTime,
+            q: 'Q2' as const,
+            repeat: 'none' as const,
+            critical: false as const,
+            isRoutine: true,
+            routineId: r.id
+        })));
 
-    const todayExpense = transactions
-        .filter(t => t.type === 'gasto' && !t.isDebt && t.fullDate === todayStr)
-        .reduce((acc, t) => acc + Math.abs(t.amount), 0);
+    const habitMissions = (habits || []).map(h => ({
+        id: h.id,
+        uid: `habit-${h.id}`,
+        text: h.name,
+        completed: (h.completedDays || []).includes(todayIndex),
+        q: 'Q2' as const,
+        repeat: 'none' as const,
+        critical: false as const,
+        isHabit: true,
+        habitCount: (h.completedDays || []).length
+    }));
 
-    const debtsOwe = transactions
-        .filter(t => t.type === 'gasto' && t.isDebt)
-        .reduce((acc, t) => acc + Math.abs(t.amount), 0);
+    const todayMissions = [
+        ...(misionesState || []).filter(m => !m.dueDate || m.dueDate <= todayStr).map(m => ({ ...m, uid: `task-${m.id}` })),
+        ...routineMissions,
+        ...habitMissions
+    ] as Mission[];
 
-    const debtsOwed = transactions
-        .filter(t => t.type === 'ingreso' && t.isDebt)
-        .reduce((acc, t) => acc + t.amount, 0);
-
-    const completedMissionsCount = missions.filter(m => m.completed).length;
-    const totalMissionsCount = missions.length;
-    const missionFocusScore = totalMissionsCount > 0 ? (completedMissionsCount / totalMissionsCount) * 100 : 0;
-
-    const habitPerformance = habits.length > 0
-        ? (habits.reduce((acc, h) => acc + h.completedDays.length, 0) / (habits.length * 7)) * 100
-        : 0;
-
-    const performanceScore = (missionFocusScore + habitPerformance) / 2;
-
+    // 4. Acciones (Consolidadas)
     return {
-        missions,
-        toggleMission,
-        updateMission,
-        addMission,
-        removeMission,
-        transactions,
-        addTransaction,
-        balance,
-        todayIncome,
-        todayExpense,
-        debtsOwe,
-        debtsOwed,
-        habits,
-        toggleHabit,
-        performanceScore,
-        missionFocusScore,
-        completedMissionsCount,
-        addHabit,
-        removeHabit: (id: number) => {
-            setHabits(prev => prev.filter(h => h.id !== id));
-        },
-        agenda,
-        addCalendarEvent,
-        timeBlocks,
-        addTimeBlock: (label: string, start: string, end: string, color: string, projectId?: number) => {
-            const newBlock: TimeBlock = { id: Date.now(), label, start, end, color, projectId };
-            setTimeBlocks(prev => [...prev, newBlock].sort((a,b) => a.start.localeCompare(b.start)));
-        },
-        removeTimeBlock: (id: number) => {
-            setTimeBlocks(prev => prev.filter(b => b.id !== id));
-        },
-        projects,
-        addProject: (name: string, color: string, targetHoursPerWeek?: number) => {
-            const newProject: Project = { 
-                id: Date.now() + Math.random(), 
-                name, 
-                color, 
-                status: 'activo',
-                targetHoursPerWeek,
-                checklist: []
-            };
-            setProjects(prev => [newProject, ...prev]);
-        },
-        addProjectTask: (projectId: number, text: string) => {
-            setProjects(prev => {
-                if (!Array.isArray(prev)) return [];
-                return prev.map(p => {
-                    if (p.id !== projectId) return p;
-                    const newTask = { id: Date.now() + Math.random(), text, completed: false };
-                    const currentChecklist = Array.isArray(p.checklist) ? p.checklist : [];
-                    return { ...p, checklist: [...currentChecklist, newTask] };
-                });
-            });
-        },
-        toggleProjectTask: (projectId: number, taskId: number) => {
-            setProjects(prev => {
-                if (!Array.isArray(prev)) return [];
-                return prev.map(p => {
-                    if (p.id !== projectId) return p;
-                    const currentChecklist = Array.isArray(p.checklist) ? p.checklist : [];
-                    return {
-                        ...p,
-                        checklist: currentChecklist.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t)
-                    };
-                });
-            });
-        },
-        removeProjectTask: (projectId: number, taskId: number) => {
-            setProjects(prev => {
-                if (!Array.isArray(prev)) return [];
-                return prev.map(p => {
-                    if (p.id !== projectId) return p;
-                    const currentChecklist = Array.isArray(p.checklist) ? p.checklist : [];
-                    return {
-                        ...p,
-                        checklist: currentChecklist.filter(t => t.id !== taskId)
-                    };
-                });
-            });
-        },
-        promoteTaskToRoutine: (projectId: number, taskId: number, routineId: number) => {
-            const project = projects.find(p => p.id === projectId);
-            const task = project?.checklist?.find(t => t.id === taskId);
-            
-            if (task) {
-                // Añadir a la rutina
-                setRutinas(prev => prev.map(r => {
-                    if (r.id !== routineId) return r;
-                    return {
-                        ...r,
-                        items: [...r.items, { id: Date.now() + Math.random(), text: task.text, completed: false }]
-                    };
-                }));
-                // Eliminar del proyecto si se desea (o dejarlo marcado, pero según el plan es promoverlo/moverlo)
-                setProjects(prev => prev.map(p => {
-                    if (p.id !== projectId) return p;
-                    return {
-                        ...p,
-                        checklist: (p.checklist || []).filter(t => t.id !== taskId)
-                    };
-                }));
-            }
-        },
-        updateProject: (id: number, updates: Partial<Project>) => {
-            setProjects(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
-        },
-        deleteProject: (id: number) => {
-            setProjects(prev => prev.filter(p => p.id !== id));
-        },
-        notes,
-        addNote: (title: string, content: string, type: 'text' | 'checklist', items: { text: string; completed: boolean }[], q: string, color: string) => {
-            const newNote: Note = {
-                id: Date.now(),
-                title: title || 'Sin Título',
-                content,
-                type,
-                items: items.map((it, idx) => ({ id: Date.now() + idx, ...it })),
-                q,
-                color,
-                date: new Date().toISOString()
-            };
-            setNotes(prev => [newNote, ...prev]);
-        },
-        removeNote: (id: number) => {
-            setNotes(prev => prev.filter(n => n.id !== id));
-        },
-        toggleNoteItem: (noteId: number, itemId: number) => {
-            setNotes(prev => prev.map(n => {
-                if (n.id !== noteId) return n;
-                return {
-                    ...n,
-                    items: n.items.map(it => it.id === itemId ? { ...it, completed: !it.completed } : it)
-                };
-            }));
-        },
-        rutinas,
-        addRoutineItem: (routineId: number, text: string, time?: string) => {
-            setRutinas(prev => prev.map(r => {
-                if (r.id !== routineId) return r;
-                return {
-                    ...r,
-                    items: [...r.items, { id: Date.now() + Math.random(), text, completed: false, time }]
-                };
-            }));
-        },
-        updateRoutineItem: (routineId: number, itemId: number, updates: Partial<{ text: string, completed: boolean, time: string }>) => {
-            setRutinas(prev => prev.map(r => {
-                if (r.id !== routineId) return r;
-                return {
-                    ...r,
-                    items: r.items.map(it => it.id === itemId ? { ...it, ...updates } : it)
-                };
-            }));
-        },
-        toggleRoutineItem: (routineId: number, itemId: number) => {
-            setRutinas(prev => prev.map(r => {
-                if (r.id !== routineId) return r;
-                return {
-                    ...r,
-                    items: r.items.map(it => it.id === itemId ? { ...it, completed: !it.completed } : it)
-                };
-            }));
-        },
-        removeRoutineItem: (routineId: number, itemId: number) => {
-            setRutinas(prev => prev.map(r => {
-                if (r.id !== routineId) return r;
-                return {
-                    ...r,
-                    items: r.items.filter(it => it.id !== itemId)
-                };
-            }));
-        },
-        updateRoutine: (id: number, updates: Partial<Routine>) => {
-            setRutinas(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
-        },
-        addRoutine: (title: string, color: string = '#8a5cf6') => {
-            setRutinas(prev => [...prev, {
-                id: Date.now(),
-                title,
-                color,
-                isActive: true,
-                repeatDays: [0,1,2,3,4,5,6],
-                startTime: '09:00',
-                endTime: '10:00',
-                items: []
-            }]);
-        },
-        removeRoutine: (id: number) => {
-            setRutinas(prev => prev.filter(r => r.id !== id));
-        },
-        monthlyBudget,
-        updateMonthlyBudget: (amount: number) => setMonthlyBudget(amount),
-        fixedExpenses,
-        addFixedExpense: (text: string, amount: number, projectId?: number) => {
-            const newExpense: FixedExpense = { id: Date.now() + Math.random(), text, amount, active: true, projectId };
-            setFixedExpenses(prev => [...prev, newExpense]);
-        },
-        removeFixedExpense: (id: number) => {
-            setFixedExpenses(prev => prev.filter(e => e.id !== id));
-        },
-        toggleFixedExpense: (id: number) => {
-            setFixedExpenses(prev => prev.map(e => e.id === id ? { ...e, active: !e.active } : e));
-        },
-        updateFixedExpense: (id: number, updates: Partial<FixedExpense>) => {
-            setFixedExpenses(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
-        },
-        user,
-        isInitialLoad
+        // Misiones & Hábitos
+        missions: misionesState, todayMissions, toggleMission, updateMission, addMission, removeMission,
+        habits, toggleHabit, addHabit, removeHabit,
+        agenda, addCalendarEvent,
+        performanceScore, missionFocusScore, completedMissionsCount,
+
+        // Finanzas
+        transactions, addTransaction, balance,
+        todayIncome, todayExpense, debtsOwe, debtsOwed,
+        monthlyBudget, updateMonthlyBudget: (amount: number) => setMonthlyBudget(amount),
+        fixedExpenses, addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense,
+
+        // Proyectos & Rutinas
+        projects, addProject, addProjectTask, toggleProjectTask, removeProjectTask,
+        promoteTaskToRoutine, updateProject, deleteProject,
+        timeBlocks, addTimeBlock, removeTimeBlock,
+        rutinas, addRoutineItem, updateRoutineItem, toggleRoutineItem, removeRoutineItem,
+        updateRoutine, addRoutine, removeRoutine,
+
+        // Cerebro (Notas)
+        notes, addNote, removeNote, toggleNoteItem,
+
+        // Sistema
+        user, isInitialLoad
     };
 };

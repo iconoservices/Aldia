@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { TrendingUp, Wallet, ArrowUpCircle, ArrowDownCircle, UserMinus, UserPlus, BarChart3, Plus, Trash2, Edit2, Check, X, Tag } from 'lucide-react';
+import { TrendingUp, ArrowUpCircle, ArrowDownCircle, UserMinus, UserPlus, BarChart3, Plus, Trash2, Edit2, Check, X, Tag } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { GlassCard } from '../ui/GlassCard';
+import { DomainIcon } from '../ui/DomainIcon';
+import { ModernInput } from '../ui/ModernInput';
 import type { Transaction, FixedExpense } from '../../hooks/useAlDiaState';
 
 interface FinanzasProps {
@@ -29,31 +32,34 @@ export const FinanzasDashboard = ({
     return (
         <div style={{ paddingBottom: '5rem' }}>
             {/* CARD PRINCIPAL: BALANCE GENERAL */}
-            <div className="glass-card" style={{
-                background: 'linear-gradient(135deg, #0055FF 0%, #003399 100%)',
-                color: 'white',
-                marginBottom: '1.5rem',
-                padding: '1.8rem'
-            }}>
+            <GlassCard 
+                variant="strong"
+                style={{
+                    background: 'linear-gradient(135deg, #0055FF 0%, #003399 100%)',
+                    color: 'white',
+                    marginBottom: '1.5rem',
+                    padding: '1.8rem'
+                }}
+            >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                     <span style={{ fontSize: '0.85rem', fontWeight: 600, opacity: 0.8 }}>Balance Total</span>
-                    <Wallet size={20} opacity={0.8} />
+                    <DomainIcon domain="finanzas" variant="solid" size={20} className="text-white opacity-80" />
                 </div>
-                <h2 style={{ margin: 0, fontSize: '2.2rem', fontWeight: 800, letterSpacing: '-1px', color: 'white' }}>
+                <h2 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-1.5px', color: 'white' }}>
                     ${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </h2>
 
                 <div style={{ display: 'flex', gap: '15px', marginTop: '1.5rem' }}>
-                    <div style={{ flex: 1, background: 'rgba(255,255,255,0.1)', padding: '10px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ flex: 1, background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '18px', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
                         <ArrowUpCircle size={18} color="#4ade80" />
-                        <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>${income}</span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 800 }}>${income}</span>
                     </div>
-                    <div style={{ flex: 1, background: 'rgba(255,255,255,0.1)', padding: '10px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ flex: 1, background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '18px', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
                         <ArrowDownCircle size={18} color="#f87171" />
-                        <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>${expense}</span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 800 }}>${expense}</span>
                     </div>
                 </div>
-            </div>
+            </GlassCard>
 
             {/* SECCIÓN DE NEGOCIO / VENTAS (Simulada para V1) */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -61,15 +67,18 @@ export const FinanzasDashboard = ({
                 <TrendingUp size={18} color="#888" />
             </div>
 
-            <div className="glass-card" style={{ marginBottom: '1.5rem', padding: '1.2rem' }}>
+            <GlassCard style={{ marginBottom: '1.5rem', padding: '1.2rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                        <p style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: 'var(--text-carbon)' }}>Ventas AlDía SaaS</p>
-                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#888' }}>Basado en tus ingresos hoy</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <DomainIcon domain="proyectos" size={18} />
+                        <div>
+                            <p style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: 'var(--text-carbon)' }}>Ventas AlDía SaaS</p>
+                            <p style={{ margin: 0, fontSize: '0.75rem', color: '#888' }}>Basado en tus ingresos hoy</p>
+                        </div>
                     </div>
                     <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#4ade80' }}>+${income > 0 ? income : '87.00'}</span>
                 </div>
-            </div>
+            </GlassCard>
 
             {/* GRÁFICO DE BARRAS PREMIUM: FLUJO SEMANAL */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -386,16 +395,16 @@ const NewFixedExpenseForm = ({ addFixedExpense, projects }: { addFixedExpense: (
     return (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#F8FAFC', padding: '12px', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
             <div style={{ display: 'flex', gap: '8px' }}>
-                <input 
+                <ModernInput 
                     autoFocus
                     placeholder="Nombre (ej. Alquiler)" 
                     value={name} onChange={(e) => setName(e.target.value)}
-                    style={{ flex: 2, padding: '8px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '0.85rem', fontWeight: 600 }}
+                    containerClassName="flex-initial w-2/3"
                 />
-                <input 
+                <ModernInput 
                     type="number" placeholder="$ 0.00" 
                     value={amount} onChange={(e) => setAmount(e.target.value)}
-                    style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '0.85rem', fontWeight: 600 }}
+                    containerClassName="flex-initial w-1/3"
                 />
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

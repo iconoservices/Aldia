@@ -87,68 +87,31 @@ function App() {
                     title="Agenda" 
                   />
 
-                  {(() => {
-                    const today = new Date().toISOString().split('T')[0];
-                    const todayIndex = (new Date().getDay() + 6) % 7;
-                    const routineMissions = state.rutinas
-                      .filter(r => r.isActive && r.repeatDays?.includes(todayIndex))
-                      .flatMap(r => r.items.map(item => ({
-                        id: item.id,
-                        text: item.text,
-                        completed: item.completed,
-                        dueTime: item.time || r.startTime,
-                        q: 'Q2' as const,
-                        repeat: 'none' as const,
-                        critical: false as const,
-                        isRoutine: true,
-                        routineId: r.id
-                      })));
-
-                    const habitMissions = state.habits.map(h => ({
-                      id: h.id,
-                      text: h.name,
-                      completed: h.completedDays.includes(todayIndex),
-                      q: 'Q2' as const,
-                      repeat: 'none' as const,
-                      critical: false as const,
-                      isHabit: true,
-                      habitCount: h.completedDays.length
-                    }));
-
-                    const filteredMissions = [
-                      ...state.missions.filter(m => !m.dueDate || m.dueDate <= today),
-                      ...routineMissions,
-                      ...habitMissions
-                    ] as Mission[];
-
-                    return (
-                      <MissionList
-                        missions={filteredMissions}
-                        toggleMission={state.toggleMission}
-                        toggleHabit={state.toggleHabit}
-                        toggleRoutineItem={state.toggleRoutineItem}
-                        onOpenNote={setViewingNoteId}
-                        onEditMission={setEditingMission}
-                        removeMission={(id) => {
-                          const mission = filteredMissions.find(m => m.id === id);
-                          if (mission?.isRoutine) {
-                            if (confirm('¿Eliminar esta tarea de la rutina?')) {
-                              state.removeRoutineItem(mission.routineId!, id);
-                            }
-                          } else if (mission?.isHabit) {
-                            if (confirm('¿Eliminar este hábito por completo?')) {
-                              state.removeHabit(id);
-                            }
-                          } else {
-                            state.removeMission(id);
+                    <MissionList
+                      missions={state.todayMissions}
+                      toggleMission={state.toggleMission}
+                      toggleHabit={state.toggleHabit}
+                      toggleRoutineItem={state.toggleRoutineItem}
+                      onOpenNote={setViewingNoteId}
+                      onEditMission={setEditingMission}
+                      removeMission={(id) => {
+                        const mission = state.todayMissions.find(m => m.id === id);
+                        if (mission?.isRoutine) {
+                          if (confirm('¿Eliminar esta tarea de la rutina?')) {
+                            state.removeRoutineItem(mission.routineId!, id);
                           }
-                        }}
-                        title="Misiones"
-                        onTimelineClick={() => setIsTimelineOpen(true)}
-                        projects={state.projects}
-                      />
-                    );
-                  })()}
+                        } else if (mission?.isHabit) {
+                          if (confirm('¿Eliminar este hábito por completo?')) {
+                            state.removeHabit(id);
+                          }
+                        } else {
+                          state.removeMission(id);
+                        }
+                      }}
+                      title="Misiones"
+                      onTimelineClick={() => setIsTimelineOpen(true)}
+                      projects={state.projects}
+                    />
                 </div>
               </>
             ) : activeTab === 'Calendario' ? (

@@ -58,7 +58,7 @@ export const JoyMatrixModal = ({ isOpen, onClose, missions, toggleMission }: Joy
                                         ) : (
                                             missions.filter(m => m.q === q.id).map(mission => (
                                                 <div 
-                                                    key={mission.id} 
+                                                    key={mission.uid || mission.id} 
                                                     onClick={() => toggleMission(mission.id, mission.q)}
                                                     style={{ 
                                                         ...missionItemStyle, 

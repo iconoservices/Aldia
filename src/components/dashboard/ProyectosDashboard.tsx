@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, Zap, Plus, MoreVertical, Trophy, Trash2, CheckCircle2, Circle, ListTodo, ArrowRight } from 'lucide-react';
+import { Zap, Plus, MoreVertical, Trophy, Trash2, CheckCircle2, Circle, ListTodo, ArrowRight } from 'lucide-react';
+import { GlassCard } from '../ui/GlassCard';
+import { DomainIcon } from '../ui/DomainIcon';
+import { ModernInput } from '../ui/ModernInput';
 import type { Project, Mission, TimeBlock, Routine } from '../../hooks/useAlDiaState';
 
 interface ProyectosDashboardProps {
@@ -37,17 +40,18 @@ export const ProyectosDashboard = ({
     return (
         <div style={{ padding: '0 0.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '6rem' }}>
             {/* Header / Stats Resumen */}
-            <div className="glass-card" style={{ background: 'var(--text-carbon)', color: 'white', border: 'none' }}>
+            <GlassCard 
+                variant="strong"
+                style={{ background: 'var(--text-carbon)', color: 'white', border: 'none' }}
+            >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                         <h2 style={{ margin: '0 0 4px 0', fontSize: '1.5rem', fontWeight: 900 }}>Tus Frentes</h2>
                         <p style={{ margin: 0, fontSize: '0.8rem', color: '#AAA', fontWeight: 600 }}>Asigna tiempo a lo que importa</p>
                     </div>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Target size={24} color="var(--domain-orange)" />
-                    </div>
+                    <DomainIcon domain="proyectos" variant="solid" size={24} className="opacity-90" />
                 </div>
-            </div>
+            </GlassCard>
 
             {/* Listado de Proyectos */}
             <div>
@@ -301,26 +305,24 @@ const ProjectCard = ({
                             exit={{ height: 0, opacity: 0 }}
                             style={{ overflow: 'hidden' }}
                         >
-                            <div style={{ display: 'flex', gap: '8px', margin: '12px 0' }}>
-                                <input 
-                                    type="text" 
+                            <div style={{ display: 'flex', gap: '8px', margin: '12px 0', alignItems: 'flex-end' }}>
+                                <ModernInput 
                                     placeholder="Nueva idea o tarea..."
                                     value={localTaskText}
                                     onChange={(e) => setLocalTaskText(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-                                    style={{ 
-                                        flex: 1, padding: '8px 12px', borderRadius: '10px', border: '1px solid #EEE',
-                                        fontSize: '0.8rem', background: '#F9F9F9', outline: 'none'
-                                    }}
+                                    containerClassName="flex-1"
                                 />
                                 <button 
                                     onClick={handleAddTask}
                                     style={{ 
                                         background: p.color, color: 'white', border: 'none', 
-                                        borderRadius: '10px', padding: '0 12px', cursor: 'pointer' 
+                                        borderRadius: '16px', height: '46px', width: '46px', 
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        cursor: 'pointer', marginBottom: '1.5px' 
                                     }}
                                 >
-                                    <Plus size={16} />
+                                    <Plus size={20} strokeWidth={3} />
                                 </button>
                             </div>
 

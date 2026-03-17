@@ -21,10 +21,10 @@ interface MissionListProps {
     projects?: Project[];
 }
 
-export const MissionList = ({ 
+export const MissionList = ({
     missions, toggleMission, toggleHabit, toggleRoutineItem, onEditMission, removeMission,
-    title = 'Tareas', showTimeBlock = true, showMatrixLinks = true, 
-    hideOnEmpty = false, onTimelineClick, projects = [] 
+    title = 'Tareas', showTimeBlock = true, showMatrixLinks = true,
+    hideOnEmpty = false, onTimelineClick, projects = []
 }: MissionListProps) => {
     const [isMatrixOpen, setIsMatrixOpen] = useState(false);
 
@@ -73,13 +73,13 @@ export const MissionList = ({
                 <h3 style={{ margin: 0, fontSize: '1rem', opacity: 0.7 }}>{title}</h3>
                 {showMatrixLinks && (
                     <div style={{ display: 'flex', gap: '12px' }}>
-                        <span 
+                        <span
                             onClick={() => setIsMatrixOpen(true)}
                             style={{ fontSize: '0.75rem', color: '#888', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                         >
                             ⊞ Matriz Joy
                         </span>
-                        <span 
+                        <span
                             onClick={onTimelineClick}
                             style={{ fontSize: '0.75rem', color: 'var(--domain-orange)', fontWeight: 600, cursor: 'pointer' }}
                         >
@@ -107,11 +107,11 @@ export const MissionList = ({
                         return Number(a.completed) - Number(b.completed);
                     }).map((mission) => {
                         const isPinnedQ1 = mission.q === 'Q1' && !mission.completed;
-                        
+
                         return (
                             <motion.div
                                 layout
-                                key={mission.id}
+                                key={mission.uid || mission.id}
                                 whileHover={{ scale: 1.01 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => handleToggle(mission.id, mission.q, mission.isRoutine, mission.routineId, mission.isHabit)}
@@ -152,7 +152,7 @@ export const MissionList = ({
                                         </p>
                                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginLeft: '6px' }}>
                                             {!mission.completed && onEditMission && (
-                                                <button 
+                                                <button
                                                     onClick={(e) => { e.stopPropagation(); onEditMission(mission); }}
                                                     style={{ background: 'transparent', border: 'none', color: isPinnedQ1 ? 'white' : '#CCC', cursor: 'pointer', padding: '2px', display: 'flex' }}
                                                 >
@@ -160,7 +160,7 @@ export const MissionList = ({
                                                 </button>
                                             )}
                                             {removeMission && (
-                                                <button 
+                                                <button
                                                     onClick={(e) => { e.stopPropagation(); removeMission(mission.id); }}
                                                     style={{ background: 'transparent', border: 'none', color: isPinnedQ1 ? 'white' : '#CCC', cursor: 'pointer', padding: '2px', display: 'flex' }}
                                                 >
@@ -172,9 +172,9 @@ export const MissionList = ({
                                     <div style={{ display: 'flex', gap: '4px', marginTop: '2px', flexWrap: 'wrap', alignItems: 'center' }}>
                                         {/* BADGE DE PROYECTO */}
                                         {mission.projectId && projects.find(p => p.id === mission.projectId) && (
-                                            <span style={{ 
-                                                fontSize: '0.6rem', 
-                                                color: isPinnedQ1 ? 'white' : projects.find(p => p.id === mission.projectId)!.color, 
+                                            <span style={{
+                                                fontSize: '0.6rem',
+                                                color: isPinnedQ1 ? 'white' : projects.find(p => p.id === mission.projectId)!.color,
                                                 fontWeight: 900,
                                                 opacity: 0.8
                                             }}>
@@ -182,9 +182,9 @@ export const MissionList = ({
                                             </span>
                                         )}
                                         {mission.isRoutine && (
-                                            <span style={{ 
-                                                fontSize: '0.6rem', 
-                                                color: isPinnedQ1 ? 'white' : 'var(--domain-green)', 
+                                            <span style={{
+                                                fontSize: '0.6rem',
+                                                color: isPinnedQ1 ? 'white' : 'var(--domain-green)',
                                                 fontWeight: 800,
                                                 display: 'flex',
                                                 alignItems: 'center',
@@ -194,18 +194,18 @@ export const MissionList = ({
                                             </span>
                                         )}
                                         {mission.isHabit && (
-                                            <span style={{ 
-                                                fontSize: '0.6rem', 
-                                                color: isPinnedQ1 ? 'white' : 'var(--domain-green)', 
+                                            <span style={{
+                                                fontSize: '0.6rem',
+                                                color: isPinnedQ1 ? 'white' : 'var(--domain-green)',
                                                 fontWeight: 800
                                             }}>
                                                 🌱
                                             </span>
                                         )}
                                         {mission.dueDate && (
-                                            <span style={{ 
-                                                fontSize: '0.6rem', 
-                                                color: isPinnedQ1 ? 'white' : '#888', 
+                                            <span style={{
+                                                fontSize: '0.6rem',
+                                                color: isPinnedQ1 ? 'white' : '#888',
                                                 fontWeight: 800,
                                                 display: 'flex',
                                                 alignItems: 'center',
@@ -215,9 +215,9 @@ export const MissionList = ({
                                             </span>
                                         )}
                                         {mission.dueTime && (
-                                            <span style={{ 
-                                                fontSize: '0.6rem', 
-                                                color: isPinnedQ1 ? 'white' : 'var(--domain-orange)', 
+                                            <span style={{
+                                                fontSize: '0.6rem',
+                                                color: isPinnedQ1 ? 'white' : 'var(--domain-orange)',
                                                 fontWeight: 800,
                                                 display: 'flex',
                                                 alignItems: 'center',
@@ -234,7 +234,7 @@ export const MissionList = ({
                 </div>
             </div>
 
-            <JoyMatrixModal 
+            <JoyMatrixModal
                 isOpen={isMatrixOpen}
                 onClose={() => setIsMatrixOpen(false)}
                 missions={missions}
