@@ -113,7 +113,7 @@ export const MissionList = ({
                             return (
                                 <Reorder.Item
                                     value={mission}
-                                    key={mission.id || mission.uid || `mission-${idx}`}
+                                    key={mission.uid || mission.id || `mission-${idx}`}
                                     whileHover={{ scale: 1.01 }}
                                     whileTap={{ scale: 0.98 }}
                                     className={`mission-item ${isPinnedQ1 ? 'critical-alert' : ''}`}
