@@ -133,6 +133,7 @@ export const useMisionesState = () => {
         addHabit,
         removeHabit,
         addCalendarEvent,
+        reorderMissions: (newMissions: Mission[]) => setMissions(newMissions),
         performanceScore,
         missionFocusScore,
         completedMissionsCount

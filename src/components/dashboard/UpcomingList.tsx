@@ -60,7 +60,7 @@ export const UpcomingList = ({ agenda, title = "Agenda" }: UpcomingListProps) =>
 
                             return (
                                 <div
-                                    key={event.id}
+                                    key={event.id || `agenda-${idx}`}
                                     style={{
                                         display: 'flex',
                                         justifyContent: 'space-between',

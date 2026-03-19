@@ -184,6 +184,9 @@ export const useProyectosState = () => {
         toggleRoutineItem,
         removeRoutineItem,
         updateRoutine,
+        reorderProjectTasks: (projectId: number, newChecklist: { id: number; text: string; completed: boolean }[]) => {
+            setProjects(prev => prev.map(p => p.id === projectId ? { ...p, checklist: newChecklist } : p));
+        },
         addRoutine,
         removeRoutine
     };

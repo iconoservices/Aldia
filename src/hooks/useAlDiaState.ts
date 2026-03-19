@@ -123,13 +123,14 @@ export const useAlDiaState = () => {
         habits, setHabits, agenda, setAgenda,
         toggleMission, updateMission, removeMission, addMission,
         toggleHabit, addHabit, removeHabit, addCalendarEvent,
+        reorderMissions,
         performanceScore, missionFocusScore, completedMissionsCount
     } = useMisionesState();
     
     const {
         projects, setProjects, timeBlocks, setTimeBlocks, rutinas, setRutinas,
         addProject, addProjectTask, toggleProjectTask, removeProjectTask,
-        promoteTaskToRoutine, updateProject, deleteProject,
+        promoteTaskToRoutine, updateProject, deleteProject, reorderProjectTasks,
         addTimeBlock, removeTimeBlock,
         addRoutineItem, updateRoutineItem, toggleRoutineItem, removeRoutineItem,
         updateRoutine, addRoutine, removeRoutine
@@ -206,7 +207,6 @@ export const useAlDiaState = () => {
                         const validate = (val: any) => Array.isArray(val) ? val : [];
 
                         // "SMART MERGE" LIGERO: Si Cloud tiene datos, combinarlos con Local por ID
-                        // Esto evita borrar lo que el usuario acaba de anotar
                         const smartMerge = <T extends { id: number }>(cloudArr: any[], localArr: any[]): T[] => {
                             const combined = [...validate(cloudArr)];
                             const cloudIds = new Set(combined.map(item => item?.id).filter(id => id !== undefined));
@@ -244,7 +244,6 @@ export const useAlDiaState = () => {
     useEffect(() => {
         if (isInitialLoad) return;
 
-        // Siempre guardar en LocalStorage por seguridad / offline (INSTANTÁNEO)
         localStorage.setItem('aldia_missions', JSON.stringify(misionesState));
         localStorage.setItem('aldia_transactions', JSON.stringify(transactions));
         localStorage.setItem('aldia_balance', JSON.stringify(balance));
@@ -257,7 +256,6 @@ export const useAlDiaState = () => {
         localStorage.setItem('aldia_monthly_budget', JSON.stringify(monthlyBudget));
         localStorage.setItem('aldia_fixed_expenses', JSON.stringify(fixedExpenses));
 
-        // Guardar en Firestore si hay usuario (DEBOUNCED / ASÍNCRONO)
         if (user) {
             const syncTimer = setTimeout(() => {
                 const docRef = doc(db, 'users', user.uid);
@@ -275,13 +273,13 @@ export const useAlDiaState = () => {
                     fixedExpenses,
                     lastSync: new Date().toISOString()
                 }, { merge: true });
-            }, 2000); // 2 segundos de calma para evitar freezes
+            }, 2000);
 
-            return () => clearTimeout(syncTimer); // Limpiar si el estado cambia antes de los 2s
+            return () => clearTimeout(syncTimer);
         }
     }, [misionesState, transactions, balance, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, user, isInitialLoad]);
 
-    // 3. Lógica Derivada (Calculada con useMemo - DEFENSIVA)
+    // 3. Lógica Derivada
     const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
     const todayIndex = useMemo(() => (new Date().getDay() + 6) % 7, []); // 0=Mon, 6=Sun
 
@@ -313,7 +311,6 @@ export const useAlDiaState = () => {
     })), [habits, todayIndex]);
 
     const clearAllData = async () => {
-        // 1. Reset Local States
         setMisionesDirect([]);
         setTransactions([]);
         setBalance(0);
@@ -324,11 +321,8 @@ export const useAlDiaState = () => {
         setRutinas([]);
         setMonthlyBudget(0);
         setFixedExpenses([]);
-
-        // 2. Clear LocalStorage
         localStorage.clear();
 
-        // 3. Reset Cloud if user is present
         if (user) {
             const docRef = doc(db, 'users', user.uid);
             await setDoc(docRef, {
@@ -353,10 +347,10 @@ export const useAlDiaState = () => {
         ...habitMissions
     ] as Mission[], [misionesState, routineMissions, habitMissions, todayStr]);
 
-    // 4. Acciones (Consolidadas)
+    // 4. Acciones
     return {
         // Misiones & Hábitos
-        missions: misionesState, todayMissions, toggleMission, updateMission, addMission, removeMission,
+        missions: misionesState, todayMissions, toggleMission, updateMission, addMission, removeMission, reorderMissions,
         habits, toggleHabit, addHabit, removeHabit,
         agenda, addCalendarEvent,
         performanceScore, missionFocusScore, completedMissionsCount,
@@ -368,7 +362,7 @@ export const useAlDiaState = () => {
         fixedExpenses, addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense,
 
         // Proyectos & Rutinas
-        projects, addProject, addProjectTask, toggleProjectTask, removeProjectTask,
+        projects, addProject, addProjectTask, toggleProjectTask, removeProjectTask, reorderProjectTasks,
         promoteTaskToRoutine, updateProject, deleteProject,
         timeBlocks, addTimeBlock, removeTimeBlock,
         rutinas, addRoutineItem, updateRoutineItem, toggleRoutineItem, removeRoutineItem,

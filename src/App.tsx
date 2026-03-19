@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 import { Header } from './components/layout/Header';
-import { BentoGrid } from './components/dashboard/BentoGrid';
 import { UpcomingList } from './components/dashboard/UpcomingList';
 import { MissionList } from './components/dashboard/MissionList';
 import { VidaDashboard } from './components/dashboard/VidaDashboard';
@@ -16,10 +15,9 @@ import { SuperFab } from './components/features/SuperFab';
 import { NoteDetailsModal } from './components/features/NoteDetailsModal';
 import { MissionEditOverlay } from './components/features/MissionEditOverlay';
 import { DayTimelineView } from './components/dashboard/DayTimelineView';
-import type { Mission } from './hooks/useAlDiaState';
-
+import { ActionBanner } from './components/dashboard/ActionBanner';
 import { useAlDiaState } from './hooks/useAlDiaState';
-
+import type { Mission, Note } from './hooks/useAlDiaState';
 import { ProfileOverlay } from './components/layout/ProfileOverlay';
 import { usePWA } from './hooks/usePWA';
 import { RefreshCw } from 'lucide-react';
@@ -34,7 +32,7 @@ function App() {
 
   const state = useAlDiaState();
   const { needRefresh, updateServiceWorker } = usePWA();
-  const viewingNote = state.notes.find(n => n.id === viewingNoteId) || null;
+  const viewingNote: Note | null = state.notes.find((n: Note) => n.id === viewingNoteId) || null;
 
   if (state.isInitialLoad) {
     return (
@@ -59,14 +57,12 @@ function App() {
 
   return (
     <div className="aldia-container">
-      {/* HEADER COMPRIMIDO */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onProfileClick={() => setIsProfileOpen(true)}
       />
 
-      {/* RENDER CONDICIONAL Y DASHBOARD */}
       <main className="dashboard">
         <AnimatePresence mode="wait">
           <motion.div
@@ -78,24 +74,19 @@ function App() {
             style={{ width: '100%' }}
           >
             {activeTab === 'Acción' ? (
-              <>
-                <BentoGrid performanceScore={state.performanceScore} missions={state.missions} />
-                <div className="dashboard-right-col">
-                  {/* 1. SECCIÓN DE ALTA PRIORIDAD (Agenda y Misiones Q1) */}
-                  <UpcomingList 
-                    agenda={state.agenda} 
-                    title="Agenda" 
-                  />
-
-                    <MissionList
-                      missions={state.todayMissions}
-                      toggleMission={state.toggleMission}
-                      toggleHabit={state.toggleHabit}
-                      toggleRoutineItem={state.toggleRoutineItem}
-                      onOpenNote={setViewingNoteId}
-                      onEditMission={setEditingMission}
-                      removeMission={(id) => {
-                        const mission = state.todayMissions.find(m => m.id === id);
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
+                <ActionBanner performanceScore={state.performanceScore} missions={state.missions} />
+                <div className="dashboard-grid-layout" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                  <UpcomingList agenda={state.agenda} title="Agenda del Día" />
+                  <MissionList 
+                    missions={state.todayMissions}
+                    toggleMission={state.toggleMission}
+                    toggleHabit={state.toggleHabit}
+                    toggleRoutineItem={state.toggleRoutineItem}
+                    onOpenNote={setViewingNoteId}
+                    onEditMission={setEditingMission}
+                    removeMission={(id: number) => {
+                        const mission = state.todayMissions.find((m: Mission) => m.id === id);
                         if (mission?.isRoutine) {
                           if (confirm('¿Eliminar esta tarea de la rutina?')) {
                             state.removeRoutineItem(mission.routineId!, id);
@@ -107,13 +98,14 @@ function App() {
                         } else {
                           state.removeMission(id);
                         }
-                      }}
-                      title="Misiones"
-                      onTimelineClick={() => setIsTimelineOpen(true)}
-                      projects={state.projects}
-                    />
+                    }}
+                    reorderMissions={state.reorderMissions}
+                    projects={state.projects}
+                    onTimelineClick={() => setIsTimelineOpen(true)}
+                    title="Misiones Hoy"
+                  />
                 </div>
-              </>
+              </div>
             ) : activeTab === 'Calendario' ? (
               <CalendarioView 
                 agenda={state.agenda}
@@ -171,6 +163,7 @@ function App() {
                 toggleProjectTask={state.toggleProjectTask}
                 removeProjectTask={state.removeProjectTask}
                 promoteTaskToRoutine={state.promoteTaskToRoutine}
+                reorderProjectTasks={state.reorderProjectTasks}
               />
             ) : activeTab === 'Stats' ? (
               <StatsDashboard
@@ -195,6 +188,8 @@ function App() {
         removeNote={state.removeNote}
         toggleNoteItem={state.toggleNoteItem}
         addMission={state.addMission}
+        projects={state.projects}
+        addProjectTask={state.addProjectTask}
       />
 
       <MissionEditOverlay 
@@ -214,7 +209,6 @@ function App() {
         agenda={state.agenda}
       />
 
-      {/* SUPER FAB RADIAL */}
       <SuperFab
         addMission={state.addMission}
         addTransaction={state.addTransaction}
@@ -236,7 +230,6 @@ function App() {
         clearAllData={state.clearAllData}
       />
 
-      {/* NOTIFICACIÓN DE ACTUALIZACIÓN (ANTI-CACHÉ) */}
       <AnimatePresence>
         {needRefresh && (
           <motion.div
