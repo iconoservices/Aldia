@@ -233,6 +233,7 @@ function App() {
       <ProfileOverlay
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
+        clearAllData={state.clearAllData}
       />
 
       {/* NOTIFICACIÓN DE ACTUALIZACIÓN (ANTI-CACHÉ) */}

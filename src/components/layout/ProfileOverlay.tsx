@@ -7,9 +7,10 @@ import { useAuth } from '../../hooks/useAuth';
 interface ProfileOverlayProps {
     isOpen: boolean;
     onClose: () => void;
+    clearAllData?: () => Promise<void>;
 }
 
-export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
+export const ProfileOverlay = ({ isOpen, onClose, clearAllData }: ProfileOverlayProps) => {
     const { user, loginWithGoogle, logout, updateProfile, loading: authLoading } = useAuth();
     const { isInstalled, install, canInstall } = usePWA();
     const [showIOSGuide, setShowIOSGuide] = useState(false);
@@ -155,15 +156,30 @@ export const ProfileOverlay = ({ isOpen, onClose }: ProfileOverlayProps) => {
                                     <span style={{ flex: 1, textAlign: 'left' }}>Preferencias</span>
                                 </button>
 
-                                <div style={{ marginTop: '1rem', borderTop: '1px solid #EEE', paddingTop: '1rem' }}>
+                                <div style={{ marginTop: '1rem', borderTop: '1px solid #EEE', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {user && (
+                                        <button onClick={async () => {
+                                            if (confirm("🚨 ¿BORRAR TODO? Esto eliminará permanentemente tus datos de la nube y del dispositivo. No hay marcha atrás.")) {
+                                                if (clearAllData) {
+                                                    await clearAllData();
+                                                    alert("Datos eliminados. Reiniciando...");
+                                                    window.location.reload();
+                                                }
+                                            }
+                                        }} style={{ ...settingButtonStyle, color: '#f87171' }}>
+                                            <div style={{ ...settingIconWrapper(), background: '#FEF2F2', color: '#f87171' }}><RefreshCw size={18} /></div>
+                                            <span style={{ flex: 1, textAlign: 'left' }}>Reiniciar Cuenta (Full Clear)</span>
+                                        </button>
+                                    )}
+
                                     <button onClick={user ? logout : () => {
-                                        if(confirm("¿Borrar caché local?")) {
+                                        if (confirm("¿Borrar caché local?")) {
                                             localStorage.clear();
                                             window.location.reload();
                                         }
-                                    }} style={{ ...settingButtonStyle, color: '#f87171' }}>
+                                    }} style={{ ...settingButtonStyle, color: '#f87171', opacity: user ? 0.6 : 1 }}>
                                         <div style={{ ...settingIconWrapper(), background: '#FEF2F2', color: '#f87171' }}><LogOut size={18} /></div>
-                                        <span style={{ flex: 1, textAlign: 'left' }}>{user ? 'Cerrar Sesión' : 'Limpiar Datos'}</span>
+                                        <span style={{ flex: 1, textAlign: 'left' }}>{user ? 'Cerrar Sesión' : 'Limpiar Datos Locales'}</span>
                                     </button>
                                 </div>
                             </div>

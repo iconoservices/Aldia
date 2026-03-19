@@ -312,6 +312,41 @@ export const useAlDiaState = () => {
         habitCount: Array.isArray(h.completedDays) ? h.completedDays.length : 0
     })), [habits, todayIndex]);
 
+    const clearAllData = async () => {
+        // 1. Reset Local States
+        setMisionesDirect([]);
+        setTransactions([]);
+        setBalance(0);
+        setHabits([]);
+        setAgenda([]);
+        setNotes([]);
+        setProjects([]);
+        setRutinas([]);
+        setMonthlyBudget(0);
+        setFixedExpenses([]);
+
+        // 2. Clear LocalStorage
+        localStorage.clear();
+
+        // 3. Reset Cloud if user is present
+        if (user) {
+            const docRef = doc(db, 'users', user.uid);
+            await setDoc(docRef, {
+                missions: [],
+                transactions: [],
+                balance: 0,
+                habits: [],
+                agenda: [],
+                notes: [],
+                projects: [],
+                rutinas: [],
+                monthlyBudget: 0,
+                fixedExpenses: [],
+                lastSync: new Date().toISOString()
+            });
+        }
+    };
+
     const todayMissions = useMemo(() => [
         ...(Array.isArray(misionesState) ? misionesState : []).filter(m => m && (!m.dueDate || m.dueDate <= todayStr)).map(m => ({ ...m, uid: `task-${m.id}` })),
         ...routineMissions,
@@ -343,6 +378,6 @@ export const useAlDiaState = () => {
         notes, addNote, removeNote, toggleNoteItem,
 
         // Sistema
-        user, isInitialLoad
+        user, isInitialLoad, clearAllData
     };
 };
