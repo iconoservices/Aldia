@@ -34,9 +34,10 @@ export const FinanzasDashboard = ({
     const totalFixed = useMemo(() => fixedExpenses.filter(e => e.active).reduce((acc, e) => acc + e.amount, 0), [fixedExpenses]);
     const projectedSavings = useMemo(() => monthlyBudget - totalFixed, [monthlyBudget, totalFixed]);
 
+    const [isAccountsVisible, setIsAccountsVisible] = useState(false);
     const [isAddingAccount, setIsAddingAccount] = useState(false);
     const [newAccountName, setNewAccountName] = useState('');
-    const [newAccountColor, setNewAccountColor] = useState('#ff8c42');
+    const [newAccountColor, setNewAccountColor] = useState('#0055FF');
 
     // Cuentas con balance calculado (solo para esta vista)
     const accountsWithBalance = useMemo(() => {
@@ -126,101 +127,131 @@ export const FinanzasDashboard = ({
                     </div>
                 </GlassCard>
 
-                {/* NUEVA SECCIÓN: MIS CUENTAS / TARJETAS */}
-                <div style={{ marginBottom: '1.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem', padding: '0 4px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <PiggyBank size={18} color="var(--domain-blue)" />
-                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: 'var(--text-carbon)' }}>Mis Cuentas / Tarjetas</h3>
+                {/* MIS CUENTAS / TARJETAS (COMPACTO Y DESPLEGABLE) */}
+                <div style={{ marginBottom: '0.5rem' }}>
+                    <button 
+                        onClick={() => setIsAccountsVisible(!isAccountsVisible)}
+                        style={{ 
+                            width: '100%', 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            background: '#F8FAFC', 
+                            border: '1px solid #E2E8F0',
+                            borderRadius: '16px',
+                            padding: '10px 16px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <PiggyBank size={16} color="var(--domain-blue)" />
+                            <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#475569' }}>Mis Cuentas y Tarjetas ({accounts.length})</span>
                         </div>
-                        <button 
-                            onClick={() => setIsAddingAccount(!isAddingAccount)}
-                            style={{ 
-                                background: isAddingAccount ? '#FEE2E2' : '#F0F7FF', 
-                                border: 'none', 
-                                borderRadius: '10px', 
-                                padding: '6px 12px', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '6px',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            {isAddingAccount ? <X size={14} color="#f87171" /> : <Plus size={14} color="#0066FF" />}
-                            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: isAddingAccount ? '#f87171' : '#0066FF' }}>
-                                {isAddingAccount ? 'CANCELAR' : 'NUEVA'}
-                            </span>
-                        </button>
-                    </div>
+                        <motion.div animate={{ rotate: isAccountsVisible ? 180 : 0 }}>
+                            <ArrowDownCircle size={16} color="#888" />
+                        </motion.div>
+                    </button>
 
                     <AnimatePresence>
-                        {isAddingAccount && (
+                        {isAccountsVisible && (
                             <motion.div 
                                 initial={{ opacity: 0, height: 0 }} 
                                 animate={{ opacity: 1, height: 'auto' }} 
                                 exit={{ opacity: 0, height: 0 }}
-                                style={{ overflow: 'hidden', marginBottom: '1rem' }}
+                                style={{ overflow: 'hidden' }}
                             >
-                                <GlassCard style={{ padding: '1rem', background: '#F8FAFC', border: '2px dashed #0066FF30' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                        <input 
-                                            autoFocus
-                                            placeholder="Nombre de la cuenta (ej. BCP, Efectivo...)" 
-                                            value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)}
-                                            style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #E2E8F0', fontSize: '0.9rem', fontWeight: 600, outline: 'none' }}
-                                        />
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', gap: '6px' }}>
-                                                {['#0055FF', '#ff8c42', '#10B911', '#8b5cf6', '#EC4899', '#334155'].map(c => (
+                                <div style={{ padding: '12px 0', borderBottom: '1px dashed #EEE', marginBottom: '10px' }}>
+                                    <div style={{ 
+                                        display: 'flex', 
+                                        gap: '8px', 
+                                        overflowX: 'auto', 
+                                        padding: '4px',
+                                        scrollbarWidth: 'none'
+                                    }}>
+                                        {/* Botón para nueva cuenta */}
+                                        <button 
+                                            onClick={() => setIsAddingAccount(!isAddingAccount)}
+                                            style={{ 
+                                                minWidth: '100px', 
+                                                height: '60px',
+                                                borderRadius: '16px', 
+                                                border: '2px dashed #CBD5E1',
+                                                background: isAddingAccount ? '#0066FF10' : 'transparent',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '4px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            <Plus size={14} color="#0066FF" />
+                                            <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#0066FF' }}>AGREGAR</span>
+                                        </button>
+
+                                        {accountsWithBalance.map(acc => (
+                                            <div key={acc.id} style={{ 
+                                                minWidth: '120px', 
+                                                height: '60px',
+                                                background: 'white', 
+                                                border: '1px solid #EEE',
+                                                borderLeft: `3px solid ${acc.color}`,
+                                                borderRadius: '16px',
+                                                padding: '8px 12px',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                justifyContent: 'center',
+                                                position: 'relative',
+                                                boxShadow: '0 4px 10px rgba(0,0,0,0.02)'
+                                            }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#AAA', textTransform: 'uppercase' }}>{acc.name}</span>
                                                     <button 
-                                                        key={c} onClick={() => setNewAccountColor(c)}
-                                                        style={{ width: '24px', height: '24px', borderRadius: '50%', background: c, border: newAccountColor === c ? '2px solid #333' : 'none', cursor: 'pointer' }}
-                                                    />
-                                                ))}
+                                                        onClick={() => handleDeleteAccount(acc.id)}
+                                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+                                                    >
+                                                        <Trash2 size={10} color="#f87171" opacity={0.4} />
+                                                    </button>
+                                                </div>
+                                                <span style={{ fontSize: '1rem', fontWeight: 900, color: '#333' }}>
+                                                    ${acc.balance.toLocaleString()}
+                                                </span>
                                             </div>
-                                            <button 
-                                                onClick={handleAddAccount}
-                                                style={{ background: 'var(--domain-green)', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '10px', fontWeight: 900, fontSize: '0.75rem', cursor: 'pointer' }}
-                                            >
-                                                CREAR
-                                            </button>
-                                        </div>
+                                        ))}
                                     </div>
-                                </GlassCard>
+
+                                    {/* Formulario rápido para nueva cuenta */}
+                                    <AnimatePresence>
+                                        {isAddingAccount && (
+                                            <motion.div 
+                                                initial={{ opacity: 0, y: -10 }} 
+                                                animate={{ opacity: 1, y: 0 }} 
+                                                style={{ marginTop: '12px', padding: '10px', background: '#F8FAFC', borderRadius: '16px', border: '1px solid #E2E8F0' }}
+                                            >
+                                                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                                                    <input 
+                                                        autoFocus
+                                                        placeholder="Nombre.." 
+                                                        value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)}
+                                                        style={{ flex: 1, padding: '8px', borderRadius: '10px', border: '1px solid #DDD', fontSize: '0.8rem', fontWeight: 600 }}
+                                                    />
+                                                    <button onClick={handleAddAccount} style={{ background: 'var(--domain-blue)', color: 'white', border: 'none', borderRadius: '10px', padding: '0 12px', fontSize: '0.7rem', fontWeight: 900 }}>OK</button>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                                                    {['#0055FF', '#ff8c42', '#10B911', '#8b5cf6', '#EC4899', '#334155'].map(c => (
+                                                        <button 
+                                                            key={c} onClick={() => setNewAccountColor(c)}
+                                                            style={{ width: '20px', height: '20px', borderRadius: '50%', background: c, border: newAccountColor === c ? '2px solid #333' : 'none', cursor: 'pointer' }}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
                             </motion.div>
                         )}
                     </AnimatePresence>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '0.8rem' }}>
-                        {accountsWithBalance.map(acc => (
-                            <motion.div key={acc.id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
-                                <div style={{ 
-                                    background: 'white', 
-                                    padding: '1rem', 
-                                    borderRadius: '20px', 
-                                    border: '1px solid #EEE',
-                                    borderLeft: `4px solid ${acc.color}`,
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
-                                    position: 'relative'
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                        <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#AAA', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{acc.name}</span>
-                                        <button 
-                                            onClick={() => handleDeleteAccount(acc.id)}
-                                            style={{ background: 'transparent', border: 'none', padding: '0', cursor: 'pointer', opacity: 0.2 }}
-                                            onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                                            onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.2')}
-                                        >
-                                            <Trash2 size={12} color="#f87171" />
-                                        </button>
-                                    </div>
-                                    <p style={{ margin: '4px 0 0 0', fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>
-                                        ${acc.balance.toLocaleString('en-US', { minimumFractionDigits: 0 })}
-                                    </p>
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
                 </div>
 
                 <div className="finance-summary-grid" style={{ display: 'grid', gap: '1rem' }}>
