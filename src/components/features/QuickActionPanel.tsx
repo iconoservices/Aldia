@@ -348,6 +348,21 @@ export const QuickActionPanel = ({
                                         </motion.div>
                                     ) : (
                                         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '4px' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setSelectedProjectId(undefined);
+                                                    setSelectedAccountId(undefined);
+                                                }}
+                                                style={{
+                                                    padding: '6px 12px', borderRadius: '12px', border: '1px solid #EEE',
+                                                    background: selectedProjectId === undefined ? '#333' : 'white',
+                                                    color: selectedProjectId === undefined ? 'white' : '#888',
+                                                    fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap'
+                                                }}
+                                            >
+                                                Sin Proyecto
+                                            </button>
                                             {projects.map(p => (
                                                 <button
                                                     key={p.id}
