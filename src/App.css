@@ -149,6 +149,19 @@
   min-width: 60px;
 }
 
+.finance-summary-grid, .debts-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (min-width: 480px) {
+  .notes-grid, .projects-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+  .finance-summary-grid, .debts-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 /* BENTO GRID */
 .bento-grid {
   display: flex;

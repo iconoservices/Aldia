@@ -164,6 +164,8 @@ function App() {
                 removeProjectTask={state.removeProjectTask}
                 promoteTaskToRoutine={state.promoteTaskToRoutine}
                 reorderProjectTasks={state.reorderProjectTasks}
+                updateProject={state.updateProject}
+                updateProjectTask={state.updateProjectTask}
               />
             ) : activeTab === 'Stats' ? (
               <StatsDashboard
@@ -190,6 +192,7 @@ function App() {
         addMission={state.addMission}
         projects={state.projects}
         addProjectTask={state.addProjectTask}
+        updateNote={state.updateNote}
       />
 
       <MissionEditOverlay 

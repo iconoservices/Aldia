@@ -54,12 +54,44 @@ export const FinanzasDashboard = ({
                         </div>
                         <DomainIcon domain="finanzas" variant="solid" size={18} className="text-white opacity-80" />
                     </div>
-                    <h2 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-1.5px', color: 'white' }}>
-                        ${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                    </h2>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                        <h2 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-1.5px', color: 'white' }}>
+                            ${(balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        </h2>
+
+                        {/* INDICADORES DE MOVIMIENTO INTEGRADOS AL COSTADO */}
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '0.4rem' }}>
+                            <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '6px', 
+                                background: 'rgba(255, 255, 255, 0.15)', 
+                                padding: '4px 10px', 
+                                borderRadius: '10px',
+                                backdropFilter: 'blur(5px)',
+                                border: '1px solid rgba(255, 255, 255, 0.1)'
+                            }}>
+                                <ArrowUpCircle size={12} color="#4ade80" />
+                                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'white' }}>+{(income || 0).toLocaleString()}</span>
+                            </div>
+                            <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '6px', 
+                                background: 'rgba(255, 255, 255, 0.15)', 
+                                padding: '4px 10px', 
+                                borderRadius: '10px',
+                                backdropFilter: 'blur(5px)',
+                                border: '1px solid rgba(255, 255, 255, 0.1)'
+                            }}>
+                                <ArrowDownCircle size={12} color="#f87171" />
+                                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'white' }}>-{(expense || 0).toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
                 </GlassCard>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="finance-summary-grid" style={{ display: 'grid', gap: '1rem' }}>
                     {/* TARJETA: OPERACIÓN HOY */}
                     <GlassCard 
                         style={{
@@ -93,18 +125,6 @@ export const FinanzasDashboard = ({
                             ${projectedSavings.toLocaleString()}
                         </h3>
                     </GlassCard>
-                </div>
-            </div>
-
-            {/* INGRESOS / GASTOS INDICATOR */}
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '1.5rem' }}>
-                <div style={{ flex: 1, background: '#ECFDF5', padding: '10px', borderRadius: '15px', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #D1FAE5' }}>
-                    <ArrowUpCircle size={16} color="#10B981" />
-                    <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#065F46' }}>+{income}</span>
-                </div>
-                <div style={{ flex: 1, background: '#FEF2F2', padding: '10px', borderRadius: '15px', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #FEE2E2' }}>
-                    <ArrowDownCircle size={16} color="#EF4444" />
-                    <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#991B1B' }}>-{expense}</span>
                 </div>
             </div>
 
@@ -153,7 +173,7 @@ export const FinanzasDashboard = ({
             </div>
 
             {/* SECCIÓN DE DEUDAS */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div className="debts-grid" style={{ display: 'grid', gap: '1rem', marginBottom: '1.5rem' }}>
                 <div className="glass-card" style={{ padding: '0.8rem', borderTop: '3px solid #f87171' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', color: '#f87171' }}>
                         <UserMinus size={14} />

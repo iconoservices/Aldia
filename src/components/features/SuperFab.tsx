@@ -132,14 +132,14 @@ export const SuperFab = ({ addMission, addTransaction, addHabit, addRoutineItem,
                     })}
                 </AnimatePresence>
 
-                {/* BOTONES PRINCIPALES RAPIDOS (ENCIMA DEL MAS) */}
-                <div style={{ position: 'absolute', bottom: '70px', left: '4px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* BOTONES PRINCIPALES RAPIDOS (AL COSTADO DEL MAS) */}
+                <div style={{ position: 'absolute', bottom: '2px', right: '70px', display: 'flex', flexDirection: 'row-reverse', gap: '12px' }}>
                     <AnimatePresence>
                         {!isOpen && (
                             <>
                                 <motion.button
-                                    initial={{ opacity: 0, scale: 0, y: 20 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    initial={{ opacity: 0, scale: 0, x: 20 }}
+                                    animate={{ opacity: 1, scale: 1, x: 0 }}
                                     exit={{ opacity: 0, scale: 0 }}
                                     onClick={() => setActionType('ingreso')}
                                     whileHover={{ scale: 1.1 }}
@@ -154,8 +154,8 @@ export const SuperFab = ({ addMission, addTransaction, addHabit, addRoutineItem,
                                     <TrendingUp size={24} />
                                 </motion.button>
                                 <motion.button
-                                    initial={{ opacity: 0, scale: 0, y: 20 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    initial={{ opacity: 0, scale: 0, x: 20 }}
+                                    animate={{ opacity: 1, scale: 1, x: 0 }}
                                     exit={{ opacity: 0, scale: 0 }}
                                     onClick={() => setActionType('gasto')}
                                     whileHover={{ scale: 1.1 }}

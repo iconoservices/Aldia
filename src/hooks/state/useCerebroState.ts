@@ -41,11 +41,16 @@ export const useCerebroState = () => {
         }));
     };
 
+    const updateNote = (id: number, updates: Partial<Note>) => {
+        setNotes(prev => prev.map(n => n.id === id ? { ...n, ...updates } : n));
+    };
+
     return {
         notes,
         setNotes,
         addNote,
         removeNote,
-        toggleNoteItem
+        toggleNoteItem,
+        updateNote
     };
 };

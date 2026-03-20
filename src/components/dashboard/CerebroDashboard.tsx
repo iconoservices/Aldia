@@ -1,4 +1,4 @@
-import { Trash2, CheckCircle2, Circle, ListTodo, FileText } from 'lucide-react';
+import { Trash2, CheckCircle2, Circle, ListTodo, FileText, Edit2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Note } from '../../hooks/useAlDiaState';
 
@@ -47,15 +47,26 @@ export const CerebroDashboard = ({ notes, removeNote, toggleNoteItem, onOpenNote
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             {note.type === 'checklist' ? <ListTodo size={16} color="#666" /> : <FileText size={16} color="#666" />}
-                            <button 
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeNote(note.id);
-                                }}
-                                style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', opacity: 0.3 }}
-                            >
-                                <Trash2 size={14} />
-                            </button>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onOpenNote && onOpenNote(note.id);
+                                    }}
+                                    style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', opacity: 0.3 }}
+                                >
+                                    <Edit2 size={14} />
+                                </button>
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeNote(note.id);
+                                    }}
+                                    style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', opacity: 0.3 }}
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
                         </div>
 
                         <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: '#1A1A1A' }}>{note.title}</h4>

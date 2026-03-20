@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, CheckCircle2, Circle, ListTodo, ArrowRight, Zap, GripVertical } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, Circle, ListTodo, ArrowRight, Zap, GripVertical, Edit2 } from 'lucide-react';
 import { motion, Reorder, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '../ui/GlassCard';
 import type { Project, Mission, Routine } from '../../hooks/useAlDiaState';
@@ -16,12 +16,14 @@ interface ProyectosProps {
     removeProjectTask: (projectId: number, taskId: number) => void;
     promoteTaskToRoutine: (projectId: number, taskId: number, routineId: number) => void;
     reorderProjectTasks?: (projectId: number, newTasks: { id: number; text: string; completed: boolean }[]) => void;
+    updateProject: (id: number, updates: Partial<Project>) => void;
+    updateProjectTask: (projectId: number, taskId: number, updates: Partial<{ text: string, completed: boolean }>) => void;
 }
 
 export const ProyectosDashboard = ({ 
     projects, missions, rutinas, onAddProject, deleteProject,
     addProjectTask, toggleProjectTask, removeProjectTask, promoteTaskToRoutine,
-    reorderProjectTasks
+    reorderProjectTasks, updateProject, updateProjectTask
 }: ProyectosProps) => {
     const activeProjects = projects.filter(p => p.status === 'activo');
     
@@ -63,6 +65,8 @@ export const ProyectosDashboard = ({
                         removeProjectTask={removeProjectTask}
                         promoteTaskToRoutine={promoteTaskToRoutine}
                         reorderProjectTasks={reorderProjectTasks}
+                        updateProject={updateProject}
+                        updateProjectTask={updateProjectTask}
                         rutinas={rutinas}
                     />
                 ))}
@@ -104,7 +108,7 @@ export const ProyectosDashboard = ({
 
 const ProjectCard = ({ 
     project, deleteProject, addProjectTask, toggleProjectTask, removeProjectTask, promoteTaskToRoutine,
-    reorderProjectTasks, rutinas
+    reorderProjectTasks, updateProject, updateProjectTask, rutinas
 }: { 
     project: Project, 
     deleteProject: (id: number) => void,
@@ -113,6 +117,8 @@ const ProjectCard = ({
     removeProjectTask: (pid: number, tid: number) => void,
     promoteTaskToRoutine: (pid: number, tid: number, rid: number) => void,
     reorderProjectTasks?: (pid: number, tasks: any[]) => void,
+    updateProject: (id: number, updates: Partial<Project>) => void,
+    updateProjectTask: (pid: number, tid: number, updates: Partial<{ text: string, completed: boolean }>) => void,
     rutinas: Routine[]
 }) => {
     const [isExpanded, setIsExpanded] = useState(false);
@@ -151,6 +157,18 @@ const ProjectCard = ({
                             {project.name}
                         </h4>
                         <div style={{ display: 'flex', gap: '4px' }}>
+                            <button 
+                                onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    const newName = prompt('Editar nombre del proyecto:', project.name);
+                                    if (newName) updateProject(project.id, { name: newName });
+                                }}
+                                style={{ background: 'transparent', border: 'none', color: '#AAA', padding: '2px', cursor: 'pointer', transition: 'color 0.2s' }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--domain-blue)'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = '#AAA'}
+                            >
+                                <Edit2 size={12} />
+                            </button>
                             <button 
                                 onClick={(e) => { e.stopPropagation(); if(confirm('¿Borrar proyecto?')) deleteProject(project.id); }}
                                 style={{ background: 'transparent', border: 'none', color: '#EEE', padding: '2px', cursor: 'pointer' }}
@@ -234,6 +252,15 @@ const ProjectCard = ({
                                                 {task.text}
                                             </span>
                                             <div style={{ display: 'flex', gap: '4px' }}>
+                                                <button 
+                                                    onClick={() => {
+                                                        const newText = prompt('Editar tarea:', task.text);
+                                                        if (newText) updateProjectTask(project.id, task.id, { text: newText });
+                                                    }}
+                                                    style={{ background: 'transparent', border: 'none', color: '#AAA', cursor: 'pointer', padding: '2px' }}
+                                                >
+                                                    <Edit2 size={10} />
+                                                </button>
                                                 <button 
                                                     onClick={() => {
                                                         const rid = rutinas[0]?.id || Date.now();

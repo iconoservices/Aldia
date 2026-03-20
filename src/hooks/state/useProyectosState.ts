@@ -58,6 +58,20 @@ export const useProyectosState = () => {
         });
     };
 
+    const updateProjectTask = (projectId: number, taskId: number, updates: Partial<{ text: string, completed: boolean }>) => {
+        setProjects(prev => {
+            if (!Array.isArray(prev)) return [];
+            return prev.map(p => {
+                if (p.id !== projectId) return p;
+                const currentChecklist = Array.isArray(p.checklist) ? p.checklist : [];
+                return {
+                    ...p,
+                    checklist: currentChecklist.map(t => t.id === taskId ? { ...t, ...updates } : t)
+                };
+            });
+        });
+    };
+
     const promoteTaskToRoutine = (projectId: number, taskId: number, routineId: number) => {
         setProjects(prevProjects => {
             let promotedTaskText = '';
@@ -184,6 +198,7 @@ export const useProyectosState = () => {
         toggleRoutineItem,
         removeRoutineItem,
         updateRoutine,
+        updateProjectTask,
         reorderProjectTasks: (projectId: number, newChecklist: { id: number; text: string; completed: boolean }[]) => {
             setProjects(prev => prev.map(p => p.id === projectId ? { ...p, checklist: newChecklist } : p));
         },

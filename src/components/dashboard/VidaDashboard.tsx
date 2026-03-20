@@ -119,16 +119,23 @@ export const VidaDashboard = ({
 
             {/* SECCIÓN DE RUTINAS */}
             <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    marginBottom: '1rem',
+                    flexWrap: 'wrap',
+                    gap: '12px'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>⚡ Rutinas</h3>
                         <div style={{ display: 'flex', background: '#F0EBE6', padding: '4px', borderRadius: '12px', gap: '4px' }}>
                             <button 
                                 onClick={() => setViewMode('hoy')}
                                 style={{ 
                                     background: viewMode === 'hoy' ? 'white' : 'transparent',
-                                    border: 'none', padding: '4px 12px', borderRadius: '8px', cursor: 'pointer',
-                                    fontSize: '0.7rem', fontWeight: 900, color: viewMode === 'hoy' ? 'var(--domain-purple)' : '#888',
+                                    border: 'none', padding: '4px 8px', borderRadius: '8px', cursor: 'pointer',
+                                    fontSize: '0.65rem', fontWeight: 900, color: viewMode === 'hoy' ? 'var(--domain-purple)' : '#888',
                                     display: 'flex', alignItems: 'center', gap: '4px'
                                 }}
                             >
@@ -138,8 +145,8 @@ export const VidaDashboard = ({
                                 onClick={() => setViewMode('semana')}
                                 style={{ 
                                     background: viewMode === 'semana' ? 'white' : 'transparent',
-                                    border: 'none', padding: '4px 12px', borderRadius: '8px', cursor: 'pointer',
-                                    fontSize: '0.7rem', fontWeight: 900, color: viewMode === 'semana' ? 'var(--domain-purple)' : '#888',
+                                    border: 'none', padding: '4px 8px', borderRadius: '8px', cursor: 'pointer',
+                                    fontSize: '0.65rem', fontWeight: 900, color: viewMode === 'semana' ? 'var(--domain-purple)' : '#888',
                                     display: 'flex', alignItems: 'center', gap: '4px'
                                 }}
                             >
@@ -150,13 +157,13 @@ export const VidaDashboard = ({
                             <button 
                                 onClick={() => setSortMode(prev => prev === 'agregado' ? 'hora' : 'agregado')}
                                 style={{ 
-                                    background: '#F0EBE6', border: 'none', padding: '6px 12px', borderRadius: '10px', cursor: 'pointer',
-                                    fontSize: '0.7rem', fontWeight: 900, color: sortMode === 'hora' ? 'var(--domain-purple)' : '#888',
+                                    background: '#F0EBE6', border: 'none', padding: '6px 8px', borderRadius: '10px', cursor: 'pointer',
+                                    fontSize: '0.65rem', fontWeight: 900, color: sortMode === 'hora' ? 'var(--domain-purple)' : '#888',
                                     display: 'flex', alignItems: 'center', gap: '4px'
                                 }}
                                 title={sortMode === 'hora' ? "Ordenando por hora" : "Ordenando por creación"}
                             >
-                                <Clock size={12} /> {sortMode === 'hora' ? 'POR HORA' : 'ORIGINAL'}
+                                <Clock size={12} /> {sortMode === 'hora' ? 'HORA' : 'ORIGINAL'}
                             </button>
                         )}
                     </div>
@@ -165,9 +172,26 @@ export const VidaDashboard = ({
                             const name = prompt('Nombre de la nueva Rutina:');
                             if (name) addRoutine(name);
                         }}
-                        style={{ background: '#F0EBE6', color: 'var(--domain-purple)', border: 'none', borderRadius: '10px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontWeight: 900, fontSize: '0.7rem' }}
+                        style={{ 
+                            background: 'var(--domain-orange)', 
+                            color: 'white', 
+                            border: 'none', 
+                            borderRadius: '12px', 
+                            padding: '8px 14px', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '6px', 
+                            cursor: 'pointer', 
+                            fontWeight: 900, 
+                            fontSize: '0.75rem',
+                            boxShadow: '0 4px 12px rgba(255, 140, 66, 0.2)',
+                            transition: 'all 0.2s ease',
+                            flexShrink: 0
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                     >
-                        <Plus size={14} /> NUEVA
+                        <Plus size={16} strokeWidth={3} /> NUEVA RUTINA
                     </button>
                 </div>
 
@@ -323,9 +347,22 @@ export const VidaDashboard = ({
                                                         }}>
                                                             {isDone && <Check size={10} color="white" />}
                                                         </div>
-                                                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: isDone ? '#CCC' : 'var(--text-carbon)', textDecoration: isDone ? 'line-through' : 'none', flex: 1 }}>
-                                                            {item.text}
-                                                        </span>
+                                                        <input 
+                                                            value={item.text}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            onChange={(e) => updateRoutineItem(rutina.id, item.id, { text: e.target.value })}
+                                                            style={{ 
+                                                                fontSize: '0.75rem', 
+                                                                fontWeight: 800, 
+                                                                color: isDone ? '#CCC' : 'var(--text-carbon)', 
+                                                                textDecoration: isDone ? 'line-through' : 'none', 
+                                                                flex: 1,
+                                                                background: 'transparent',
+                                                                border: 'none',
+                                                                outline: 'none',
+                                                                padding: '0'
+                                                            }}
+                                                        />
                                                         
                                                         {/* Item Time */}
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#F0F0F0', padding: '2px 6px', borderRadius: '6px' }}>

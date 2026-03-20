@@ -133,11 +133,11 @@ export const useAlDiaState = () => {
         promoteTaskToRoutine, updateProject, deleteProject, reorderProjectTasks,
         addTimeBlock, removeTimeBlock,
         addRoutineItem, updateRoutineItem, toggleRoutineItem, removeRoutineItem,
-        updateRoutine, addRoutine, removeRoutine
+        updateRoutine, addRoutine, removeRoutine, updateProjectTask
     } = useProyectosState();
 
     const {
-        notes, setNotes, addNote, removeNote, toggleNoteItem
+        notes, setNotes, addNote, removeNote, toggleNoteItem, updateNote
     } = useCerebroState();
 
     // 2. Lógica de Carga (LocalStorage First)
@@ -363,13 +363,13 @@ export const useAlDiaState = () => {
 
         // Proyectos & Rutinas
         projects, addProject, addProjectTask, toggleProjectTask, removeProjectTask, reorderProjectTasks,
-        promoteTaskToRoutine, updateProject, deleteProject,
+        promoteTaskToRoutine, updateProject, deleteProject, updateProjectTask,
         timeBlocks, addTimeBlock, removeTimeBlock,
         rutinas, addRoutineItem, updateRoutineItem, toggleRoutineItem, removeRoutineItem,
         updateRoutine, addRoutine, removeRoutine,
 
         // Cerebro (Notas)
-        notes, addNote, removeNote, toggleNoteItem,
+        notes, addNote, removeNote, toggleNoteItem, updateNote,
 
         // Sistema
         user, isInitialLoad, clearAllData
