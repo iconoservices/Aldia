@@ -293,7 +293,44 @@ export const useAlDiaState = () => {
 
             return () => clearTimeout(syncTimer);
         }
-    }, [misionesState, transactions, balance, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, user, isInitialLoad]);
+    }, [misionesState, transactions, balance, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, user, isInitialLoad, accounts]);
+
+    // 4. Migración y Recuperación de Datos (Post-Carga)
+    useEffect(() => {
+        if (isInitialLoad) return;
+
+        // Migrar Cuentas (projectId -> projectIds)
+        const needsAccountMigration = accounts.some(acc => {
+            const a = acc as any;
+            return a.projectId !== undefined && (!a.projectIds || a.projectIds.length === 0);
+        });
+
+        if (needsAccountMigration) {
+            setAccounts(prev => prev.map(acc => {
+                const a = acc as any;
+                if (a.projectId !== undefined && (!a.projectIds || a.projectIds.length === 0)) {
+                    const { projectId, ...rest } = a;
+                    return { ...rest, projectIds: [projectId] } as Account;
+                }
+                return acc;
+            }));
+        }
+
+        // Recuperar Proyecto "Personal" si hay huérfanos con ID 1
+        const hasId1References = 
+            transactions.some(tx => tx.projectId === 1) || 
+            misionesState.some(m => m.projectId === 1) ||
+            accounts.some(acc => (acc as any).projectId === 1 || acc.projectIds?.includes(1));
+            
+        const project1Exists = projects.some(p => p.id === 1);
+
+        if (hasId1References && !project1Exists) {
+            setProjects(prev => [
+                { id: 1, name: '☕ Personal (Recuperado)', color: '#888', status: 'activo', checklist: [] },
+                ...prev
+            ]);
+        }
+    }, [isInitialLoad, transactions.length, accounts.length, projects.length, misionesState.length]);
 
     // 3. Lógica Derivada
     const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -372,7 +409,19 @@ export const useAlDiaState = () => {
         performanceScore, missionFocusScore, completedMissionsCount,
 
         // Finanzas
-        transactions, addTransaction, balance,
+        transactions, 
+        addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number) => {
+            addTransaction(text, amount, type, isDebt, projectId, accountId);
+            if (projectId && accountId) {
+                setAccounts(prev => prev.map(acc => {
+                    if (acc.id === accountId && !acc.projectIds?.includes(projectId)) {
+                        return { ...acc, projectIds: [...(acc.projectIds || []), projectId] };
+                    }
+                    return acc;
+                }));
+            }
+        },
+        balance,
         todayIncome, todayExpense, debtsOwe, debtsOwed,
         monthlyBudget, updateMonthlyBudget: (amount: number) => setMonthlyBudget(amount),
         fixedExpenses, addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense,

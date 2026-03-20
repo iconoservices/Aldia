@@ -27,8 +27,11 @@ export const ProjectDetailView = ({
     const [newTaskText, setNewTaskText] = useState('');
 
     const projectAccounts = useMemo(() => {
+        // Cuentas vinculadas explícitamente o que tienen transacciones para este proyecto
+        const usedAccountIds = new Set(transactions.filter(tx => tx.projectId === project.id).map(tx => tx.accountId));
+        
         return accounts
-            .filter(acc => acc.projectIds?.includes(project.id))
+            .filter(acc => acc.projectIds?.includes(project.id) || usedAccountIds.has(acc.id))
             .map(acc => {
                 const bal = transactions
                     .filter(tx => tx.accountId === acc.id && tx.projectId === project.id && !tx.isDebt)
