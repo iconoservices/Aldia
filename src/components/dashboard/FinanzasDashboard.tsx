@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { ArrowUpCircle, ArrowDownCircle, UserMinus, UserPlus, BarChart3, Plus, Trash2, Edit2, Check, X, Calculator, PiggyBank, Wallet } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '../ui/GlassCard';
 import { DomainIcon } from '../ui/DomainIcon';
 import type { Transaction, FixedExpense } from '../../hooks/useAlDiaState';
@@ -21,17 +21,51 @@ interface FinanzasProps {
     updateFixedExpense: (id: number, updates: Partial<FixedExpense>) => void;
     projects: { id: number, name: string, color: string }[];
     accounts: { id: number, name: string, color: string, projectIds?: number[] }[];
+    setAccounts: React.Dispatch<React.SetStateAction<{ id: number; name: string; color: string; projectIds?: number[] }[]>>;
 }
 
 export const FinanzasDashboard = ({ 
     balance, income, expense, owe, owed, transactions,
     monthlyBudget, updateMonthlyBudget, fixedExpenses, 
     addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense,
-    projects, accounts
+    projects, accounts, setAccounts
 }: FinanzasProps) => {
     const netOperation = useMemo(() => income - expense, [income, expense]);
     const totalFixed = useMemo(() => fixedExpenses.filter(e => e.active).reduce((acc, e) => acc + e.amount, 0), [fixedExpenses]);
     const projectedSavings = useMemo(() => monthlyBudget - totalFixed, [monthlyBudget, totalFixed]);
+
+    const [isAddingAccount, setIsAddingAccount] = useState(false);
+    const [newAccountName, setNewAccountName] = useState('');
+    const [newAccountColor, setNewAccountColor] = useState('#ff8c42');
+
+    // Cuentas con balance calculado (solo para esta vista)
+    const accountsWithBalance = useMemo(() => {
+        return accounts.map(acc => {
+            const bal = transactions
+                .filter(tx => tx.accountId === acc.id && !tx.isCashless)
+                .reduce((sum, tx) => sum + tx.amount, 0);
+            return { ...acc, balance: bal };
+        });
+    }, [accounts, transactions]);
+
+    const handleAddAccount = () => {
+        if (!newAccountName.trim()) return;
+        const newAcc = {
+            id: Date.now(),
+            name: newAccountName,
+            color: newAccountColor,
+            projectIds: []
+        };
+        setAccounts(prev => [...prev, newAcc]);
+        setNewAccountName('');
+        setIsAddingAccount(false);
+    };
+
+    const handleDeleteAccount = (id: number) => {
+        if (window.confirm('¿Eliminar esta cuenta? No se borrarán las transacciones, pero la cuenta ya no aparecerá.')) {
+            setAccounts(prev => prev.filter(a => a.id !== id));
+        }
+    };
 
     return (
         <div style={{ paddingBottom: '5rem' }}>
@@ -91,6 +125,103 @@ export const FinanzasDashboard = ({
                         </div>
                     </div>
                 </GlassCard>
+
+                {/* NUEVA SECCIÓN: MIS CUENTAS / TARJETAS */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem', padding: '0 4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <PiggyBank size={18} color="var(--domain-blue)" />
+                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: 'var(--text-carbon)' }}>Mis Cuentas / Tarjetas</h3>
+                        </div>
+                        <button 
+                            onClick={() => setIsAddingAccount(!isAddingAccount)}
+                            style={{ 
+                                background: isAddingAccount ? '#FEE2E2' : '#F0F7FF', 
+                                border: 'none', 
+                                borderRadius: '10px', 
+                                padding: '6px 12px', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '6px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            {isAddingAccount ? <X size={14} color="#f87171" /> : <Plus size={14} color="#0066FF" />}
+                            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: isAddingAccount ? '#f87171' : '#0066FF' }}>
+                                {isAddingAccount ? 'CANCELAR' : 'NUEVA'}
+                            </span>
+                        </button>
+                    </div>
+
+                    <AnimatePresence>
+                        {isAddingAccount && (
+                            <motion.div 
+                                initial={{ opacity: 0, height: 0 }} 
+                                animate={{ opacity: 1, height: 'auto' }} 
+                                exit={{ opacity: 0, height: 0 }}
+                                style={{ overflow: 'hidden', marginBottom: '1rem' }}
+                            >
+                                <GlassCard style={{ padding: '1rem', background: '#F8FAFC', border: '2px dashed #0066FF30' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        <input 
+                                            autoFocus
+                                            placeholder="Nombre de la cuenta (ej. BCP, Efectivo...)" 
+                                            value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)}
+                                            style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #E2E8F0', fontSize: '0.9rem', fontWeight: 600, outline: 'none' }}
+                                        />
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', gap: '6px' }}>
+                                                {['#0055FF', '#ff8c42', '#10B911', '#8b5cf6', '#EC4899', '#334155'].map(c => (
+                                                    <button 
+                                                        key={c} onClick={() => setNewAccountColor(c)}
+                                                        style={{ width: '24px', height: '24px', borderRadius: '50%', background: c, border: newAccountColor === c ? '2px solid #333' : 'none', cursor: 'pointer' }}
+                                                    />
+                                                ))}
+                                            </div>
+                                            <button 
+                                                onClick={handleAddAccount}
+                                                style={{ background: 'var(--domain-green)', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '10px', fontWeight: 900, fontSize: '0.75rem', cursor: 'pointer' }}
+                                            >
+                                                CREAR
+                                            </button>
+                                        </div>
+                                    </div>
+                                </GlassCard>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '0.8rem' }}>
+                        {accountsWithBalance.map(acc => (
+                            <motion.div key={acc.id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
+                                <div style={{ 
+                                    background: 'white', 
+                                    padding: '1rem', 
+                                    borderRadius: '20px', 
+                                    border: '1px solid #EEE',
+                                    borderLeft: `4px solid ${acc.color}`,
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                                    position: 'relative'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#AAA', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{acc.name}</span>
+                                        <button 
+                                            onClick={() => handleDeleteAccount(acc.id)}
+                                            style={{ background: 'transparent', border: 'none', padding: '0', cursor: 'pointer', opacity: 0.2 }}
+                                            onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                                            onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.2')}
+                                        >
+                                            <Trash2 size={12} color="#f87171" />
+                                        </button>
+                                    </div>
+                                    <p style={{ margin: '4px 0 0 0', fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>
+                                        ${acc.balance.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                                    </p>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+                </div>
 
                 <div className="finance-summary-grid" style={{ display: 'grid', gap: '1rem' }}>
                     {/* TARJETA: OPERACIÓN HOY */}

@@ -154,6 +154,7 @@ function App() {
                 updateFixedExpense={state.updateFixedExpense}
                 projects={state.projects}
                 accounts={state.accounts}
+                setAccounts={state.setAccounts}
               />
             ) : activeTab === 'Proyectos' ? (
               <ProyectosDashboard

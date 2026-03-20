@@ -138,6 +138,10 @@ export const QuickActionPanel = ({
                 colors: ['#a855f7', '#ffffff']
             });
         } else if (actionType === 'agenda' && addCalendarEvent) {
+            if (projects.length > 0 && !selectedProjectId) {
+                alert("Debes seleccionar un proyecto para la agenda");
+                return;
+            }
             const finalStart = hasTime ? startTime : '00:00';
             const finalEnd = hasTime ? endTime : '23:59';
             addCalendarEvent(concept || 'Agenda', date, finalStart, finalEnd, 'Añadido desde AlDía', selectedProjectId);
@@ -161,6 +165,10 @@ export const QuickActionPanel = ({
                 colors: [noteColor === '#FFFFFF' ? '#facc15' : noteColor, '#ffffff']
             });
         } else if (actionType === 'bloque') {
+            if (projects.length > 0 && !selectedProjectId) {
+                alert("Debes seleccionar un proyecto para el bloque");
+                return;
+            }
             addTimeBlock(concept || 'Bloque', startTime, endTime, noteColor === '#FFFFFF' ? '#8b5cf6' : noteColor, selectedProjectId);
             confetti({
                 particleCount: 60,
@@ -367,21 +375,7 @@ export const QuickActionPanel = ({
                                         </motion.div>
                                     ) : (
                                         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '4px' }}>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setSelectedProjectId(undefined);
-                                                    setSelectedAccountId(undefined);
-                                                }}
-                                                style={{
-                                                    padding: '6px 12px', borderRadius: '12px', border: '1px solid #EEE',
-                                                    background: selectedProjectId === undefined ? '#333' : 'white',
-                                                    color: selectedProjectId === undefined ? 'white' : '#888',
-                                                    fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap'
-                                                }}
-                                            >
-                                                Sin Proyecto
-                                            </button>
+                                            {/* Eliminado "Sin Proyecto" por solicitud del usuario */}
                                             {projects.map(p => (
                                                 <button
                                                     key={p.id}
