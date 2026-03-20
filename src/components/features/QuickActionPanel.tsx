@@ -37,8 +37,9 @@ export const QuickActionPanel = ({
     const [selectedAccountId, setSelectedAccountId] = useState<number | undefined>(undefined);
     const [repeatDays, setRepeatDays] = useState<number[]>([]);
     
-    // Filtro de cuentas basado en proyecto seleccionado
+    // Filtro de cuentas basado en proyecto seleccionado (Si no hay proyecto, no mostrar cuentas)
     const filteredAccounts = useMemo(() => {
+        if (!selectedProjectId) return [];
         return accounts.filter(acc => acc.projectId === selectedProjectId);
     }, [accounts, selectedProjectId]);
 
@@ -77,10 +78,6 @@ export const QuickActionPanel = ({
         e.preventDefault();
 
         if (actionType === 'gasto' || actionType === 'ingreso') {
-            if (actionType === 'ingreso' && !selectedAccountId) {
-                alert("Selecciona una cuenta/tarjeta destino");
-                return;
-            }
             addTransaction(concept || (actionType === 'gasto' ? 'Gasto' : 'Ingreso'), parseFloat(amount) || 0, actionType, isDebt, selectedProjectId, selectedAccountId);
             confetti({
                 particleCount: 80,
@@ -386,11 +383,11 @@ export const QuickActionPanel = ({
                                 </div>
                             )}
 
-                            {/* SELECTOR DE CUENTA (Mandatorio para Ingresos) */}
-                            {currentConfig.isFinancial && (
-                                <div style={{ background: '#F9F9F9', padding: '12px', borderRadius: '18px', border: actionType === 'ingreso' && !selectedAccountId ? '2px dashed #f87171' : '2px solid transparent' }}>
-                                    <p style={{ margin: '0 0 8px 10px', fontWeight: 800, fontSize: '0.6rem', color: actionType === 'ingreso' && !selectedAccountId ? '#f87171' : '#BBB', textTransform: 'uppercase' }}>
-                                        Cuenta / Tarjeta {actionType === 'ingreso' ? '(Obligatorio)' : '(Opcional)'}
+                            {/* SELECTOR DE CUENTA (Solo si hay un proyecto seleccionado y tiene cuentas) */}
+                            {currentConfig.isFinancial && filteredAccounts.length > 0 && (
+                                <div style={{ background: '#F9F9F9', padding: '12px', borderRadius: '18px', border: '2px solid transparent' }}>
+                                    <p style={{ margin: '0 0 8px 10px', fontWeight: 800, fontSize: '0.6rem', color: '#BBB', textTransform: 'uppercase' }}>
+                                        Cuenta / Tarjeta (Opcional)
                                     </p>
                                     <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
                                         {actionType === 'gasto' && (
@@ -423,9 +420,6 @@ export const QuickActionPanel = ({
                                                 {acc.name}
                                             </button>
                                         ))}
-                                        {filteredAccounts.length === 0 && (
-                                            <span style={{ fontSize: '0.65rem', color: '#AAA', padding: '6px' }}>Sin cuentas vinculadas</span>
-                                        )}
                                     </div>
                                 </div>
                             )}
