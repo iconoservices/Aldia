@@ -11,6 +11,7 @@ import { FinanzasDashboard } from './components/dashboard/FinanzasDashboard';
 import { StatsDashboard } from './components/dashboard/StatsDashboard';
 import { ProyectosDashboard } from './components/dashboard/ProyectosDashboard';
 import { CalendarioView } from './components/dashboard/CalendarioView';
+import { ProjectDetailView } from './components/dashboard/ProjectDetailView';
 import { SuperFab } from './components/features/SuperFab';
 import { NoteDetailsModal } from './components/features/NoteDetailsModal';
 import { MissionEditOverlay } from './components/features/MissionEditOverlay';
@@ -29,10 +30,12 @@ function App() {
   const [isAddingProject, setIsAddingProject] = useState(false);
   const [editingMission, setEditingMission] = useState<Mission | null>(null);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+  const [selectedProjectDetailId, setSelectedProjectDetailId] = useState<number | null>(null);
 
   const state = useAlDiaState();
   const { needRefresh, updateServiceWorker } = usePWA();
   const viewingNote: Note | null = state.notes.find((n: Note) => n.id === viewingNoteId) || null;
+  const selectedProjectDetail = state.projects.find((p: any) => p.id === selectedProjectDetailId);
 
   if (state.isInitialLoad) {
     return (
@@ -150,22 +153,15 @@ function App() {
                 toggleFixedExpense={state.toggleFixedExpense}
                 updateFixedExpense={state.updateFixedExpense}
                 projects={state.projects}
+                accounts={state.accounts}
               />
             ) : activeTab === 'Proyectos' ? (
               <ProyectosDashboard
                 projects={state.projects}
-                missions={state.missions}
-                timeBlocks={state.timeBlocks}
-                rutinas={state.rutinas}
                 onAddProject={() => setIsAddingProject(true)}
                 deleteProject={state.deleteProject}
-                addProjectTask={state.addProjectTask}
-                toggleProjectTask={state.toggleProjectTask}
-                removeProjectTask={state.removeProjectTask}
-                promoteTaskToRoutine={state.promoteTaskToRoutine}
-                reorderProjectTasks={state.reorderProjectTasks}
                 updateProject={state.updateProject}
-                updateProjectTask={state.updateProjectTask}
+                onOpenDetail={(id: number) => setSelectedProjectDetailId(id)}
               />
             ) : activeTab === 'Stats' ? (
               <StatsDashboard
@@ -222,10 +218,30 @@ function App() {
         addTimeBlock={state.addTimeBlock}
         addProject={state.addProject}
         projects={state.projects}
+        accounts={state.accounts}
         rutinas={state.rutinas}
         forceOpenType={isAddingProject ? 'proyecto' : undefined}
         onForceOpenClose={() => setIsAddingProject(false)}
       />
+
+      <AnimatePresence>
+        {selectedProjectDetailId && selectedProjectDetail && (
+          <ProjectDetailView 
+            project={selectedProjectDetail}
+            onClose={() => setSelectedProjectDetailId(null)}
+            accounts={state.accounts}
+            setAccounts={state.setAccounts}
+            transactions={state.transactions}
+            addProjectTask={state.addProjectTask}
+            toggleProjectTask={state.toggleProjectTask}
+            removeProjectTask={state.removeProjectTask}
+            updateProjectTask={state.updateProjectTask}
+            reorderProjectTasks={state.reorderProjectTasks}
+            promoteTaskToRoutine={state.promoteTaskToRoutine}
+            rutinas={state.rutinas}
+          />
+        )}
+      </AnimatePresence>
 
       <ProfileOverlay
         isOpen={isProfileOpen}

@@ -5,7 +5,7 @@ import { QuickActionPanel } from './QuickActionPanel';
 
 interface SuperFabProps {
     addMission: (text: string, q?: string, repeat?: 'none' | 'daily' | 'weekly' | 'monthly', noteId?: number, labels?: string[], dueDate?: string, dueTime?: string, habitId?: number, projectId?: number) => void;
-    addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number) => void;
+    addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number) => void;
     addHabit: (name: string) => void;
     addRoutineItem?: (routineId: number, text: string) => void;
     addCalendarEvent: (title: string, date: string, start: string, end: string, desc: string) => void;
@@ -13,12 +13,13 @@ interface SuperFabProps {
     addTimeBlock: (label: string, start: string, end: string, color: string, projectId?: number) => void;
     addProject?: (name: string, color: string, targetHoursPerWeek?: number) => void;
     projects?: { id: number, name: string, color: string }[];
+    accounts?: { id: number, name: string, color: string }[];
     rutinas?: { id: number, title: string, color: string }[];
     forceOpenType?: string | null;
     onForceOpenClose?: () => void;
 }
 
-export const SuperFab = ({ addMission, addTransaction, addHabit, addRoutineItem, addCalendarEvent, addNote, addTimeBlock, addProject, projects = [], rutinas = [], forceOpenType = null, onForceOpenClose }: SuperFabProps) => {
+export const SuperFab = ({ addMission, addTransaction, addHabit, addRoutineItem, addCalendarEvent, addNote, addTimeBlock, addProject, projects = [], accounts = [], rutinas = [], forceOpenType = null, onForceOpenClose }: SuperFabProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const [actionType, setActionType] = useState<string | null>(null);
 
@@ -212,6 +213,7 @@ export const SuperFab = ({ addMission, addTransaction, addHabit, addRoutineItem,
                 addTimeBlock={addTimeBlock}
                 addProject={addProject}
                 projects={projects}
+                accounts={accounts}
                 rutinas={rutinas}
             />
         </div>

@@ -2,7 +2,9 @@ import { useState } from 'react';
 import type { Project, TimeBlock, Routine } from '../useAlDiaState';
 
 export const useProyectosState = () => {
-    const [projects, setProjects] = useState<Project[]>([]);
+    const [projects, setProjects] = useState<Project[]>([
+        { id: 1, name: '☕ Personal', color: '#888', status: 'activo', checklist: [] }
+    ]);
     const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
     const [rutinas, setRutinas] = useState<Routine[]>([]);
 

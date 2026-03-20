@@ -49,6 +49,14 @@ export interface Transaction {
     date: string;     // HH:mm
     fullDate: string; // YYYY-MM-DD
     projectId?: number;
+    accountId?: number;
+}
+
+export interface Account {
+    id: number;
+    name: string;
+    color: string;
+    projectId?: number;
 }
 
 export interface FixedExpense {
@@ -140,6 +148,14 @@ export const useAlDiaState = () => {
         notes, setNotes, addNote, removeNote, toggleNoteItem, updateNote
     } = useCerebroState();
 
+    const [accounts, setAccounts] = useState<Account[]>([
+        { id: 1, name: 'Efectivo', color: '#4ade80', projectId: 1 },
+        { id: 2, name: 'Yape', color: '#8b5cf6', projectId: 1 },
+        { id: 3, name: 'Plin', color: '#3b82f6', projectId: 1 },
+        { id: 4, name: 'BCP', color: '#f59e0b', projectId: 1 },
+        { id: 5, name: 'BBVA', color: '#004481', projectId: 1 }
+    ]);
+
     // 2. Lógica de Carga (LocalStorage First)
     useEffect(() => {
         // Carga inmediata de LocalStorage para evitar estados vacíos
@@ -190,6 +206,9 @@ export const useAlDiaState = () => {
 
             const sFixed = localStorage.getItem(keys.fixed);
             if (sFixed) setFixedExpenses(JSON.parse(sFixed));
+
+            const sAccounts = localStorage.getItem('aldia_accounts');
+            if (sAccounts) setAccounts(JSON.parse(sAccounts));
         };
 
         loadInitialLocal();
@@ -229,6 +248,7 @@ export const useAlDiaState = () => {
 
                         if (cloud.balance !== undefined) setBalance(Number(cloud.balance));
                         if (cloud.monthlyBudget !== undefined) setMonthlyBudget(Number(cloud.monthlyBudget));
+                        if (cloud.accounts) setAccounts(prev => smartMerge(cloud.accounts, prev));
                     }
                 } catch (error) {
                     console.error("Error en sincronización Cloud:", error);
@@ -255,6 +275,7 @@ export const useAlDiaState = () => {
         localStorage.setItem('aldia_rutinas', JSON.stringify(rutinas));
         localStorage.setItem('aldia_monthly_budget', JSON.stringify(monthlyBudget));
         localStorage.setItem('aldia_fixed_expenses', JSON.stringify(fixedExpenses));
+        localStorage.setItem('aldia_accounts', JSON.stringify(accounts));
 
         if (user) {
             const syncTimer = setTimeout(() => {
@@ -271,6 +292,7 @@ export const useAlDiaState = () => {
                     rutinas,
                     monthlyBudget,
                     fixedExpenses,
+                    accounts,
                     lastSync: new Date().toISOString()
                 }, { merge: true });
             }, 2000);
@@ -370,6 +392,9 @@ export const useAlDiaState = () => {
 
         // Cerebro (Notas)
         notes, addNote, removeNote, toggleNoteItem, updateNote,
+
+        // Cuentas
+        accounts, setAccounts,
 
         // Sistema
         user, isInitialLoad, clearAllData

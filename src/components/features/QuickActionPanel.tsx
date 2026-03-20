@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Clock, Plus } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -8,7 +8,7 @@ interface QuickActionPanelProps {
     onClose: () => void;
     actionType: string | null;
     addMission: (text: string, q?: string, repeat?: 'none' | 'daily' | 'weekly' | 'monthly', noteId?: number, labels?: string[], dueDate?: string, dueTime?: string, habitId?: number, projectId?: number, repeatDays?: number[]) => void;
-    addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number) => void;
+    addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number) => void;
     addHabit: (name: string) => void;
     addRoutineItem?: (routineId: number, text: string, time?: string) => void;
     addCalendarEvent?: (title: string, date: string, start: string, end: string, desc: string, projectId?: number) => void;
@@ -16,13 +16,14 @@ interface QuickActionPanelProps {
     addTimeBlock: (label: string, start: string, end: string, color: string, projectId?: number) => void;
     addProject?: (name: string, color: string, targetHoursPerWeek?: number) => void;
     projects?: { id: number, name: string, color: string }[];
+    accounts?: { id: number, name: string, color: string, projectId?: number }[];
     rutinas?: { id: number, title: string, color: string }[];
 }
 
 export const QuickActionPanel = ({ 
     isOpen, onClose, actionType, addMission, addTransaction, addHabit, 
     addRoutineItem, addCalendarEvent, addNote, addTimeBlock, addProject, 
-    projects = [], rutinas = [] 
+    projects = [], accounts = [], rutinas = [] 
 }: QuickActionPanelProps) => {
     const [amount, setAmount] = useState('');
     const [concept, setConcept] = useState('');
@@ -33,8 +34,14 @@ export const QuickActionPanel = ({
     const [asRoutine, setAsRoutine] = useState(false);
     const [routineId, setRoutineId] = useState<number>(1); // Default to Mañana
     const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(undefined);
+    const [selectedAccountId, setSelectedAccountId] = useState<number | undefined>(undefined);
     const [repeatDays, setRepeatDays] = useState<number[]>([]);
     
+    // Filtro de cuentas basado en proyecto seleccionado
+    const filteredAccounts = useMemo(() => {
+        return accounts.filter(acc => acc.projectId === selectedProjectId);
+    }, [accounts, selectedProjectId]);
+
     // Quick Project Creation
     const [isCreatingProject, setIsCreatingProject] = useState(false);
     const [quickProjectName, setQuickProjectName] = useState('');
@@ -70,7 +77,11 @@ export const QuickActionPanel = ({
         e.preventDefault();
 
         if (actionType === 'gasto' || actionType === 'ingreso') {
-            addTransaction(concept || (actionType === 'gasto' ? 'Gasto' : 'Ingreso'), parseFloat(amount) || 0, actionType, isDebt, selectedProjectId);
+            if (actionType === 'ingreso' && !selectedAccountId) {
+                alert("Selecciona una cuenta/tarjeta destino");
+                return;
+            }
+            addTransaction(concept || (actionType === 'gasto' ? 'Gasto' : 'Ingreso'), parseFloat(amount) || 0, actionType, isDebt, selectedProjectId, selectedAccountId);
             confetti({
                 particleCount: 80,
                 spread: 70,
@@ -167,6 +178,7 @@ export const QuickActionPanel = ({
             setRepeat('none');
             setLabels('');
             setSelectedProjectId(undefined);
+            setSelectedAccountId(undefined);
             onClose();
         }, 150);
     };
@@ -335,10 +347,13 @@ export const QuickActionPanel = ({
                                             </div>
                                         </motion.div>
                                     ) : (
-                                        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                                        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '4px' }}>
                                             <button
                                                 type="button"
-                                                onClick={() => setSelectedProjectId(undefined)}
+                                                onClick={() => {
+                                                    setSelectedProjectId(undefined);
+                                                    setSelectedAccountId(undefined);
+                                                }}
                                                 style={{
                                                     padding: '6px 12px', borderRadius: '12px', border: '1px solid #EEE',
                                                     background: selectedProjectId === undefined ? '#333' : 'white',
@@ -346,19 +361,21 @@ export const QuickActionPanel = ({
                                                     fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap'
                                                 }}
                                             >
-                                                Ninguno
+                                                ☕ Personal
                                             </button>
                                             {projects.map(p => (
                                                 <button
                                                     key={p.id}
                                                     type="button"
-                                                    onClick={() => setSelectedProjectId(p.id)}
+                                                    onClick={() => {
+                                                        setSelectedProjectId(p.id);
+                                                        setSelectedAccountId(undefined);
+                                                    }}
                                                     style={{
-                                                        padding: '6px 12px', borderRadius: '12px', border: `1px solid ${p.color}40`,
-                                                        background: selectedProjectId === p.id ? p.color : `${p.color}10`,
-                                                        color: selectedProjectId === p.id ? 'white' : p.color,
-                                                        fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap',
-                                                        boxShadow: selectedProjectId === p.id ? `0 4px 10px ${p.color}40` : 'none'
+                                                        padding: '6px 12px', borderRadius: '12px', border: `1px solid ${p.id === selectedProjectId ? p.color : '#EEE'}`,
+                                                        background: selectedProjectId === p.id ? p.color : 'white',
+                                                        color: selectedProjectId === p.id ? 'white' : '#333',
+                                                        fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap'
                                                     }}
                                                 >
                                                     {p.name}
@@ -366,6 +383,50 @@ export const QuickActionPanel = ({
                                             ))}
                                         </div>
                                     )}
+                                </div>
+                            )}
+
+                            {/* SELECTOR DE CUENTA (Mandatorio para Ingresos) */}
+                            {currentConfig.isFinancial && (
+                                <div style={{ background: '#F9F9F9', padding: '12px', borderRadius: '18px', border: actionType === 'ingreso' && !selectedAccountId ? '2px dashed #f87171' : '2px solid transparent' }}>
+                                    <p style={{ margin: '0 0 8px 10px', fontWeight: 800, fontSize: '0.6rem', color: actionType === 'ingreso' && !selectedAccountId ? '#f87171' : '#BBB', textTransform: 'uppercase' }}>
+                                        Cuenta / Tarjeta {actionType === 'ingreso' ? '(Obligatorio)' : '(Opcional)'}
+                                    </p>
+                                    <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                                        {actionType === 'gasto' && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedAccountId(undefined)}
+                                                style={{
+                                                    padding: '6px 12px', borderRadius: '12px', border: '1px solid #EEE',
+                                                    background: selectedAccountId === undefined ? '#333' : 'white',
+                                                    color: selectedAccountId === undefined ? 'white' : '#888',
+                                                    fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap'
+                                                }}
+                                            >
+                                                Ninguna
+                                            </button>
+                                        )}
+                                        {filteredAccounts.map(acc => (
+                                            <button
+                                                key={acc.id}
+                                                type="button"
+                                                onClick={() => setSelectedAccountId(acc.id)}
+                                                style={{
+                                                    padding: '6px 12px', borderRadius: '12px', border: `1px solid ${acc.id === selectedAccountId ? acc.color : '#EEE'}`,
+                                                    background: selectedAccountId === acc.id ? acc.color : 'white',
+                                                    color: selectedAccountId === acc.id ? 'white' : '#333',
+                                                    fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap',
+                                                    boxShadow: selectedAccountId === acc.id ? `0 4px 10px ${acc.color}40` : 'none'
+                                                }}
+                                            >
+                                                {acc.name}
+                                            </button>
+                                        ))}
+                                        {filteredAccounts.length === 0 && (
+                                            <span style={{ fontSize: '0.65rem', color: '#AAA', padding: '6px' }}>Sin cuentas vinculadas</span>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 

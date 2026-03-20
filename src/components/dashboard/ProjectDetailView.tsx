@@ -1,0 +1,177 @@
+import { useState, useMemo } from 'react';
+import { motion, Reorder } from 'framer-motion';
+import { ArrowLeft, Plus, Trash2, Edit2, GripVertical, CheckCircle2, Circle, Zap, Wallet, X } from 'lucide-react';
+import { GlassCard } from '../ui/GlassCard';
+import type { Project, Transaction, Routine } from '../../hooks/useAlDiaState';
+
+interface ProjectDetailViewProps {
+    project: Project;
+    onClose: () => void;
+    accounts: { id: number, name: string, color: string, projectId?: number }[];
+    setAccounts: (accounts: any) => void;
+    transactions: Transaction[];
+    addProjectTask: (projectId: number, text: string) => void;
+    toggleProjectTask: (projectId: number, taskId: number) => void;
+    removeProjectTask: (projectId: number, taskId: number) => void;
+    updateProjectTask: (projectId: number, taskId: number, updates: Partial<{ text: string, completed: boolean }>) => void;
+    reorderProjectTasks?: (projectId: number, newTasks: any[]) => void;
+    promoteTaskToRoutine: (projectId: number, taskId: number, routineId: number) => void;
+    rutinas: Routine[];
+}
+
+export const ProjectDetailView = ({ 
+    project, onClose, accounts, setAccounts, transactions,
+    addProjectTask, toggleProjectTask, removeProjectTask, 
+    updateProjectTask, reorderProjectTasks, promoteTaskToRoutine, rutinas
+}: ProjectDetailViewProps) => {
+    const [newTaskText, setNewTaskText] = useState('');
+
+    const projectAccounts = useMemo(() => {
+        return accounts.filter(acc => acc.projectId === project.id).map(acc => {
+            const bal = transactions
+                .filter(tx => tx.accountId === acc.id && !tx.isDebt)
+                .reduce((sum, tx) => sum + tx.amount, 0);
+            return { ...acc, balance: bal };
+        });
+    }, [accounts, project.id, transactions]);
+
+    const totalBalance = useMemo(() => projectAccounts.reduce((sum, acc) => sum + acc.balance, 0), [projectAccounts]);
+
+    const handleAddTask = () => {
+        if (newTaskText.trim()) {
+            addProjectTask(project.id, newTaskText.trim());
+            setNewTaskText('');
+        }
+    };
+
+    const handleAddAccount = () => {
+        const name = prompt('Nombre de la cuenta (ej: BCP, Yape, Efectivo):');
+        if (name) {
+            const newAccount = { 
+                id: Date.now(), 
+                name, 
+                color: '#'+Math.floor(Math.random()*16777215).toString(16), 
+                projectId: project.id 
+            };
+            setAccounts([...accounts, newAccount]);
+        }
+    };
+
+    return (
+        <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            style={{ 
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+                background: '#F8F9FA', zIndex: 1000, 
+                padding: '1.5rem', overflowY: 'auto',
+                display: 'flex', flexDirection: 'column', gap: '1.5rem'
+            }}
+        >
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <button onClick={onClose} style={{ background: 'white', border: 'none', borderRadius: '12px', padding: '8px', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                    <ArrowLeft size={20} />
+                </button>
+                <div style={{ flex: 1 }}>
+                    <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{project.name}</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: project.color }} />
+                        <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#AAA', textTransform: 'uppercase' }}>PROYECTO DETALLE</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Finance Card */}
+            <GlassCard 
+                style={{ 
+                    background: `${project.color}15`, 
+                    borderLeft: `6px solid ${project.color}`,
+                    padding: '1.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                }}
+            >
+                <div>
+                    <span style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.6, textTransform: 'uppercase' }}>Saldos de este Proyecto</span>
+                    <h3 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 900 }}>S/.{totalBalance.toLocaleString()}</h3>
+                </div>
+                <div style={{ background: 'white', padding: '10px', borderRadius: '14px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                    <Wallet size={24} color={project.color} />
+                </div>
+            </GlassCard>
+
+            {/* Accounts/Containers Section */}
+            <section>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 900 }}>💳 Contenedores de Dinero</h3>
+                    <button 
+                        onClick={handleAddAccount}
+                        style={{ background: 'white', border: '1px solid #EEE', borderRadius: '8px', padding: '4px 10px', fontSize: '0.65rem', fontWeight: 900, color: project.color, cursor: 'pointer' }}
+                    >+ NUEVO</button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px' }}>
+                    {projectAccounts.map(acc => (
+                        <div key={acc.id} className="glass-card" style={{ padding: '0.8rem', borderLeft: `4px solid ${acc.color}`, background: 'white' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#AAA', textTransform: 'uppercase' }}>{acc.name}</span>
+                                <button 
+                                    onClick={() => { if(confirm(`¿Eliminar ${acc.name}?`)) setAccounts(accounts.filter(a => a.id !== acc.id)); }}
+                                    style={{ background: 'transparent', border: 'none', padding: 0, color: '#EEE', cursor: 'pointer' }}
+                                >
+                                    <X size={10} />
+                                </button>
+                            </div>
+                            <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-carbon)' }}>S/.{acc.balance.toLocaleString()}</h4>
+                        </div>
+                    ))}
+                    {projectAccounts.length === 0 && (
+                        <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '1.5rem', background: 'white', borderRadius: '16px', border: '2px dashed #EEE' }}>
+                            <p style={{ color: '#AAA', fontSize: '0.75rem', fontWeight: 700 }}>No hay cuentas vinculadas a este proyecto.</p>
+                        </div>
+                    )}
+                </div>
+            </section>
+
+            {/* Checklist Section (Moved here) */}
+            <section style={{ flex: 1 }}>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 900 }}>📝 Checklist del Proyecto</h3>
+                <div className="glass-card" style={{ padding: '1rem', background: 'white' }}>
+                    <Reorder.Group 
+                        axis="y" 
+                        values={project.checklist || []} 
+                        onReorder={(newOrder: any) => reorderProjectTasks && reorderProjectTasks(project.id, newOrder)}
+                        style={{ display: 'flex', flexDirection: 'column', gap: '8px', listStyle: 'none', padding: 0 }}
+                    >
+                        {(project.checklist || []).map((task: any) => (
+                            <Reorder.Item key={task.id} value={task} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#F8FAFC', padding: '8px 12px', borderRadius: '12px', border: '1px solid #F1F5F9' }}>
+                                <GripVertical size={14} color="#CBD5E1" style={{ cursor: 'grab' }} />
+                                <div onClick={() => toggleProjectTask(project.id, task.id)} style={{ cursor: 'pointer', display: 'flex' }}>
+                                    {task.completed ? <CheckCircle2 size={18} color="var(--domain-green)" /> : <Circle size={18} color="#CBD5E1" />}
+                                </div>
+                                <span style={{ fontSize: '0.8rem', fontWeight: 600, flex: 1, textDecoration: task.completed ? 'line-through' : 'none', color: task.completed ? '#94A3B8' : '#1E293B' }}>{task.text}</span>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                    <button onClick={() => { const t = prompt('Editar tarea:', task.text); if(t) updateProjectTask(project.id, task.id, { text: t }); }} style={{ background: 'transparent', border: 'none', color: '#CBD5E1', cursor: 'pointer' }}><Edit2 size={12} /></button>
+                                    <button onClick={() => { const rid = rutinas[0]?.id || Date.now(); promoteTaskToRoutine(project.id, task.id, rid); }} style={{ background: 'transparent', border: 'none', color: '#CBD5E1', cursor: 'pointer' }}><Zap size={12} /></button>
+                                    <button onClick={() => removeProjectTask(project.id, task.id)} style={{ background: 'transparent', border: 'none', color: '#CBD5E1', cursor: 'pointer' }}><Trash2 size={12} /></button>
+                                </div>
+                            </Reorder.Item>
+                        ))}
+                    </Reorder.Group>
+
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '1rem' }}>
+                        <input 
+                            placeholder="Nueva tarea del proyecto..."
+                            value={newTaskText}
+                            onChange={(e) => setNewTaskText(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+                            style={{ flex: 1, border: '1px solid #E2E8F0', borderRadius: '10px', padding: '8px 12px', fontSize: '0.8rem', outline: 'none' }}
+                        />
+                        <button onClick={handleAddTask} style={{ background: project.color, color: 'white', border: 'none', borderRadius: '10px', padding: '8px 12px', cursor: 'pointer' }}>
+                            <Plus size={18} />
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </motion.div>
+    );
+};

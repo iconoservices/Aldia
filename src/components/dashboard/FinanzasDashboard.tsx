@@ -20,13 +20,14 @@ interface FinanzasProps {
     toggleFixedExpense: (id: number) => void;
     updateFixedExpense: (id: number, updates: Partial<FixedExpense>) => void;
     projects: { id: number, name: string, color: string }[];
+    accounts: { id: number, name: string, color: string, projectId?: number }[];
 }
 
 export const FinanzasDashboard = ({ 
     balance, income, expense, owe, owed, transactions,
     monthlyBudget, updateMonthlyBudget, fixedExpenses, 
     addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense,
-    projects 
+    projects, accounts
 }: FinanzasProps) => {
     const netOperation = useMemo(() => income - expense, [income, expense]);
     const totalFixed = useMemo(() => fixedExpenses.filter(e => e.active).reduce((acc, e) => acc + e.amount, 0), [fixedExpenses]);
@@ -190,6 +191,7 @@ export const FinanzasDashboard = ({
                 </div>
             </div>
 
+
             {/* PLANIFICADOR MENSUAL */}
             <div style={{ marginBottom: '2rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -236,7 +238,33 @@ export const FinanzasDashboard = ({
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
                                 <p style={{ margin: 0, fontWeight: 800, fontSize: '0.85rem', color: 'var(--text-carbon)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tx.text}</p>
-                                <p style={{ margin: 0, fontSize: '0.65rem', color: '#AAA' }}>{tx.date}</p>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                                    <span style={{ fontSize: '0.6rem', color: '#AAA' }}>{tx.date}</span>
+                                    {projects.find(p => p.id === tx.projectId) && (
+                                        <span style={{ 
+                                            fontSize: '0.55rem', 
+                                            fontWeight: 900, 
+                                            background: `${projects.find(p => p.id === tx.projectId)?.color}15`,
+                                            color: projects.find(p => p.id === tx.projectId)?.color,
+                                            padding: '2px 6px',
+                                            borderRadius: '6px'
+                                        }}>
+                                            @{projects.find(p => p.id === tx.projectId)?.name}
+                                        </span>
+                                    )}
+                                    {accounts.find(a => a.id === tx.accountId) && (
+                                        <span style={{ 
+                                            fontSize: '0.55rem', 
+                                            fontWeight: 900, 
+                                            background: '#F0F0F0',
+                                            color: '#666',
+                                            padding: '2px 6px',
+                                            borderRadius: '6px'
+                                        }}>
+                                            {accounts.find(a => a.id === tx.accountId)?.name}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         </div>
                         <span style={{ fontWeight: 900, fontSize: '0.9rem', color: tx.type === 'ingreso' ? '#10B981' : 'var(--text-carbon)' }}>

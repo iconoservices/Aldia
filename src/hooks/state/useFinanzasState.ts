@@ -7,7 +7,7 @@ export const useFinanzasState = () => {
     const [monthlyBudget, setMonthlyBudget] = useState<number>(0);
     const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
 
-    const addTransaction = (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number) => {
+    const addTransaction = (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number) => {
         const value = Math.abs(amount);
 
         if (!isDebt) {
@@ -22,7 +22,8 @@ export const useFinanzasState = () => {
             isDebt,
             date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             fullDate: new Date().toISOString().split('T')[0],
-            projectId
+            projectId,
+            accountId
         };
         setTransactions(prev => [newTx, ...prev]);
     };
