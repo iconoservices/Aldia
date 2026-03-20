@@ -7,7 +7,7 @@ import type { Project, Transaction, Routine } from '../../hooks/useAlDiaState';
 interface ProjectDetailViewProps {
     project: Project;
     onClose: () => void;
-    accounts: { id: number, name: string, color: string, projectId?: number }[];
+    accounts: { id: number, name: string, color: string, projectIds?: number[] }[];
     setAccounts: (accounts: any) => void;
     transactions: Transaction[];
     addProjectTask: (projectId: number, text: string) => void;
@@ -27,12 +27,14 @@ export const ProjectDetailView = ({
     const [newTaskText, setNewTaskText] = useState('');
 
     const projectAccounts = useMemo(() => {
-        return accounts.filter(acc => acc.projectId === project.id).map(acc => {
-            const bal = transactions
-                .filter(tx => tx.accountId === acc.id && !tx.isDebt)
-                .reduce((sum, tx) => sum + tx.amount, 0);
-            return { ...acc, balance: bal };
-        });
+        return accounts
+            .filter(acc => acc.projectIds?.includes(project.id))
+            .map(acc => {
+                const bal = transactions
+                    .filter(tx => tx.accountId === acc.id && tx.projectId === project.id && !tx.isDebt)
+                    .reduce((sum, tx) => sum + tx.amount, 0);
+                return { ...acc, balance: bal };
+            });
     }, [accounts, project.id, transactions]);
 
     const totalBalance = useMemo(() => projectAccounts.reduce((sum, acc) => sum + acc.balance, 0), [projectAccounts]);
@@ -45,15 +47,36 @@ export const ProjectDetailView = ({
     };
 
     const handleAddAccount = () => {
-        const name = prompt('Nombre de la cuenta (ej: BCP, Yape, Efectivo):');
-        if (name) {
-            const newAccount = { 
-                id: Date.now(), 
-                name, 
-                color: '#'+Math.floor(Math.random()*16777215).toString(16), 
-                projectId: project.id 
-            };
-            setAccounts([...accounts, newAccount]);
+        const option = prompt('¿Qué tipo de acción?\n1. Crear nueva cuenta\n2. Enlazar cuenta existente');
+        if (option === '1') {
+            const name = prompt('Nombre de la cuenta (ej: BCP, Yape, Efectivo):');
+            if (name) {
+                const newAccount = { 
+                    id: Date.now(), 
+                    name, 
+                    color: '#'+Math.floor(Math.random()*16777215).toString(16), 
+                    projectIds: [project.id] 
+                };
+                setAccounts([...accounts, newAccount]);
+            }
+        } else if (option === '2') {
+            const available = accounts.filter(acc => !acc.projectIds?.includes(project.id));
+            if (available.length === 0) {
+                alert('No hay otras cuentas para enlazar.');
+                return;
+            }
+            const list = available.map((acc, i) => `${i+1}. ${acc.name}`).join('\n');
+            const idxStr = prompt(`Selecciona una cuenta para enlazar:\n${list}`);
+            const idx = parseInt(idxStr || '0') - 1;
+            if (available[idx]) {
+                const target = available[idx];
+                const updated = accounts.map(acc => 
+                    acc.id === target.id 
+                        ? { ...acc, projectIds: [...(acc.projectIds || []), project.id] } 
+                        : acc
+                );
+                setAccounts(updated);
+            }
         }
     };
 
@@ -115,8 +138,23 @@ export const ProjectDetailView = ({
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                                 <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#AAA', textTransform: 'uppercase' }}>{acc.name}</span>
                                 <button 
-                                    onClick={() => { if(confirm(`¿Eliminar ${acc.name}?`)) setAccounts(accounts.filter(a => a.id !== acc.id)); }}
-                                    style={{ background: 'transparent', border: 'none', padding: 0, color: '#EEE', cursor: 'pointer' }}
+                                    onClick={() => { 
+                                        if (acc.projectIds && acc.projectIds.length > 1) {
+                                            if (confirm(`¿Desvincular ${acc.name} de este proyecto? Se mantendrá en los demás.`)) {
+                                                const updated = accounts.map(a => 
+                                                    a.id === acc.id 
+                                                        ? { ...a, projectIds: a.projectIds?.filter(id => id !== project.id) } 
+                                                        : a
+                                                );
+                                                setAccounts(updated);
+                                            }
+                                        } else {
+                                            if (confirm(`¿Eliminar la cuenta ${acc.name} permanentemente?`)) {
+                                                setAccounts(accounts.filter(a => a.id !== acc.id)); 
+                                            }
+                                        }
+                                    }}
+                                    style={{ background: 'transparent', border: 'none', padding: 0, color: '#DDD', cursor: 'pointer' }}
                                 >
                                     <X size={10} />
                                 </button>

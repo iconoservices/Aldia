@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Clock, Plus } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -33,15 +33,23 @@ export const QuickActionPanel = ({
     const [asHabit, setAsHabit] = useState(false);
     const [asRoutine, setAsRoutine] = useState(false);
     const [routineId, setRoutineId] = useState<number>(1); // Default to Mañana
-    const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(1);
+    const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(undefined);
     const [selectedAccountId, setSelectedAccountId] = useState<number | undefined>(undefined);
     const [repeatDays, setRepeatDays] = useState<number[]>([]);
     
-    // Filtro de cuentas basado en proyecto seleccionado (Si no hay proyecto, no mostrar cuentas)
+    // Efecto para manejar el proyecto por defecto según cantidad
+    useEffect(() => {
+        if (isOpen && projects.length === 1) {
+            setSelectedProjectId(projects[0].id);
+        } else if (isOpen && projects.length >= 2) {
+            setSelectedProjectId(undefined);
+        }
+    }, [isOpen, projects]);
+    
+    // Filtro de cuentas: Ahora mostramos TODAS para permitir compartirlas entre proyectos
     const filteredAccounts = useMemo(() => {
-        if (!selectedProjectId) return [];
-        return accounts.filter(acc => acc.projectId === selectedProjectId);
-    }, [accounts, selectedProjectId]);
+        return accounts;
+    }, [accounts]);
 
     // Quick Project Creation
     const [isCreatingProject, setIsCreatingProject] = useState(false);
@@ -78,6 +86,14 @@ export const QuickActionPanel = ({
         e.preventDefault();
 
         if (actionType === 'gasto' || actionType === 'ingreso') {
+            if (projects.length > 0 && !selectedProjectId) {
+                alert("Debes seleccionar un proyecto");
+                return;
+            }
+            if (!selectedAccountId) {
+                alert("Debes seleccionar una cuenta");
+                return;
+            }
             addTransaction(concept || (actionType === 'gasto' ? 'Gasto' : 'Ingreso'), parseFloat(amount) || 0, actionType, isDebt, selectedProjectId, selectedAccountId);
             confetti({
                 particleCount: 80,
@@ -86,6 +102,10 @@ export const QuickActionPanel = ({
                 colors: [actionType === 'gasto' ? '#f87171' : '#4ade80', '#ffffff']
             });
         } else if (actionType === 'tarea') {
+            if (projects.length > 0 && !selectedProjectId) {
+                alert("Debes seleccionar un proyecto para la tarea");
+                return;
+            }
             const labelArray = labels.split(',').map(l => l.trim()).filter(l => l !== '');
             
             let habitId: number | undefined = undefined;

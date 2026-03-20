@@ -56,7 +56,7 @@ export interface Account {
     id: number;
     name: string;
     color: string;
-    projectId?: number;
+    projectIds?: number[];
 }
 
 export interface FixedExpense {

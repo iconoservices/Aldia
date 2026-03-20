@@ -20,7 +20,7 @@ interface FinanzasProps {
     toggleFixedExpense: (id: number) => void;
     updateFixedExpense: (id: number, updates: Partial<FixedExpense>) => void;
     projects: { id: number, name: string, color: string }[];
-    accounts: { id: number, name: string, color: string, projectId?: number }[];
+    accounts: { id: number, name: string, color: string, projectIds?: number[] }[];
 }
 
 export const FinanzasDashboard = ({ 
