@@ -75,6 +75,24 @@ export const FinanzasDashboard = ({
         setIsAddingAccount(false);
     };
 
+    const weeklyHistory = useMemo(() => {
+        const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+        const result = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const dayName = i === 0 ? 'Hoy' : days[d.getDay()];
+            
+            const dayTxs = transactions.filter(tx => tx.fullDate === dateStr);
+            const inc = dayTxs.filter(tx => tx.type === 'ingreso' && !tx.isDebt).reduce((s, t) => s + (Number(t.amount) || 0), 0);
+            const exp = dayTxs.filter(tx => tx.type === 'gasto' && !tx.isDebt).reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0);
+            
+            result.push({ day: dayName, inc, exp });
+        }
+        return result;
+    }, [transactions]);
+
     const handleDeleteAccount = (id: number) => {
         if (window.confirm('¿Eliminar esta cuenta? No se borrarán las transacciones, pero la cuenta ya no aparecerá.')) {
             setAccounts(prev => prev.filter(a => a.id !== id));
@@ -343,16 +361,8 @@ export const FinanzasDashboard = ({
 
             <div className="glass-card" style={{ marginBottom: '1.5rem', padding: '1.2rem', height: '180px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', height: '100px', gap: '6px', paddingBottom: '8px' }}>
-                    {[
-                        { day: 'Lun', exp: 0, inc: 0 },
-                        { day: 'Mar', exp: 0, inc: 0 },
-                        { day: 'Mié', exp: 0, inc: 0 },
-                        { day: 'Jue', exp: 0, inc: 0 },
-                        { day: 'Vie', exp: 0, inc: 0 },
-                        { day: 'Sáb', exp: 0, inc: 0 },
-                        { day: 'Hoy', exp: expense, inc: income }
-                    ].map((data, i) => {
-                        const maxVal = Math.max(income, expense, 100);
+                    {weeklyHistory.map((data, i) => {
+                        const maxVal = Math.max(...weeklyHistory.map(h => Math.max(h.inc, h.exp)), 100);
                         return (
                             <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%', justifyContent: 'flex-end' }}>
                                 <div style={{ display: 'flex', gap: '1px', alignItems: 'flex-end', height: '100%', width: '100%', justifyContent: 'center' }}>
