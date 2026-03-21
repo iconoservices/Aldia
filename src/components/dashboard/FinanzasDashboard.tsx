@@ -174,7 +174,7 @@ export const FinanzasDashboard = ({
                         <DomainIcon domain="finanzas" variant="solid" size={18} className="text-white opacity-80" />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
                             <h2 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-1.5px', color: 'white' }}>
                                 ${(balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                             </h2>
