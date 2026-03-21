@@ -37,7 +37,7 @@ export interface Routine {
     repeatDays?: number[]; // [0,1,2,3,4,5,6]
     startTime?: string;
     endTime?: string;
-    items: { id: number; text: string; completed: boolean; time?: string }[];
+    items: { id: number; text: string; completed: boolean; time?: string; linkedProjectId?: number; linkedTaskId?: number }[];
 }
 
 export interface Transaction {
@@ -102,7 +102,7 @@ export interface Project {
     color: string;
     status: 'activo' | 'pausado' | 'completado';
     targetHoursPerWeek?: number;
-    checklist?: { id: number; text: string; completed: boolean }[];
+    checklist?: { id: number; text: string; completed: boolean; linkedRoutineId?: number; linkedRoutineItemId?: number }[];
     inventoryItems?: { id: number; text: string; quantity: number }[];
 }
 
@@ -128,7 +128,9 @@ export const useAlDiaState = () => {
         transactions, setTransactions, balance, 
         monthlyBudget, setMonthlyBudget, fixedExpenses, setFixedExpenses,
         addTransaction, addFixedExpense, removeFixedExpense, toggleFixedExpense, 
-        updateFixedExpense, markFixedExpensePaid, unmarkFixedExpensePaid, repayDebt: repayDebtBase, todayIncome, todayExpense, debtsOwe, debtsOwed,
+        updateFixedExpense, markFixedExpensePaid, unmarkFixedExpensePaid, repayDebt: repayDebtBase, 
+        todayIncome, todayExpense, todayNet, todayIncomeReal, todayExpenseReal,
+        totalIncomeReal, totalExpenseReal, totalNetReal, debtsOwe, debtsOwed,
         removeTransaction, updateTransaction
     } = useFinanzasState();
 
@@ -159,7 +161,7 @@ export const useAlDiaState = () => {
 
     // 2. Lógica de Carga (LocalStorage First)
     useEffect(() => {
-        // Carga inmediata de LocalStorage para evitar estados vacíos
+        // Carga inmediata de LocalStorage para evitar estados vacíos y condiciones de carrera
         const loadInitialLocal = () => {
             const keys = {
                 missions: 'aldia_missions',
@@ -171,44 +173,41 @@ export const useAlDiaState = () => {
                 projects: 'aldia_projects',
                 rutinas: 'aldia_rutinas',
                 budget: 'aldia_monthly_budget',
-                fixed: 'aldia_fixed_expenses'
+                fixed: 'aldia_fixed_expenses',
+                accounts: 'aldia_accounts'
             };
 
-            const sMissions = localStorage.getItem(keys.missions);
-            if (sMissions) setMisionesDirect(JSON.parse(sMissions));
-            
-            const sTransactions = localStorage.getItem(keys.transactions);
-            if (sTransactions) setTransactions(JSON.parse(sTransactions));
+            const data = {
+                missions: JSON.parse(localStorage.getItem(keys.missions) || '[]'),
+                transactions: JSON.parse(localStorage.getItem(keys.transactions) || '[]'),
+                habits: JSON.parse(localStorage.getItem(keys.habits) || '[]'),
+                agenda: JSON.parse(localStorage.getItem(keys.agenda) || '[]'),
+                timeblocks: JSON.parse(localStorage.getItem(keys.timeblocks) || '[]'),
+                notes: JSON.parse(localStorage.getItem(keys.notes) || '[]'),
+                projects: JSON.parse(localStorage.getItem(keys.projects) || '[]'),
+                rutinas: JSON.parse(localStorage.getItem(keys.rutinas) || '[]'),
+                budget: parseFloat(localStorage.getItem(keys.budget) || '0'),
+                fixed: JSON.parse(localStorage.getItem(keys.fixed) || '[]'),
+                accounts: JSON.parse(localStorage.getItem(keys.accounts) || '[]')
+            };
 
-            const sHabits = localStorage.getItem(keys.habits);
-            if (sHabits) setHabits(JSON.parse(sHabits));
+            // Aplicar estados iniciales
+            setMisionesDirect(data.missions);
+            setTransactions(data.transactions);
+            setHabits(data.habits);
+            setAgenda(data.agenda);
+            setTimeBlocks(data.timeblocks);
+            setNotes(data.notes);
+            setProjects(data.projects);
+            setRutinas(data.rutinas);
+            setMonthlyBudget(data.budget);
+            setFixedExpenses(data.fixed);
+            setAccounts(data.accounts);
 
-            const sAgenda = localStorage.getItem(keys.agenda);
-            if (sAgenda) setAgenda(JSON.parse(sAgenda));
-
-            const sTimeBlocks = localStorage.getItem(keys.timeblocks);
-            if (sTimeBlocks) setTimeBlocks(JSON.parse(sTimeBlocks));
-
-            const sNotes = localStorage.getItem(keys.notes);
-            if (sNotes) setNotes(JSON.parse(sNotes));
-
-            const sProjects = localStorage.getItem(keys.projects);
-            if (sProjects) setProjects(JSON.parse(sProjects));
-
-            const sRutinas = localStorage.getItem(keys.rutinas);
-            if (sRutinas) setRutinas(JSON.parse(sRutinas));
-
-            const sBudget = localStorage.getItem(keys.budget);
-            if (sBudget) setMonthlyBudget(parseFloat(sBudget));
-
-            const sFixed = localStorage.getItem(keys.fixed);
-            if (sFixed) setFixedExpenses(JSON.parse(sFixed));
-
-            const sAccounts = localStorage.getItem('aldia_accounts');
-            if (sAccounts) setAccounts(JSON.parse(sAccounts));
+            return data;
         };
 
-        loadInitialLocal();
+        const localData = loadInitialLocal();
 
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setUser(user);
@@ -233,18 +232,18 @@ export const useAlDiaState = () => {
                             return combined;
                         };
 
-                        setMisionesDirect(prev => smartMerge(cloud.missions, prev));
-                        setTransactions(prev => smartMerge(cloud.transactions, prev));
-                        setHabits(prev => smartMerge(cloud.habits, prev));
-                        setAgenda(prev => smartMerge(cloud.agenda, prev));
-                        setNotes(prev => smartMerge(cloud.notes, prev));
-                        setProjects(prev => smartMerge(cloud.projects, prev));
-                        setRutinas(prev => smartMerge(cloud.rutinas, prev));
-                        setFixedExpenses(prev => smartMerge(cloud.fixedExpenses, prev));
-                        setTimeBlocks(prev => smartMerge(cloud.timeBlocks, prev));
+                        setMisionesDirect(prev => smartMerge(cloud.missions, prev.length > 0 ? prev : localData.missions));
+                        setTransactions(prev => smartMerge(cloud.transactions, prev.length > 0 ? prev : localData.transactions));
+                        setHabits(prev => smartMerge(cloud.habits, prev.length > 0 ? prev : localData.habits));
+                        setAgenda(prev => smartMerge(cloud.agenda, prev.length > 0 ? prev : localData.agenda));
+                        setNotes(prev => smartMerge(cloud.notes, prev.length > 0 ? prev : localData.notes));
+                        setProjects(prev => smartMerge(cloud.projects, prev.length > 0 ? prev : localData.projects));
+                        setRutinas(prev => smartMerge(cloud.rutinas, prev.length > 0 ? prev : localData.rutinas));
+                        setFixedExpenses(prev => smartMerge(cloud.fixedExpenses, prev.length > 0 ? prev : localData.fixed));
+                        setTimeBlocks(prev => smartMerge(cloud.timeBlocks, prev.length > 0 ? prev : localData.timeblocks));
 
                         if (cloud.monthlyBudget !== undefined) setMonthlyBudget(Number(cloud.monthlyBudget));
-                        if (cloud.accounts) setAccounts(prev => smartMerge(cloud.accounts, prev));
+                        if (cloud.accounts) setAccounts(prev => smartMerge(cloud.accounts, prev.length > 0 ? prev : localData.accounts));
                     }
                 } catch (error) {
                     console.error("Error en sincronización Cloud:", error);
@@ -422,7 +421,8 @@ export const useAlDiaState = () => {
             }
         },
         balance,
-        todayIncome, todayExpense, debtsOwe, debtsOwed,
+        todayIncome, todayExpense, todayNet, todayIncomeReal, todayExpenseReal,
+        totalIncomeReal, totalExpenseReal, totalNetReal, debtsOwe, debtsOwed,
         monthlyBudget, updateMonthlyBudget: (amount: number) => setMonthlyBudget(amount),
         fixedExpenses, addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense, markFixedExpensePaid, unmarkFixedExpensePaid,
         repayDebt: repayDebtBase,

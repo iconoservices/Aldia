@@ -140,8 +140,12 @@ function App() {
             ) : activeTab === 'Finanzas' ? (
               <FinanzasDashboard
                 balance={state.balance}
-                income={state.todayIncome}
-                expense={state.todayExpense}
+                todayNet={state.todayNet}
+                todayIncomeReal={state.todayIncomeReal}
+                todayExpenseReal={state.todayExpenseReal}
+                totalIncomeReal={state.totalIncomeReal}
+                totalExpenseReal={state.totalExpenseReal}
+                totalNetReal={state.totalNetReal}
                 owe={state.debtsOwe}
                 owed={state.debtsOwed}
                 transactions={state.transactions}
@@ -246,6 +250,7 @@ function App() {
             updateProjectTask={state.updateProjectTask}
             reorderProjectTasks={state.reorderProjectTasks}
             promoteTaskToRoutine={state.promoteTaskToRoutine}
+            removeRoutineItem={state.removeRoutineItem}
             rutinas={state.rutinas}
             addInventoryItem={state.addInventoryItem}
             updateInventoryItemQuantity={state.updateInventoryItemQuantity}

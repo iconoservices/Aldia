@@ -16,6 +16,7 @@ interface ProjectDetailViewProps {
     updateProjectTask: (projectId: number, taskId: number, updates: Partial<{ text: string, completed: boolean }>) => void;
     reorderProjectTasks?: (projectId: number, newTasks: any[]) => void;
     promoteTaskToRoutine: (projectId: number, taskId: number, routineId: number) => void;
+    removeRoutineItem?: (routineId: number, itemId: number) => void;
     rutinas: Routine[];
     addInventoryItem?: (projectId: number, text: string, qty: number) => void;
     updateInventoryItemQuantity?: (projectId: number, itemId: number, delta: number) => void;
@@ -26,6 +27,7 @@ export const ProjectDetailView = ({
     project, onClose, accounts, setAccounts, transactions,
     addProjectTask, toggleProjectTask, removeProjectTask, 
     updateProjectTask, reorderProjectTasks, promoteTaskToRoutine, rutinas,
+    removeRoutineItem,
     addInventoryItem, updateInventoryItemQuantity, removeInventoryItem
 }: ProjectDetailViewProps) => {
     const [newTaskText, setNewTaskText] = useState('');
@@ -215,10 +217,40 @@ export const ProjectDetailView = ({
                                         {task.completed ? <CheckCircle2 size={18} color="var(--domain-green)" /> : <Circle size={18} color="#CBD5E1" />}
                                     </div>
                                     <span style={{ fontSize: '0.8rem', fontWeight: 600, flex: 1, textDecoration: task.completed ? 'line-through' : 'none', color: task.completed ? '#94A3B8' : '#1E293B' }}>{task.text}</span>
-                                    <div style={{ display: 'flex', gap: '4px' }}>
+                                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                        {task.linkedRoutineId && (
+                                            <span title="Vinculada a una Misión" style={{ fontSize: '0.7rem' }}>🔗</span>
+                                        )}
                                         <button onClick={() => { const t = prompt('Editar tarea:', task.text); if(t) updateProjectTask(project.id, task.id, { text: t }); }} style={{ background: 'transparent', border: 'none', color: '#CBD5E1', cursor: 'pointer' }}><Edit2 size={12} /></button>
-                                        <button onClick={() => { const rid = rutinas[0]?.id || Date.now(); promoteTaskToRoutine(project.id, task.id, rid); }} style={{ background: 'transparent', border: 'none', color: '#CBD5E1', cursor: 'pointer' }}><Zap size={12} /></button>
-                                        <button onClick={() => removeProjectTask(project.id, task.id)} style={{ background: 'transparent', border: 'none', color: '#CBD5E1', cursor: 'pointer' }}><Trash2 size={12} /></button>
+                                        <button 
+                                            onClick={() => {
+                                                if (task.linkedRoutineId) {
+                                                    // Ya está vinculada, no promover de nuevo
+                                                    alert('Esta tarea ya está en tus Misiones 🔗');
+                                                } else {
+                                                    if (rutinas.length === 0) { alert('No tienes rutinas disponibles.'); return; }
+                                                    if (rutinas.length === 1) {
+                                                        promoteTaskToRoutine(project.id, task.id, rutinas[0].id);
+                                                    } else {
+                                                        const list = rutinas.map((r, i) => `${i+1}. ${r.title}`).join('\n');
+                                                        const idxStr = prompt(`¿A qué rutina enviarla?\n${list}`);
+                                                        const idx = parseInt(idxStr || '0') - 1;
+                                                        if (rutinas[idx]) promoteTaskToRoutine(project.id, task.id, rutinas[idx].id);
+                                                    }
+                                                }
+                                            }} 
+                                            style={{ background: 'transparent', border: 'none', color: task.linkedRoutineId ? '#86efac' : '#CBD5E1', cursor: 'pointer' }}
+                                        ><Zap size={12} /></button>
+                                        <button 
+                                            onClick={() => {
+                                                if (task.linkedRoutineId && task.linkedRoutineItemId && removeRoutineItem) {
+                                                    const alsoFromMission = window.confirm('Esta tarea está en tus Misiones. ¿Quieres borrarla también de allí?');
+                                                    if (alsoFromMission) removeRoutineItem(task.linkedRoutineId, task.linkedRoutineItemId);
+                                                }
+                                                removeProjectTask(project.id, task.id);
+                                            }} 
+                                            style={{ background: 'transparent', border: 'none', color: '#CBD5E1', cursor: 'pointer' }}
+                                        ><Trash2 size={12} /></button>
                                     </div>
                                 </Reorder.Item>
                             ))}

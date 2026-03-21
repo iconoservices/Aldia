@@ -14,8 +14,12 @@ import type { Transaction, FixedExpense } from '../../hooks/useAlDiaState';
 
 interface FinanzasProps {
     balance: number;
-    income: number;
-    expense: number;
+    todayNet: number;
+    todayIncomeReal: number;
+    todayExpenseReal: number;
+    totalIncomeReal: number;
+    totalExpenseReal: number;
+    totalNetReal: number;
     owe: number;
     owed: number;
     transactions: Transaction[];
@@ -37,12 +41,12 @@ interface FinanzasProps {
 }
 
 export const FinanzasDashboard = ({ 
-    balance, income, expense, owe, owed, transactions,
+    balance, todayNet, todayIncomeReal, todayExpenseReal,
+    totalIncomeReal, totalExpenseReal, totalNetReal, owe, owed, transactions,
     monthlyBudget, updateMonthlyBudget, fixedExpenses, 
     addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense, markFixedExpensePaid, unmarkFixedExpensePaid,
     repayDebt, removeTransaction, updateTransaction, projects, accounts, setAccounts
 }: FinanzasProps) => {
-    const netOperation = useMemo(() => income - expense, [income, expense]);
     const currentMonthStr = useMemo(() => new Date().toLocaleDateString('en-CA').substring(0, 7), []);
 
     const realIncomeThisMonth = useMemo(() => {
@@ -169,38 +173,95 @@ export const FinanzasDashboard = ({
                         </div>
                         <DomainIcon domain="finanzas" variant="solid" size={18} className="text-white opacity-80" />
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-                        <h2 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-1.5px', color: 'white' }}>
-                            ${(balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                        </h2>
-
-                        {/* INDICADORES DE MOVIMIENTO INTEGRADOS AL COSTADO */}
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '0.4rem' }}>
-                            <div style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '6px', 
-                                background: 'rgba(255, 255, 255, 0.15)', 
-                                padding: '4px 10px', 
-                                borderRadius: '10px',
-                                backdropFilter: 'blur(5px)',
-                                border: '1px solid rgba(255, 255, 255, 0.1)'
-                            }}>
-                                <TrendingUp size={12} color="#4ade80" />
-                                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'white' }}>+{(income || 0).toLocaleString()}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                            <h2 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-1.5px', color: 'white' }}>
+                                ${(balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            </h2>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                                {/* DEUDAS Y COBROS PENDIENTES */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <button 
+                                        onClick={() => { setDebtMode('owe'); setShowDebtDetail(true); }}
+                                        style={{ 
+                                            background: 'rgba(239, 68, 68, 0.25)', 
+                                            padding: '6px 12px', 
+                                            borderRadius: '12px', 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '6px',
+                                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        <UserMinus size={14} color="#fca5a5" />
+                                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#fca5a5' }}>DEBO: ${owe.toLocaleString()}</span>
+                                    </button>
+                                    
+                                    {/* Toggle Rápido de Inclusión */}
+                                    <button
+                                        onClick={() => setIncludeDebts(!includeDebts)}
+                                        title={includeDebts ? 'Se restará de tu Ahorro Proyectado (Pagarás hoy)' : 'No afecta tu Ahorro Proyectado (Pagarás luego)'}
+                                        style={{
+                                            background: includeDebts ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255,255,255,0.1)',
+                                            border: '1px solid rgba(255,255,255,0.2)',
+                                            borderRadius: '8px',
+                                            width: '28px',
+                                            height: '28px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        <Check size={14} color={includeDebts ? 'white' : 'rgba(255,255,255,0.3)'} />
+                                    </button>
+                                </div>
+                                
+                                <button 
+                                    onClick={() => { setDebtMode('owed'); setShowDebtDetail(true); }}
+                                    style={{ 
+                                        background: 'rgba(74, 222, 128, 0.25)', 
+                                        padding: '6px 12px', 
+                                        borderRadius: '12px', 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: '6px',
+                                        border: '1px solid rgba(74, 222, 128, 0.3)',
+                                        cursor: 'pointer',
+                                        transition: 'transform 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                >
+                                    <UserPlus size={14} color="#86efac" />
+                                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#86efac' }}>ME DEBEN: ${owed.toLocaleString()}</span>
+                                </button>
                             </div>
-                            <div style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '6px', 
-                                background: 'rgba(255, 255, 255, 0.15)', 
-                                padding: '4px 10px', 
-                                borderRadius: '10px',
-                                backdropFilter: 'blur(5px)',
-                                border: '1px solid rgba(255, 255, 255, 0.1)'
-                            }}>
-                                <TrendingDown size={12} color="#f87171" />
-                                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'white' }}>-{(expense || 0).toLocaleString()}</span>
+                        </div>
+
+                        {/* LINEA DIVISORIA SUTIL */}
+                        <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', width: '100%' }} />
+
+                        {/* RESUMEN DE GANANCIA REAL (POR TUS MEDIOS) */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', gap: '0.8rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <TrendingUp size={14} color="#4ade80" />
+                                    <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'white' }}>+{(totalIncomeReal || 0).toLocaleString()}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <TrendingDown size={14} color="#f87171" />
+                                    <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'white' }}>-{(totalExpenseReal || 0).toLocaleString()}</span>
+                                </div>
+                            </div>
+                            
+                            <div style={{ textAlign: 'right' }}>
+                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', display: 'block' }}>Ganancia Real</span>
+                                <span style={{ fontSize: '1rem', fontWeight: 900, color: totalNetReal >= 0 ? '#4ade80' : '#f87171' }}>
+                                    {totalNetReal >= 0 ? '+' : ''}${totalNetReal.toLocaleString()}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -220,8 +281,12 @@ export const FinanzasDashboard = ({
                             <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#888', textTransform: 'uppercase' }}>Operación Hoy</span>
                         </div>
                         <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>
-                            ${netOperation.toLocaleString()}
+                            {todayNet >= 0 ? '+' : ''}${todayNet.toLocaleString()}
                         </h3>
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                            <span title="Ingreso Real (sin deuda)" style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--domain-green)' }}>+{todayIncomeReal.toLocaleString()}</span>
+                            <span title="Gasto Real (sin deuda)" style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--domain-red)' }}>-{todayExpenseReal.toLocaleString()}</span>
+                        </div>
                     </GlassCard>
 
                     <GlassCard 
@@ -482,45 +547,7 @@ export const FinanzasDashboard = ({
                 </div>
             </div>
 
-            <div className="debts-grid" style={{ display: 'grid', gap: '1rem', marginBottom: '1.5rem' }}>
-                <div 
-                    className="glass-card" style={{ padding: '0.8rem', borderTop: '3px solid #f87171', display: 'flex', flexDirection: 'column', position: 'relative' }}
-                >
-                    {/* Botón para abrir modal de detalle */}
-                    <div onClick={() => { setDebtMode('owe'); setShowDebtDetail(true); }} style={{ cursor: 'pointer', flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', color: '#f87171' }}>
-                            <UserMinus size={14} /><span style={{ fontSize: '0.7rem', fontWeight: 800 }}>DEBO</span>
-                        </div>
-                        <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-carbon)' }}>${owe}</p>
-                    </div>
-                    {/* Toggle de Inclusión en Proyectado */}
-                    <button
-                        onClick={(e) => { e.stopPropagation(); setIncludeDebts(!includeDebts); }}
-                        title={includeDebts ? 'Restando esta deuda del Ahorro Proyectado' : 'Esta deuda NO afecta tu Ahorro Proyectado (por ahora)'}
-                        style={{
-                            position: 'absolute', top: '0.8rem', right: '0.8rem',
-                            display: 'flex', alignItems: 'center', gap: '4px',
-                            background: includeDebts ? '#f87171' : '#F1F5F9',
-                            border: 'none', borderRadius: '8px',
-                            padding: '4px 8px', cursor: 'pointer',
-                            transition: 'all 0.2s', zIndex: 10
-                        }}
-                    >
-                        <span style={{ fontSize: '0.55rem', fontWeight: 900, color: includeDebts ? 'white' : '#94A3B8', whiteSpace: 'nowrap' }}>
-                            {includeDebts ? '✓ PAGARÉ HOY' : 'PAGAR LUEGO'}
-                        </span>
-                    </button>
-                </div>
-                <div 
-                    onClick={() => { setDebtMode('owed'); setShowDebtDetail(true); }}
-                    className="glass-card" style={{ padding: '0.8rem', borderTop: '3px solid #4ade80', cursor: 'pointer' }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', color: '#4ade80' }}>
-                        <UserPlus size={14} /><span style={{ fontSize: '0.7rem', fontWeight: 800 }}>ME DEBEN</span>
-                    </div>
-                    <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-carbon)' }}>${owed}</p>
-                </div>
-            </div>
+            {/* ELIMINADA REJILLA DE DEUDAS (AHORA EN BALANCE PRINCIPAL) */}
 
             {/* 5. PLANIFICADOR Y MOVIMIENTOS */}
             <div style={{ marginBottom: '2rem' }}>
