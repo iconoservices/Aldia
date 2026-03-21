@@ -135,12 +135,14 @@ export const ProjectDetailView = ({
                         style={{ background: 'white', border: '1px solid #EEE', borderRadius: '8px', padding: '4px 10px', fontSize: '0.65rem', fontWeight: 900, color: project.color, cursor: 'pointer' }}
                     >+ NUEVO</button>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {projectAccounts.map(acc => (
-                        <div key={acc.id} className="glass-card" style={{ padding: '0.8rem', borderLeft: `4px solid ${acc.color}`, background: 'white' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#AAA', textTransform: 'uppercase' }}>{acc.name}</span>
-                                <button 
+                        <div key={acc.id} className="glass-card" style={{ padding: '1rem 1.2rem', borderLeft: `6px solid ${acc.color}`, background: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#AAA', textTransform: 'uppercase' }}>{acc.name}</span>
+                                <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>S/.{acc.balance.toLocaleString()}</h4>
+                            </div>
+                            <button 
                                     onClick={() => { 
                                         if (acc.projectIds && acc.projectIds.length > 1) {
                                             if (confirm(`¿Desvincular ${acc.name} de este proyecto? Se mantendrá en los demás.`)) {
@@ -161,8 +163,6 @@ export const ProjectDetailView = ({
                                 >
                                     <X size={10} />
                                 </button>
-                            </div>
-                            <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-carbon)' }}>S/.{acc.balance.toLocaleString()}</h4>
                         </div>
                     ))}
                     {projectAccounts.length === 0 && (

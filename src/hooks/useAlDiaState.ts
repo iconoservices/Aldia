@@ -121,10 +121,10 @@ export const useAlDiaState = () => {
     
     // Módulos Modularizados
     const { 
-        transactions, setTransactions, balance, setBalance, 
+        transactions, setTransactions, balance, 
         monthlyBudget, setMonthlyBudget, fixedExpenses, setFixedExpenses,
         addTransaction, addFixedExpense, removeFixedExpense, toggleFixedExpense, 
-        updateFixedExpense, todayIncome, todayExpense, debtsOwe, debtsOwed 
+        updateFixedExpense, repayDebt: repayDebtBase, todayIncome, todayExpense, debtsOwe, debtsOwed 
     } = useFinanzasState();
 
     const {
@@ -158,7 +158,6 @@ export const useAlDiaState = () => {
             const keys = {
                 missions: 'aldia_missions',
                 transactions: 'aldia_transactions',
-                balance: 'aldia_balance',
                 habits: 'aldia_habits',
                 agenda: 'aldia_agenda',
                 timeblocks: 'aldia_timeblocks',
@@ -175,8 +174,7 @@ export const useAlDiaState = () => {
             const sTransactions = localStorage.getItem(keys.transactions);
             if (sTransactions) setTransactions(JSON.parse(sTransactions));
 
-            const sBalance = localStorage.getItem(keys.balance);
-            if (sBalance) setBalance(parseFloat(sBalance));
+            if (sTransactions) setTransactions(JSON.parse(sTransactions));
 
             const sHabits = localStorage.getItem(keys.habits);
             if (sHabits) setHabits(JSON.parse(sHabits));
@@ -241,7 +239,6 @@ export const useAlDiaState = () => {
                         setFixedExpenses(prev => smartMerge(cloud.fixedExpenses, prev));
                         setTimeBlocks(prev => smartMerge(cloud.timeBlocks, prev));
 
-                        if (cloud.balance !== undefined) setBalance(Number(cloud.balance));
                         if (cloud.monthlyBudget !== undefined) setMonthlyBudget(Number(cloud.monthlyBudget));
                         if (cloud.accounts) setAccounts(prev => smartMerge(cloud.accounts, prev));
                     }
@@ -261,7 +258,6 @@ export const useAlDiaState = () => {
 
         localStorage.setItem('aldia_missions', JSON.stringify(misionesState));
         localStorage.setItem('aldia_transactions', JSON.stringify(transactions));
-        localStorage.setItem('aldia_balance', JSON.stringify(balance));
         localStorage.setItem('aldia_habits', JSON.stringify(habits));
         localStorage.setItem('aldia_agenda', JSON.stringify(agenda));
         localStorage.setItem('aldia_timeblocks', JSON.stringify(timeBlocks));
@@ -278,7 +274,6 @@ export const useAlDiaState = () => {
                 setDoc(docRef, {
                     missions: misionesState,
                     transactions,
-                    balance,
                     habits,
                     agenda,
                     timeBlocks,
@@ -367,7 +362,6 @@ export const useAlDiaState = () => {
     const clearAllData = async () => {
         setMisionesDirect([]);
         setTransactions([]);
-        setBalance(0);
         setHabits([]);
         setAgenda([]);
         setNotes([]);
@@ -382,7 +376,6 @@ export const useAlDiaState = () => {
             await setDoc(docRef, {
                 missions: [],
                 transactions: [],
-                balance: 0,
                 habits: [],
                 agenda: [],
                 notes: [],
@@ -426,6 +419,7 @@ export const useAlDiaState = () => {
         todayIncome, todayExpense, debtsOwe, debtsOwed,
         monthlyBudget, updateMonthlyBudget: (amount: number) => setMonthlyBudget(amount),
         fixedExpenses, addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense,
+        repayDebt: repayDebtBase,
 
         // Proyectos & Rutinas
         projects, addProject, addProjectTask, toggleProjectTask, removeProjectTask, reorderProjectTasks,

@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react';
 import { ArrowUpCircle, ArrowDownCircle, UserMinus, UserPlus, BarChart3, Plus, Trash2, Edit2, Check, X, Calculator, PiggyBank, Wallet } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '../ui/GlassCard';
+import { ProjectDetailView } from './ProjectDetailView';
+import { DebtDetailView } from './DebtDetailView';
 import { DomainIcon } from '../ui/DomainIcon';
 import type { Transaction, FixedExpense } from '../../hooks/useAlDiaState';
 
@@ -19,6 +21,7 @@ interface FinanzasProps {
     removeFixedExpense: (id: number) => void;
     toggleFixedExpense: (id: number) => void;
     updateFixedExpense: (id: number, updates: Partial<FixedExpense>) => void;
+    repayDebt: (originalTx: Transaction, amount: number, accountId: number) => void;
     projects: { id: number, name: string, color: string }[];
     accounts: { id: number, name: string, color: string, projectIds?: number[] }[];
     setAccounts: React.Dispatch<React.SetStateAction<{ id: number; name: string; color: string; projectIds?: number[] }[]>>;
@@ -28,16 +31,22 @@ export const FinanzasDashboard = ({
     balance, income, expense, owe, owed, transactions,
     monthlyBudget, updateMonthlyBudget, fixedExpenses, 
     addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense,
-    projects, accounts, setAccounts
+    repayDebt, projects, accounts, setAccounts
 }: FinanzasProps) => {
     const netOperation = useMemo(() => income - expense, [income, expense]);
     const totalFixed = useMemo(() => fixedExpenses.filter(e => e.active).reduce((acc, e) => acc + e.amount, 0), [fixedExpenses]);
     const projectedSavings = useMemo(() => monthlyBudget - totalFixed, [monthlyBudget, totalFixed]);
 
     const [isAccountsVisible, setIsAccountsVisible] = useState(false);
+    const [accountViewMode, setAccountViewMode] = useState<'cuenta' | 'proyecto'>('cuenta');
     const [isAddingAccount, setIsAddingAccount] = useState(false);
     const [newAccountName, setNewAccountName] = useState('');
     const [newAccountColor, setNewAccountColor] = useState('#0055FF');
+    const [newAccountProjectId, setNewAccountProjectId] = useState<number | undefined>(undefined);
+
+    const [showDebtDetail, setShowDebtDetail] = useState(false);
+    const [debtMode, setDebtMode] = useState<'owe' | 'owed'>('owe');
+    const [selectedProject, setSelectedProject] = useState<any>(null);
 
     // Cuentas con balance calculado (solo para esta vista)
     const accountsWithBalance = useMemo(() => {
@@ -49,16 +58,18 @@ export const FinanzasDashboard = ({
         });
     }, [accounts, transactions]);
 
+
     const handleAddAccount = () => {
         if (!newAccountName.trim()) return;
         const newAcc = {
             id: Date.now(),
             name: newAccountName,
             color: newAccountColor,
-            projectIds: []
+            projectIds: newAccountProjectId ? [newAccountProjectId] : []
         };
         setAccounts(prev => [...prev, newAcc]);
         setNewAccountName('');
+        setNewAccountProjectId(undefined);
         setIsAddingAccount(false);
     };
 
@@ -70,8 +81,9 @@ export const FinanzasDashboard = ({
 
     return (
         <div style={{ paddingBottom: '5rem' }}>
-            {/* GRID DE TARJETAS FIJAS (ESTILO PREMIUM) */}
+            {/* 1. SECCIÓN PRINCIPAL: BALANCES Y RESUMEN */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                
                 {/* TARJETA PRINCIPAL: BALANCE TOTAL */}
                 <GlassCard 
                     variant="strong"
@@ -127,7 +139,42 @@ export const FinanzasDashboard = ({
                     </div>
                 </GlassCard>
 
-                {/* MIS CUENTAS / TARJETAS (COMPACTO Y DESPLEGABLE) */}
+                {/* TARJETAS SECUNDARIAS: INDICADORES */}
+                <div className="finance-summary-grid" style={{ display: 'grid', gap: '1rem' }}>
+                    <GlassCard 
+                        style={{
+                            background: 'white',
+                            padding: '1rem',
+                            borderLeft: '4px solid var(--domain-green)'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                            <Calculator size={14} color="var(--domain-green)" />
+                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#888', textTransform: 'uppercase' }}>Operación Hoy</span>
+                        </div>
+                        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>
+                            ${netOperation.toLocaleString()}
+                        </h3>
+                    </GlassCard>
+
+                    <GlassCard 
+                        style={{
+                            background: 'white',
+                            padding: '1rem',
+                            borderLeft: '4px solid var(--domain-orange)'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                            <PiggyBank size={14} color="var(--domain-orange)" />
+                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#888', textTransform: 'uppercase' }}>Ahorro Proyectado</span>
+                        </div>
+                        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>
+                            ${projectedSavings.toLocaleString()}
+                        </h3>
+                    </GlassCard>
+                </div>
+
+                {/* 2. MIS CUENTAS (COLAPSABLE) */}
                 <div style={{ marginBottom: '0.5rem' }}>
                     <button 
                         onClick={() => setIsAccountsVisible(!isAccountsVisible)}
@@ -160,90 +207,121 @@ export const FinanzasDashboard = ({
                                 exit={{ opacity: 0, height: 0 }}
                                 style={{ overflow: 'hidden' }}
                             >
-                                <div style={{ padding: '12px 0', borderBottom: '1px dashed #EEE', marginBottom: '10px' }}>
-                                    <div style={{ 
-                                        display: 'flex', 
-                                        gap: '8px', 
-                                        overflowX: 'auto', 
-                                        padding: '4px',
-                                        scrollbarWidth: 'none'
-                                    }}>
-                                        {/* Botón para nueva cuenta */}
+                                <div style={{ padding: '12px 0' }}>
+                                    {/* Selector de Modo */}
+                                    <div style={{ display: 'flex', background: '#F1F5F9', padding: '4px', borderRadius: '12px', marginBottom: '12px', gap: '4px' }}>
+                                        <button 
+                                            onClick={() => setAccountViewMode('cuenta')}
+                                            style={{ 
+                                                flex: 1, padding: '6px', borderRadius: '8px', border: 'none', fontSize: '0.7rem', fontWeight: 800,
+                                                background: accountViewMode === 'cuenta' ? 'white' : 'transparent',
+                                                color: accountViewMode === 'cuenta' ? 'var(--domain-blue)' : '#64748B',
+                                                boxShadow: accountViewMode === 'cuenta' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
+                                                cursor: 'pointer'
+                                            }}
+                                        >POR CUENTA</button>
+                                        <button 
+                                            onClick={() => setAccountViewMode('proyecto')}
+                                            style={{ 
+                                                flex: 1, padding: '6px', borderRadius: '8px', border: 'none', fontSize: '0.7rem', fontWeight: 800,
+                                                background: accountViewMode === 'proyecto' ? 'white' : 'transparent',
+                                                color: accountViewMode === 'proyecto' ? 'var(--domain-blue)' : '#64748B',
+                                                boxShadow: accountViewMode === 'proyecto' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
+                                                cursor: 'pointer'
+                                            }}
+                                        >POR PROYECTO</button>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                                        {/* Botón AGREGAR vertical (ocupa toda la fila o es pequeño?) */}
                                         <button 
                                             onClick={() => setIsAddingAccount(!isAddingAccount)}
                                             style={{ 
-                                                minWidth: '100px', 
-                                                height: '60px',
-                                                borderRadius: '16px', 
-                                                border: '2px dashed #CBD5E1',
-                                                background: isAddingAccount ? '#0066FF10' : 'transparent',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                gap: '4px',
-                                                cursor: 'pointer'
+                                                gridColumn: '1 / -1', padding: '10px', borderRadius: '14px', border: '2px dashed #CBD5E1',
+                                                background: isAddingAccount ? '#0066FF10' : 'white',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer'
                                             }}
                                         >
                                             <Plus size={14} color="#0066FF" />
-                                            <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#0066FF' }}>AGREGAR</span>
+                                            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#0066FF' }}>NUEVA CUENTA</span>
                                         </button>
 
-                                        {accountsWithBalance.map(acc => (
-                                            <div key={acc.id} style={{ 
-                                                minWidth: '120px', 
-                                                height: '60px',
-                                                background: 'white', 
-                                                border: '1px solid #EEE',
-                                                borderLeft: `3px solid ${acc.color}`,
-                                                borderRadius: '16px',
-                                                padding: '8px 12px',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                justifyContent: 'center',
-                                                position: 'relative',
-                                                boxShadow: '0 4px 10px rgba(0,0,0,0.02)'
-                                            }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#AAA', textTransform: 'uppercase' }}>{acc.name}</span>
-                                                    <button 
-                                                        onClick={() => handleDeleteAccount(acc.id)}
-                                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
-                                                    >
-                                                        <Trash2 size={10} color="#f87171" opacity={0.4} />
-                                                    </button>
-                                                </div>
-                                                <span style={{ fontSize: '1rem', fontWeight: 900, color: '#333' }}>
-                                                    ${acc.balance.toLocaleString()}
-                                                </span>
-                                            </div>
-                                        ))}
+                                        {accountViewMode === 'cuenta' ? (
+                                            <>
+                                                {accountsWithBalance.map(acc => (
+                                                    <div key={acc.id} style={{ 
+                                                        background: 'white', border: '1px solid #EEE',
+                                                        borderTop: `3px solid ${acc.color}`, borderRadius: '14px', padding: '8px',
+                                                        display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.02)', position: 'relative'
+                                                    }}>
+                                                        <button 
+                                                            onClick={() => handleDeleteAccount(acc.id)} 
+                                                            style={{ position: 'absolute', top: '4px', right: '4px', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px' }}
+                                                        >
+                                                            <Trash2 size={8} color="#f87171" opacity={0.3} />
+                                                        </button>
+                                                        <span style={{ fontSize: '0.5rem', fontWeight: 800, color: '#AAA', textTransform: 'uppercase', marginBottom: '2px', display: 'block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.name}</span>
+                                                        <span style={{ fontSize: '0.85rem', fontWeight: 900, color: '#333' }}>${acc.balance.toLocaleString()}</span>
+                                                    </div>
+                                                ))}
+                                            </>
+                                        ) : (
+                                            /* Vista por Proyecto */
+                                            projects.map(project => {
+                                                const projectAccs = accountsWithBalance.filter(acc => acc.projectIds?.includes(project.id));
+                                                if (projectAccs.length === 0) return null;
+                                                return (
+                                                    <div key={project.id} style={{ gridColumn: '1 / -1', marginBottom: '4px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', paddingLeft: '4px' }}>
+                                                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: project.color }} />
+                                                            <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#64748B', textTransform: 'uppercase' }}>{project.name}</span>
+                                                        </div>
+                                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                                                            {projectAccs.map(acc => (
+                                                                <div key={acc.id} style={{ 
+                                                                    background: 'white', border: '1px solid #EEE',
+                                                                    borderTop: `3px solid ${acc.color}`, borderRadius: '12px', padding: '6px',
+                                                                    display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center'
+                                                                }}>
+                                                                    <span style={{ fontSize: '0.5rem', fontWeight: 700, color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{acc.name}</span>
+                                                                    <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#333' }}>${acc.balance.toLocaleString()}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
                                     </div>
 
-                                    {/* Formulario rápido para nueva cuenta */}
+                                    {/* Formulario Nueva Cuenta */}
                                     <AnimatePresence>
                                         {isAddingAccount && (
-                                            <motion.div 
-                                                initial={{ opacity: 0, y: -10 }} 
-                                                animate={{ opacity: 1, y: 0 }} 
-                                                style={{ marginTop: '12px', padding: '10px', background: '#F8FAFC', borderRadius: '16px', border: '1px solid #E2E8F0' }}
-                                            >
-                                                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                                                    <input 
-                                                        autoFocus
-                                                        placeholder="Nombre.." 
-                                                        value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)}
-                                                        style={{ flex: 1, padding: '8px', borderRadius: '10px', border: '1px solid #DDD', fontSize: '0.8rem', fontWeight: 600 }}
-                                                    />
-                                                    <button onClick={handleAddAccount} style={{ background: 'var(--domain-blue)', color: 'white', border: 'none', borderRadius: '10px', padding: '0 12px', fontSize: '0.7rem', fontWeight: 900 }}>OK</button>
-                                                </div>
-                                                <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                                                    {['#0055FF', '#ff8c42', '#10B911', '#8b5cf6', '#EC4899', '#334155'].map(c => (
-                                                        <button 
-                                                            key={c} onClick={() => setNewAccountColor(c)}
-                                                            style={{ width: '20px', height: '20px', borderRadius: '50%', background: c, border: newAccountColor === c ? '2px solid #333' : 'none', cursor: 'pointer' }}
+                                            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: '12px', padding: '12px', background: '#F8FAFC', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        <input 
+                                                            autoFocus placeholder="Nombre (ej. BCP, Efectivo...)" 
+                                                            value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)}
+                                                            style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid #DDD', fontSize: '0.8rem', fontWeight: 600 }}
                                                         />
-                                                    ))}
+                                                        <select 
+                                                            value={newAccountProjectId || ''} 
+                                                            onChange={(e) => setNewAccountProjectId(e.target.value ? Number(e.target.value) : undefined)}
+                                                            style={{ padding: '8px', borderRadius: '10px', border: '1px solid #DDD', fontSize: '0.75rem', fontWeight: 700, background: 'white' }}
+                                                        >
+                                                            <option value="">¿Proyecto?</option>
+                                                            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <div style={{ display: 'flex', gap: '6px' }}>
+                                                            {['#0055FF', '#ff8c42', '#10B911', '#8b5cf6', '#EC4899', '#334155'].map(c => (
+                                                                <button key={c} onClick={() => setNewAccountColor(c)} style={{ width: '22px', height: '22px', borderRadius: '50%', background: c, border: newAccountColor === c ? '2px solid #333' : 'none', cursor: 'pointer' }} />
+                                                            ))}
+                                                        </div>
+                                                        <button onClick={handleAddAccount} style={{ background: 'var(--domain-blue)', color: 'white', border: 'none', borderRadius: '10px', padding: '8px 16px', fontSize: '0.75rem', fontWeight: 900, cursor: 'pointer' }}>CREAR CUENTA</button>
+                                                    </div>
                                                 </div>
                                             </motion.div>
                                         )}
@@ -253,52 +331,16 @@ export const FinanzasDashboard = ({
                         )}
                     </AnimatePresence>
                 </div>
-
-                <div className="finance-summary-grid" style={{ display: 'grid', gap: '1rem' }}>
-                    {/* TARJETA: OPERACIÓN HOY */}
-                    <GlassCard 
-                        style={{
-                            background: 'white',
-                            padding: '1rem',
-                            borderLeft: '4px solid var(--domain-green)'
-                        }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                            <Calculator size={14} color="var(--domain-green)" />
-                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#888', textTransform: 'uppercase' }}>Operación Hoy</span>
-                        </div>
-                        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>
-                            ${netOperation.toLocaleString()}
-                        </h3>
-                    </GlassCard>
-
-                    {/* TARJETA: AHORRO PROYECTADO */}
-                    <GlassCard 
-                        style={{
-                            background: 'white',
-                            padding: '1rem',
-                            borderLeft: '4px solid var(--domain-orange)'
-                        }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                            <PiggyBank size={14} color="var(--domain-orange)" />
-                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#888', textTransform: 'uppercase' }}>Ahorro Proyectado</span>
-                        </div>
-                        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>
-                            ${projectedSavings.toLocaleString()}
-                        </h3>
-                    </GlassCard>
-                </div>
             </div>
 
-            {/* SECCIÓN DE NEGOCIO / VENTAS */}
+            {/* 4. FLUJO SEMANAL Y DEUDAS */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900 }}>Flujo Semanal (7d)</h3>
                 <BarChart3 size={16} color="#888" />
             </div>
 
-            <div className="glass-card" style={{ marginBottom: '2rem', padding: '1.2rem', height: '200px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', height: '120px', gap: '6px', paddingBottom: '8px' }}>
+            <div className="glass-card" style={{ marginBottom: '1.5rem', padding: '1.2rem', height: '180px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', height: '100px', gap: '6px', paddingBottom: '8px' }}>
                     {[
                         { day: 'Lun', exp: 0, inc: 0 },
                         { day: 'Mar', exp: 0, inc: 0 },
@@ -309,24 +351,11 @@ export const FinanzasDashboard = ({
                         { day: 'Hoy', exp: expense, inc: income }
                     ].map((data, i) => {
                         const maxVal = Math.max(income, expense, 100);
-                        const incHeight = (data.inc / maxVal) * 100;
-                        const expHeight = (data.exp / maxVal) * 100;
-
                         return (
                             <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%', justifyContent: 'flex-end' }}>
                                 <div style={{ display: 'flex', gap: '1px', alignItems: 'flex-end', height: '100%', width: '100%', justifyContent: 'center' }}>
-                                    <motion.div
-                                        initial={{ height: 0 }}
-                                        animate={{ height: `${Math.min(incHeight, 100)}%` }}
-                                        transition={{ delay: i * 0.05, duration: 0.8 }}
-                                        style={{ width: '6px', background: 'var(--domain-green)', borderRadius: '2px 2px 0 0', opacity: 0.8 }}
-                                    />
-                                    <motion.div
-                                        initial={{ height: 0 }}
-                                        animate={{ height: `${Math.min(expHeight, 100)}%` }}
-                                        transition={{ delay: (i + 1) * 0.05, duration: 0.8 }}
-                                        style={{ width: '6px', background: '#f87171', borderRadius: '2px 2px 0 0', opacity: 0.8 }}
-                                    />
+                                    <motion.div initial={{ height: 0 }} animate={{ height: `${(data.inc / maxVal) * 100}%` }} style={{ width: '6px', background: 'var(--domain-green)', borderRadius: '2px 2px 0 0', opacity: 0.8 }} />
+                                    <motion.div initial={{ height: 0 }} animate={{ height: `${(data.exp / maxVal) * 100}%` }} style={{ width: '6px', background: '#f87171', borderRadius: '2px 2px 0 0', opacity: 0.8 }} />
                                 </div>
                                 <span style={{ fontSize: '0.6rem', fontWeight: 800, color: i === 6 ? 'var(--domain-orange)' : '#AAA' }}>{data.day}</span>
                             </div>
@@ -335,53 +364,42 @@ export const FinanzasDashboard = ({
                 </div>
             </div>
 
-            {/* SECCIÓN DE DEUDAS */}
             <div className="debts-grid" style={{ display: 'grid', gap: '1rem', marginBottom: '1.5rem' }}>
-                <div className="glass-card" style={{ padding: '0.8rem', borderTop: '3px solid #f87171' }}>
+                <div 
+                    onClick={() => { setDebtMode('owe'); setShowDebtDetail(true); }}
+                    className="glass-card" style={{ padding: '0.8rem', borderTop: '3px solid #f87171', cursor: 'pointer' }}
+                >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', color: '#f87171' }}>
-                        <UserMinus size={14} />
-                        <span style={{ fontSize: '0.7rem', fontWeight: 800 }}>DEBO</span>
+                        <UserMinus size={14} /><span style={{ fontSize: '0.7rem', fontWeight: 800 }}>DEBO</span>
                     </div>
                     <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-carbon)' }}>${owe}</p>
                 </div>
-                <div className="glass-card" style={{ padding: '0.8rem', borderTop: '3px solid #4ade80' }}>
+                <div 
+                    onClick={() => { setDebtMode('owed'); setShowDebtDetail(true); }}
+                    className="glass-card" style={{ padding: '0.8rem', borderTop: '3px solid #4ade80', cursor: 'pointer' }}
+                >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', color: '#4ade80' }}>
-                        <UserPlus size={14} />
-                        <span style={{ fontSize: '0.7rem', fontWeight: 800 }}>ME DEBEN</span>
+                        <UserPlus size={14} /><span style={{ fontSize: '0.7rem', fontWeight: 800 }}>ME DEBEN</span>
                     </div>
                     <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-carbon)' }}>${owed}</p>
                 </div>
             </div>
 
-
-            {/* PLANIFICADOR MENSUAL */}
+            {/* 5. PLANIFICADOR Y MOVIMIENTOS */}
             <div style={{ marginBottom: '2rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-carbon)' }}>📊 Planificador Mensual</h3>
                     <div style={{ background: '#F0EBE6', padding: '4px 8px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#888' }}>BASE</span>
-                        <input 
-                            type="number" 
-                            value={monthlyBudget || ''} 
-                            onChange={(e) => updateMonthlyBudget(e.target.value === '' ? 0 : Number(e.target.value))}
-                            style={{ border: 'none', background: 'transparent', width: '50px', fontSize: '0.75rem', fontWeight: 900, outline: 'none', color: 'var(--domain-blue)' }}
-                        />
+                        <input type="number" value={monthlyBudget || ''} onChange={(e) => updateMonthlyBudget(e.target.value === '' ? 0 : Number(e.target.value))} style={{ border: 'none', background: 'transparent', width: '50px', fontSize: '0.75rem', fontWeight: 900, outline: 'none', color: 'var(--domain-blue)' }} />
                     </div>
                 </div>
 
                 <div className="glass-card" style={{ padding: '1rem', background: '#FFF' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {fixedExpenses.map((expense) => (
-                            <FixedExpenseItem 
-                                key={expense.id} 
-                                expense={expense} 
-                                toggleFixedExpense={toggleFixedExpense}
-                                removeFixedExpense={removeFixedExpense}
-                                updateFixedExpense={updateFixedExpense}
-                                projects={projects}
-                            />
+                            <FixedExpenseItem key={expense.id} expense={expense} toggleFixedExpense={toggleFixedExpense} removeFixedExpense={removeFixedExpense} updateFixedExpense={updateFixedExpense} projects={projects} />
                         ))}
-                        
                         <div style={{ marginTop: '2px', paddingTop: '8px', borderTop: '1px dashed #EEE' }}>
                             <NewFixedExpenseForm addFixedExpense={addFixedExpense} projects={projects} />
                         </div>
@@ -389,7 +407,6 @@ export const FinanzasDashboard = ({
                 </div>
             </div>
 
-            {/* ÚLTIMOS MOVIMIENTOS */}
             <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem', fontWeight: 900 }}>Últimos Movimientos</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                 {transactions.slice(0, 10).map((tx) => (
@@ -403,39 +420,51 @@ export const FinanzasDashboard = ({
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
                                     <span style={{ fontSize: '0.6rem', color: '#AAA' }}>{tx.date}</span>
                                     {projects.find(p => p.id === tx.projectId) && (
-                                        <span style={{ 
-                                            fontSize: '0.55rem', 
-                                            fontWeight: 900, 
-                                            background: `${projects.find(p => p.id === tx.projectId)?.color}15`,
-                                            color: projects.find(p => p.id === tx.projectId)?.color,
-                                            padding: '2px 6px',
-                                            borderRadius: '6px'
-                                        }}>
+                                        <span style={{ fontSize: '0.55rem', fontWeight: 900, background: `${projects.find(p => p.id === tx.projectId)?.color}15`, color: projects.find(p => p.id === tx.projectId)?.color, padding: '2px 6px', borderRadius: '6px' }}>
                                             @{projects.find(p => p.id === tx.projectId)?.name}
                                         </span>
                                     )}
                                     {accounts.find(a => a.id === tx.accountId) && (
-                                        <span style={{ 
-                                            fontSize: '0.55rem', 
-                                            fontWeight: 900, 
-                                            background: '#F0F0F0',
-                                            color: '#666',
-                                            padding: '2px 6px',
-                                            borderRadius: '6px'
-                                        }}>
+                                        <span style={{ fontSize: '0.55rem', fontWeight: 900, background: '#F0F0F0', color: '#666', padding: '2px 6px', borderRadius: '6px' }}>
                                             {accounts.find(a => a.id === tx.accountId)?.name}
                                         </span>
                                     )}
                                 </div>
                             </div>
                         </div>
-                        <span style={{ fontWeight: 900, fontSize: '0.9rem', color: tx.type === 'ingreso' ? '#10B981' : 'var(--text-carbon)' }}>
-                            {tx.type === 'ingreso' ? '+' : '-'}${Math.abs(tx.amount).toLocaleString()}
-                        </span>
+                        <span style={{ fontWeight: 900, fontSize: '0.9rem', color: tx.type === 'ingreso' ? '#10B981' : 'var(--text-carbon)' }}>{tx.type === 'ingreso' ? '+' : '-'}${Math.abs(tx.amount).toLocaleString()}</span>
                     </div>
                 ))}
-                {transactions.length === 0 && <p style={{ textAlign: 'center', color: '#888', padding: '1rem', fontSize: '0.8rem' }}>No hay movimientos hoy</p>}
             </div>
+
+            <AnimatePresence>
+                {selectedProject && (
+                    <ProjectDetailView 
+                        project={selectedProject}
+                        onClose={() => setSelectedProject(null)}
+                        accounts={accounts}
+                        setAccounts={setAccounts}
+                        transactions={transactions}
+                        addProjectTask={() => {}} 
+                        toggleProjectTask={() => {}}
+                        removeProjectTask={() => {}}
+                        updateProjectTask={() => {}}
+                        reorderProjectTasks={() => {}}
+                        promoteTaskToRoutine={() => {}}
+                        rutinas={[]}
+                    />
+                )}
+                
+                {showDebtDetail && (
+                    <DebtDetailView 
+                        transactions={transactions}
+                        accounts={accounts}
+                        initialMode={debtMode}
+                        onClose={() => setShowDebtDetail(false)}
+                        repayDebt={repayDebt}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 };

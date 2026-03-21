@@ -16,7 +16,7 @@ interface QuickActionPanelProps {
     addTimeBlock: (label: string, start: string, end: string, color: string, projectId?: number) => void;
     addProject?: (name: string, color: string, targetHoursPerWeek?: number) => void;
     projects?: { id: number, name: string, color: string }[];
-    accounts?: { id: number, name: string, color: string, projectId?: number }[];
+    accounts?: { id: number, name: string, color: string, projectIds?: number[] }[];
     rutinas?: { id: number, title: string, color: string }[];
 }
 
@@ -46,10 +46,11 @@ export const QuickActionPanel = ({
         }
     }, [isOpen, projects]);
     
-    // Filtro de cuentas: Ahora mostramos TODAS para permitir compartirlas entre proyectos
+    // Filtro de cuentas: Solo mostramos las del proyecto seleccionado
     const filteredAccounts = useMemo(() => {
-        return accounts;
-    }, [accounts]);
+        if (!selectedProjectId) return []; // No mostramos cuentas si no hay proyecto
+        return accounts.filter(acc => acc.projectIds?.includes(selectedProjectId));
+    }, [accounts, selectedProjectId]);
 
     // Quick Project Creation
     const [isCreatingProject, setIsCreatingProject] = useState(false);
@@ -403,23 +404,9 @@ export const QuickActionPanel = ({
                             {currentConfig.isFinancial && filteredAccounts.length > 0 && (
                                 <div style={{ background: '#F9F9F9', padding: '12px', borderRadius: '18px', border: '2px solid transparent' }}>
                                     <p style={{ margin: '0 0 8px 10px', fontWeight: 800, fontSize: '0.6rem', color: '#BBB', textTransform: 'uppercase' }}>
-                                        Cuenta / Tarjeta (Opcional)
+                                        Cuenta / Tarjeta
                                     </p>
                                     <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-                                        {actionType === 'gasto' && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setSelectedAccountId(undefined)}
-                                                style={{
-                                                    padding: '6px 12px', borderRadius: '12px', border: '1px solid #EEE',
-                                                    background: selectedAccountId === undefined ? '#333' : 'white',
-                                                    color: selectedAccountId === undefined ? 'white' : '#888',
-                                                    fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap'
-                                                }}
-                                            >
-                                                Ninguna
-                                            </button>
-                                        )}
                                         {filteredAccounts.map(acc => (
                                             <button
                                                 key={acc.id}
