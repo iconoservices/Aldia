@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, UserMinus, UserPlus, Wallet, History, CreditCard } from 'lucide-react';
+import { ArrowLeft, UserMinus, UserPlus, Wallet, History, CreditCard, Trash2, Edit2, Check, X } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
 import type { Transaction, Account } from '../../hooks/useAlDiaState';
 
@@ -10,13 +10,19 @@ interface DebtDetailViewProps {
     initialMode: 'owe' | 'owed';
     onClose: () => void;
     repayDebt: (originalTx: Transaction, amount: number, accountId: number) => void;
+    removeTransaction: (id: number) => void;
+    updateTransaction: (id: number, updates: Partial<Transaction>) => void;
 }
 
-export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, repayDebt }: DebtDetailViewProps) => {
+export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, repayDebt, removeTransaction, updateTransaction }: DebtDetailViewProps) => {
     const [mode, setMode] = useState<'owe' | 'owed'>(initialMode);
     const [repayingId, setRepayingId] = useState<number | null>(null);
     const [repayAmount, setRepayAmount] = useState('');
     const [selectedAccountId, setSelectedAccountId] = useState<number>(accounts[0]?.id || 0);
+
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const [editName, setEditName] = useState('');
+    const [editAmount, setEditAmount] = useState('');
 
     const debtList = useMemo(() => {
         // Obtenemos todas las deudas del tipo seleccionado
@@ -63,6 +69,22 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
             setRepayingId(null);
             setRepayAmount('');
         }
+    };
+
+    const handleDelete = (txId: number) => {
+        if (window.confirm('¿Estás seguro de que quieres eliminar esta deuda? También se perderá el registro de sus abonos asociados.')) {
+            // Nota: En una implementación más robusta, buscaríamos transacciones de pago con el mismo texto y las borraríamos también.
+            // Por ahora, borramos la deuda original.
+            removeTransaction(txId);
+        }
+    };
+
+    const handleUpdate = (txId: number) => {
+        updateTransaction(txId, {
+            text: editName,
+            amount: parseFloat(editAmount) || 0
+        });
+        setEditingId(null);
     };
 
     return (
@@ -142,14 +164,50 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
                     {debtList.map((item, idx) => (
                         <div key={idx} className="glass-card" style={{ padding: '1rem', background: 'white', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <div>
-                                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{item.name}</h4>
-                                    <span style={{ fontSize: '0.65rem', color: '#AAA', fontWeight: 600 }}>{item.originalTx.date} - {item.originalTx.fullDate}</span>
+                                <div style={{ flex: 1 }}>
+                                    {editingId === idx ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            <input 
+                                                value={editName}
+                                                onChange={(e) => setEditName(e.target.value)}
+                                                style={{ padding: '6px', borderRadius: '8px', border: '1px solid #DDD', fontSize: '0.85rem', fontWeight: 900 }}
+                                            />
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <input 
+                                                    type="number"
+                                                    value={editAmount}
+                                                    onChange={(e) => setEditAmount(e.target.value)}
+                                                    style={{ width: '80px', padding: '6px', borderRadius: '8px', border: '1px solid #DDD', fontSize: '0.85rem', fontWeight: 900 }}
+                                                />
+                                                <button onClick={() => handleUpdate(item.originalTx.id)} style={{ background: 'var(--domain-green)', border: 'none', borderRadius: '6px', padding: '4px', cursor: 'pointer' }}><Check size={14} color="white" /></button>
+                                                <button onClick={() => setEditingId(null)} style={{ background: '#EEE', border: 'none', borderRadius: '6px', padding: '4px', cursor: 'pointer' }}><X size={14} color="#888" /></button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{item.name}</h4>
+                                            <span style={{ fontSize: '0.65rem', color: '#AAA', fontWeight: 600 }}>{item.originalTx.date} - {item.originalTx.fullDate}</span>
+                                        </>
+                                    )}
                                 </div>
-                                <div style={{ textAlign: 'right' }}>
+                                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                                     <span style={{ display: 'block', fontSize: '1.1rem', fontWeight: 900, color: mode === 'owe' ? '#ef4444' : '#10b981' }}>
                                         S/.{item.amount.toLocaleString()}
                                     </span>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button 
+                                            onClick={() => { setEditingId(idx); setEditName(item.name); setEditAmount(item.originalTx.amount.toString()); }}
+                                            style={{ background: 'transparent', border: 'none', color: '#CBD5E1', cursor: 'pointer', padding: '4px' }}
+                                        >
+                                            <Edit2 size={12} />
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDelete(item.originalTx.id)}
+                                            style={{ background: 'transparent', border: 'none', color: '#fee2e2', cursor: 'pointer', padding: '4px' }}
+                                        >
+                                            <Trash2 size={12} color="#f87171" style={{ opacity: 0.5 }} />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 

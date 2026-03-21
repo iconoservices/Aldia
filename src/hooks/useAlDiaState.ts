@@ -124,7 +124,8 @@ export const useAlDiaState = () => {
         transactions, setTransactions, balance, 
         monthlyBudget, setMonthlyBudget, fixedExpenses, setFixedExpenses,
         addTransaction, addFixedExpense, removeFixedExpense, toggleFixedExpense, 
-        updateFixedExpense, repayDebt: repayDebtBase, todayIncome, todayExpense, debtsOwe, debtsOwed 
+        updateFixedExpense, repayDebt: repayDebtBase, todayIncome, todayExpense, debtsOwe, debtsOwed,
+        removeTransaction, updateTransaction
     } = useFinanzasState();
 
     const {
@@ -420,6 +421,8 @@ export const useAlDiaState = () => {
         monthlyBudget, updateMonthlyBudget: (amount: number) => setMonthlyBudget(amount),
         fixedExpenses, addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense,
         repayDebt: repayDebtBase,
+        removeTransaction,
+        updateTransaction,
 
         // Proyectos & Rutinas
         projects, addProject, addProjectTask, toggleProjectTask, removeProjectTask, reorderProjectTasks,

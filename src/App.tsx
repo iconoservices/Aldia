@@ -153,6 +153,8 @@ function App() {
                 toggleFixedExpense={state.toggleFixedExpense}
                 updateFixedExpense={state.updateFixedExpense}
                 repayDebt={state.repayDebt}
+                removeTransaction={state.removeTransaction}
+                updateTransaction={state.updateTransaction}
                 projects={state.projects}
                 accounts={state.accounts}
                 setAccounts={state.setAccounts}

@@ -22,6 +22,8 @@ interface FinanzasProps {
     toggleFixedExpense: (id: number) => void;
     updateFixedExpense: (id: number, updates: Partial<FixedExpense>) => void;
     repayDebt: (originalTx: Transaction, amount: number, accountId: number) => void;
+    removeTransaction: (id: number) => void;
+    updateTransaction: (id: number, updates: Partial<Transaction>) => void;
     projects: { id: number, name: string, color: string }[];
     accounts: { id: number, name: string, color: string, projectIds?: number[] }[];
     setAccounts: React.Dispatch<React.SetStateAction<{ id: number; name: string; color: string; projectIds?: number[] }[]>>;
@@ -31,7 +33,7 @@ export const FinanzasDashboard = ({
     balance, income, expense, owe, owed, transactions,
     monthlyBudget, updateMonthlyBudget, fixedExpenses, 
     addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense,
-    repayDebt, projects, accounts, setAccounts
+    repayDebt, removeTransaction, updateTransaction, projects, accounts, setAccounts
 }: FinanzasProps) => {
     const netOperation = useMemo(() => income - expense, [income, expense]);
     const totalFixed = useMemo(() => fixedExpenses.filter(e => e.active).reduce((acc, e) => acc + e.amount, 0), [fixedExpenses]);
@@ -462,6 +464,8 @@ export const FinanzasDashboard = ({
                         initialMode={debtMode}
                         onClose={() => setShowDebtDetail(false)}
                         repayDebt={repayDebt}
+                        removeTransaction={removeTransaction}
+                        updateTransaction={updateTransaction}
                     />
                 )}
             </AnimatePresence>

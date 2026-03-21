@@ -87,16 +87,25 @@ export const useFinanzasState = () => {
         .filter(t => t.isDebt && ((t.type === 'ingreso' && t.isCashless) || (t.type === 'gasto' && !t.isCashless)))
         .reduce((acc, t) => acc + Math.abs(Number(t?.amount) || 0), 0);
 
+    const removeTransaction = (id: number) => {
+        setTransactions((prev: Transaction[]) => prev.filter(t => t.id !== id));
+    };
+
+    const updateTransaction = (id: number, updates: Partial<Transaction>) => {
+        setTransactions((prev: Transaction[]) => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+    };
+
     return {
         transactions,
         setTransactions,
         balance,
-        // setBalance se quita de aquí porque es derivado
         monthlyBudget,
         setMonthlyBudget,
         fixedExpenses,
         setFixedExpenses,
         addTransaction,
+        removeTransaction,
+        updateTransaction,
         addFixedExpense,
         removeFixedExpense,
         toggleFixedExpense,
