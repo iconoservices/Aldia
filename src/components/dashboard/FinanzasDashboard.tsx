@@ -64,7 +64,12 @@ export const FinanzasDashboard = ({
     const [isBudgetFixed, setIsBudgetFixed] = useState(false);
     const [includeDebts, setIncludeDebts] = useState(false);
 
-    const totalIncomeResource = isBudgetFixed ? balance : (balance + Math.max(0, monthlyBudget - realIncomeThisMonth));
+    // Lógica dinámica: Si es FIJO, es la base intacta. 
+    // Si es META: Base - lo ganado. Y si pasas la meta, el extra suma de nuevo a favor.
+    const totalIncomeResource = isBudgetFixed 
+        ? monthlyBudget 
+        : Math.abs(monthlyBudget - realIncomeThisMonth);
+
     const totalExpensesExpected = totalFixedPending + (includeDebts ? owe : 0);
     const projectedSavings = totalIncomeResource - totalExpensesExpected;
 
