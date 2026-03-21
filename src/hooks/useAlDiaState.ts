@@ -67,6 +67,7 @@ export interface FixedExpense {
     amount: number;
     active: boolean;
     projectId?: number;
+    lastPaidMonth?: string; // YYYY-MM
 }
 
 export interface CalendarEvent {
@@ -125,7 +126,7 @@ export const useAlDiaState = () => {
         transactions, setTransactions, balance, 
         monthlyBudget, setMonthlyBudget, fixedExpenses, setFixedExpenses,
         addTransaction, addFixedExpense, removeFixedExpense, toggleFixedExpense, 
-        updateFixedExpense, repayDebt: repayDebtBase, todayIncome, todayExpense, debtsOwe, debtsOwed,
+        updateFixedExpense, markFixedExpensePaid, repayDebt: repayDebtBase, todayIncome, todayExpense, debtsOwe, debtsOwed,
         removeTransaction, updateTransaction
     } = useFinanzasState();
 
@@ -418,7 +419,7 @@ export const useAlDiaState = () => {
         balance,
         todayIncome, todayExpense, debtsOwe, debtsOwed,
         monthlyBudget, updateMonthlyBudget: (amount: number) => setMonthlyBudget(amount),
-        fixedExpenses, addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense,
+        fixedExpenses, addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense, markFixedExpensePaid,
         repayDebt: repayDebtBase,
         removeTransaction,
         updateTransaction,

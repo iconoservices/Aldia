@@ -26,6 +26,7 @@ interface FinanzasProps {
     removeFixedExpense: (id: number) => void;
     toggleFixedExpense: (id: number) => void;
     updateFixedExpense: (id: number, updates: Partial<FixedExpense>) => void;
+    markFixedExpensePaid: (id: number, monthStr: string, accountId?: number) => void;
     repayDebt: (originalTx: Transaction, amount: number, accountId: number) => void;
     removeTransaction: (id: number) => void;
     updateTransaction: (id: number, updates: Partial<Transaction>) => void;
@@ -37,12 +38,32 @@ interface FinanzasProps {
 export const FinanzasDashboard = ({ 
     balance, income, expense, owe, owed, transactions,
     monthlyBudget, updateMonthlyBudget, fixedExpenses, 
-    addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense,
+    addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense, markFixedExpensePaid,
     repayDebt, removeTransaction, updateTransaction, projects, accounts, setAccounts
 }: FinanzasProps) => {
     const netOperation = useMemo(() => income - expense, [income, expense]);
-    const totalFixed = useMemo(() => fixedExpenses.filter(e => e.active).reduce((acc, e) => acc + e.amount, 0), [fixedExpenses]);
-    const projectedSavings = useMemo(() => monthlyBudget - totalFixed, [monthlyBudget, totalFixed]);
+    const currentMonthStr = useMemo(() => new Date().toLocaleDateString('en-CA').substring(0, 7), []);
+
+    const realIncomeThisMonth = useMemo(() => {
+        return transactions
+            .filter(tx => tx.type === 'ingreso' && !tx.isDebt && tx.fullDate.startsWith(currentMonthStr))
+            .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+    }, [transactions, currentMonthStr]);
+
+    const realExpenseThisMonth = useMemo(() => {
+        return transactions
+            .filter(tx => tx.type === 'gasto' && !tx.isDebt && tx.fullDate.startsWith(currentMonthStr))
+            .reduce((sum, tx) => sum + Math.abs(Number(tx.amount) || 0), 0);
+    }, [transactions, currentMonthStr]);
+
+    const totalFixedPending = useMemo(() => 
+        fixedExpenses
+            .filter(e => e.active && e.lastPaidMonth !== currentMonthStr)
+            .reduce((acc, e) => acc + e.amount, 0), 
+    [fixedExpenses, currentMonthStr]);
+
+    const totalIncomeResource = monthlyBudget + realIncomeThisMonth;
+    const projectedSavings = totalIncomeResource - (totalFixedPending + realExpenseThisMonth + owe);
 
     const [isAccountsVisible, setIsAccountsVisible] = useState(false);
     const [accountViewMode, setAccountViewMode] = useState<'cuenta' | 'proyecto'>('cuenta');
@@ -202,13 +223,32 @@ export const FinanzasDashboard = ({
                             borderLeft: '4px solid var(--domain-orange)'
                         }}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                             <PiggyBank size={14} color="var(--domain-orange)" />
-                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#888', textTransform: 'uppercase' }}>Ahorro Proyectado</span>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#888', textTransform: 'uppercase' }}>Ahorro (En Vivo)</span>
                         </div>
-                        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>
+                        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)', marginBottom: '8px' }}>
                             ${projectedSavings.toLocaleString()}
                         </h3>
+                        
+                        {/* Progress Bar para Ingresos Reales vs Meta Fija */}
+                        {monthlyBudget > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#888', fontWeight: 700 }}>
+                                    <span>Ingreso Real logrado</span>
+                                    <span style={{ color: realIncomeThisMonth >= monthlyBudget ? 'var(--domain-green)' : '#888' }}>
+                                        ${realIncomeThisMonth.toLocaleString()} / ${monthlyBudget.toLocaleString()}
+                                    </span>
+                                </div>
+                                <div style={{ width: '100%', height: '4px', background: '#F1F5F9', borderRadius: '4px', overflow: 'hidden' }}>
+                                    <motion.div 
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${Math.min(100, Math.max(0, (realIncomeThisMonth / monthlyBudget) * 100))}%` }}
+                                        style={{ height: '100%', background: realIncomeThisMonth >= monthlyBudget ? 'var(--domain-green)' : 'var(--domain-orange)', borderRadius: '4px' }}
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </GlassCard>
                 </div>
 
@@ -458,7 +498,14 @@ export const FinanzasDashboard = ({
                 <div className="glass-card" style={{ padding: '1rem', background: '#FFF' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {fixedExpenses.map((expense) => (
-                            <FixedExpenseItem key={expense.id} expense={expense} toggleFixedExpense={toggleFixedExpense} removeFixedExpense={removeFixedExpense} updateFixedExpense={updateFixedExpense} projects={projects} />
+                            <FixedExpenseItem 
+                                key={expense.id} expense={expense} 
+                                toggleFixedExpense={toggleFixedExpense} 
+                                removeFixedExpense={removeFixedExpense} 
+                                updateFixedExpense={updateFixedExpense} 
+                                markFixedExpensePaid={markFixedExpensePaid}
+                                projects={projects} 
+                            />
                         ))}
                         <div style={{ marginTop: '2px', paddingTop: '8px', borderTop: '1px dashed #EEE' }}>
                             <NewFixedExpenseForm addFixedExpense={addFixedExpense} projects={projects} />
@@ -542,11 +589,12 @@ export const FinanzasDashboard = ({
 
 // --- SUB-COMPONENTES AUXILIARES ---
 
-const FixedExpenseItem = ({ expense, toggleFixedExpense, removeFixedExpense, updateFixedExpense, projects }: { 
+const FixedExpenseItem = ({ expense, toggleFixedExpense, removeFixedExpense, updateFixedExpense, markFixedExpensePaid, projects }: { 
     expense: FixedExpense, 
     toggleFixedExpense: (id: number) => void, 
     removeFixedExpense: (id: number) => void,
     updateFixedExpense: (id: number, updates: Partial<FixedExpense>) => void,
+    markFixedExpensePaid: (id: number, monthStr: string) => void,
     projects: { id: number, name: string, color: string }[] 
 }) => {
     const [isEditing, setIsEditing] = useState(false);
@@ -598,6 +646,9 @@ const FixedExpenseItem = ({ expense, toggleFixedExpense, removeFixedExpense, upd
         );
     }
 
+    const currentMonthStr = new Date().toLocaleDateString('en-CA').substring(0, 7);
+    const isPaid = expense.lastPaidMonth === currentMonthStr;
+
     return (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: expense.active ? 1 : 0.4 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -610,8 +661,35 @@ const FixedExpenseItem = ({ expense, toggleFixedExpense, removeFixedExpense, upd
                         style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'white', position: 'absolute', top: '2px' }}
                     />
                 </div>
+                
+                {/* Checkmark de Pago */}
+                <button
+                    onClick={() => {
+                        if (expense.active && !isPaid) {
+                            markFixedExpensePaid(expense.id, currentMonthStr);
+                        }
+                    }}
+                    style={{
+                        background: isPaid ? 'var(--domain-green)' : 'transparent',
+                        border: isPaid ? 'none' : '2px solid #DDD',
+                        borderRadius: '50%',
+                        width: '20px',
+                        height: '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: (!isPaid && expense.active) ? 'pointer' : 'default',
+                        transition: 'all 0.2s',
+                        opacity: expense.active ? 1 : 0.5
+                    }}
+                >
+                    {isPaid && <Check size={12} color="white" />}
+                </button>
+
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-carbon)' }}>{expense.text}</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-carbon)', textDecoration: isPaid ? 'line-through' : 'none' }}>
+                        {expense.text}
+                    </span>
                     {project && (
                         <span style={{ fontSize: '0.55rem', fontWeight: 900, color: project.color }}>
                             @{project.name}
@@ -620,7 +698,9 @@ const FixedExpenseItem = ({ expense, toggleFixedExpense, removeFixedExpense, upd
                 </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontWeight: 800, fontSize: '0.85rem', color: '#666' }}>${expense.amount.toLocaleString()}</span>
+                <span style={{ fontWeight: 800, fontSize: '0.85rem', color: isPaid ? 'var(--domain-green)' : '#666' }}>
+                    ${expense.amount.toLocaleString()}
+                </span>
                 <button onClick={() => setIsEditing(true)} style={{ background: 'transparent', border: 'none', color: '#DDD', cursor: 'pointer' }}><Edit2 size={12} /></button>
                 <button onClick={() => removeFixedExpense(expense.id)} style={{ background: 'transparent', border: 'none', color: '#EEE', cursor: 'pointer' }}><Trash2 size={12} /></button>
             </div>

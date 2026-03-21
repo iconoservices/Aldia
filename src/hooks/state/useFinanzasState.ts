@@ -71,6 +71,19 @@ export const useFinanzasState = () => {
         setFixedExpenses((prev: FixedExpense[]) => prev.map(e => e.id === id ? { ...e, ...updates } : e));
     };
 
+    const markFixedExpensePaid = (id: number, monthStr: string, accountId?: number) => {
+        const expense = fixedExpenses.find(e => e.id === id);
+        if (!expense) return;
+        
+        // Update the paid status
+        setFixedExpenses(prev => prev.map(e => e.id === id ? { ...e, lastPaidMonth: monthStr } : e));
+        
+        // Auto-generate the transaction if it's being marked as paid
+        if (expense.lastPaidMonth !== monthStr) {
+            addTransaction(`Pago: ${expense.text}`, expense.amount, 'gasto', false, expense.projectId, accountId, false, 'Servicios');
+        }
+    };
+
     // Métricas calculadas
     const todayIncome = txArr
         .filter(t => t?.type === 'ingreso' && !t.isDebt && t.fullDate === todayStr)
@@ -111,6 +124,7 @@ export const useFinanzasState = () => {
         removeFixedExpense,
         toggleFixedExpense,
         updateFixedExpense,
+        markFixedExpensePaid,
         repayDebt,
         todayIncome,
         todayExpense,
