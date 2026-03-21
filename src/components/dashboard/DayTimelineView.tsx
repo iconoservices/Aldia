@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, CheckCircle2, Circle, Star, Zap, Coffee, Moon, Sun, Clock } from 'lucide-react';
-import type { Mission, Routine, CalendarEvent } from '../../hooks/useAlDiaState';
+import { X, Calendar, CheckCircle2, Circle, Star, Zap, Coffee, Moon, Sun, Clock, Wallet } from 'lucide-react';
+import type { Mission, Routine, CalendarEvent, FixedExpense } from '../../hooks/useAlDiaState';
 
 interface DayTimelineViewProps {
     isOpen: boolean;
@@ -8,9 +8,11 @@ interface DayTimelineViewProps {
     missions: Mission[];
     rutinas: Routine[];
     agenda: CalendarEvent[];
+    fixedExpenses: FixedExpense[];
+    markFixedExpensePaid: (id: number, monthStr: string) => void;
 }
 
-export const DayTimelineView = ({ isOpen, onClose, missions, rutinas, agenda }: DayTimelineViewProps) => {
+export const DayTimelineView = ({ isOpen, onClose, missions, rutinas, agenda, fixedExpenses, markFixedExpensePaid }: DayTimelineViewProps) => {
     const today = new Date();
     const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday...
     // Adjust dayOfWeek to match rutinas (0=Mon, 6=Sun if following common ISO, but let's check useAlDiaState)
@@ -63,6 +65,22 @@ export const DayTimelineView = ({ isOpen, onClose, missions, rutinas, agenda }: 
         });
     });
 
+    // Gastos Fijos de hoy
+    const currentMonthStr = todayStr.substring(0, 7);
+    fixedExpenses.filter(e => e.active && e.dueDay === today.getDate()).forEach(e => {
+        const isPaid = e.lastPaidMonth === currentMonthStr;
+        timelineItems.push({
+            time: '08:00', // Ponemos una hora por defecto en la mañana
+            type: 'fixed-expense',
+            label: `Pagar: ${e.text}`,
+            q: `$${e.amount.toLocaleString()}`,
+            completed: isPaid,
+            expenseId: e.id,
+            color: 'var(--domain-green)',
+            id: `f-${e.id}`
+        });
+    });
+
     // Ordenar por hora
     timelineItems.sort((a, b) => a.time.localeCompare(b.time));
 
@@ -75,6 +93,7 @@ export const DayTimelineView = ({ isOpen, onClose, missions, rutinas, agenda }: 
             return <Coffee size={18} />;
         }
         if (type === 'event') return <Calendar size={18} />;
+        if (type === 'fixed-expense') return <Wallet size={18} />;
         return <Star size={18} />;
     };
 
@@ -149,15 +168,28 @@ export const DayTimelineView = ({ isOpen, onClose, missions, rutinas, agenda }: 
                                                 <h4 style={cardTitleStyle}>{item.label}</h4>
                                             </div>
                                             
-                                            {item.type === 'mission' && (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            {(item.type === 'mission' || item.type === 'fixed-expense') && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    {item.type === 'fixed-expense' && (
+                                                        <button 
+                                                            onClick={() => {
+                                                                if (!item.completed) markFixedExpensePaid(item.expenseId, currentMonthStr);
+                                                            }}
+                                                            style={{
+                                                                background: 'transparent', border: 'none', cursor: item.completed ? 'default' : 'pointer', padding: 0,
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                            }}
+                                                        >
+                                                            {item.completed ? <CheckCircle2 size={16} color="var(--domain-green)" /> : <Circle size={16} color="#CBD5E1" />}
+                                                        </button>
+                                                    )}
                                                     <span style={{ 
-                                                        fontSize: '0.6rem', 
+                                                        fontSize: '0.65rem', 
                                                         fontWeight: 800, 
-                                                        background: '#EEE', 
+                                                        background: item.type === 'fixed-expense' ? '#DCFCE7' : '#EEE', 
                                                         padding: '2px 6px', 
                                                         borderRadius: '6px',
-                                                        color: '#888'
+                                                        color: item.type === 'fixed-expense' ? 'var(--domain-green)' : '#888'
                                                     }}>{item.q}</span>
                                                 </div>
                                             )}

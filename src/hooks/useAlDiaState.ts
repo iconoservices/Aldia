@@ -68,6 +68,7 @@ export interface FixedExpense {
     active: boolean;
     projectId?: number;
     lastPaidMonth?: string; // YYYY-MM
+    dueDay?: number; // 1-31 (Día de cobro en el mes)
 }
 
 export interface CalendarEvent {

@@ -54,8 +54,8 @@ export const useFinanzasState = () => {
         setTransactions(prev => [repaymentTx, ...prev]);
     };
 
-    const addFixedExpense = (text: string, amount: number, projectId?: number) => {
-        const newExpense: FixedExpense = { id: Date.now() + Math.random(), text, amount, active: true, projectId };
+    const addFixedExpense = (text: string, amount: number, projectId?: number, dueDay?: number) => {
+        const newExpense: FixedExpense = { id: Date.now() + Math.random(), text, amount, active: true, projectId, dueDay };
         setFixedExpenses(prev => [...prev, newExpense]);
     };
 

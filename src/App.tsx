@@ -155,6 +155,7 @@ function App() {
                 repayDebt={state.repayDebt}
                 removeTransaction={state.removeTransaction}
                 updateTransaction={state.updateTransaction}
+                markFixedExpensePaid={state.markFixedExpensePaid}
                 projects={state.projects}
                 accounts={state.accounts}
                 setAccounts={state.setAccounts}
@@ -210,6 +211,8 @@ function App() {
         missions={state.missions}
         rutinas={state.rutinas}
         agenda={state.agenda}
+        fixedExpenses={state.fixedExpenses}
+        markFixedExpensePaid={state.markFixedExpensePaid}
       />
 
       <SuperFab

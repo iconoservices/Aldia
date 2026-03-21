@@ -22,7 +22,7 @@ interface FinanzasProps {
     monthlyBudget: number;
     updateMonthlyBudget: (amount: number) => void;
     fixedExpenses: FixedExpense[];
-    addFixedExpense: (text: string, amount: number, projectId?: number) => void;
+    addFixedExpense: (text: string, amount: number, projectId?: number, dueDay?: number) => void;
     removeFixedExpense: (id: number) => void;
     toggleFixedExpense: (id: number) => void;
     updateFixedExpense: (id: number, updates: Partial<FixedExpense>) => void;
@@ -601,12 +601,14 @@ const FixedExpenseItem = ({ expense, toggleFixedExpense, removeFixedExpense, upd
     const [editName, setEditName] = useState(expense.text);
     const [editAmount, setEditAmount] = useState(expense.amount.toString());
     const [editProjectId, setEditProjectId] = useState(expense.projectId);
+    const [editDueDay, setEditDueDay] = useState<number | undefined>(expense.dueDay);
 
     const handleSave = () => {
         updateFixedExpense(expense.id, {
             text: editName,
             amount: parseFloat(editAmount) || 0,
-            projectId: editProjectId
+            projectId: editProjectId,
+            dueDay: editDueDay
         });
         setIsEditing(false);
     };
@@ -626,6 +628,12 @@ const FixedExpenseItem = ({ expense, toggleFixedExpense, removeFixedExpense, upd
                         type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)}
                         placeholder="$" 
                         style={{ flex: 1, padding: '6px', borderRadius: '8px', border: '1px solid #DDD', fontSize: '0.8rem', fontWeight: 600 }}
+                    />
+                    <input 
+                        type="number" value={editDueDay || ''} onChange={(e) => setEditDueDay(e.target.value ? Number(e.target.value) : undefined)}
+                        placeholder="Día (1-31)" 
+                        min="1" max="31"
+                        style={{ width: '60px', padding: '6px', borderRadius: '8px', border: '1px solid #DDD', fontSize: '0.8rem', fontWeight: 600 }}
                     />
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -695,6 +703,11 @@ const FixedExpenseItem = ({ expense, toggleFixedExpense, removeFixedExpense, upd
                             @{project.name}
                         </span>
                     )}
+                    {expense.dueDay && (
+                        <span style={{ fontSize: '0.55rem', fontWeight: 900, background: '#FDE68A', color: '#B45309', padding: '2px 4px', borderRadius: '4px' }}>
+                            Día {expense.dueDay}
+                        </span>
+                    )}
                 </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -708,18 +721,20 @@ const FixedExpenseItem = ({ expense, toggleFixedExpense, removeFixedExpense, upd
     );
 };
 
-const NewFixedExpenseForm = ({ addFixedExpense, projects }: { addFixedExpense: (t: string, a: number, p?: number) => void, projects: { id: number, name: string, color: string }[] }) => {
+const NewFixedExpenseForm = ({ addFixedExpense, projects }: { addFixedExpense: (t: string, a: number, p?: number, d?: number) => void, projects: { id: number, name: string, color: string }[] }) => {
     const [name, setName] = useState('');
     const [amount, setAmount] = useState('');
     const [projectId, setProjectId] = useState<number | undefined>(undefined);
+    const [dueDay, setDueDay] = useState<number | undefined>(undefined);
     const [isExpanded, setIsExpanded] = useState(false);
 
     const handleSubmit = () => {
         if (name && amount) {
-            addFixedExpense(name, parseFloat(amount), projectId);
+            addFixedExpense(name, parseFloat(amount), projectId, dueDay);
             setName('');
             setAmount('');
             setProjectId(undefined);
+            setDueDay(undefined);
             setIsExpanded(false);
         }
     };
@@ -749,6 +764,12 @@ const NewFixedExpenseForm = ({ addFixedExpense, projects }: { addFixedExpense: (
                     type="number" placeholder="$" 
                     value={amount} onChange={(e) => setAmount(e.target.value)}
                     style={{ flex: 1, padding: '6px', borderRadius: '8px', border: '1px solid #DDD', fontSize: '0.8rem' }}
+                />
+                <input 
+                    type="number" placeholder="Día" 
+                    value={dueDay || ''} onChange={(e) => setDueDay(e.target.value ? Number(e.target.value) : undefined)}
+                    min="1" max="31"
+                    style={{ width: '45px', padding: '6px', borderRadius: '8px', border: '1px solid #DDD', fontSize: '0.8rem' }}
                 />
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
