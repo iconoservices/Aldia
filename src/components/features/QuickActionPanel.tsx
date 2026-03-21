@@ -335,16 +335,13 @@ export const QuickActionPanel = ({
                                     <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
                                         {(() => {
                                             const project = projects.find(p => p.id === selectedProjectId);
+                                            if (!project) return <p style={{ fontSize: '0.6rem', color: '#AAA', margin: '4px 0 0 4px', fontWeight: 700 }}>⚠️ SELECCIONA UN PROYECTO PRIMERO</p>;
+                                            
                                             const defaults = actionType === 'ingreso' ? DEFAULT_INCOME_CATEGORIES : DEFAULT_EXPENSE_CATEGORIES;
                                             const categories = actionType === 'ingreso' 
-                                                ? (project?.incomeCategories ?? defaults)
-                                                : (project?.expenseCategories ?? defaults);
+                                                ? (project?.incomeCategories && project.incomeCategories.length > 0 ? project.incomeCategories : defaults)
+                                                : (project?.expenseCategories && project.expenseCategories.length > 0 ? project.expenseCategories : defaults);
                                             
-                                            // Si la categoría seleccionada no está en la nueva lista, la reseteamos a la primera
-                                            if (isOpen && categories.length > 0 && !categories.includes(selectedCategory) && selectedCategory !== 'Otros') {
-                                                // setSelectedCategory(categories[0]); // Evitar loops infinitos de renderizado
-                                            }
-
                                             return categories.map(cat => (
                                                 <button
                                                     key={cat}
