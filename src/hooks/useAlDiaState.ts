@@ -331,7 +331,7 @@ export const useAlDiaState = () => {
     }, [isInitialLoad, transactions.length, accounts.length, projects.length, misionesState.length]);
 
     // 3. Lógica Derivada
-    const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+    const todayStr = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
     const todayIndex = useMemo(() => (new Date().getDay() + 6) % 7, []); // 0=Mon, 6=Sun
 
     const routineMissions = useMemo(() => (Array.isArray(rutinas) ? rutinas : [])

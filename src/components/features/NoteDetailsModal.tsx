@@ -27,7 +27,7 @@ export const NoteDetailsModal = ({
     updateNote
 }: NoteDetailsModalProps) => {
     const [promotingItemId, setPromotingItemId] = useState<number | null>(null);
-    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState<string>(new Date().toLocaleDateString('en-CA'));
     const [isEditing, setIsEditing] = useState(false);
     const [editTitle, setEditTitle] = useState('');
     const [editContent, setEditContent] = useState('');
@@ -243,7 +243,7 @@ export const NoteDetailsModal = ({
                                                         <div style={{ height: '1px', background: 'rgba(0,0,0,0.06)' }} />
                                                         <div style={{ display: 'flex', gap: '8px' }}>
                                                             <button 
-                                                                onClick={() => handlePromoteToMission(item.text, new Date().toISOString().split('T')[0])}
+                                                                onClick={() => handlePromoteToMission(item.text, new Date().toLocaleDateString('en-CA'))}
                                                                 style={{ flex: 1, background: 'var(--domain-orange)', color: 'white', border: 'none', padding: '12px', borderRadius: '14px', fontSize: '0.75rem', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', cursor: 'pointer' }}
                                                             >
                                                                 <Send size={14} /> HOY

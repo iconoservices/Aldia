@@ -142,7 +142,7 @@ export const CalendarioView = ({ agenda, timeBlocks, rutinas }: CalendarioViewPr
 
                             {weekDays.map((date, idx) => {
                                 const isToday = date.toDateString() === new Date().toDateString();
-                                const dateStr = date.toISOString().split('T')[0];
+                                const dateStr = date.toLocaleDateString('en-CA');
                                 const dayEvents = agenda.filter(e => e.date === dateStr);
                                 const dayBlocks = timeBlocks.filter(() => {
                                     // Por ahora los timeBlocks son diarios recurrentes o necesitan fecha?

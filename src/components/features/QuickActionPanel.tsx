@@ -59,7 +59,7 @@ export const QuickActionPanel = ({
     const [quickProjectColor, setQuickProjectColor] = useState('#ff8c42');
     
     // Estados para Agenda/Tiempo
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [date, setDate] = useState(new Date().toLocaleDateString('en-CA'));
     const [startTime, setStartTime] = useState('09:00');
     const [endTime, setEndTime] = useState('10:00');
     const [hasTime, setHasTime] = useState(false);
@@ -193,7 +193,7 @@ export const QuickActionPanel = ({
             setAmount('');
             setConcept('');
             setDebtMode('normal');
-            setDate(new Date().toISOString().split('T')[0]);
+            setDate(new Date().toLocaleDateString('en-CA'));
             setStartTime('09:00');
             setEndTime('10:00');
             setHasTime(false);

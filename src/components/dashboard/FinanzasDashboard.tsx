@@ -90,7 +90,7 @@ export const FinanzasDashboard = ({
         for (let i = count - 1; i >= 0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
+            const dateStr = d.toLocaleDateString('en-CA');
             
             let label = '';
             if (chartPeriod === '7d') {

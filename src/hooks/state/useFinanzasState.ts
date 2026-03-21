@@ -7,7 +7,7 @@ export const useFinanzasState = () => {
     const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
 
     const txArr = Array.isArray(transactions) ? transactions : [];
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = new Date().toLocaleDateString('en-CA');
 
     // Balance DERIVADO (100% preciso, no necesita setBalance)
     const balance = useMemo(() => {
@@ -27,7 +27,7 @@ export const useFinanzasState = () => {
             isDebt,
             isCashless,
             date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            fullDate: new Date().toISOString().split('T')[0],
+            fullDate: new Date().toLocaleDateString('en-CA'),
             projectId,
             accountId,
             category
@@ -47,7 +47,7 @@ export const useFinanzasState = () => {
             isDebt: true, // Sigue siendo parte del flujo de deuda para el cálculo neto
             isCashless: false, // El pago siempre es con efectivo
             date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            fullDate: new Date().toISOString().split('T')[0],
+            fullDate: new Date().toLocaleDateString('en-CA'),
             projectId: originalTx.projectId,
             accountId
         };

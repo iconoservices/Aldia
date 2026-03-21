@@ -29,7 +29,7 @@ export const useMisionesState = () => {
                     ...mission,
                     id: Date.now() + Math.random(),
                     completed: false,
-                    dueDate: nextDate.toISOString().split('T')[0]
+                    dueDate: nextDate.toLocaleDateString('en-CA')
                 };
                 updated = [newInstance, ...updated];
             }
@@ -56,7 +56,7 @@ export const useMisionesState = () => {
             repeat,
             noteId,
             labels,
-            dueDate: dueDate || new Date().toISOString().split('T')[0],
+            dueDate: dueDate || new Date().toLocaleDateString('en-CA'),
             dueTime,
             habitId,
             projectId,

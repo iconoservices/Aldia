@@ -19,7 +19,7 @@ export const DayTimelineView = ({ isOpen, onClose, missions, rutinas, agenda }: 
     // Let's assume routines 0=Mon for now since it's common in Spain/Latam apps, but I'll normalize it.
     const normalizedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 0=Mon...6=Sun
 
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = today.toLocaleDateString('en-CA');
 
     // 1. Consolidar Items
     const timelineItems: any[] = [];
