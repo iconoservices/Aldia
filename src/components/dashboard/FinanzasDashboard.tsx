@@ -34,7 +34,6 @@ interface FinanzasProps {
     unmarkFixedExpensePaid: (id: number, monthStr: string) => void;
     repayDebt: (originalTx: Transaction, amount: number, accountId: number) => void;
     removeTransaction: (id: number) => void;
-    updateTransaction: (id: number, updates: Partial<Transaction>) => void;
     updateTransactionGroup: (oldText: string, oldContact: string | undefined, updates: { text?: string, contact?: string, amount?: number }, originalId: number) => void;
     projects: { id: number, name: string, color: string }[];
     accounts: { id: number, name: string, color: string, projectIds?: number[] }[];
@@ -48,7 +47,7 @@ export const FinanzasDashboard = ({
     monthlyBudget, updateMonthlyBudget,
     fixedExpenses, addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense,
     markFixedExpensePaid, unmarkFixedExpensePaid,
-    repayDebt, removeTransaction, updateTransaction, updateTransactionGroup,
+    repayDebt, removeTransaction, updateTransactionGroup,
     projects, accounts, setAccounts,
 }: FinanzasProps) => {
     const currentMonthStr = useMemo(() => new Date().toLocaleDateString('en-CA').substring(0, 7), []);

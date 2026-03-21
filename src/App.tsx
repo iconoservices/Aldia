@@ -158,7 +158,6 @@ function App() {
                 updateFixedExpense={state.updateFixedExpense}
                 repayDebt={state.repayDebt}
                 removeTransaction={state.removeTransaction}
-                updateTransaction={state.updateTransaction}
                 updateTransactionGroup={state.updateTransactionGroup}
                 markFixedExpensePaid={state.markFixedExpensePaid}
                 unmarkFixedExpensePaid={state.unmarkFixedExpensePaid}
