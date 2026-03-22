@@ -93,9 +93,12 @@ export const QuickActionPanel = ({
         e.preventDefault();
 
         if (actionType === 'gasto' || actionType === 'ingreso') {
-            // Ya no es obligatorio el proyecto, puede ser global
+            if (!selectedProjectId) {
+                alert("Debes seleccionar un proyecto de forma obligatoria para registrar finanzas.");
+                return;
+            }
             if (!selectedAccountId) {
-                alert("Debes seleccionar una cuenta");
+                alert("Debes seleccionar una cuenta obligatoriamente.");
                 return;
             }
             const isActuallyDebt = debtMode !== 'normal';
@@ -362,7 +365,9 @@ export const QuickActionPanel = ({
                             {(actionType === 'tarea' || actionType === 'bloque' || actionType === 'agenda' || currentConfig.isFinancial) && (
                                 <div style={{ background: '#F9F9F9', padding: '12px', borderRadius: '18px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                        <p style={{ margin: '0 0 0 10px', fontWeight: 800, fontSize: '0.6rem', color: '#BBB', textTransform: 'uppercase' }}>Proyecto (Opcional)</p>
+                                        <p style={{ margin: '0 0 0 10px', fontWeight: 800, fontSize: '0.6rem', color: '#BBB', textTransform: 'uppercase' }}>
+                                            {currentConfig.isFinancial ? 'Proyecto (Obligatorio)' : 'Proyecto (Opcional)'}
+                                        </p>
                                         <button 
                                             type="button" 
                                             onClick={() => setIsCreatingProject(!isCreatingProject)}
@@ -459,9 +464,15 @@ export const QuickActionPanel = ({
                             {/* SELECTOR DE CATEGORÍA */}
                             {currentConfig.isFinancial && (
                                 <div style={{ background: '#F9F9F9', padding: '12px', borderRadius: '18px' }}>
-                                    <p style={{ margin: '0 0 8px 10px', fontWeight: 800, fontSize: '0.6rem', color: '#BBB', textTransform: 'uppercase' }}>Categoría</p>
+                                    <p style={{ margin: '0 0 8px 10px', fontWeight: 800, fontSize: '0.6rem', color: '#BBB', textTransform: 'uppercase' }}>
+                                        {!selectedProjectId ? '⚠️ Selecciona un proyecto' : 'Categoría'}
+                                    </p>
                                     <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
                                         {(() => {
+                                            if (!selectedProjectId) {
+                                                return <p style={{ margin: '0 0 0 10px', fontSize: '0.65rem', color: '#888', fontWeight: 700 }}>Debes elegir un proyecto arriba para ver sus categorías.</p>;
+                                            }
+
                                             const project = projects.find(p => p.id === selectedProjectId);
                                             const defaults = actionType === 'ingreso' ? DEFAULT_INCOME_CATEGORIES : DEFAULT_EXPENSE_CATEGORIES;
                                             
@@ -491,13 +502,19 @@ export const QuickActionPanel = ({
 
                             {/* SELECTOR DE CUENTA */}
                             {currentConfig.isFinancial && (
-                                <div style={{ background: '#F9F9F9', padding: '12px', borderRadius: '18px', border: accounts.length === 0 ? '2px dashed #f87171' : '2px solid transparent' }}>
+                                <div style={{ background: '#F9F9F9', padding: '12px', borderRadius: '18px', border: (!selectedProjectId || projectAccounts.length === 0) ? '2px dashed #f87171' : '2px solid transparent' }}>
                                     <p style={{ margin: '0 0 8px 10px', fontWeight: 800, fontSize: '0.65rem', color: '#BBB', textTransform: 'uppercase' }}>
-                                        {accounts.length === 0 ? '⚠️ No tienes cuentas configuradas' : 'Cuenta / Tarjeta'}
+                                        {!selectedProjectId ? '⚠️ Selecciona un proyecto' : (projectAccounts.length === 0 ? '⚠️ El proyecto no tiene cuentas' : 'Cuenta / Tarjeta')}
                                     </p>
                                     <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-                                        {/* Cuentas del proyecto */}
-                                        {projectAccounts.length > 0 && projectAccounts.map(acc => (
+                                        {!selectedProjectId && (
+                                            <p style={{ margin: '0 0 0 10px', fontSize: '0.65rem', color: '#888', fontWeight: 700 }}>
+                                                Debes elegir un proyecto arriba para ver tus opciones de cuenta.
+                                            </p>
+                                        )}
+
+                                        {/* Cuentas exclusivas del proyecto */}
+                                        {selectedProjectId && projectAccounts.map(acc => (
                                             <button
                                                 key={acc.id} type="button" onClick={() => setSelectedAccountId(acc.id)}
                                                 style={{
@@ -509,29 +526,10 @@ export const QuickActionPanel = ({
                                                 }}
                                             >⭐ {acc.name}</button>
                                         ))}
-                                        
-                                        {/* Separador visual si hay de ambos tipos */}
-                                        {projectAccounts.length > 0 && otherAccounts.length > 0 && (
-                                            <div style={{ width: '1px', background: '#EEE', margin: '4px 4px' }} />
-                                        )}
 
-                                        {/* Otras cuentas */}
-                                        {otherAccounts.map(acc => (
-                                            <button
-                                                key={acc.id} type="button" onClick={() => setSelectedAccountId(acc.id)}
-                                                style={{
-                                                    padding: '6px 12px', borderRadius: '12px', border: `1px solid ${acc.id === selectedAccountId ? acc.color : '#EEE'}`,
-                                                    background: selectedAccountId === acc.id ? acc.color : 'white',
-                                                    color: selectedAccountId === acc.id ? 'white' : '#333',
-                                                    fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap',
-                                                    boxShadow: selectedAccountId === acc.id ? `0 4px 10px ${acc.color}40` : 'none'
-                                                }}
-                                            >{acc.name}</button>
-                                        ))}
-
-                                        {accounts.length === 0 && (
+                                        {selectedProjectId && projectAccounts.length === 0 && (
                                             <p style={{ margin: '0 0 0 10px', fontSize: '0.65rem', color: '#f87171', fontWeight: 700 }}>
-                                                Crea una cuenta en la pestaña Finanzas primero.
+                                                Ve a la pestaña Perfil/Finanzas y crea una cuenta asignada a este proyecto.
                                             </p>
                                         )}
                                     </div>
