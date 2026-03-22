@@ -49,10 +49,11 @@ export const QuickActionPanel = ({
         }
     }, [isOpen, projects]);
     
-    // Filtro de cuentas: Solo mostramos las del proyecto seleccionado
+    // Filtro de cuentas: Priorizamos las del proyecto, pero mostramos todas si no hay filtro
     const filteredAccounts = useMemo(() => {
-        if (!selectedProjectId) return []; // No mostramos cuentas si no hay proyecto
-        return accounts.filter(acc => acc.projectIds?.includes(selectedProjectId));
+        if (!selectedProjectId) return accounts; // Si no hay proyecto, mostramos todas
+        const projectAccs = accounts.filter(acc => acc.projectIds?.includes(selectedProjectId));
+        return projectAccs.length > 0 ? projectAccs : accounts; // Si el proyecto no tiene cuentas asociadas, mostramos todas
     }, [accounts, selectedProjectId]);
 
     // Quick Project Creation
@@ -490,11 +491,11 @@ export const QuickActionPanel = ({
                                 </div>
                             )}
 
-                            {/* SELECTOR DE CUENTA (Solo si hay un proyecto seleccionado y tiene cuentas) */}
-                            {currentConfig.isFinancial && filteredAccounts.length > 0 && (
-                                <div style={{ background: '#F9F9F9', padding: '12px', borderRadius: '18px', border: '2px solid transparent' }}>
-                                    <p style={{ margin: '0 0 8px 10px', fontWeight: 800, fontSize: '0.6rem', color: '#BBB', textTransform: 'uppercase' }}>
-                                        Cuenta / Tarjeta
+                            {/* SELECTOR DE CUENTA */}
+                            {currentConfig.isFinancial && (
+                                <div style={{ background: '#F9F9F9', padding: '12px', borderRadius: '18px', border: accounts.length === 0 ? '2px dashed #f87171' : '2px solid transparent' }}>
+                                    <p style={{ margin: '0 0 8px 10px', fontWeight: 800, fontSize: '0.65rem', color: '#BBB', textTransform: 'uppercase' }}>
+                                        {accounts.length === 0 ? '⚠️ No tienes cuentas configuradas' : 'Cuenta / Tarjeta'}
                                     </p>
                                     <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
                                         {filteredAccounts.map(acc => (
@@ -513,6 +514,11 @@ export const QuickActionPanel = ({
                                                 {acc.name}
                                             </button>
                                         ))}
+                                        {accounts.length === 0 && (
+                                            <p style={{ margin: '0 0 0 10px', fontSize: '0.65rem', color: '#f87171', fontWeight: 700 }}>
+                                                Crea una cuenta en la pestaña Finanzas primero.
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                             )}

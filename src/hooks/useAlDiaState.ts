@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { db, auth } from '../firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useFinanzasState } from './state/useFinanzasState';
 import { useMisionesState } from './state/useMisionesState';
@@ -127,9 +127,7 @@ export const useAlDiaState = () => {
     const [user, setUser] = useState<User | null>(null);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-    // 1. Estados Iniciales
-    
-    // Módulos Modularizados
+    // 1. Estados Modularizados
     const { 
         transactions, setTransactions, balance, 
         monthlyBudget, setMonthlyBudget, fixedExpenses, setFixedExpenses,
@@ -166,106 +164,102 @@ export const useAlDiaState = () => {
 
     const [accounts, setAccounts] = useState<Account[]>([]);
 
-    // 2. Lógica de Carga (LocalStorage First)
+    // 2. Lógica de Sincronización Real-Time
     useEffect(() => {
-        // Carga inmediata de LocalStorage para evitar estados vacíos y condiciones de carrera
-        const loadInitialLocal = () => {
-            const keys = {
-                missions: 'aldia_missions',
-                transactions: 'aldia_transactions',
-                habits: 'aldia_habits',
-                agenda: 'aldia_agenda',
-                timeblocks: 'aldia_timeblocks',
-                notes: 'aldia_notes',
-                projects: 'aldia_projects',
-                rutinas: 'aldia_rutinas',
-                budget: 'aldia_monthly_budget',
-                fixed: 'aldia_fixed_expenses',
-                accounts: 'aldia_accounts'
-            };
-
-            const data = {
-                missions: JSON.parse(localStorage.getItem(keys.missions) || '[]'),
-                transactions: JSON.parse(localStorage.getItem(keys.transactions) || '[]'),
-                habits: JSON.parse(localStorage.getItem(keys.habits) || '[]'),
-                agenda: JSON.parse(localStorage.getItem(keys.agenda) || '[]'),
-                timeblocks: JSON.parse(localStorage.getItem(keys.timeblocks) || '[]'),
-                notes: JSON.parse(localStorage.getItem(keys.notes) || '[]'),
-                projects: JSON.parse(localStorage.getItem(keys.projects) || '[]'),
-                rutinas: JSON.parse(localStorage.getItem(keys.rutinas) || '[]'),
-                budget: parseFloat(localStorage.getItem(keys.budget) || '0'),
-                fixed: JSON.parse(localStorage.getItem(keys.fixed) || '[]'),
-                accounts: JSON.parse(localStorage.getItem(keys.accounts) || '[]')
-            };
-
-            // Aplicar estados iniciales
-            setMisionesDirect(data.missions);
-            setTransactions(data.transactions);
-            setHabits(data.habits);
-            setAgenda(data.agenda);
-            setTimeBlocks(data.timeblocks);
-            setNotes(data.notes);
-            setProjects(data.projects);
-            setRutinas(data.rutinas);
-            setMonthlyBudget(data.budget);
-            setFixedExpenses(data.fixed);
-            setAccounts(data.accounts);
-
-            return data;
+        // Carga inmediata de LocalStorage (Evitar UI vacía al iniciar)
+        const loadLocal = () => {
+            try {
+                const data = {
+                    missions: JSON.parse(localStorage.getItem('aldia_missions') || '[]'),
+                    transactions: JSON.parse(localStorage.getItem('aldia_transactions') || '[]'),
+                    habits: JSON.parse(localStorage.getItem('aldia_habits') || '[]'),
+                    agenda: JSON.parse(localStorage.getItem('aldia_agenda') || '[]'),
+                    timeblocks: JSON.parse(localStorage.getItem('aldia_timeblocks') || '[]'),
+                    notes: JSON.parse(localStorage.getItem('aldia_notes') || '[]'),
+                    projects: JSON.parse(localStorage.getItem('aldia_projects') || '[]'),
+                    rutinas: JSON.parse(localStorage.getItem('aldia_rutinas') || '[]'),
+                    budget: parseFloat(localStorage.getItem('aldia_monthly_budget') || '0'),
+                    fixed: JSON.parse(localStorage.getItem('aldia_fixed_expenses') || '[]'),
+                    accounts: JSON.parse(localStorage.getItem('aldia_accounts') || '[]')
+                };
+                setMisionesDirect(data.missions);
+                setTransactions(data.transactions);
+                setHabits(data.habits);
+                setAgenda(data.agenda);
+                setTimeBlocks(data.timeblocks);
+                setNotes(data.notes);
+                setProjects(data.projects);
+                setRutinas(data.rutinas);
+                setMonthlyBudget(data.budget);
+                setFixedExpenses(data.fixed);
+                setAccounts(data.accounts);
+            } catch (e) { console.error("Error cargando local:", e); }
         };
+        loadLocal();
 
-        const localData = loadInitialLocal();
-
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
             setUser(user);
-            
             if (user) {
-                try {
-                    const docRef = doc(db, 'users', user.uid);
-                    const docSnap = await getDoc(docRef);
-                    
+                const docRef = doc(db, 'users', user.uid);
+                const unsubSnap = onSnapshot(docRef, (docSnap) => {
                     if (docSnap.exists()) {
-                        const cloud = docSnap.data() || {};
-                        const validate = (val: any) => Array.isArray(val) ? val : [];
-
-                        // "SMART MERGE" LIGERO: Si Cloud tiene datos, combinarlos con Local por ID
-                        const smartMerge = <T extends { id: number }>(cloudArr: any[], localArr: any[]): T[] => {
-                            const combined = [...validate(cloudArr)];
-                            const cloudIds = new Set(combined.map(item => item?.id).filter(id => id !== undefined));
-                            
-                            validate(localArr).forEach(item => {
-                                if (item?.id && !cloudIds.has(item.id)) combined.push(item);
-                            });
-                            return combined;
+                        const cloud = docSnap.data();
+                        
+                        // Función helper para actualizar solo si cambió (evitar loops)
+                        const sync = (newValue: any, oldValue: any, setter: Function) => {
+                            if (newValue && JSON.stringify(newValue) !== JSON.stringify(oldValue)) {
+                                setter(newValue);
+                            }
                         };
 
-                        setMisionesDirect(prev => smartMerge(cloud.missions, prev.length > 0 ? prev : localData.missions));
-                        setTransactions(prev => smartMerge(cloud.transactions, prev.length > 0 ? prev : localData.transactions));
-                        setHabits(prev => smartMerge(cloud.habits, prev.length > 0 ? prev : localData.habits));
-                        setAgenda(prev => smartMerge(cloud.agenda, prev.length > 0 ? prev : localData.agenda));
-                        setNotes(prev => smartMerge(cloud.notes, prev.length > 0 ? prev : localData.notes));
-                        setProjects(prev => smartMerge(cloud.projects, prev.length > 0 ? prev : localData.projects));
-                        setRutinas(prev => smartMerge(cloud.rutinas, prev.length > 0 ? prev : localData.rutinas));
-                        setFixedExpenses(prev => smartMerge(cloud.fixedExpenses, prev.length > 0 ? prev : localData.fixed));
-                        setTimeBlocks(prev => smartMerge(cloud.timeBlocks, prev.length > 0 ? prev : localData.timeblocks));
-
-                        if (cloud.monthlyBudget !== undefined) setMonthlyBudget(Number(cloud.monthlyBudget));
-                        if (cloud.accounts) setAccounts(prev => smartMerge(cloud.accounts, prev.length > 0 ? prev : localData.accounts));
+                        if (isInitialLoad) {
+                            if (cloud.missions) setMisionesDirect(cloud.missions);
+                            if (cloud.transactions) setTransactions(cloud.transactions);
+                            if (cloud.habits) setHabits(cloud.habits);
+                            if (cloud.agenda) setAgenda(cloud.agenda);
+                            if (cloud.notes) setNotes(cloud.notes);
+                            if (cloud.projects) setProjects(cloud.projects);
+                            if (cloud.rutinas) setRutinas(cloud.rutinas);
+                            if (cloud.fixedExpenses) setFixedExpenses(cloud.fixedExpenses);
+                            if (cloud.timeBlocks) setTimeBlocks(cloud.timeBlocks);
+                            if (cloud.monthlyBudget !== undefined) setMonthlyBudget(Number(cloud.monthlyBudget));
+                            if (cloud.accounts) setAccounts(cloud.accounts);
+                            setIsInitialLoad(false);
+                        } else {
+                            sync(cloud.missions, misionesState, setMisionesDirect);
+                            sync(cloud.transactions, transactions, setTransactions);
+                            sync(cloud.habits, habits, setHabits);
+                            sync(cloud.agenda, agenda, setAgenda);
+                            sync(cloud.notes, notes, setNotes);
+                            sync(cloud.projects, projects, setProjects);
+                            sync(cloud.rutinas, rutinas, setRutinas);
+                            sync(cloud.fixedExpenses, fixedExpenses, setFixedExpenses);
+                            sync(cloud.timeBlocks, timeBlocks, setTimeBlocks);
+                            if (cloud.monthlyBudget !== undefined && cloud.monthlyBudget !== monthlyBudget) setMonthlyBudget(Number(cloud.monthlyBudget));
+                            sync(cloud.accounts, accounts, setAccounts);
+                        }
+                    } else {
+                        setIsInitialLoad(false);
                     }
-                } catch (error) {
-                    console.error("Error en sincronización Cloud:", error);
-                }
+                }, (error) => {
+                    console.error("Error Snapshot Firestore:", error);
+                    setIsInitialLoad(false);
+                });
+
+                return () => unsubSnap();
+            } else {
+                setIsInitialLoad(false);
             }
-            setIsInitialLoad(false);
         });
 
-        return unsubscribe;
-    }, []);
+        return () => unsubscribeAuth();
+    }, [isInitialLoad, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts]);
 
-    // 3. Persistencia Unificada (Local + Cloud Debounced)
+    // 3. Persistencia Cloud (Debounced) y Local (Immediate)
     useEffect(() => {
         if (isInitialLoad) return;
 
+        // Guardado Local inmediato
         localStorage.setItem('aldia_missions', JSON.stringify(misionesState));
         localStorage.setItem('aldia_transactions', JSON.stringify(transactions));
         localStorage.setItem('aldia_habits', JSON.stringify(habits));
@@ -278,8 +272,9 @@ export const useAlDiaState = () => {
         localStorage.setItem('aldia_fixed_expenses', JSON.stringify(fixedExpenses));
         localStorage.setItem('aldia_accounts', JSON.stringify(accounts));
 
+        // Guardado Cloud debounced
         if (user) {
-            const syncTimer = setTimeout(() => {
+            const timer = setTimeout(() => {
                 const docRef = doc(db, 'users', user.uid);
                 setDoc(docRef, {
                     missions: misionesState,
@@ -296,163 +291,109 @@ export const useAlDiaState = () => {
                     lastSync: new Date().toISOString()
                 }, { merge: true });
             }, 2000);
-
-            return () => clearTimeout(syncTimer);
+            return () => clearTimeout(timer);
         }
-    }, [misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, user, isInitialLoad, accounts]);
+    }, [misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, user, isInitialLoad]);
 
-    // 4. Migración y Recuperación de Datos (Post-Carga)
+    // 4. Migraciones y Lógica Derivada
     useEffect(() => {
         if (isInitialLoad) return;
 
-        // Migrar Cuentas (projectId -> projectIds)
-        const needsAccountMigration = accounts.some(acc => {
+        // Migración projectId -> projectIds en Cuentas
+        const migratedAccounts = accounts.map(acc => {
             const a = acc as any;
-            return a.projectId !== undefined && (!a.projectIds || a.projectIds.length === 0);
+            if (a.projectId !== undefined && (!a.projectIds || a.projectIds.length === 0)) {
+                const { projectId, ...rest } = a;
+                return { ...rest, projectIds: [projectId] } as Account;
+            }
+            return acc;
         });
-
-        if (needsAccountMigration) {
-            setAccounts(prev => prev.map(acc => {
-                const a = acc as any;
-                if (a.projectId !== undefined && (!a.projectIds || a.projectIds.length === 0)) {
-                    const { projectId, ...rest } = a;
-                    return { ...rest, projectIds: [projectId] } as Account;
-                }
-                return acc;
-            }));
+        if (JSON.stringify(migratedAccounts) !== JSON.stringify(accounts)) {
+            setAccounts(migratedAccounts);
         }
 
-        // Recuperar Proyecto "Personal" si hay huérfanos con ID 1
-        const hasId1References = 
-            transactions.some(tx => tx.projectId === 1) || 
-            misionesState.some(m => m.projectId === 1) ||
-            accounts.some(acc => (acc as any).projectId === 1 || acc.projectIds?.includes(1));
-            
-        const project1Exists = projects.some(p => p.id === 1);
-
-        if (hasId1References && !project1Exists) {
-            setProjects(prev => [
-                { id: 1, name: '☕ Personal (Recuperado)', color: '#888', status: 'activo', checklist: [] },
-                ...prev
-            ]);
+        // Recuperar Proyecto "Personal" con ID 1
+        const hasId1 = transactions.some(tx => tx.projectId === 1) || 
+                       misionesState.some(m => m.projectId === 1) ||
+                       accounts.some(acc => acc.projectIds?.includes(1));
+        if (hasId1 && !projects.some(p => p.id === 1)) {
+            setProjects(prev => [{ id: 1, name: '☕ Personal (Recuperado)', color: '#888', status: 'activo' }, ...prev]);
         }
-    }, [isInitialLoad, transactions.length, accounts.length, projects.length, misionesState.length]);
+    }, [isInitialLoad, transactions.length, misionesState.length, accounts.length, projects.length]);
 
-    // 3. Lógica Derivada
     const todayStr = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
-    const todayIndex = useMemo(() => (new Date().getDay() + 6) % 7, []); // 0=Mon, 6=Sun
+    const todayIndex = useMemo(() => (new Date().getDay() + 6) % 7, []); // 0=Mon
 
-    const routineMissions = useMemo(() => (Array.isArray(rutinas) ? rutinas : [])
-        .filter(r => r?.isActive && Array.isArray(r.repeatDays) && r.repeatDays.includes(todayIndex))
-        .flatMap(r => (Array.isArray(r.items) ? r.items : []).map(item => ({
+    const habitMissions = useMemo(() => habits.map(h => ({
+        id: h.id,
+        uid: `habit-${h.id}`,
+        text: h.name,
+        completed: h.completedDays?.includes(todayIndex),
+        q: 'Q2' as const, repeat: 'none' as const, critical: false, isHabit: true,
+        habitCount: h.completedDays?.length || 0
+    })), [habits, todayIndex]);
+
+    const routineMissions = useMemo(() => rutinas
+        .filter(r => r.isActive && r.repeatDays?.includes(todayIndex))
+        .flatMap(r => (r.items || []).map(item => ({
             id: item.id,
             uid: `routine-${r.id}-${item.id}`,
             text: item.text,
             completed: item.completed,
             dueTime: item.time || r.startTime,
-            q: 'Q2' as const,
-            repeat: 'none' as const,
-            critical: false as const,
-            isRoutine: true,
-            routineId: r.id
+            q: 'Q2' as const, repeat: 'none' as const, critical: false, isRoutine: true, routineId: r.id
         }))), [rutinas, todayIndex]);
 
-    const habitMissions = useMemo(() => (Array.isArray(habits) ? habits : []).map(h => ({
-        id: h.id,
-        uid: `habit-${h.id}`,
-        text: h.name,
-        completed: Array.isArray(h.completedDays) && h.completedDays.includes(todayIndex),
-        q: 'Q2' as const,
-        repeat: 'none' as const,
-        critical: false as const,
-        isHabit: true,
-        habitCount: Array.isArray(h.completedDays) ? h.completedDays.length : 0
-    })), [habits, todayIndex]);
-
-    const clearAllData = async () => {
-        setMisionesDirect([]);
-        setTransactions([]);
-        setHabits([]);
-        setAgenda([]);
-        setNotes([]);
-        setProjects([]);
-        setRutinas([]);
-        setMonthlyBudget(0);
-        setFixedExpenses([]);
-        setAccounts([]);
-        localStorage.clear();
-
-        if (user) {
-            const docRef = doc(db, 'users', user.uid);
-            await setDoc(docRef, {
-                missions: [],
-                transactions: [],
-                habits: [],
-                agenda: [],
-                notes: [],
-                projects: [],
-                rutinas: [],
-                monthlyBudget: 0,
-                fixedExpenses: [],
-                accounts: [],
-                lastSync: new Date().toISOString()
-            });
-        }
-    };
-
     const todayMissions = useMemo(() => [
-        ...(Array.isArray(misionesState) ? misionesState : []).filter(m => m && (!m.dueDate || m.dueDate <= todayStr)).map(m => ({ ...m, uid: `task-${m.id}` })),
+        ...misionesState.filter(m => !m.dueDate || m.dueDate <= todayStr).map(m => ({ ...m, uid: `task-${m.id}` })),
         ...routineMissions,
         ...habitMissions
     ] as Mission[], [misionesState, routineMissions, habitMissions, todayStr]);
 
-    // 4. Acciones
-    return {
-        // Misiones & Hábitos
-        missions: misionesState, todayMissions, toggleMission, updateMission, addMission, removeMission, reorderMissions,
-        habits, toggleHabit, addHabit, removeHabit,
-        agenda, addCalendarEvent,
-        performanceScore, missionFocusScore, completedMissionsCount,
+    const clearAllData = async () => {
+        setMisionesDirect([]); setTransactions([]); setHabits([]); setAgenda([]);
+        setNotes([]); setProjects([]); setRutinas([]); setMonthlyBudget(0);
+        setFixedExpenses([]); setAccounts([]);
+        localStorage.clear();
+        if (user) {
+            const docRef = doc(db, 'users', user.uid);
+            await setDoc(docRef, { lastSync: new Date().toISOString() }, { merge: false });
+        }
+    };
 
+    return {
+        // Misiones
+        missions: misionesState, todayMissions, toggleMission, updateMission, addMission, removeMission, reorderMissions,
+        habits, toggleHabit, addHabit, removeHabit, agenda, addCalendarEvent,
+        performanceScore, missionFocusScore, completedMissionsCount,
         // Finanzas
-        transactions, 
-        addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string) => {
-            addTransaction(text, amount, type, isDebt, projectId, accountId, isCashless, category, contact);
-            if (projectId && accountId) {
+        transactions, balance, todayIncome, todayExpense, todayNet, todayIncomeReal, todayExpenseReal,
+        totalIncomeReal, totalExpenseReal, totalNetReal, debtsOwe, debtsOwed,
+        monthlyBudget, updateMonthlyBudget: (a: number) => setMonthlyBudget(a),
+        fixedExpenses, addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense, markFixedExpensePaid, unmarkFixedExpensePaid,
+        repayDebt: repayDebtBase,
+        addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projId?: number, accId?: number, isCashless?: boolean, cat?: string, contact?: string) => {
+            addTransaction(text, amount, type, isDebt, projId, accId, isCashless, cat, contact);
+            if (projId && accId) {
                 setAccounts(prev => prev.map(acc => {
-                    if (acc.id === accountId && !acc.projectIds?.includes(projectId)) {
-                        return { ...acc, projectIds: [...(acc.projectIds || []), projectId] };
+                    if (acc.id === accId && !acc.projectIds?.includes(projId)) {
+                        return { ...acc, projectIds: [...(acc.projectIds || []), projId] };
                     }
                     return acc;
                 }));
             }
         },
-        balance,
-        todayIncome, todayExpense, todayNet, todayIncomeReal, todayExpenseReal,
-        totalIncomeReal, totalExpenseReal, totalNetReal, debtsOwe, debtsOwed,
-        monthlyBudget, updateMonthlyBudget: (amount: number) => setMonthlyBudget(amount),
-        fixedExpenses, addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense, markFixedExpensePaid, unmarkFixedExpensePaid,
-        repayDebt: repayDebtBase,
-        removeTransaction,
-        updateTransaction,
-        updateTransactionGroup,
-
-        // Proyectos & Rutinas
+        removeTransaction, updateTransaction, updateTransactionGroup,
+        // Proyectos
         projects, addProject, addProjectTask, toggleProjectTask, removeProjectTask, reorderProjectTasks,
         promoteTaskToRoutine, updateProject, deleteProject, updateProjectTask,
         addInventoryItem, updateInventoryItemQuantity, removeInventoryItem,
         timeBlocks, addTimeBlock, removeTimeBlock,
         rutinas, addRoutineItem, updateRoutineItem, toggleRoutineItem, removeRoutineItem,
-        updateRoutine, addRoutine, removeRoutine,
-        addProjectCategory, removeProjectCategory,
-
-        // Cerebro (Notas)
+        updateRoutine, addRoutine, removeRoutine, addProjectCategory, removeProjectCategory,
+        // Otros
         notes, addNote, removeNote, toggleNoteItem, updateNote,
-
-        // Cuentas
         accounts, setAccounts,
-
-        // Sistema
         user, isInitialLoad, clearAllData
     };
 };

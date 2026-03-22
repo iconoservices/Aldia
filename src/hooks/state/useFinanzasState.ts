@@ -38,15 +38,24 @@ export const useFinanzasState = () => {
 
     const repayDebt = (originalTx: Transaction, repayAmount: number, accountId: number) => {
         const value = Math.abs(repayAmount);
-        const type = originalTx.type === 'gasto' ? 'ingreso' : 'gasto'; // Reversa el tipo para pagar
+        
+        // Determinar si era una deuda que YO DEBÍA o que ME DEBÍAN
+        // Yo debo: (gasto sin efectivo) o (ingreso con efectivo inicial)
+        // Me deben: (ingreso sin efectivo) o (gasto con efectivo inicial)
+        const isOwe = (originalTx.type === 'gasto' && originalTx.isCashless) || 
+                      (originalTx.type === 'ingreso' && !originalTx.isCashless);
+        
+        // Si yo debía, el pago es un GASTO (sale dinero de mi bolsillo)
+        // Si me debían, el cobro es un INGRESO (entra dinero a mi bolsillo)
+        const type = isOwe ? 'gasto' : 'ingreso';
         
         const repaymentTx: Transaction = {
             id: Date.now() + Math.random(),
             text: `Pago: ${originalTx.text}`,
             amount: type === 'ingreso' ? value : -value,
             type,
-            isDebt: true, // Sigue siendo parte del flujo de deuda para el cálculo neto
-            isCashless: false, // El pago siempre es con efectivo
+            isDebt: true, // Sigue perteneciendo al flujo de deudas para el cálculo neto
+            isCashless: false, // El pago siempre es registrado como movimiento de efectivo real
             date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             fullDate: new Date().toLocaleDateString('en-CA'),
             projectId: originalTx.projectId,
