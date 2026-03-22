@@ -91,15 +91,11 @@ function App() {
                     removeMission={(id: number) => {
                         const mission = state.todayMissions.find((m: Mission) => m.id === id);
                         if (mission?.isRoutine) {
-                          if (confirm('¿Eliminar esta tarea de la rutina?')) {
                             state.removeRoutineItem(mission.routineId!, id);
-                          }
                         } else if (mission?.isHabit) {
-                          if (confirm('¿Eliminar este hábito por completo?')) {
                             state.removeHabit(id);
-                          }
                         } else {
-                          state.removeMission(id);
+                            state.removeMission(id);
                         }
                     }}
                     reorderMissions={state.reorderMissions}

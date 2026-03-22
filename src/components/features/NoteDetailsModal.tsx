@@ -106,20 +106,38 @@ export const NoteDetailsModal = ({
                                 <div style={{ background: 'rgba(0,0,0,0.05)', padding: '12px', borderRadius: '16px' }}>
                                     {note.type === 'checklist' ? <ListTodo size={24} color="#000" /> : <FileText size={24} color="#000" />}
                                 </div>
-                                <div>
-                                    {isEditing ? (
-                                        <input 
-                                            value={editTitle} 
-                                            onChange={(e) => setEditTitle(e.target.value)}
-                                            style={{ 
-                                                background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(0,0,0,0.1)', 
-                                                borderRadius: '8px', padding: '4px 8px', fontSize: '1.2rem', fontWeight: 900, 
-                                                width: '100%', outline: 'none'
-                                            }}
-                                        />
-                                    ) : (
-                                        <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, color: '#000', letterSpacing: '-0.5px' }}>{note.title}</h2>
-                                    )}
+                                 <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        {isEditing ? (
+                                            <input 
+                                                value={editTitle} 
+                                                onChange={(e) => setEditTitle(e.target.value)}
+                                                style={{ 
+                                                    background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(0,0,0,0.1)', 
+                                                    borderRadius: '8px', padding: '4px 8px', fontSize: '1.2rem', fontWeight: 900, 
+                                                    width: '100%', outline: 'none'
+                                                }}
+                                            />
+                                        ) : (
+                                            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, color: '#000', letterSpacing: '-0.5px' }}>{note.title}</h2>
+                                        )}
+                                        {!isEditing && (
+                                            <button 
+                                                onClick={() => {
+                                                    addMission(note.title, note.q, 'none', note.id, [], new Date().toLocaleDateString('en-CA'));
+                                                    onClose();
+                                                }}
+                                                style={{ 
+                                                    background: 'black', color: 'white', border: 'none', 
+                                                    borderRadius: '12px', padding: '6px 12px', fontSize: '0.65rem', 
+                                                    fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' 
+                                                }}
+                                                title="Enviar toda la nota como misión"
+                                            >
+                                                <Send size={12} /> GRUPO
+                                            </button>
+                                        )}
+                                    </div>
                                     <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                                         <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#FFF', background: '#000', padding: '2px 8px', borderRadius: '6px' }}>
                                             {note.q}

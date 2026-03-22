@@ -163,101 +163,109 @@ export const useAlDiaState = () => {
     } = useCerebroState();
 
     const [accounts, setAccounts] = useState<Account[]>([]);
+    const [hasLoadedFromCloud, setHasLoadedFromCloud] = useState(false);
+
 
     // 2. Lógica de Sincronización Real-Time
     useEffect(() => {
-        // Carga inmediata de LocalStorage (Evitar UI vacía al iniciar)
-        const loadLocal = () => {
-            try {
-                const data = {
-                    missions: JSON.parse(localStorage.getItem('aldia_missions') || '[]'),
-                    transactions: JSON.parse(localStorage.getItem('aldia_transactions') || '[]'),
-                    habits: JSON.parse(localStorage.getItem('aldia_habits') || '[]'),
-                    agenda: JSON.parse(localStorage.getItem('aldia_agenda') || '[]'),
-                    timeblocks: JSON.parse(localStorage.getItem('aldia_timeblocks') || '[]'),
-                    notes: JSON.parse(localStorage.getItem('aldia_notes') || '[]'),
-                    projects: JSON.parse(localStorage.getItem('aldia_projects') || '[]'),
-                    rutinas: JSON.parse(localStorage.getItem('aldia_rutinas') || '[]'),
-                    budget: parseFloat(localStorage.getItem('aldia_monthly_budget') || '0'),
-                    fixed: JSON.parse(localStorage.getItem('aldia_fixed_expenses') || '[]'),
-                    accounts: JSON.parse(localStorage.getItem('aldia_accounts') || '[]')
-                };
-                setMisionesDirect(data.missions);
-                setTransactions(data.transactions);
-                setHabits(data.habits);
-                setAgenda(data.agenda);
-                setTimeBlocks(data.timeblocks);
-                setNotes(data.notes);
-                setProjects(data.projects);
-                setRutinas(data.rutinas);
-                setMonthlyBudget(data.budget);
-                setFixedExpenses(data.fixed);
-                setAccounts(data.accounts);
-            } catch (e) { console.error("Error cargando local:", e); }
-        };
-        loadLocal();
+        // Carga inmediata de LocalStorage (Solo al montar)
+        try {
+            const data = {
+                missions: JSON.parse(localStorage.getItem('aldia_missions') || '[]'),
+                transactions: JSON.parse(localStorage.getItem('aldia_transactions') || '[]'),
+                habits: JSON.parse(localStorage.getItem('aldia_habits') || '[]'),
+                agenda: JSON.parse(localStorage.getItem('aldia_agenda') || '[]'),
+                timeblocks: JSON.parse(localStorage.getItem('aldia_timeblocks') || '[]'),
+                notes: JSON.parse(localStorage.getItem('aldia_notes') || '[]'),
+                projects: JSON.parse(localStorage.getItem('aldia_projects') || '[]'),
+                rutinas: JSON.parse(localStorage.getItem('aldia_rutinas') || '[]'),
+                budget: parseFloat(localStorage.getItem('aldia_monthly_budget') || '0'),
+                fixed: JSON.parse(localStorage.getItem('aldia_fixed_expenses') || '[]'),
+                accounts: JSON.parse(localStorage.getItem('aldia_accounts') || '[]')
+            };
+            setMisionesDirect(data.missions);
+            setTransactions(data.transactions);
+            setHabits(data.habits);
+            setAgenda(data.agenda);
+            setTimeBlocks(data.timeblocks);
+            setNotes(data.notes);
+            setProjects(data.projects);
+            setRutinas(data.rutinas);
+            setMonthlyBudget(data.budget);
+            setFixedExpenses(data.fixed);
+            setAccounts(data.accounts);
+        } catch (e) { console.error("Error inicial local:", e); }
+    }, []); // Una sola vez al montar
 
-        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-            setUser(user);
-            if (user) {
-                const docRef = doc(db, 'users', user.uid);
-                const unsubSnap = onSnapshot(docRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        const cloud = docSnap.data();
-                        
-                        // Función helper para actualizar solo si cambió (evitar loops)
-                        const sync = (newValue: any, oldValue: any, setter: Function) => {
-                            if (newValue && JSON.stringify(newValue) !== JSON.stringify(oldValue)) {
-                                setter(newValue);
-                            }
-                        };
-
-                        if (isInitialLoad) {
-                            if (cloud.missions) setMisionesDirect(cloud.missions);
-                            if (cloud.transactions) setTransactions(cloud.transactions);
-                            if (cloud.habits) setHabits(cloud.habits);
-                            if (cloud.agenda) setAgenda(cloud.agenda);
-                            if (cloud.notes) setNotes(cloud.notes);
-                            if (cloud.projects) setProjects(cloud.projects);
-                            if (cloud.rutinas) setRutinas(cloud.rutinas);
-                            if (cloud.fixedExpenses) setFixedExpenses(cloud.fixedExpenses);
-                            if (cloud.timeBlocks) setTimeBlocks(cloud.timeBlocks);
-                            if (cloud.monthlyBudget !== undefined) setMonthlyBudget(Number(cloud.monthlyBudget));
-                            if (cloud.accounts) setAccounts(cloud.accounts);
-                            setIsInitialLoad(false);
-                        } else {
-                            sync(cloud.missions, misionesState, setMisionesDirect);
-                            sync(cloud.transactions, transactions, setTransactions);
-                            sync(cloud.habits, habits, setHabits);
-                            sync(cloud.agenda, agenda, setAgenda);
-                            sync(cloud.notes, notes, setNotes);
-                            sync(cloud.projects, projects, setProjects);
-                            sync(cloud.rutinas, rutinas, setRutinas);
-                            sync(cloud.fixedExpenses, fixedExpenses, setFixedExpenses);
-                            sync(cloud.timeBlocks, timeBlocks, setTimeBlocks);
-                            if (cloud.monthlyBudget !== undefined && cloud.monthlyBudget !== monthlyBudget) setMonthlyBudget(Number(cloud.monthlyBudget));
-                            sync(cloud.accounts, accounts, setAccounts);
-                        }
-                    } else {
-                        setIsInitialLoad(false);
-                    }
-                }, (error) => {
-                    console.error("Error Snapshot Firestore:", error);
-                    setIsInitialLoad(false);
-                });
-
-                return () => unsubSnap();
-            } else {
+    useEffect(() => {
+        const unsubscribeAuth = onAuthStateChanged(auth, (authUser) => {
+            setUser(authUser);
+            if (!authUser) {
                 setIsInitialLoad(false);
             }
         });
-
         return () => unsubscribeAuth();
-    }, [isInitialLoad, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts]);
+    }, []);
+
+    // 2. Lógica de Sincronización Real-Time
+    useEffect(() => {
+        if (!user) {
+            setHasLoadedFromCloud(false);
+            return;
+        }
+
+        const userId = user.uid;
+        const docRef = doc(db, 'users', userId);
+        
+        const unsubSnap = onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const cloud = docSnap.data();
+                
+                // Función helper que usa el setter funcional para no depender del valor actual
+                const sync = (newValue: any, setter: Function) => {
+                    if (newValue !== undefined) {
+                        setter((prev: any) => {
+                            if (JSON.stringify(newValue) !== JSON.stringify(prev)) {
+                                return newValue;
+                            }
+                            return prev;
+                        });
+                    }
+                };
+
+                // Actualizaciones individuales
+                sync(cloud.missions, setMisionesDirect);
+                sync(cloud.transactions, setTransactions);
+                sync(cloud.habits, setHabits);
+                sync(cloud.agenda, setAgenda);
+                sync(cloud.notes, setNotes);
+                sync(cloud.projects, setProjects);
+                sync(cloud.rutinas, setRutinas);
+                sync(cloud.fixedExpenses, setFixedExpenses);
+                sync(cloud.timeBlocks, setTimeBlocks);
+                sync(cloud.accounts, setAccounts);
+                if (cloud.monthlyBudget !== undefined) {
+                    setMonthlyBudget(prev => Math.abs(cloud.monthlyBudget - prev) > 0.01 ? Number(cloud.monthlyBudget) : prev);
+                }
+
+                setHasLoadedFromCloud(true);
+                setIsInitialLoad(false);
+            } else {
+                setHasLoadedFromCloud(true);
+                setIsInitialLoad(false);
+            }
+        }, (error) => {
+            console.error("Error Snapshot Firestore:", error);
+            setIsInitialLoad(false);
+        });
+
+        return () => unsubSnap();
+    }, [user?.uid]); // Solo re-suscribir si cambia el usuario
 
     // 3. Persistencia Cloud (Debounced) y Local (Immediate)
     useEffect(() => {
-        if (isInitialLoad) return;
+        // SEGURIDAD: No guardar si todavía no hemos cargado de la nube
+        if (isInitialLoad || !hasLoadedFromCloud) return;
 
         // Guardado Local inmediato
         localStorage.setItem('aldia_missions', JSON.stringify(misionesState));
@@ -276,7 +284,9 @@ export const useAlDiaState = () => {
         if (user) {
             const timer = setTimeout(() => {
                 const docRef = doc(db, 'users', user.uid);
-                setDoc(docRef, {
+                
+                // Sanitizar payload para que sea idéntico a localStorage (evita errores de Firestore con undefined/NaN/etc)
+                const payload = JSON.parse(JSON.stringify({
                     missions: misionesState,
                     transactions,
                     habits,
@@ -289,11 +299,17 @@ export const useAlDiaState = () => {
                     fixedExpenses,
                     accounts,
                     lastSync: new Date().toISOString()
-                }, { merge: true });
+                }));
+
+                setDoc(docRef, payload, { merge: true }).catch(error => {
+                    console.error("🔥 Error crítico guardando en Firestore:", error);
+                    alert("ERROR DE SINCRONIZACIÓN: No se pudo guardar en la nube. " + error.message);
+                });
             }, 2000);
+
             return () => clearTimeout(timer);
         }
-    }, [misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, user, isInitialLoad]);
+    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts]);
 
     // 4. Migraciones y Lógica Derivada
     useEffect(() => {

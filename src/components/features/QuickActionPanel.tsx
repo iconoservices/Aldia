@@ -49,11 +49,13 @@ export const QuickActionPanel = ({
         }
     }, [isOpen, projects]);
     
-    // Filtro de cuentas: Priorizamos las del proyecto, pero mostramos todas si no hay filtro
-    const filteredAccounts = useMemo(() => {
-        if (!selectedProjectId) return accounts; // Si no hay proyecto, mostramos todas
+    // Cuentas: Todas disponibles, pero priorizamos las del proyecto seleccionado
+    const { projectAccounts, otherAccounts } = useMemo(() => {
+        if (!selectedProjectId) return { projectAccounts: [], otherAccounts: accounts };
+        
         const projectAccs = accounts.filter(acc => acc.projectIds?.includes(selectedProjectId));
-        return projectAccs.length > 0 ? projectAccs : accounts; // Si el proyecto no tiene cuentas asociadas, mostramos todas
+        const otherAccs = accounts.filter(acc => !acc.projectIds?.includes(selectedProjectId));
+        return { projectAccounts: projectAccs, otherAccounts: otherAccs };
     }, [accounts, selectedProjectId]);
 
     // Quick Project Creation
@@ -91,10 +93,7 @@ export const QuickActionPanel = ({
         e.preventDefault();
 
         if (actionType === 'gasto' || actionType === 'ingreso') {
-            if (projects.length > 0 && !selectedProjectId) {
-                alert("Debes seleccionar un proyecto");
-                return;
-            }
+            // Ya no es obligatorio el proyecto, puede ser global
             if (!selectedAccountId) {
                 alert("Debes seleccionar una cuenta");
                 return;
@@ -464,9 +463,8 @@ export const QuickActionPanel = ({
                                     <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
                                         {(() => {
                                             const project = projects.find(p => p.id === selectedProjectId);
-                                            if (!project) return <p style={{ fontSize: '0.6rem', color: '#AAA', margin: '4px 0 0 4px', fontWeight: 700 }}>⚠️ SELECCIONA UN PROYECTO PRIMERO</p>;
-                                            
                                             const defaults = actionType === 'ingreso' ? DEFAULT_INCOME_CATEGORIES : DEFAULT_EXPENSE_CATEGORIES;
+                                            
                                             const categories = actionType === 'ingreso' 
                                                 ? (project?.incomeCategories && project.incomeCategories.length > 0 ? project.incomeCategories : defaults)
                                                 : (project?.expenseCategories && project.expenseCategories.length > 0 ? project.expenseCategories : defaults);
@@ -498,11 +496,10 @@ export const QuickActionPanel = ({
                                         {accounts.length === 0 ? '⚠️ No tienes cuentas configuradas' : 'Cuenta / Tarjeta'}
                                     </p>
                                     <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-                                        {filteredAccounts.map(acc => (
+                                        {/* Cuentas del proyecto */}
+                                        {projectAccounts.length > 0 && projectAccounts.map(acc => (
                                             <button
-                                                key={acc.id}
-                                                type="button"
-                                                onClick={() => setSelectedAccountId(acc.id)}
+                                                key={acc.id} type="button" onClick={() => setSelectedAccountId(acc.id)}
                                                 style={{
                                                     padding: '6px 12px', borderRadius: '12px', border: `1px solid ${acc.id === selectedAccountId ? acc.color : '#EEE'}`,
                                                     background: selectedAccountId === acc.id ? acc.color : 'white',
@@ -510,10 +507,28 @@ export const QuickActionPanel = ({
                                                     fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap',
                                                     boxShadow: selectedAccountId === acc.id ? `0 4px 10px ${acc.color}40` : 'none'
                                                 }}
-                                            >
-                                                {acc.name}
-                                            </button>
+                                            >⭐ {acc.name}</button>
                                         ))}
+                                        
+                                        {/* Separador visual si hay de ambos tipos */}
+                                        {projectAccounts.length > 0 && otherAccounts.length > 0 && (
+                                            <div style={{ width: '1px', background: '#EEE', margin: '4px 4px' }} />
+                                        )}
+
+                                        {/* Otras cuentas */}
+                                        {otherAccounts.map(acc => (
+                                            <button
+                                                key={acc.id} type="button" onClick={() => setSelectedAccountId(acc.id)}
+                                                style={{
+                                                    padding: '6px 12px', borderRadius: '12px', border: `1px solid ${acc.id === selectedAccountId ? acc.color : '#EEE'}`,
+                                                    background: selectedAccountId === acc.id ? acc.color : 'white',
+                                                    color: selectedAccountId === acc.id ? 'white' : '#333',
+                                                    fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap',
+                                                    boxShadow: selectedAccountId === acc.id ? `0 4px 10px ${acc.color}40` : 'none'
+                                                }}
+                                            >{acc.name}</button>
+                                        ))}
+
                                         {accounts.length === 0 && (
                                             <p style={{ margin: '0 0 0 10px', fontSize: '0.65rem', color: '#f87171', fontWeight: 700 }}>
                                                 Crea una cuenta en la pestaña Finanzas primero.
