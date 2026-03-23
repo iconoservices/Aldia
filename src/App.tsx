@@ -13,7 +13,7 @@ import { ProyectosDashboard } from './components/dashboard/ProyectosDashboard';
 import { CalendarioView } from './components/dashboard/CalendarioView';
 import { ProjectDetailView } from './components/dashboard/ProjectDetailView';
 import { SuperFab } from './components/features/SuperFab';
-import { NoteDetailsModal } from './components/features/NoteDetailsModal';
+import { NoteDetailView } from './components/dashboard/NoteDetailView';
 import { MissionEditOverlay } from './components/features/MissionEditOverlay';
 import { DayTimelineView } from './components/dashboard/DayTimelineView';
 import { ActionBanner } from './components/dashboard/ActionBanner';
@@ -204,17 +204,20 @@ function App() {
         </AnimatePresence>
       </main>
 
-      <NoteDetailsModal 
-        isOpen={viewingNoteId !== null} 
-        onClose={() => setViewingNoteId(null)}
-        note={viewingNote}
-        removeNote={state.removeNote}
-        toggleNoteItem={state.toggleNoteItem}
-        addMission={state.addMission}
-        projects={state.projects}
-        addProjectTask={state.addProjectTask}
-        updateNote={state.updateNote}
-      />
+      <AnimatePresence>
+        {viewingNoteId !== null && viewingNote && (
+          <NoteDetailView 
+            note={viewingNote}
+            onClose={() => setViewingNoteId(null)}
+            removeNote={state.removeNote}
+            toggleNoteItem={state.toggleNoteItem}
+            addMission={state.addMission}
+            projects={state.projects}
+            addProjectTask={state.addProjectTask}
+            updateNote={state.updateNote}
+          />
+        )}
+      </AnimatePresence>
 
       <MissionEditOverlay 
         isOpen={editingMission !== null}
