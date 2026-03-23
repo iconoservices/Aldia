@@ -361,7 +361,7 @@ export const useAlDiaState = () => {
         }))), [rutinas, todayIndex]);
 
     const todayMissions = useMemo(() => [
-        ...misionesState.filter(m => !m.dueDate || m.dueDate <= todayStr).map(m => ({ ...m, uid: `task-${m.id}` })),
+        ...misionesState.filter(m => (!m.dueDate || m.dueDate <= todayStr) && !m.isRoutine && !m.isHabit).map(m => ({ ...m, uid: `task-${m.id}` })),
         ...routineMissions,
         ...habitMissions
     ] as Mission[], [misionesState, routineMissions, habitMissions, todayStr]);

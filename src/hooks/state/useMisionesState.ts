@@ -133,7 +133,19 @@ export const useMisionesState = () => {
         addHabit,
         removeHabit,
         addCalendarEvent,
-        reorderMissions: (newMissions: Mission[]) => setMissions(newMissions),
+        reorderMissions: (newMissions: Mission[]) => {
+            setMissions(prev => {
+                // 1. Extraer solo las misiones base (sin rutinas/hábitos) en su nuevo orden
+                const reorderedStandalone = newMissions.filter(m => !m.isRoutine && !m.isHabit);
+                const reorderedIds = new Set(reorderedStandalone.map(m => m.id));
+                
+                // 2. Conservar las misiones que no estaban en esta vista (ej. futuras)
+                const futureOrOtherMissions = prev.filter(m => !reorderedIds.has(m.id) && !m.isRoutine && !m.isHabit);
+                
+                // 3. Unir respetando el nuevo orden para las de hoy
+                return [...reorderedStandalone, ...futureOrOtherMissions];
+            });
+        },
         performanceScore,
         missionFocusScore,
         completedMissionsCount
