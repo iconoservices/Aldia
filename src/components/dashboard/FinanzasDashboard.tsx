@@ -35,6 +35,7 @@ interface FinanzasProps {
     repayDebt: (originalTx: Transaction, amount: number, accountId: number) => void;
     removeTransaction: (id: number) => void;
     updateTransactionGroup: (oldText: string, oldContact: string | undefined, updates: { text?: string, contact?: string, amount?: number }, originalId: number) => void;
+    addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string) => void;
     projects: Project[];
     accounts: { id: number, name: string, color: string, projectIds?: number[] }[];
     setAccounts: React.Dispatch<React.SetStateAction<{ id: number; name: string; color: string; projectIds?: number[] }[]>>;
@@ -64,7 +65,7 @@ export const FinanzasDashboard = ({
     monthlyBudget, updateMonthlyBudget,
     fixedExpenses, addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense,
     markFixedExpensePaid, unmarkFixedExpensePaid,
-    repayDebt, removeTransaction, updateTransactionGroup,
+    repayDebt, removeTransaction, updateTransactionGroup, addTransaction,
     projects, accounts, setAccounts,
     addProjectTask, toggleProjectTask, removeProjectTask, updateProjectTask,
     reorderProjectTasks, promoteTaskToRoutine, rutinas,
@@ -518,6 +519,39 @@ export const FinanzasDashboard = ({
                         )}
                     </AnimatePresence>
                 </div>
+
+                {/* BOTÓN GESTIÓN DE DEUDAS (ACCESO RÁPIDO) */}
+                <button 
+                    onClick={() => { setDebtMode('owe'); setShowDebtDetail(true); }}
+                    style={{ 
+                        width: '100%', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        gap: '12px',
+                        background: 'white', 
+                        border: '2px solid #F1F5F9',
+                        borderRadius: '16px',
+                        padding: '14px',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                        transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--domain-orange)'; e.currentTarget.style.background = '#FFFBF0'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#F1F5F9'; e.currentTarget.style.background = 'white'; }}
+                >
+                    <div style={{ background: 'var(--domain-orange)', padding: '8px', borderRadius: '12px', color: 'white', display: 'flex' }}>
+                        <UserPlus size={18} />
+                    </div>
+                    <div style={{ textAlign: 'left', flex: 1 }}>
+                        <span style={{ display: 'block', fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-carbon)' }}>GESTIÓN DE DEUDAS</span>
+                        <span style={{ display: 'block', fontSize: '0.65rem', fontWeight: 800, color: '#AAA' }}>ADMINISTRAR LO QUE DEBES Y TE DEBEN</span>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                        <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 900, color: '#f87171' }}>-${owe.toLocaleString()}</span>
+                        <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 900, color: '#10B981' }}>+${owed.toLocaleString()}</span>
+                    </div>
+                </button>
             </div>
 
             {/* 4. FLUJO SEMANAL Y DEUDAS */}
@@ -726,6 +760,7 @@ export const FinanzasDashboard = ({
                         repayDebt={repayDebt}
                         removeTransaction={removeTransaction}
                         updateTransactionGroup={updateTransactionGroup}
+                        addTransaction={addTransaction}
                     />
                 )}
             </AnimatePresence>

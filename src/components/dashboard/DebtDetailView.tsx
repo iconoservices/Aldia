@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, UserMinus, UserPlus, Wallet, History, CreditCard, Trash2, Edit2, Check, X } from 'lucide-react';
+import { ArrowLeft, UserMinus, UserPlus, Wallet, History, CreditCard, Trash2, Edit2, Check, X, Plus } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
 import type { Transaction, Account } from '../../hooks/useAlDiaState';
 
@@ -12,9 +12,10 @@ interface DebtDetailViewProps {
     repayDebt: (originalTx: Transaction, amount: number, accountId: number) => void;
     removeTransaction: (id: number) => void;
     updateTransactionGroup: (oldText: string, oldContact: string | undefined, updates: { text?: string, contact?: string, amount?: number }, originalId: number) => void;
+    addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string) => void;
 }
 
-export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, repayDebt, removeTransaction, updateTransactionGroup }: DebtDetailViewProps) => {
+export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, repayDebt, removeTransaction, updateTransactionGroup, addTransaction }: DebtDetailViewProps) => {
     const [mode, setMode] = useState<'owe' | 'owed'>(initialMode);
     const [repayingId, setRepayingId] = useState<number | null>(null);
     const [repayAmount, setRepayAmount] = useState('');
@@ -24,6 +25,13 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
     const [editName, setEditName] = useState('');
     const [editAmount, setEditAmount] = useState('');
     const [editContact, setEditContact] = useState('');
+    
+    // New Debt Form
+    const [isAddingMode, setIsAddingMode] = useState(false);
+    const [newName, setNewName] = useState('');
+    const [newAmount, setNewAmount] = useState('');
+    const [newContact, setNewContact] = useState('');
+    const [isCashTransaction, setIsCashTransaction] = useState(false); // ¿Salió/entró efectivo real?
 
     const debtList = useMemo(() => {
         // Obtenemos todas las deudas del tipo seleccionado
@@ -144,6 +152,126 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
                 >
                     <UserPlus size={16} /> ME DEBEN
                 </button>
+            </div>
+
+            {/* Quick Add Debt Form */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {!isAddingMode ? (
+                    <button 
+                        onClick={() => setIsAddingMode(true)}
+                        style={{ 
+                            background: 'white', border: '2px dashed #CBD5E1', borderRadius: '16px', padding: '12px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', 
+                            color: '#64748B', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer'
+                        }}
+                    >
+                        <Plus size={18} /> AGREGAR REGISTRO MANUAL
+                    </button>
+                ) : (
+                    <motion.div 
+                        initial={{ opacity: 0, y: -10 }} 
+                        animate={{ opacity: 1, y: 0 }}
+                        className="glass-card" 
+                        style={{ padding: '1rem', background: 'white', border: `2px solid ${mode === 'owe' ? '#fee2e2' : '#dcfce7'}`, display: 'flex', flexDirection: 'column', gap: '10px' }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0, fontSize: '0.8rem', fontWeight: 900, color: mode === 'owe' ? '#ef4444' : '#10b981' }}>
+                                NUEVO {mode === 'owe' ? 'DEUDA' : 'PRÉSTAMO'}
+                            </h3>
+                            <button onClick={() => setIsAddingMode(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><X size={16} color="#AAA" /></button>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div style={{ position: 'relative' }}>
+                                <label style={{ fontSize: '0.55rem', fontWeight: 900, color: '#AAA', position: 'absolute', top: '4px', left: '8px', textTransform: 'uppercase' }}>Persona / Entidad</label>
+                                <input 
+                                    autoFocus
+                                    placeholder="Ej. Juan Pérez, Banco..." 
+                                    value={newContact}
+                                    onChange={(e) => setNewContact(e.target.value)}
+                                    style={{ width: '100%', padding: '14px 10px 4px 10px', borderRadius: '10px', border: '1px solid #EEE', fontSize: '0.9rem', fontWeight: 800, boxSizing: 'border-box' }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <div style={{ position: 'relative', flex: 1 }}>
+                                    <label style={{ fontSize: '0.55rem', fontWeight: 900, color: '#AAA', position: 'absolute', top: '4px', left: '8px', textTransform: 'uppercase' }}>Monto</label>
+                                    <input 
+                                        type="number"
+                                        placeholder="0.00" 
+                                        value={newAmount}
+                                        onChange={(e) => setNewAmount(e.target.value)}
+                                        style={{ width: '100%', padding: '14px 10px 4px 10px', borderRadius: '10px', border: '1px solid #EEE', fontSize: '0.9rem', fontWeight: 900, boxSizing: 'border-box' }}
+                                    />
+                                </div>
+                                <div style={{ position: 'relative', flex: 2 }}>
+                                    <label style={{ fontSize: '0.55rem', fontWeight: 900, color: '#AAA', position: 'absolute', top: '4px', left: '8px', textTransform: 'uppercase' }}>Concepto</label>
+                                    <input 
+                                        placeholder="Por qué..." 
+                                        value={newName}
+                                        onChange={(e) => setNewName(e.target.value)}
+                                        style={{ width: '100%', padding: '14px 10px 4px 10px', borderRadius: '10px', border: '1px solid #EEE', fontSize: '0.9rem', fontWeight: 700, boxSizing: 'border-box' }}
+                                    />
+                                </div>
+                            </div>
+
+                            <button 
+                                type="button"
+                                onClick={() => setIsCashTransaction(!isCashTransaction)}
+                                style={{ 
+                                    display: 'flex', alignItems: 'center', gap: '8px', background: isCashTransaction ? (mode === 'owe' ? '#fee2e2' : '#dcfce7') : '#F8FAFC', 
+                                    padding: '8px 12px', borderRadius: '10px', border: '1px solid #EEE', cursor: 'pointer', transition: 'all 0.2s' 
+                                }}
+                            >
+                                <div style={{ width: '16px', height: '16px', borderRadius: '4px', background: isCashTransaction ? (mode === 'owe' ? '#ef4444' : '#10b981') : 'white', border: '1px solid #DDD', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    {isCashTransaction && <Check size={12} color="white" strokeWidth={4} />}
+                                </div>
+                                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: isCashTransaction ? '#333' : '#AAA' }}>
+                                    {mode === 'owe' ? '¿Recibiste el efectivo hoy?' : '¿Entregaste el efectivo hoy?'}
+                                </span>
+                            </button>
+
+                            <button 
+                                onClick={() => {
+                                    if (!newAmount || !newContact) return;
+                                    
+                                    // DEBO (owe):
+                                    // - Si recibí efectivo: ingreso real (type: ingreso, isCashless: false)
+                                    // - Si es fiao: gasto sin efectivo (type: gasto, isCashless: true)
+                                    // ME DEBEN (owed):
+                                    // - Si entregué efectivo: gasto real (type: gasto, isCashless: false)
+                                    // - Si es fiao: ingreso sin efectivo (type: ingreso, isCashless: true)
+                                    
+                                    const type = mode === 'owe' 
+                                        ? (isCashTransaction ? 'ingreso' : 'gasto')
+                                        : (isCashTransaction ? 'gasto' : 'ingreso');
+
+                                    addTransaction(
+                                        newName || (mode === 'owe' ? 'Deuda' : 'Préstamo'),
+                                        parseFloat(newAmount),
+                                        type,
+                                        true, // isDebt
+                                        undefined, // projId
+                                        accounts[0]?.id, // default account
+                                        !isCashTransaction, // isCashless
+                                        'Deudas',
+                                        newContact
+                                    );
+                                    setIsAddingMode(false);
+                                    setNewAmount('');
+                                    setNewName('');
+                                    setNewContact('');
+                                }}
+                                style={{ 
+                                    background: mode === 'owe' ? '#ef4444' : '#10b981', color: 'white', border: 'none', 
+                                    borderRadius: '12px', padding: '12px', fontWeight: 900, fontSize: '0.85rem', cursor: 'pointer',
+                                    marginTop: '4px', boxShadow: `0 4px 12px ${mode === 'owe' ? '#ef444440' : '#10b98140'}`
+                                }}
+                            >
+                                GUARDAR {mode === 'owe' ? 'DEUDA' : 'PRÉSTAMO'}
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
             </div>
 
             {/* Summary Card */}

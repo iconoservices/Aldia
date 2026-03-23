@@ -163,6 +163,7 @@ function App() {
                 projects={state.projects}
                 accounts={state.accounts}
                 setAccounts={state.setAccounts}
+                addTransaction={state.addTransaction}
                 // Missing props for ProjectDetailView
                 addProjectTask={state.addProjectTask}
                 toggleProjectTask={state.toggleProjectTask}
