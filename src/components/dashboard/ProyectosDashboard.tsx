@@ -1,7 +1,9 @@
-import { Plus, Trash2, ListTodo, Zap, Edit2 } from 'lucide-react';
+import { Plus, Trash2, ListTodo, Zap, Edit2, Archive, Play } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useState } from 'react';
 import { GlassCard } from '../ui/GlassCard';
 import type { Project } from '../../hooks/useAlDiaState';
+import { ProjectEditOverlay } from '../features/ProjectEditOverlay';
 
 interface ProyectosProps {
     projects: Project[];
@@ -14,28 +16,45 @@ interface ProyectosProps {
 export const ProyectosDashboard = ({ 
     projects, onAddProject, deleteProject, updateProject, onOpenDetail
 }: ProyectosProps) => {
-    const activeProjects = projects.filter(p => p.status === 'activo');
+    const [editingProject, setEditingProject] = useState<Project | null>(null);
+    const [showArchived, setShowArchived] = useState(false);
+
+    const displayedProjects = projects.filter(p => showArchived ? p.status === 'pausado' : (p.status === 'activo' || !p.status));
     
     return (
         <div style={{ paddingBottom: '5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-carbon)' }}>Proyectos</h2>
-                    <span style={{ background: 'var(--domain-blue)', color: 'white', fontSize: '0.7rem', fontWeight: 900, padding: '2px 8px', borderRadius: '10px' }}>
-                        {activeProjects.length} ACTIVOS
+                    <span style={{ background: showArchived ? '#64748b' : 'var(--domain-blue)', color: 'white', fontSize: '0.7rem', fontWeight: 900, padding: '2px 8px', borderRadius: '10px' }}>
+                        {displayedProjects.length} {showArchived ? 'ARCHIVADOS' : 'ACTIVOS'}
                     </span>
                 </div>
-                <button 
-                    onClick={onAddProject}
-                    style={{ 
-                        background: 'linear-gradient(135deg, var(--domain-blue) 0%, #003399 100%)', 
-                        color: 'white', border: 'none', borderRadius: '12px', padding: '8px 16px', 
-                        display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', 
-                        fontWeight: 900, fontSize: '0.8rem', boxShadow: '0 4px 12px rgba(0, 85, 255, 0.2)' 
-                    }}
-                >
-                    <Plus size={18} /> NUEVO PROYECTO
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button 
+                        onClick={() => setShowArchived(!showArchived)}
+                        style={{ 
+                            background: showArchived ? '#F0EBE6' : 'white', 
+                            color: showArchived ? 'var(--text-carbon)' : '#888', border: '1px solid #EEE', borderRadius: '12px', padding: '8px 12px', 
+                            display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', 
+                            fontWeight: 900, fontSize: '0.75rem', transition: 'all 0.2s' 
+                        }}
+                    >
+                        {showArchived ? <Play size={14} /> : <Archive size={14} />} 
+                        {showArchived ? 'VER ACTIVOS' : 'VER ARCHIVADOS'}
+                    </button>
+                    <button 
+                        onClick={onAddProject}
+                        style={{ 
+                            background: 'linear-gradient(135deg, var(--domain-blue) 0%, #003399 100%)', 
+                            color: 'white', border: 'none', borderRadius: '12px', padding: '8px 16px', 
+                            display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', 
+                            fontWeight: 900, fontSize: '0.8rem', boxShadow: '0 4px 12px rgba(0, 85, 255, 0.2)' 
+                        }}
+                    >
+                        <Plus size={18} /> NUEVO PROYECTO
+                    </button>
+                </div>
             </div>
 
             <div style={{ 
@@ -44,31 +63,40 @@ export const ProyectosDashboard = ({
                 gap: '12px', 
                 marginBottom: '2rem' 
             }}>
-                {activeProjects.map(project => (
+                {displayedProjects.map(project => (
                     <ProjectCard 
                         key={project.id} 
                         project={project} 
                         deleteProject={deleteProject}
-                        updateProject={updateProject}
+                        onEdit={() => setEditingProject(project)}
                         onOpenDetail={onOpenDetail}
                     />
                 ))}
-                {activeProjects.length === 0 && (
+                {displayedProjects.length === 0 && (
                     <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', background: 'white', borderRadius: '24px', border: '2px dashed #EEE' }}>
-                        <p style={{ color: '#AAA', fontWeight: 700 }}>No hay proyectos activos. ¡Crea uno para empezar!</p>
+                        <p style={{ color: '#AAA', fontWeight: 700 }}>
+                            {showArchived ? 'No tienes proyectos archivados.' : 'No hay proyectos activos. ¡Crea uno para empezar!'}
+                        </p>
                     </div>
                 )}
             </div>
+
+            <ProjectEditOverlay 
+                isOpen={!!editingProject}
+                onClose={() => setEditingProject(null)}
+                project={editingProject}
+                updateProject={updateProject}
+            />
         </div>
     );
 };
 
 const ProjectCard = ({ 
-    project, deleteProject, updateProject, onOpenDetail
+    project, deleteProject, onEdit, onOpenDetail
 }: { 
     project: Project, 
     deleteProject: (id: number) => void,
-    updateProject: (id: number, updates: Partial<Project>) => void,
+    onEdit: () => void,
     onOpenDetail: (pid: number) => void
 }) => {
     const completedCount = project.checklist?.filter((t: any) => t.completed).length || 0;
@@ -99,8 +127,7 @@ const ProjectCard = ({
                             <button 
                                 onClick={(e) => { 
                                     e.stopPropagation(); 
-                                    const newName = prompt('Editar nombre del proyecto:', project.name);
-                                    if (newName) updateProject(project.id, { name: newName });
+                                    onEdit();
                                 }}
                                 style={{ background: 'transparent', border: 'none', color: '#CCC', padding: '2px', cursor: 'pointer' }}
                             >

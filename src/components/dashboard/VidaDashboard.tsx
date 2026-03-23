@@ -25,7 +25,6 @@ export const VidaDashboard = ({
     updateRoutineItem, addRoutine, removeRoutine
 }: VidaProps) => {
     const [viewMode, setViewMode] = useState<'hoy' | 'semana'>('hoy');
-    const [sortMode, setSortMode] = useState<'agregado' | 'hora'>('agregado');
     const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
     const days = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
@@ -153,19 +152,6 @@ export const VidaDashboard = ({
                                 <Calendar size={12} /> SEMANA
                             </button>
                         </div>
-                        {viewMode === 'hoy' && (
-                            <button 
-                                onClick={() => setSortMode(prev => prev === 'agregado' ? 'hora' : 'agregado')}
-                                style={{ 
-                                    background: '#F0EBE6', border: 'none', padding: '6px 8px', borderRadius: '10px', cursor: 'pointer',
-                                    fontSize: '0.65rem', fontWeight: 900, color: sortMode === 'hora' ? 'var(--domain-purple)' : '#888',
-                                    display: 'flex', alignItems: 'center', gap: '4px'
-                                }}
-                                title={sortMode === 'hora' ? "Ordenando por hora" : "Ordenando por creación"}
-                            >
-                                <Clock size={12} /> {sortMode === 'hora' ? 'HORA' : 'ORIGINAL'}
-                            </button>
-                        )}
                     </div>
                     <button 
                         onClick={() => {
@@ -214,13 +200,11 @@ export const VidaDashboard = ({
                         >
                             {(() => {
                                 let displayRutinas = [...rutinas];
-                                if (sortMode === 'hora') {
-                                    displayRutinas.sort((a, b) => {
-                                        const timeA = a.startTime || '99:99';
-                                        const timeB = b.startTime || '99:99';
-                                        return timeA.localeCompare(timeB);
-                                    });
-                                }
+                                displayRutinas.sort((a, b) => {
+                                    const timeA = a.startTime || '99:99';
+                                    const timeB = b.startTime || '99:99';
+                                    return timeA.localeCompare(timeB);
+                                });
                                 return displayRutinas.map((rutina, rIdx, arr) => (
                                     <div 
                                         key={rutina.id} 
