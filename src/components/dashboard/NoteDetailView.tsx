@@ -28,44 +28,41 @@ export const NoteDetailView = ({
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toLocaleDateString('en-CA'));
     
     // Internal state for fluid editing
-    const [title, setTitle] = useState(note.title);
     const [content, setContent] = useState(note.content);
     const [items, setItems] = useState(note.items || []);
 
     // Sync internal state when note prop changes (e.g. if updated elsewhere)
     useEffect(() => {
-        setTitle(note.title);
         setContent(note.content);
         setItems(note.items || []);
     }, [note.id]);
 
-    const handleTitleChange = (newTitle: string) => {
-        setTitle(newTitle);
-        updateNote(note.id, { title: newTitle });
-    };
-
     const handleContentChange = (newContent: string) => {
         setContent(newContent);
-        updateNote(note.id, { content: newContent });
+        const autoTitle = newContent.split('\n')[0].substring(0, 50).trim() || 'Nota sin título';
+        updateNote(note.id, { content: newContent, title: autoTitle });
     };
 
     const handleUpdateItemText = (itemId: number, text: string) => {
         const newItems = items.map(it => it.id === itemId ? { ...it, text } : it);
         setItems(newItems);
-        updateNote(note.id, { items: newItems });
+        const autoTitle = newItems[0]?.text.substring(0, 50).trim() || 'Lista sin título';
+        updateNote(note.id, { items: newItems, title: autoTitle });
     };
 
     const handleAddItem = () => {
         const newItem = { id: Date.now(), text: '', completed: false };
         const newItems = [...items, newItem];
         setItems(newItems);
-        updateNote(note.id, { items: newItems });
+        const autoTitle = newItems[0]?.text.substring(0, 50).trim() || 'Lista sin título';
+        updateNote(note.id, { items: newItems, title: autoTitle });
     };
 
     const handleRemoveItem = (itemId: number) => {
         const newItems = items.filter(it => it.id !== itemId);
         setItems(newItems);
-        updateNote(note.id, { items: newItems });
+        const autoTitle = newItems[0]?.text.substring(0, 50).trim() || 'Lista sin título';
+        updateNote(note.id, { items: newItems, title: autoTitle });
     };
 
     const handlePromoteToMission = (itemText: string, date: string) => {
@@ -86,14 +83,16 @@ export const NoteDetailView = ({
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             style={{
                 position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                background: note.color || '#F8F9FA', zIndex: 1000,
+                background: note.color || '#F8F9FA', zIndex: 1100,
                 display: 'flex', flexDirection: 'column',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                paddingTop: 'env(safe-area-inset-top, 20px)',
+                paddingBottom: 'env(safe-area-inset-bottom, 20px)'
             }}
         >
             {/* Header Toolbar */}
             <div style={{ 
-                padding: '1.2rem', 
+                padding: '0.8rem 1rem', 
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'space-between',
@@ -101,8 +100,8 @@ export const NoteDetailView = ({
                 backdropFilter: 'blur(10px)',
                 borderBottom: '1px solid rgba(0,0,0,0.05)'
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <button onClick={onClose} style={{ background: 'white', border: 'none', borderRadius: '12px', padding: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                    <button onClick={onClose} style={{ background: 'white', border: 'none', borderRadius: '12px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
                         <ArrowLeft size={20} />
                     </button>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -141,36 +140,18 @@ export const NoteDetailView = ({
                 </div>
             </div>
 
-            {/* Scrollable Content */}
             <div style={{ 
                 flex: 1, 
                 overflowY: 'auto', 
-                padding: '1.5rem',
+                padding: '1.2rem 1rem',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '1.5rem',
+                gap: '1rem',
                 maxWidth: '800px',
                 width: '100%',
                 margin: '0 auto'
             }}>
-                {/* Title Editor */}
-                <input 
-                    value={title}
-                    onChange={(e) => handleTitleChange(e.target.value)}
-                    placeholder="Título de la nota..."
-                    style={{
-                        background: 'transparent',
-                        border: 'none',
-                        fontSize: '2rem',
-                        fontWeight: 900,
-                        color: 'var(--text-carbon)',
-                        outline: 'none',
-                        width: '100%',
-                        padding: 0
-                    }}
-                />
 
-                {/* Content Editor */}
                 {note.type === 'text' ? (
                     <textarea 
                         value={content}
@@ -178,15 +159,16 @@ export const NoteDetailView = ({
                         placeholder="Escribe algo aquí..."
                         style={{
                             flex: 1,
-                            minHeight: '300px',
+                            minHeight: '400px',
                             background: 'transparent',
                             border: 'none',
-                            fontSize: '1.1rem',
+                            fontSize: '1.15rem',
                             lineHeight: 1.6,
                             color: '#1A1A1A',
                             outline: 'none',
                             resize: 'none',
-                            padding: 0
+                            padding: 0,
+                            fontWeight: 500
                         }}
                     />
                 ) : (
@@ -325,7 +307,10 @@ export const NoteDetailView = ({
             }}>
                 <button 
                     onClick={() => {
-                        addMission(note.title || 'Misión desde Nota', note.q, 'none', note.id, [], new Date().toLocaleDateString('en-CA'));
+                        const derivedTitle = note.type === 'text' 
+                            ? (content.split('\n')[0].substring(0, 50) || 'Misión desde Nota')
+                            : (items[0]?.text.substring(0, 50) || 'Misión desde Lista');
+                        addMission(derivedTitle, note.q, 'none', note.id, [], new Date().toLocaleDateString('en-CA'));
                         onClose();
                     }}
                     style={{ 
