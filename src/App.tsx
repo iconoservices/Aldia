@@ -204,20 +204,7 @@ function App() {
         </AnimatePresence>
       </main>
 
-      <AnimatePresence>
-        {viewingNoteId !== null && viewingNote && (
-          <NoteDetailView 
-            note={viewingNote}
-            onClose={() => setViewingNoteId(null)}
-            removeNote={state.removeNote}
-            toggleNoteItem={state.toggleNoteItem}
-            addMission={state.addMission}
-            projects={state.projects}
-            addProjectTask={state.addProjectTask}
-            updateNote={state.updateNote}
-          />
-        )}
-      </AnimatePresence>
+
 
       <MissionEditOverlay 
         isOpen={editingMission !== null}
@@ -278,6 +265,21 @@ function App() {
             projects={state.projects}
             updateProject={state.updateProject}
             onOpenSubProject={(id: number) => setSelectedProjectDetailId(id)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {viewingNoteId !== null && viewingNote && (
+          <NoteDetailView 
+            note={viewingNote}
+            onClose={() => setViewingNoteId(null)}
+            removeNote={state.removeNote}
+            toggleNoteItem={state.toggleNoteItem}
+            addMission={state.addMission}
+            projects={state.projects}
+            addProjectTask={state.addProjectTask}
+            updateNote={state.updateNote}
           />
         )}
       </AnimatePresence>

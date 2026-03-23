@@ -375,11 +375,18 @@ export const useAlDiaState = () => {
             q: 'Q2' as const, repeat: 'none' as const, critical: false, isRoutine: true, routineId: r.id
         }))), [rutinas, todayIndex]);
 
-    const todayMissions = useMemo(() => [
-        ...misionesState.filter(m => (!m.dueDate || m.dueDate <= todayStr) && !m.isRoutine && !m.isHabit).map(m => ({ ...m, uid: `task-${m.id}` })),
-        ...routineMissions,
-        ...habitMissions
-    ] as Mission[], [misionesState, routineMissions, habitMissions, todayStr]);
+    const todayMissions = useMemo(() => {
+        const baseMissions = [
+            ...misionesState.filter(m => (!m.dueDate || m.dueDate <= todayStr) && !m.isRoutine && !m.isHabit).map(m => ({ ...m, uid: `task-${m.id}` })),
+            ...routineMissions,
+            ...habitMissions
+        ] as Mission[];
+
+        return [...baseMissions].sort((a, b) => {
+            if (a.completed === b.completed) return 0;
+            return a.completed ? 1 : -1;
+        });
+    }, [misionesState, routineMissions, habitMissions, todayStr]);
 
     const clearAllData = async () => {
         setMisionesDirect([]); setTransactions([]); setHabits([]); setAgenda([]);
