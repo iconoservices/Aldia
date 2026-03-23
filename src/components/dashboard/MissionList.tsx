@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Reorder } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { JoyMatrixModal } from '../features/JoyMatrixModal';
-import { Repeat, Calendar, Clock, Edit2, Trash2, GripVertical } from 'lucide-react';
-import type { Mission, Project } from '../../hooks/useAlDiaState';
+import { Repeat, Calendar, Clock, Edit2, Trash2, GripVertical, Zap } from 'lucide-react';
+import type { Mission, Project, Routine } from '../../hooks/useAlDiaState';
 
 interface MissionListProps {
     missions: Mission[];
@@ -20,12 +20,13 @@ interface MissionListProps {
     hideOnEmpty?: boolean;
     onTimelineClick?: () => void;
     projects?: Project[];
+    rutinas?: Routine[];
 }
 
 export const MissionList = ({
     missions, toggleMission, reorderMissions, toggleHabit, toggleRoutineItem, onEditMission, removeMission,
     title = 'Tareas', showTimeBlock = true, showMatrixLinks = true,
-    hideOnEmpty = false, onTimelineClick, projects = []
+    hideOnEmpty = false, onTimelineClick, projects = [], rutinas = []
 }: MissionListProps) => {
     const [isMatrixOpen, setIsMatrixOpen] = useState(false);
 
@@ -129,10 +130,14 @@ export const MissionList = ({
                                     )}
 
                                     <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '12px' }}>
-                                        {/* DRAG HANDLE */}
-                                        <div style={{ cursor: 'grab', color: isPinnedQ1 ? 'rgba(255,255,255,0.4)' : '#DDD' }}>
-                                            <GripVertical size={16} />
-                                        </div>
+                                        {/* DRAG HANDLE - Solo si no es rutina ni hábito */}
+                                        {!mission.isRoutine && !mission.isHabit ? (
+                                            <div style={{ cursor: 'grab', color: isPinnedQ1 ? 'rgba(255,255,255,0.4)' : '#DDD' }}>
+                                                <GripVertical size={16} />
+                                            </div>
+                                        ) : (
+                                            <div style={{ width: '16px' }} />
+                                        )}
 
                                         <div 
                                             onClick={() => handleToggle(mission.id, mission.q, mission.isRoutine, mission.routineId, mission.isHabit)}
@@ -201,12 +206,17 @@ export const MissionList = ({
                                                     <span style={{
                                                         fontSize: '0.6rem',
                                                         color: isPinnedQ1 ? 'white' : 'var(--domain-green)',
-                                                        fontWeight: 800,
+                                                        fontWeight: 900,
                                                         display: 'flex',
                                                         alignItems: 'center',
-                                                        gap: '3px'
+                                                        gap: '3px',
+                                                        background: isPinnedQ1 ? 'rgba(255,255,255,0.2)' : 'rgba(16, 185, 129, 0.1)',
+                                                        padding: '1px 6px',
+                                                        borderRadius: '4px',
+                                                        textTransform: 'uppercase'
                                                     }}>
-                                                        <Repeat size={10} />
+                                                        <Zap size={10} fill={isPinnedQ1 ? 'white' : 'var(--domain-green)'} />
+                                                        {rutinas.find(r => r.id === mission.routineId)?.title || 'RUTINA'}
                                                     </span>
                                                 )}
                                                 {mission.isHabit && (

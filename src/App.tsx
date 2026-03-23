@@ -99,6 +99,7 @@ function App() {
                     }}
                     reorderMissions={state.reorderMissions}
                     projects={state.projects}
+                    rutinas={state.rutinas}
                     onTimelineClick={() => setIsTimelineOpen(true)}
                     title="Misiones Hoy"
                   />
