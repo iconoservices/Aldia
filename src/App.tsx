@@ -159,6 +159,21 @@ function App() {
                 projects={state.projects}
                 accounts={state.accounts}
                 setAccounts={state.setAccounts}
+                // Missing props for ProjectDetailView
+                addProjectTask={state.addProjectTask}
+                toggleProjectTask={state.toggleProjectTask}
+                removeProjectTask={state.removeProjectTask}
+                updateProjectTask={state.updateProjectTask}
+                reorderProjectTasks={state.reorderProjectTasks}
+                promoteTaskToRoutine={state.promoteTaskToRoutine}
+                rutinas={state.rutinas}
+                addProjectCategory={state.addProjectCategory}
+                removeProjectCategory={state.removeProjectCategory}
+                addInventoryItem={state.addInventoryItem}
+                updateInventoryItemQuantity={state.updateInventoryItemQuantity}
+                removeInventoryItem={state.removeInventoryItem}
+                updateProject={state.updateProject}
+                setSelectedProjectDetailId={setSelectedProjectDetailId}
               />
             ) : activeTab === 'Proyectos' ? (
               <ProyectosDashboard

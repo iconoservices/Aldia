@@ -10,7 +10,7 @@ import { GlassCard } from '../ui/GlassCard';
 import { ProjectDetailView } from './ProjectDetailView';
 import { DebtDetailView } from './DebtDetailView';
 import { DomainIcon } from '../ui/DomainIcon';
-import type { Transaction, FixedExpense } from '../../hooks/useAlDiaState';
+import type { Transaction, FixedExpense, Project, Routine } from '../../hooks/useAlDiaState';
 
 interface FinanzasProps {
     balance: number;
@@ -35,9 +35,24 @@ interface FinanzasProps {
     repayDebt: (originalTx: Transaction, amount: number, accountId: number) => void;
     removeTransaction: (id: number) => void;
     updateTransactionGroup: (oldText: string, oldContact: string | undefined, updates: { text?: string, contact?: string, amount?: number }, originalId: number) => void;
-    projects: { id: number, name: string, color: string }[];
+    projects: Project[];
     accounts: { id: number, name: string, color: string, projectIds?: number[] }[];
     setAccounts: React.Dispatch<React.SetStateAction<{ id: number; name: string; color: string; projectIds?: number[] }[]>>;
+    // Project management props for ProjectDetailView
+    addProjectTask: (projectId: number, text: string) => void;
+    toggleProjectTask: (projectId: number, taskId: number) => void;
+    removeProjectTask: (projectId: number, taskId: number) => void;
+    updateProjectTask: (projectId: number, taskId: number, updates: Partial<{ text: string, completed: boolean }>) => void;
+    reorderProjectTasks?: (projectId: number, newTasks: any[]) => void;
+    promoteTaskToRoutine: (projectId: number, taskId: number, routineId: number) => void;
+    rutinas: Routine[];
+    addProjectCategory?: (projectId: number, type: 'ingreso' | 'gasto', categoryName: string) => void;
+    removeProjectCategory?: (projectId: number, type: 'ingreso' | 'gasto', categoryName: string) => void;
+    addInventoryItem?: (projectId: number, text: string, qty: number) => void;
+    updateInventoryItemQuantity?: (projectId: number, itemId: number, delta: number) => void;
+    removeInventoryItem?: (projectId: number, itemId: number) => void;
+    updateProject: (id: number, updates: Partial<Project>) => void;
+    setSelectedProjectDetailId?: (id: number | null) => void;
 }
 
 export const FinanzasDashboard = ({ 
@@ -49,6 +64,11 @@ export const FinanzasDashboard = ({
     markFixedExpensePaid, unmarkFixedExpensePaid,
     repayDebt, removeTransaction, updateTransactionGroup,
     projects, accounts, setAccounts,
+    addProjectTask, toggleProjectTask, removeProjectTask, updateProjectTask,
+    reorderProjectTasks, promoteTaskToRoutine, rutinas,
+    addProjectCategory, removeProjectCategory,
+    addInventoryItem, updateInventoryItemQuantity, removeInventoryItem,
+    updateProject, setSelectedProjectDetailId
 }: FinanzasProps) => {
     const currentMonthStr = useMemo(() => new Date().toLocaleDateString('en-CA').substring(0, 7), []);
 
@@ -659,13 +679,30 @@ export const FinanzasDashboard = ({
                         accounts={accounts}
                         setAccounts={setAccounts}
                         transactions={transactions}
-                        addProjectTask={() => {}} 
-                        toggleProjectTask={() => {}}
-                        removeProjectTask={() => {}}
-                        updateProjectTask={() => {}}
-                        reorderProjectTasks={() => {}}
-                        promoteTaskToRoutine={() => {}}
-                        rutinas={[]}
+                        addProjectTask={addProjectTask} 
+                        toggleProjectTask={toggleProjectTask}
+                        removeProjectTask={removeProjectTask}
+                        updateProjectTask={updateProjectTask}
+                        reorderProjectTasks={reorderProjectTasks}
+                        promoteTaskToRoutine={promoteTaskToRoutine}
+                        rutinas={rutinas}
+                        addProjectCategory={addProjectCategory}
+                        removeProjectCategory={removeProjectCategory}
+                        addInventoryItem={addInventoryItem}
+                        updateInventoryItemQuantity={updateInventoryItemQuantity}
+                        removeInventoryItem={removeInventoryItem}
+                        projects={projects}
+                        updateProject={updateProject}
+                        onOpenSubProject={(id: number) => {
+                            // Si se abre un subproyecto desde aquí, actualizamos el estado local o el global
+                            if (setSelectedProjectDetailId) {
+                                setSelectedProjectDetailId(id);
+                                setSelectedProject(null);
+                            } else {
+                                const sub = projects.find(p => p.id === id);
+                                if (sub) setSelectedProject(sub);
+                            }
+                        }}
                     />
                 )}
                 
