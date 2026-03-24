@@ -718,15 +718,26 @@ export const ProjectDetailView = ({
                                         <button onClick={() => { const t = prompt('Editar tarea:', task.text); if(t) updateProjectTask(project.id, task.id, { text: t }); }} style={{ background: 'transparent', border: 'none', color: '#CBD5E1', cursor: 'pointer', padding: 0 }}><Edit2 size={12} /></button>
                                         <button 
                                             onClick={() => {
-                                                if (task.linkedRoutineId) { alert('Esta tarea ya está en tus Misiones 🔗'); } 
-                                                else {
+                                                const opt = prompt(`¿Dónde quieres enviar esta tarea?\n1. A la Agenda (Misión única)\n2. A una Rutina (Tarea repetitiva)`);
+                                                
+                                                if (opt === '1') {
+                                                    if (addMission) {
+                                                        addMission(task.text, '...', 'none', undefined, ['PROYECTO'], undefined, undefined, project.id);
+                                                        alert('¡Enviado a tu Agenda! 🚀');
+                                                    }
+                                                } else if (opt === '2') {
                                                     if (rutinas.length === 0) { alert('No tienes rutinas disponibles.'); return; }
-                                                    if (rutinas.length === 1) { promoteTaskToRoutine(project.id, task.id, rutinas[0].id); } 
-                                                    else {
-                                                        const list = rutinas.map((r, i) => `${i+1}. ${r.title}`).join('\n');
+                                                    let routineId = rutinas[0].id;
+                                                    if (rutinas.length > 1) {
+                                                        const list = rutinas.map((r: Routine, i: number) => `${i+1}. ${r.title}`).join('\n');
                                                         const idxStr = prompt(`¿A qué rutina enviarla?\n${list}`);
                                                         const idx = parseInt(idxStr || '0') - 1;
-                                                        if (rutinas[idx] && promoteTaskToRoutine) promoteTaskToRoutine(project.id, task.id, rutinas[idx].id);
+                                                        if (!rutinas[idx]) return;
+                                                        routineId = rutinas[idx].id;
+                                                    }
+                                                    if (promoteTaskToRoutine) {
+                                                        promoteTaskToRoutine(project.id, task.id, routineId);
+                                                        alert('¡Tarea vinculada a la rutina! ⚡');
                                                     }
                                                 }
                                             }} 
