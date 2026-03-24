@@ -1,11 +1,132 @@
 import { useState, useMemo } from 'react';
-import { motion, Reorder } from 'framer-motion';
-import { ArrowLeft, Plus, Trash2, Edit2, GripVertical, CheckCircle2, Circle, Zap, X, FolderTree, Link, AlignLeft, CheckSquare, Type as TypeIcon, CreditCard } from 'lucide-react';
+import { motion, Reorder, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Plus, Trash2, Edit2, GripVertical, CheckCircle2, Circle, Zap, X, FolderTree, Link, AlignLeft, CheckSquare, Type as TypeIcon, CreditCard, Calendar, Palette, Folder } from 'lucide-react';
 
 import type { Project, Transaction, Routine } from '../../hooks/useAlDiaState';
 import { DEFAULT_INCOME_CATEGORIES, DEFAULT_EXPENSE_CATEGORIES } from '../../hooks/useAlDiaState';
 
-const ProjectNodeItem = ({ project, objectiveId, node, updateProjectNode, removeProjectNode }: any) => {
+const getDueDateColor = (dateStr: string | undefined, baseColor: string | undefined) => {
+    if (!dateStr) return baseColor || '#94A3B8';
+    try {
+        const due = new Date(dateStr + 'T12:00:00'); // Midday to avoid TZ issues
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) return '#ef4444'; // Rojo - Atrasado
+        if (diffDays <= 1) return '#f97316'; // Naranja - Hoy/Mañana
+        if (diffDays <= 3) return '#eab308'; // Amarillo - Pronto
+        return baseColor || '#3b82f6';
+    } catch { return baseColor || '#94A3B8'; }
+};
+
+const ModernPicker = ({ isOpen, onClose, onSave, data, anchorRect }: any) => {
+    const [title, setTitle] = useState(data.title || '');
+    const [date, setDate] = useState(data.dueDate || '');
+    const [color, setColor] = useState(data.color || '#3b82f6');
+    const [group, setGroup] = useState(data.group || '');
+
+    if (!isOpen || !anchorRect) return null;
+
+    const colors = ['#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6'];
+
+    return (
+        <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+            style={{
+                position: 'fixed',
+                top: Math.min(window.innerHeight - 250, anchorRect.bottom + 10),
+                left: Math.max(20, Math.min(window.innerWidth - 220, anchorRect.left - 100)),
+                zIndex: 1000,
+                background: 'white',
+                borderRadius: '16px',
+                padding: '16px',
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                width: '200px',
+                border: '1px solid #E2E8F0',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+            }}
+        >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#64748B', textTransform: 'uppercase' }}>Editar Entrega</span>
+                <X size={16} onClick={onClose} style={{ cursor: 'pointer', color: '#94A3B8' }} />
+            </div>
+
+            <div>
+                <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>TÍTULO</label>
+                <input 
+                    value={title} 
+                    onChange={e => setTitle(e.target.value)}
+                    style={{ width: '100%', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '6px 10px', fontSize: '0.8rem', outline: 'none', background: '#F8FAFC' }}
+                />
+            </div>
+
+            <div>
+                <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>FECHA</label>
+                <input 
+                    type="date"
+                    value={date} 
+                    onChange={e => setDate(e.target.value)}
+                    style={{ width: '100%', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '6px 10px', fontSize: '0.8rem', outline: 'none', background: '#F8FAFC' }}
+                />
+            </div>
+
+            <div>
+                <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>GRUPO</label>
+                <input 
+                    placeholder="Ventas, Backend..."
+                    value={group} 
+                    onChange={e => setGroup(e.target.value)}
+                    style={{ width: '100%', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '6px 10px', fontSize: '0.8rem', outline: 'none', background: '#F8FAFC' }}
+                />
+            </div>
+
+            <div>
+                <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>COLOR</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    {colors.map(c => (
+                        <div 
+                            key={c}
+                            onClick={() => setColor(c)}
+                            style={{ 
+                                width: '20px', 
+                                height: '20px', 
+                                borderRadius: '50%', 
+                                background: c, 
+                                cursor: 'pointer',
+                                border: color === c ? '2px solid #1e293b' : 'none',
+                                boxSizing: 'border-box'
+                            }}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            <button 
+                onClick={() => onSave({ title, dueDate: date, color, group })}
+                style={{ 
+                    marginTop: '8px',
+                    background: color, 
+                    color: 'white', 
+                    border: 'none', 
+                    borderRadius: '10px', 
+                    padding: '8px', 
+                    fontWeight: 900, 
+                    cursor: 'pointer',
+                    fontSize: '0.8rem'
+                }}
+            >
+                GUARDAR CAMBIOS
+            </button>
+        </motion.div>
+    );
+};
+
+const ProjectNodeItem = ({ project, objectiveId, node, updateProjectNode, removeProjectNode, addMission, onOpenPicker }: any) => {
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [titleVal, setTitleVal] = useState(node.title);
     const [newSubTask, setNewSubTask] = useState('');
@@ -39,12 +160,29 @@ const ProjectNodeItem = ({ project, objectiveId, node, updateProjectNode, remove
                             style={{ border: 'none', background: 'transparent', fontSize: '0.85rem', outline: 'none', color: 'var(--text-carbon)', fontWeight: 700, padding: 0 }}
                         />
                     ) : (
-                        <span 
-                            onClick={() => setIsEditingTitle(true)}
-                            style={{ fontSize: '0.85rem', color: node.completed ? '#94A3B8' : '#334155', fontWeight: 600, textDecoration: node.completed ? 'line-through' : 'none', cursor: 'text', minHeight: '18px', display: 'inline-block' }}
-                        >
-                            {node.title}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span 
+                                onClick={() => setIsEditingTitle(true)}
+                                style={{ fontSize: '0.85rem', color: node.completed ? '#94A3B8' : '#334155', fontWeight: 600, textDecoration: node.completed ? 'line-through' : 'none', cursor: 'text', minHeight: '18px', display: 'inline-block' }}
+                            >
+                                {node.title}
+                            </span>
+                            {node.dueDate && (
+                                <span style={{ 
+                                    fontSize: '0.6rem', 
+                                    fontWeight: 900, 
+                                    color: 'white', 
+                                    background: getDueDateColor(node.dueDate, node.color), 
+                                    padding: '1px 6px', 
+                                    borderRadius: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '2px'
+                                }}>
+                                    <Calendar size={8} /> {node.dueDate}
+                                </span>
+                            )}
+                        </div>
                     )}
 
                     {/* Inline Content based on Type */}
@@ -109,6 +247,42 @@ const ProjectNodeItem = ({ project, objectiveId, node, updateProjectNode, remove
                     {node.type !== 'note' && <button onClick={() => toggleType('note')} style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: 0 }} title="Convertir a Nota"><AlignLeft size={14} /></button>}
                     {node.type !== 'checklist' && <button onClick={() => toggleType('checklist')} style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: 0 }} title="Convertir a Meta con Tareas"><CheckSquare size={14} /></button>}
                     {node.type !== 'task' && <button onClick={() => toggleType('task')} style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: 0 }} title="Convertir a Meta Simple"><TypeIcon size={14} /></button>}
+                    
+                    <button 
+                        onClick={() => {
+                            if (addMission) {
+                                addMission(node.title, '...', 'none', undefined, ['PROYECTO'], node.dueDate, undefined, project.id);
+                                alert('¡Enviado a tu Agenda! 🚀');
+                            }
+                        }} 
+                        style={{ background: 'transparent', border: 'none', color: '#8b5cf6', cursor: 'pointer', padding: 0 }}
+                        title="Sincronizar con Agenda (Misión)"
+                    ><Zap size={14} /></button>
+
+                    <button 
+                        onClick={(e) => onOpenPicker({ 
+                            type: 'node', 
+                            projectId: project.id, 
+                            objectiveId, 
+                            nodeId: node.id, 
+                            anchorRect: e.currentTarget.getBoundingClientRect(),
+                            data: { title: node.title, dueDate: node.dueDate, color: node.color } 
+                        })} 
+                        style={{ background: 'transparent', border: 'none', color: node.dueDate ? project.color : '#CBD5E1', cursor: 'pointer', padding: 0 }}
+                        title="Configurar entrega"
+                    ><Calendar size={14} /></button>
+                    
+                    <button 
+                        onClick={() => {
+                            const colors = ['#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6'];
+                            const idx = prompt('Elegir Color:\n1. Azul\n2. Rojo\n3. Naranja\n4. Verde\n5. Morado') || '1';
+                            const color = colors[parseInt(idx)-1] || colors[0];
+                            updateProjectNode(project.id, objectiveId, node.id, { color });
+                        }} 
+                        style={{ background: 'transparent', border: 'none', color: node.color || '#CBD5E1', cursor: 'pointer', padding: 0 }}
+                        title="Color de meta"
+                    ><Palette size={14} /></button>
+
                     <button onClick={() => removeProjectNode(project.id, objectiveId, node.id)} style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', padding: 0, marginLeft: '6px' }} title="Borrar nodo"><Trash2 size={14} /></button>
                 </div>
             </div>
@@ -145,6 +319,8 @@ interface ProjectDetailViewProps {
     addProjectNode?: (projectId: number, objectiveId: number, title: string, type: 'task' | 'note' | 'checklist') => void;
     updateProjectNode?: (projectId: number, objectiveId: number, nodeId: number, updates: any) => void;
     removeProjectNode?: (projectId: number, objectiveId: number, nodeId: number) => void;
+    addMission?: (text: string, q?: string, repeat?: 'none' | 'daily' | 'weekly' | 'monthly', noteId?: number, labels?: string[], dueDate?: string, dueTime?: string, projectId?: number) => void;
+    onOpenPicker?: (picker: any) => void;
 }
 
 export const ProjectDetailView = ({ 
@@ -155,7 +331,8 @@ export const ProjectDetailView = ({
     addInventoryItem, updateInventoryItemQuantity, removeInventoryItem,
     projects, updateProject, onOpenSubProject,
     addProjectObjective, updateProjectObjective, removeProjectObjective,
-    addProjectNode, updateProjectNode, removeProjectNode
+    addProjectNode, updateProjectNode, removeProjectNode,
+    addMission
 }: ProjectDetailViewProps) => {
     const [newTaskText, setNewTaskText] = useState('');
     const [newItemText, setNewItemText] = useState('');
@@ -164,6 +341,7 @@ export const ProjectDetailView = ({
     const [categoryType, setCategoryType] = useState<'ingreso' | 'gasto'>('ingreso');
     const [newCategoryName, setNewCategoryName] = useState('');
     const [newObjectiveTitle, setNewObjectiveTitle] = useState('');
+    const [activePicker, setActivePicker] = useState<any>(null);
 
     const projectAccounts = useMemo(() => {
         // Cuentas vinculadas explícitamente o que tienen transacciones para este proyecto
@@ -301,63 +479,127 @@ export const ProjectDetailView = ({
                                 </button>
                             </div>
                             
-                            {(project.objectives || []).map(obj => (
-                                <div key={obj.id} style={{ 
-                                    padding: '0 0 1rem 0',
-                                    borderBottom: '1px dashed #E2E8F0',
-                                    opacity: obj.completed ? 0.6 : 1
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <div 
-                                                onClick={() => updateProjectObjective && updateProjectObjective(project.id, obj.id, { completed: !obj.completed })}
-                                                style={{ cursor: 'pointer' }}
-                                            >
-                                                {obj.completed ? <CheckCircle2 size={20} color={project.color} /> : <Circle size={20} color="#CBD5E1" />}
-                                            </div>
-                                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: obj.completed ? '#94A3B8' : 'var(--text-carbon)', textDecoration: obj.completed ? 'line-through' : 'none' }}>
-                                                {obj.title}
-                                            </h3>
-                                        </div>
-                                        <button 
-                                            onClick={() => removeProjectObjective && window.confirm('¿Borrar objetivo y todas sus metas?') && removeProjectObjective(project.id, obj.id)}
-                                            style={{ background: 'transparent', border: 'none', color: '#CBD5E1', cursor: 'pointer', padding: '4px' }}
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
+                            {(() => {
+                                const objectives = project.objectives || [];
+                                const groups: { [key: string]: typeof objectives } = {};
+                                
+                                objectives.forEach(obj => {
+                                    const g = obj.group || 'Sin Grupo';
+                                    if (!groups[g]) groups[g] = [];
+                                    groups[g].push(obj);
+                                });
 
-                                    {/* Tareas del Objetivo (Nodos) */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '28px' }}>
-                                        {(obj.nodes || []).map(node => (
-                                            <ProjectNodeItem 
-                                                key={node.id}
-                                                project={project}
-                                                objectiveId={obj.id}
-                                                node={node}
-                                                updateProjectNode={updateProjectNode}
-                                                removeProjectNode={removeProjectNode}
-                                            />
-                                        ))}
+                                return Object.entries(groups).map(([groupName, groupObjs]) => (
+                                    <div key={groupName} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                        {groupName !== 'Sin Grupo' && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 8px', background: '#F1F5F9', borderRadius: '8px', width: 'fit-content', marginTop: '1rem' }}>
+                                                <Folder size={12} color="#64748B" />
+                                                <span style={{ fontSize: '0.7rem', fontWeight: 900, color: '#64748B', textTransform: 'uppercase' }}>{groupName}</span>
+                                            </div>
+                                        )}
                                         
-                                        {/* Añadir mini-tarea al objetivo */}
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                                            <Plus size={14} color="#CBD5E1" />
-                                            <input 
-                                                placeholder="Agregar meta al objetivo..."
-                                                onKeyDown={(e) => {
-                                                    const target = e.target as HTMLInputElement;
-                                                    if (e.key === 'Enter' && target.value.trim() && addProjectNode) {
-                                                        addProjectNode(project.id, obj.id, target.value.trim(), 'task');
-                                                        target.value = '';
-                                                    }
-                                                }}
-                                                style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '0.8rem', outline: 'none', color: '#64748B' }}
-                                            />
-                                        </div>
+                                        {groupObjs.map(obj => (
+                                            <div key={obj.id} style={{ 
+                                                padding: '0 0 1rem 0',
+                                                borderBottom: '1px dashed #E2E8F0',
+                                                opacity: obj.completed ? 0.6 : 1
+                                            }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <div 
+                                                            onClick={() => updateProjectObjective && updateProjectObjective(project.id, obj.id, { completed: !obj.completed })}
+                                                            style={{ cursor: 'pointer' }}
+                                                        >
+                                                            {obj.completed ? <CheckCircle2 size={20} color={project.color} /> : <Circle size={20} color="#CBD5E1" />}
+                                                        </div>
+                                                        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: obj.completed ? '#94A3B8' : 'var(--text-carbon)', textDecoration: obj.completed ? 'line-through' : 'none' }}>
+                                                            {obj.title}
+                                                        </h3>
+                                                        {obj.dueDate && (
+                                                            <span style={{ 
+                                                                fontSize: '0.6rem', 
+                                                                fontWeight: 900, 
+                                                                color: 'white', 
+                                                                background: getDueDateColor(obj.dueDate, obj.color), 
+                                                                padding: '1px 6px', 
+                                                                borderRadius: '4px',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '2px'
+                                                            }}>
+                                                                <Calendar size={8} /> {obj.dueDate}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                        <button 
+                                                            onClick={() => {
+                                                                if (addMission) {
+                                                                    addMission(obj.title, '...', 'none', undefined, ['PROYECTO', 'HITOS'], obj.dueDate, undefined, project.id);
+                                                                    alert('¡Objetivo enviado a tu Agenda! 🚀');
+                                                                }
+                                                            }} 
+                                                            style={{ background: 'transparent', border: 'none', color: '#8b5cf6', cursor: 'pointer', padding: 0 }}
+                                                            title="Sincronizar Objetivo con Agenda"
+                                                        ><Zap size={14} /></button>
+
+                                                        <button 
+                                                            onClick={(e) => setActivePicker({ 
+                                                                type: 'objective', 
+                                                                projectId: project.id, 
+                                                                objectiveId: obj.id, 
+                                                                anchorRect: e.currentTarget.getBoundingClientRect(),
+                                                                data: { title: obj.title, dueDate: obj.dueDate, color: obj.color, group: obj.group } 
+                                                            })} 
+                                                            style={{ background: 'transparent', border: 'none', color: obj.dueDate || obj.group ? project.color : '#CBD5E1', cursor: 'pointer', padding: 0 }}
+                                                            title="Configurar entrega/grupo"
+                                                        ><Calendar size={14} /></button>
+
+                                                        <button 
+                                                            onClick={() => removeProjectObjective && window.confirm('¿Borrar objetivo y todas sus metas?') && removeProjectObjective(project.id, obj.id)}
+                                                            style={{ background: 'transparent', border: 'none', color: '#CBD5E1', cursor: 'pointer', padding: '4px' }}
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Tareas del Objetivo (Nodos) */}
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '28px' }}>
+                                                    {(obj.nodes || []).map(node => (
+                                                        <ProjectNodeItem 
+                                                            key={node.id}
+                                                            project={project}
+                                                            objectiveId={obj.id}
+                                                            node={node}
+                                                            updateProjectNode={updateProjectNode}
+                                                            removeProjectNode={removeProjectNode}
+                                                            addMission={addMission}
+                                                            onOpenPicker={(p: any) => setActivePicker(p)}
+                                                        />
+                                                    ))}
+                                                    
+                                                    {/* Añadir mini-tarea al objetivo */}
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                                                        <Plus size={14} color="#CBD5E1" />
+                                                        <input 
+                                                            placeholder="Agregar meta al objetivo..."
+                                                            onKeyDown={(e) => {
+                                                                const target = e.target as HTMLInputElement;
+                                                                if (e.key === 'Enter' && target.value.trim() && addProjectNode) {
+                                                                    addProjectNode(project.id, obj.id, target.value.trim(), 'task');
+                                                                    target.value = '';
+                                                                }
+                                                            }}
+                                                            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '0.8rem', outline: 'none', color: '#64748B' }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                </div>
-                            ))}
+                                ));
+                            })()}
                         </div>
                     </div>
 
@@ -681,6 +923,25 @@ export const ProjectDetailView = ({
                     </div>
                 </section>
             )}
+            {/* MODAL / PICKER OVERLAY */}
+            <AnimatePresence>
+                {activePicker && (
+                    <ModernPicker 
+                        isOpen={true}
+                        anchorRect={activePicker.anchorRect}
+                        data={activePicker.data}
+                        onClose={() => setActivePicker(null)}
+                        onSave={(updates: any) => {
+                            if (activePicker.type === 'objective') {
+                                if (updateProjectObjective) updateProjectObjective(activePicker.projectId, activePicker.objectiveId, updates);
+                            } else {
+                                if (updateProjectNode) updateProjectNode(activePicker.projectId, activePicker.objectiveId, activePicker.nodeId, updates);
+                            }
+                            setActivePicker(null);
+                        }}
+                    />
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 };

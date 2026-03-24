@@ -112,6 +112,8 @@ export interface ProjectNode {
     completed?: boolean;
     content?: string;
     subItems?: { id: number; text: string; completed: boolean }[];
+    dueDate?: string; // YYYY-MM-DD
+    color?: string; // Color específico para esta meta/entrega
 }
 
 export interface ProjectObjective {
@@ -119,6 +121,9 @@ export interface ProjectObjective {
     title: string;
     completed: boolean;
     nodes: ProjectNode[];
+    dueDate?: string; // YYYY-MM-DD
+    color?: string; // Color para el objetivo/entrega mayor
+    group?: string; // Grupo/Categoría (ej: "Entregas", "Ventas")
 }
 
 export interface Project {

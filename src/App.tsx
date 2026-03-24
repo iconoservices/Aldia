@@ -272,6 +272,7 @@ function App() {
             addProjectNode={state.addProjectNode}
             updateProjectNode={state.updateProjectNode}
             removeProjectNode={state.removeProjectNode}
+            addMission={state.addMission}
           />
         )}
       </AnimatePresence>
