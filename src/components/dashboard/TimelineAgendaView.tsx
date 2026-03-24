@@ -1,9 +1,8 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, ChevronLeft, ChevronRight, Zap, List, CalendarDays, Filter, Trash2, X } from 'lucide-react';
+import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, Filter, Trash2, X } from 'lucide-react';
 
 interface TimelineAgendaViewProps {
-    missions: any[];
     calendarEvents: any[];
     projects: any[];
     rutinas?: any[];
@@ -11,8 +10,8 @@ interface TimelineAgendaViewProps {
     onRemoveEvent?: (id: number) => void;
 }
 
-export const TimelineAgendaView = ({ missions, calendarEvents, projects, rutinas = [], timeBlocks = [], onRemoveEvent }: TimelineAgendaViewProps) => {
-    const [viewMode, setViewMode] = useState<'timeline' | 'list' | 'month' | 'appointments'>('timeline');
+export const TimelineAgendaView = ({ calendarEvents, projects, rutinas = [], timeBlocks = [], onRemoveEvent }: TimelineAgendaViewProps) => {
+    const [viewMode, setViewMode] = useState<'timeline' | 'month' | 'appointments'>('timeline');
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [editingEvent, setEditingEvent] = useState<any>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -143,9 +142,6 @@ export const TimelineAgendaView = ({ missions, calendarEvents, projects, rutinas
                     <button onClick={() => setViewMode('appointments')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px', border: 'none', borderRadius: '10px', background: viewMode === 'appointments' ? 'white' : 'transparent', fontSize: '0.7rem', fontWeight: 800, color: viewMode === 'appointments' ? 'var(--domain-orange)' : '#64748B', transition: 'all 0.2s', boxShadow: viewMode === 'appointments' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none' }}>
                         <Filter size={14} /> CITAS
                     </button>
-                    <button onClick={() => setViewMode('list')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px', border: 'none', borderRadius: '10px', background: viewMode === 'list' ? 'white' : 'transparent', fontSize: '0.7rem', fontWeight: 800, color: viewMode === 'list' ? 'var(--domain-orange)' : '#64748B', transition: 'all 0.2s', boxShadow: viewMode === 'list' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none' }}>
-                        <List size={14} /> LISTA
-                    </button>
                 </div>
 
                 {/* Resumen de Entregas (Solo hoy/seleccionado) */}
@@ -243,28 +239,17 @@ export const TimelineAgendaView = ({ missions, calendarEvents, projects, rutinas
                     </div>
                 )}
 
-                {(viewMode === 'list' || viewMode === 'appointments') && (
+                {viewMode === 'appointments' && (
                     <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {viewMode === 'list' && missions.filter(m => m.dueDate === todayStr).length > 0 && (
-                            <div>
-                                <h3 style={{ fontSize: '0.9rem', fontWeight: 900, color: '#64748B', marginBottom: '10px' }}>MISIONES DEL DÍA</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    {missions.filter(m => m.dueDate === todayStr).map((m: any) => (
-                                        <div key={m.id} style={{ background: 'white', padding: '12px', borderRadius: '16px', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <Zap size={16} color="var(--domain-orange)" />
-                                            <div style={{ flex: 1, fontSize: '0.85rem', fontWeight: 800 }}>{m.text}</div>
-                                            {m.completed && <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#10B981' }}>OK</span>}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
                         <div>
                             <h3 style={{ fontSize: '0.9rem', fontWeight: 900, color: '#64748B', marginBottom: '10px' }}>CITAS Y AGENDA</h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 {dayEvents.length > 0 ? dayEvents.map((e: any) => (
-                                    <div key={e.id} style={{ background: 'white', padding: '16px', borderRadius: '18px', borderLeft: `6px solid ${e.color}`, boxShadow: '0 2px 4px rgba(0,0,0,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div 
+                                        key={e.id} 
+                                        onClick={() => setEditingEvent(e)}
+                                        style={{ background: 'white', padding: '16px', borderRadius: '18px', borderLeft: `6px solid ${e.color}`, boxShadow: '0 2px 4px rgba(0,0,0,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                                    >
                                         <div>
                                             <div style={{ fontSize: '0.9rem', fontWeight: 900 }}>{e.title}</div>
                                             <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 700 }}>{e.startTime} - {e.endTime}</div>

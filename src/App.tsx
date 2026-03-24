@@ -115,7 +115,6 @@ function App() {
               </div>
             ) : activeTab === 'Calendario' ? (
               <TimelineAgendaView 
-                missions={state.missions}
                 calendarEvents={state.agenda}
                 projects={state.projects}
                 rutinas={state.rutinas}
