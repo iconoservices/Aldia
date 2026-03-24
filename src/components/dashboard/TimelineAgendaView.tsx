@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, ChevronLeft, ChevronRight, Zap, List, CalendarDays, Filter } from 'lucide-react';
+import { Calendar, Clock, ChevronLeft, ChevronRight, Zap, List, CalendarDays, Filter, Trash2, X } from 'lucide-react';
 
 interface TimelineAgendaViewProps {
     missions: any[];
@@ -8,11 +8,13 @@ interface TimelineAgendaViewProps {
     projects: any[];
     rutinas?: any[];
     timeBlocks?: any[];
+    onRemoveEvent?: (id: number) => void;
 }
 
-export const TimelineAgendaView = ({ missions, calendarEvents, projects, rutinas = [], timeBlocks = [] }: TimelineAgendaViewProps) => {
+export const TimelineAgendaView = ({ missions, calendarEvents, projects, rutinas = [], timeBlocks = [], onRemoveEvent }: TimelineAgendaViewProps) => {
     const [viewMode, setViewMode] = useState<'timeline' | 'list' | 'month' | 'appointments'>('timeline');
     const [selectedDate, setSelectedDate] = useState(new Date());
+    const [editingEvent, setEditingEvent] = useState<any>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     
     const todayStr = selectedDate.toISOString().split('T')[0];
@@ -103,6 +105,13 @@ export const TimelineAgendaView = ({ missions, calendarEvents, projects, rutinas
     const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
     const dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
+    // Helper: convierte "HH:MM" a minutos desde medianoche → directo a px (1 min = 1 px)
+    const toMin = (t?: string) => {
+        if (!t) return -1;
+        const [hh, mm] = t.split(':').map(Number);
+        return hh * 60 + (mm || 0);
+    };
+
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#F8FAFC', position: 'relative', overflow: 'hidden' }}>
             {/* Header / Navigation */}
@@ -166,74 +175,69 @@ export const TimelineAgendaView = ({ missions, calendarEvents, projects, rutinas
             <div style={{ flex: 1, overflowY: 'auto', position: 'relative' }} ref={scrollRef}>
                 {viewMode === 'timeline' && (
                     <div style={{ position: 'relative' }}>
-                        {/* Current Time Line — posición exacta dentro del grid (60px/hora) */}
+                        {/* Current Time Line */}
                         {isActualToday && (
-                            <div style={{ 
-                                position: 'absolute', 
-                                top: currentPos, 
-                                left: 0, 
-                                right: 0, 
-                                height: '2px', 
-                                background: '#ef4444', 
-                                zIndex: 10,
-                                pointerEvents: 'none'
-                            }}>
+                            <div style={{ position: 'absolute', top: currentPos, left: 0, right: 0, height: '2px', background: '#ef4444', zIndex: 10, pointerEvents: 'none' }}>
                                 <div style={{ position: 'absolute', left: 62, top: -9, background: '#ef4444', color: 'white', fontSize: '0.6rem', padding: '2px 5px', borderRadius: '4px', fontWeight: 900 }}>AHORA</div>
                             </div>
                         )}
 
+                        {/* Rutinas — overlay absoluto que abarca startTime→endTime */}
+                        {dayRutinas.map(r => {
+                            const startPx = toMin(r.startTime);
+                            const endPx = toMin(r.endTime);
+                            if (startPx < 0 || endPx <= startPx) return null;
+                            const h = endPx - startPx;
+                            return (
+                                <div key={`rtbg-${r.id}`} style={{ position: 'absolute', top: startPx, left: 60, right: 0, height: h, background: `${r.color}10`, borderLeft: `4px solid ${r.color}50`, pointerEvents: 'none', zIndex: 1, display: 'flex', alignItems: 'flex-start', paddingLeft: '10px', paddingTop: '6px', overflow: 'hidden' }}>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 800, color: r.color, opacity: 0.7 }}>{r.title} · {r.startTime}–{r.endTime}</span>
+                                </div>
+                            );
+                        })}
+
+                        {/* TimeBlocks — overlay */}
+                        {timeBlocks.map((b: any) => {
+                            const startPx = toMin(b.start);
+                            const endPx = toMin(b.end);
+                            if (startPx < 0 || endPx <= startPx) return null;
+                            const h = endPx - startPx;
+                            return (
+                                <div key={`blkbg-${b.id}`} style={{ position: 'absolute', top: startPx, left: 60, right: 0, height: h, background: `${b.color}06`, borderLeft: `2px dashed ${b.color}40`, pointerEvents: 'none', zIndex: 1, display: 'flex', alignItems: 'flex-end', paddingLeft: '10px', paddingBottom: '4px', overflow: 'hidden' }}>
+                                    <span style={{ fontSize: '0.6rem', fontWeight: 700, color: b.color, opacity: 0.5 }}>{b.label}</span>
+                                </div>
+                            );
+                        })}
+
+                        {/* Citas — overlay absoluto posicionado por hora+minuto exactos */}
+                        {dayEvents.map((item: any) => {
+                            const startPx = toMin(item.startTime);
+                            const endPx = toMin(item.endTime);
+                            if (startPx < 0) return null;
+                            const evH = endPx > startPx ? endPx - startPx : 52;
+                            return (
+                                <motion.div
+                                    key={`ev-${item.id}`}
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    style={{ position: 'absolute', top: startPx, left: 64, right: 6, height: evH, background: item.color || '#6366F1', borderRadius: '12px', padding: '6px 10px', color: 'white', zIndex: 5, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', display: 'flex', flexDirection: 'column', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden' }}
+                                    onClick={() => setEditingEvent(item)}
+                                >
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        <Clock size={11} />
+                                        {item.title}
+                                    </div>
+                                    <div style={{ fontSize: '0.6rem', opacity: 0.85 }}>{item.startTime} - {item.endTime || '...'}</div>
+                                </motion.div>
+                            );
+                        })}
+
+                        {/* Hora grid lines */}
                         {hours.map(h => (
                             <div key={h} style={{ height: '60px', borderBottom: '1px solid #F1F5F9', display: 'flex', position: 'relative' }}>
-                                <div style={{ width: '60px', fontSize: '0.7rem', color: '#94A3B8', textAlign: 'right', paddingRight: '12px', paddingTop: '-4px', fontWeight: 700 }}>
+                                <div style={{ width: '60px', flexShrink: 0, fontSize: '0.68rem', color: '#94A3B8', textAlign: 'right', paddingRight: '10px', paddingTop: '6px', fontWeight: 700 }}>
                                     {h.toString().padStart(2, '0')}:00
                                 </div>
-                                <div style={{ flex: 1, position: 'relative' }}>
-                                    {/* Rutinas & TimeBlocks Background */}
-                                    {dayRutinas.filter(r => parseInt(r.startTime?.split(':')[0]) === h).map(r => (
-                                        <div key={`rutina-${r.id}`} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '60px', background: `${r.color}08`, borderLeft: `4px solid ${r.color}40`, pointerEvents: 'none', display: 'flex', alignItems: 'center', paddingLeft: '8px' }}>
-                                            <span style={{ fontSize: '0.6rem', fontWeight: 800, color: r.color, opacity: 0.5 }}>{r.title}</span>
-                                        </div>
-                                    ))}
-                                    {timeBlocks.filter(b => parseInt(b.start?.split(':')[0]) === h).map(b => (
-                                        <div key={`block-${b.id}`} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '60px', background: `${b.color}05`, borderLeft: `2px dashed ${b.color}30`, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '12px' }}>
-                                            <span style={{ fontSize: '0.55rem', fontWeight: 700, color: b.color, opacity: 0.4 }}>{b.label}</span>
-                                        </div>
-                                    ))}
-
-                                    {/* Eventos / Citas */}
-                                    {dayEvents.filter(item => parseInt(item.startTime?.split(':')[0]) === h).map((item) => {
-                                        const top = (parseInt(item.startTime?.split(':')[1] || '0'));
-                                        return (
-                                            <motion.div 
-                                                key={item.id}
-                                                initial={{ opacity: 0, x: 20 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                style={{
-                                                    position: 'absolute',
-                                                    top: top,
-                                                    left: 4,
-                                                    right: 6,
-                                                    height: '52px',
-                                                    background: item.color,
-                                                    borderRadius: '12px',
-                                                    padding: '8px 12px',
-                                                    color: 'white',
-                                                    zIndex: 5,
-                                                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                                    display: 'flex',
-                                                    flexDirection: 'column',
-                                                    justifyContent: 'center'
-                                                }}
-                                            >
-                                                <div style={{ fontSize: '0.75rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    <Clock size={12} />
-                                                    {item.title}
-                                                </div>
-                                                <div style={{ fontSize: '0.6rem', opacity: 0.8 }}>{item.startTime} - {item.endTime || '...'}</div>
-                                            </motion.div>
-                                        );
-                                    })}
-                                </div>
+                                <div style={{ flex: 1 }} />
                             </div>
                         ))}
                     </div>
@@ -318,6 +322,47 @@ export const TimelineAgendaView = ({ missions, calendarEvents, projects, rutinas
                 )}
             </div>
 
+            {/* Modal de acción de cita */}
+            <AnimatePresence>
+                {editingEvent && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'flex-end', padding: '1rem' }}
+                        onClick={() => setEditingEvent(null)}
+                    >
+                        <motion.div
+                            initial={{ y: 60, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 60, opacity: 0 }}
+                            transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                            style={{ background: 'white', borderRadius: '24px', padding: '1.5rem', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                                <div>
+                                    <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{editingEvent.title}</div>
+                                    <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 700, marginTop: '2px' }}>{editingEvent.startTime} – {editingEvent.endTime || '...'} · {editingEvent.date}</div>
+                                    {editingEvent.description && <div style={{ fontSize: '0.8rem', color: '#64748B', marginTop: '6px' }}>{editingEvent.description}</div>}
+                                </div>
+                                <button onClick={() => setEditingEvent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#94A3B8' }}><X size={20} /></button>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button
+                                    onClick={() => {
+                                        if (onRemoveEvent) onRemoveEvent(editingEvent.id);
+                                        setEditingEvent(null);
+                                    }}
+                                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', background: '#FEF2F2', color: '#EF4444', border: 'none', borderRadius: '14px', fontWeight: 900, fontSize: '0.85rem', cursor: 'pointer' }}
+                                >
+                                    <Trash2 size={16} /> Eliminar
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

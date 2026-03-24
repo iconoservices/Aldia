@@ -173,7 +173,7 @@ export const useAlDiaState = () => {
         missions: misionesState, setMissions: setMisionesDirect,
         habits, setHabits, agenda, setAgenda,
         toggleMission, updateMission, removeMission, addMission,
-        toggleHabit, addHabit, removeHabit, addCalendarEvent,
+        toggleHabit, addHabit, removeHabit, addCalendarEvent, removeCalendarEvent,
         reorderMissions,
         performanceScore, missionFocusScore, completedMissionsCount
     } = useMisionesState();
@@ -444,7 +444,7 @@ export const useAlDiaState = () => {
     return {
         // Misiones
         missions: misionesState, todayMissions, toggleMission, updateMission, addMission, removeMission, reorderMissions,
-        habits, toggleHabit, addHabit, removeHabit, agenda, addCalendarEvent,
+        habits, toggleHabit, addHabit, removeHabit, agenda, addCalendarEvent, removeCalendarEvent,
         performanceScore, missionFocusScore, completedMissionsCount,
         // Finanzas
         transactions, balance, todayIncome, todayExpense, todayNet, todayIncomeReal, todayExpenseReal,

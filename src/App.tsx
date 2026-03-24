@@ -74,7 +74,15 @@ function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            style={{ width: '100%' }}
+            style={{ 
+              width: '100%',
+              ...(activeTab === 'Calendario' && { 
+                height: 'calc(100dvh - 120px)', 
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column'
+              })
+            }}
           >
             {activeTab === 'Acción' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
@@ -112,6 +120,7 @@ function App() {
                 projects={state.projects}
                 rutinas={state.rutinas}
                 timeBlocks={state.timeBlocks}
+                onRemoveEvent={state.removeCalendarEvent}
               />
             ) : activeTab === 'Vida' ? (
               <VidaDashboard

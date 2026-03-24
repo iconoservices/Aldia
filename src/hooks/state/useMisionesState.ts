@@ -107,6 +107,14 @@ export const useMisionesState = () => {
         }));
     };
 
+    const removeCalendarEvent = (id: number) => {
+        setAgenda(prev => prev.filter(e => e.id !== id));
+    };
+
+    const updateCalendarEvent = (id: number, updates: Partial<CalendarEvent>) => {
+        setAgenda(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+    };
+
     // Métricas calculadas (DEFENSIVAS)
     const completedMissionsCount = Array.isArray(missions) ? missions.filter(m => m?.completed).length : 0;
     const totalMissionsCount = Array.isArray(missions) ? missions.length : 0;
@@ -133,6 +141,8 @@ export const useMisionesState = () => {
         addHabit,
         removeHabit,
         addCalendarEvent,
+        removeCalendarEvent,
+        updateCalendarEvent,
         reorderMissions: (newMissions: Mission[]) => {
             setMissions(prev => {
                 // 1. Extraer solo las misiones base (sin rutinas/hábitos) en su nuevo orden
