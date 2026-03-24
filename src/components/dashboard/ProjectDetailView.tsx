@@ -126,6 +126,136 @@ const ModernPicker = ({ isOpen, onClose, onSave, data, anchorRect }: any) => {
     );
 };
 
+const ProjectObjectiveItem = ({ project, obj, updateProjectObjective, removeProjectObjective, addProjectNode, updateProjectNode, removeProjectNode, addMission, onOpenPicker }: any) => {
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [titleVal, setTitleVal] = useState(obj.title);
+
+    return (
+        <div style={{ 
+            padding: '0 0 1rem 0',
+            borderBottom: '1px dashed #E2E8F0',
+            opacity: obj.completed ? 0.6 : 1
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                    <div 
+                        onClick={() => updateProjectObjective && updateProjectObjective(project.id, obj.id, { completed: !obj.completed })}
+                        style={{ cursor: 'pointer' }}
+                    >
+                        {obj.completed ? <CheckCircle2 size={20} color={project.color} /> : <Circle size={20} color="#CBD5E1" />}
+                    </div>
+                    
+                    {isEditingTitle ? (
+                        <input 
+                            autoFocus
+                            value={titleVal}
+                            onChange={(e) => setTitleVal(e.target.value)}
+                            onBlur={() => {
+                                if (titleVal.trim() && titleVal !== obj.title) {
+                                    updateProjectObjective(project.id, obj.id, { title: titleVal.trim() });
+                                }
+                                setIsEditingTitle(false);
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') e.currentTarget.blur();
+                                if (e.key === 'Escape') {
+                                    setTitleVal(obj.title);
+                                    setIsEditingTitle(false);
+                                }
+                            }}
+                            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '1rem', fontWeight: 900, outline: 'none', color: 'var(--text-carbon)' }}
+                        />
+                    ) : (
+                        <h3 
+                            onClick={() => setIsEditingTitle(true)}
+                            style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: obj.completed ? '#94A3B8' : 'var(--text-carbon)', textDecoration: obj.completed ? 'line-through' : 'none', cursor: 'text', flex: 1 }}
+                        >
+                            {obj.title}
+                        </h3>
+                    )}
+
+                    {obj.dueDate && (
+                        <span style={{ 
+                            fontSize: '0.6rem', 
+                            fontWeight: 900, 
+                            color: 'white', 
+                            background: getDueDateColor(obj.dueDate, obj.color), 
+                            padding: '1px 6px', 
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '2px'
+                        }}>
+                            <Calendar size={8} /> {obj.dueDate}
+                        </span>
+                    )}
+                </div>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <button 
+                        onClick={() => {
+                            if (addMission) {
+                                addMission(obj.title, '...', 'none', undefined, ['PROYECTO', 'HITOS'], obj.dueDate, undefined, project.id);
+                                alert('¡Objetivo enviado a tu Agenda! 🚀');
+                            }
+                        }} 
+                        style={{ background: 'transparent', border: 'none', color: '#8b5cf6', cursor: 'pointer', padding: 0 }}
+                        title="Sincronizar Objetivo con Agenda"
+                    ><Zap size={14} /></button>
+
+                    <button 
+                        onClick={(e) => onOpenPicker({ 
+                            type: 'objective', 
+                            projectId: project.id, 
+                            objectiveId: obj.id, 
+                            anchorRect: e.currentTarget.getBoundingClientRect(),
+                            data: { title: obj.title, dueDate: obj.dueDate, color: obj.color, group: obj.group } 
+                        })} 
+                        style={{ background: 'transparent', border: 'none', color: obj.dueDate || obj.group ? project.color : '#CBD5E1', cursor: 'pointer', padding: 0 }}
+                        title="Configurar entrega/grupo"
+                    ><Calendar size={14} /></button>
+
+                    <button 
+                        onClick={() => removeProjectObjective && window.confirm('¿Borrar objetivo y todas sus metas?') && removeProjectObjective(project.id, obj.id)}
+                        style={{ background: 'transparent', border: 'none', color: '#CBD5E1', cursor: 'pointer', padding: '4px' }}
+                    >
+                        <Trash2 size={14} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Tareas del Objetivo (Nodos) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '28px' }}>
+                {(obj.nodes || []).map((node: any) => (
+                    <ProjectNodeItem 
+                        key={node.id}
+                        project={project}
+                        objectiveId={obj.id}
+                        node={node}
+                        updateProjectNode={updateProjectNode}
+                        removeProjectNode={removeProjectNode}
+                        addMission={addMission}
+                        onOpenPicker={onOpenPicker}
+                    />
+                ))}
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                    <Plus size={14} color="#CBD5E1" />
+                    <input 
+                        placeholder="Agregar meta al objetivo..."
+                        onKeyDown={(e) => {
+                            const target = e.target as HTMLInputElement;
+                            if (e.key === 'Enter' && target.value.trim() && addProjectNode) {
+                                addProjectNode(project.id, obj.id, target.value.trim(), 'task');
+                                target.value = '';
+                            }
+                        }}
+                        style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '0.8rem', outline: 'none', color: '#64748B' }}
+                    />
+                </div>
+            </div>
+        </div>
+    );
+};
 const ProjectNodeItem = ({ project, objectiveId, node, updateProjectNode, removeProjectNode, addMission, onOpenPicker }: any) => {
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [titleVal, setTitleVal] = useState(node.title);
@@ -499,103 +629,18 @@ export const ProjectDetailView = ({
                                         )}
                                         
                                         {groupObjs.map(obj => (
-                                            <div key={obj.id} style={{ 
-                                                padding: '0 0 1rem 0',
-                                                borderBottom: '1px dashed #E2E8F0',
-                                                opacity: obj.completed ? 0.6 : 1
-                                            }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                        <div 
-                                                            onClick={() => updateProjectObjective && updateProjectObjective(project.id, obj.id, { completed: !obj.completed })}
-                                                            style={{ cursor: 'pointer' }}
-                                                        >
-                                                            {obj.completed ? <CheckCircle2 size={20} color={project.color} /> : <Circle size={20} color="#CBD5E1" />}
-                                                        </div>
-                                                        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: obj.completed ? '#94A3B8' : 'var(--text-carbon)', textDecoration: obj.completed ? 'line-through' : 'none' }}>
-                                                            {obj.title}
-                                                        </h3>
-                                                        {obj.dueDate && (
-                                                            <span style={{ 
-                                                                fontSize: '0.6rem', 
-                                                                fontWeight: 900, 
-                                                                color: 'white', 
-                                                                background: getDueDateColor(obj.dueDate, obj.color), 
-                                                                padding: '1px 6px', 
-                                                                borderRadius: '4px',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '2px'
-                                                            }}>
-                                                                <Calendar size={8} /> {obj.dueDate}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                                        <button 
-                                                            onClick={() => {
-                                                                if (addMission) {
-                                                                    addMission(obj.title, '...', 'none', undefined, ['PROYECTO', 'HITOS'], obj.dueDate, undefined, project.id);
-                                                                    alert('¡Objetivo enviado a tu Agenda! 🚀');
-                                                                }
-                                                            }} 
-                                                            style={{ background: 'transparent', border: 'none', color: '#8b5cf6', cursor: 'pointer', padding: 0 }}
-                                                            title="Sincronizar Objetivo con Agenda"
-                                                        ><Zap size={14} /></button>
-
-                                                        <button 
-                                                            onClick={(e) => setActivePicker({ 
-                                                                type: 'objective', 
-                                                                projectId: project.id, 
-                                                                objectiveId: obj.id, 
-                                                                anchorRect: e.currentTarget.getBoundingClientRect(),
-                                                                data: { title: obj.title, dueDate: obj.dueDate, color: obj.color, group: obj.group } 
-                                                            })} 
-                                                            style={{ background: 'transparent', border: 'none', color: obj.dueDate || obj.group ? project.color : '#CBD5E1', cursor: 'pointer', padding: 0 }}
-                                                            title="Configurar entrega/grupo"
-                                                        ><Calendar size={14} /></button>
-
-                                                        <button 
-                                                            onClick={() => removeProjectObjective && window.confirm('¿Borrar objetivo y todas sus metas?') && removeProjectObjective(project.id, obj.id)}
-                                                            style={{ background: 'transparent', border: 'none', color: '#CBD5E1', cursor: 'pointer', padding: '4px' }}
-                                                        >
-                                                            <Trash2 size={14} />
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                {/* Tareas del Objetivo (Nodos) */}
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '28px' }}>
-                                                    {(obj.nodes || []).map(node => (
-                                                        <ProjectNodeItem 
-                                                            key={node.id}
-                                                            project={project}
-                                                            objectiveId={obj.id}
-                                                            node={node}
-                                                            updateProjectNode={updateProjectNode}
-                                                            removeProjectNode={removeProjectNode}
-                                                            addMission={addMission}
-                                                            onOpenPicker={(p: any) => setActivePicker(p)}
-                                                        />
-                                                    ))}
-                                                    
-                                                    {/* Añadir mini-tarea al objetivo */}
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                                                        <Plus size={14} color="#CBD5E1" />
-                                                        <input 
-                                                            placeholder="Agregar meta al objetivo..."
-                                                            onKeyDown={(e) => {
-                                                                const target = e.target as HTMLInputElement;
-                                                                if (e.key === 'Enter' && target.value.trim() && addProjectNode) {
-                                                                    addProjectNode(project.id, obj.id, target.value.trim(), 'task');
-                                                                    target.value = '';
-                                                                }
-                                                            }}
-                                                            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '0.8rem', outline: 'none', color: '#64748B' }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            <ProjectObjectiveItem 
+                                                key={obj.id}
+                                                project={project}
+                                                obj={obj}
+                                                updateProjectObjective={updateProjectObjective}
+                                                removeProjectObjective={removeProjectObjective}
+                                                addProjectNode={addProjectNode}
+                                                updateProjectNode={updateProjectNode}
+                                                removeProjectNode={removeProjectNode}
+                                                addMission={addMission}
+                                                onOpenPicker={(p: any) => setActivePicker(p)}
+                                            />
                                         ))}
                                     </div>
                                 ));

@@ -10,8 +10,8 @@ import { CerebroDashboard } from './components/dashboard/CerebroDashboard';
 import { FinanzasDashboard } from './components/dashboard/FinanzasDashboard';
 import { StatsDashboard } from './components/dashboard/StatsDashboard';
 import { ProyectosDashboard } from './components/dashboard/ProyectosDashboard';
-import { CalendarioView } from './components/dashboard/CalendarioView';
 import { ProjectDetailView } from './components/dashboard/ProjectDetailView';
+import { TimelineAgendaView } from './components/dashboard/TimelineAgendaView';
 import { SuperFab } from './components/features/SuperFab';
 import { NoteDetailView } from './components/dashboard/NoteDetailView';
 import { MissionEditOverlay } from './components/features/MissionEditOverlay';
@@ -44,9 +44,9 @@ function App() {
         alignItems: 'center', justifyContent: 'center', background: '#FDF8F5', gap: '1.5rem' 
       }}>
         <motion.div
-          animate={{ scale: [1, 1.1, 1], rotate: [0, 10, -10, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          style={{ fontSize: '4rem' }}
+            animate={{ scale: [1, 1.1, 1], rotate: [0, 10, -10, 0] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            style={{ fontSize: '4rem' }}
         >
           🧠
         </motion.div>
@@ -106,10 +106,12 @@ function App() {
                 </div>
               </div>
             ) : activeTab === 'Calendario' ? (
-              <CalendarioView 
-                agenda={state.agenda}
-                timeBlocks={state.timeBlocks}
+              <TimelineAgendaView 
+                missions={state.missions}
+                calendarEvents={state.agenda}
+                projects={state.projects}
                 rutinas={state.rutinas}
+                timeBlocks={state.timeBlocks}
               />
             ) : activeTab === 'Vida' ? (
               <VidaDashboard
