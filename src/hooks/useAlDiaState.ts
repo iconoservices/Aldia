@@ -105,6 +105,22 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
     isBudgetFixed: false
 };
 
+export interface ProjectNode {
+    id: number;
+    type: 'task' | 'note' | 'checklist';
+    title: string;
+    completed?: boolean;
+    content?: string;
+    subItems?: { id: number; text: string; completed: boolean }[];
+}
+
+export interface ProjectObjective {
+    id: number;
+    title: string;
+    completed: boolean;
+    nodes: ProjectNode[];
+}
+
 export interface Project {
     id: number;
     name: string;
@@ -116,6 +132,7 @@ export interface Project {
     inventoryItems?: { id: number; text: string; quantity: number }[];
     incomeCategories?: string[];
     expenseCategories?: string[];
+    objectives?: ProjectObjective[]; // Nuevo sistema de nivel 2
 }
 
 export const DEFAULT_INCOME_CATEGORIES = ['Sueldo', 'Venta', 'Inversión', 'Otros'];
@@ -164,7 +181,9 @@ export const useAlDiaState = () => {
         addInventoryItem, updateInventoryItemQuantity, removeInventoryItem,
         addRoutineItem, updateRoutineItem, toggleRoutineItem, removeRoutineItem,
         updateRoutine, addRoutine, removeRoutine, updateProjectTask,
-        addProjectCategory, removeProjectCategory, reorderRoutineItems
+        addProjectCategory, removeProjectCategory, reorderRoutineItems,
+        addProjectObjective, updateProjectObjective, removeProjectObjective,
+        addProjectNode, updateProjectNode, removeProjectNode
     } = useProyectosState();
 
     const {
@@ -451,6 +470,9 @@ export const useAlDiaState = () => {
         rutinas, addRoutineItem, updateRoutineItem, toggleRoutineItem, removeRoutineItem,
         updateRoutine, addRoutine, removeRoutine, addProjectCategory, removeProjectCategory,
         reorderRoutineItems,
+        // Objetivos y Tareas Profundas (Niveles 2 y 3)
+        addProjectObjective, updateProjectObjective, removeProjectObjective,
+        addProjectNode, updateProjectNode, removeProjectNode,
         // Otros
         notes, addNote, removeNote, toggleNoteItem, updateNote,
         accounts, setAccounts,

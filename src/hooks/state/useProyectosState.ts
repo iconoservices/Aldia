@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Project, TimeBlock, Routine } from '../useAlDiaState';
+import type { Project, TimeBlock, Routine, ProjectObjective, ProjectNode } from '../useAlDiaState';
 import { DEFAULT_INCOME_CATEGORIES, DEFAULT_EXPENSE_CATEGORIES } from '../useAlDiaState';
 
 export const useProyectosState = () => {
@@ -274,6 +274,72 @@ export const useProyectosState = () => {
         }));
     };
 
+    // --- NUEVO SISTEMA (Objetivos y Nodos) ---
+    const addProjectObjective = (projectId: number, title: string) => {
+        setProjects(prev => prev.map(p => {
+            if (p.id !== projectId) return p;
+            const newObj: ProjectObjective = { id: Date.now() + Math.random(), title, completed: false, nodes: [] };
+            return { ...p, objectives: [...(p.objectives || []), newObj] };
+        }));
+    };
+
+    const updateProjectObjective = (projectId: number, objectiveId: number, updates: Partial<ProjectObjective>) => {
+        setProjects(prev => prev.map(p => {
+            if (p.id !== projectId) return p;
+            return {
+                ...p,
+                objectives: (p.objectives || []).map(o => o.id === objectiveId ? { ...o, ...updates } : o)
+            };
+        }));
+    };
+
+    const removeProjectObjective = (projectId: number, objectiveId: number) => {
+        setProjects(prev => prev.map(p => {
+            if (p.id !== projectId) return p;
+            return { ...p, objectives: (p.objectives || []).filter(o => o.id !== objectiveId) };
+        }));
+    };
+
+    const addProjectNode = (projectId: number, objectiveId: number, title: string, type: 'task' | 'note' | 'checklist') => {
+        setProjects(prev => prev.map(p => {
+            if (p.id !== projectId) return p;
+            return {
+                ...p,
+                objectives: (p.objectives || []).map(o => {
+                    if (o.id !== objectiveId) return o;
+                    const newNode: ProjectNode = { id: Date.now() + Math.random(), type, title, completed: false, subItems: [] };
+                    return { ...o, nodes: [...(o.nodes || []), newNode] };
+                })
+            };
+        }));
+    };
+
+    const updateProjectNode = (projectId: number, objectiveId: number, nodeId: number, updates: Partial<ProjectNode>) => {
+        setProjects(prev => prev.map(p => {
+            if (p.id !== projectId) return p;
+            return {
+                ...p,
+                objectives: (p.objectives || []).map(o => {
+                    if (o.id !== objectiveId) return o;
+                    return { ...o, nodes: (o.nodes || []).map(n => n.id === nodeId ? { ...n, ...updates } : n) };
+                })
+            };
+        }));
+    };
+
+    const removeProjectNode = (projectId: number, objectiveId: number, nodeId: number) => {
+        setProjects(prev => prev.map(p => {
+            if (p.id !== projectId) return p;
+            return {
+                ...p,
+                objectives: (p.objectives || []).map(o => {
+                    if (o.id !== objectiveId) return o;
+                    return { ...o, nodes: (o.nodes || []).filter(n => n.id !== nodeId) };
+                })
+            };
+        }));
+    };
+
 
     return {
         projects,
@@ -307,6 +373,12 @@ export const useProyectosState = () => {
         },
         addRoutine,
         removeRoutine,
-        reorderRoutineItems
+        reorderRoutineItems,
+        addProjectObjective,
+        updateProjectObjective,
+        removeProjectObjective,
+        addProjectNode,
+        updateProjectNode,
+        removeProjectNode
     };
 };

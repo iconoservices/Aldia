@@ -265,6 +265,12 @@ function App() {
             projects={state.projects}
             updateProject={state.updateProject}
             onOpenSubProject={(id: number) => setSelectedProjectDetailId(id)}
+            addProjectObjective={state.addProjectObjective}
+            updateProjectObjective={state.updateProjectObjective}
+            removeProjectObjective={state.removeProjectObjective}
+            addProjectNode={state.addProjectNode}
+            updateProjectNode={state.updateProjectNode}
+            removeProjectNode={state.removeProjectNode}
           />
         )}
       </AnimatePresence>
