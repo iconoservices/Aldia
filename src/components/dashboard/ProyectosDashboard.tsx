@@ -1,5 +1,5 @@
 import { Plus, Trash2, ListTodo, Edit2, Archive, Play, GripVertical } from 'lucide-react';
-import { motion, Reorder } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { GlassCard } from '../ui/GlassCard';
 import type { Project } from '../../hooks/useAlDiaState';
@@ -20,6 +20,9 @@ export const ProyectosDashboard = ({
     const [editingProject, setEditingProject] = useState<Project | null>(null);
     const [showArchived, setShowArchived] = useState(false);
     const [isDetailedView, setIsDetailedView] = useState(false);
+    
+    // Estado para el Drag & Drop nativo
+    const [draggedProject, setDraggedProject] = useState<Project | null>(null);
 
     const activeItems = projects.filter(p => (p.status === 'activo' || !p.status) && !p.parentId);
     const archivedItems = projects.filter(p => p.status === 'pausado' && !p.parentId);
@@ -33,12 +36,7 @@ export const ProyectosDashboard = ({
     
     return (
         <div style={{ paddingBottom: '5rem' }}>
-            <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: '12px',
-                marginBottom: '1.5rem' 
-            }}>
+            <div className="proyectos-header-container">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>Proyectos</h2>
@@ -106,27 +104,54 @@ export const ProyectosDashboard = ({
                 </div>
             </div>
 
-            <Reorder.Group 
-                axis="y"
-                values={displayedProjects}
-                onReorder={(newOrder) => {
-                    const otherProjects = projects.filter(p => !displayedProjects.find(dp => dp.id === p.id));
-                    // Reorder works best by keeping the rest of the projects in their relative positions
-                    // but putting the new order in place.
-                    reorderProjects([...newOrder, ...otherProjects]);
-                }}
+            <div 
                 style={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    gap: '12px', 
-                    listStyle: 'none',
-                    padding: 0
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', 
+                    gap: '20px', 
+                    padding: 0,
+                    listStyle: 'none'
                 }}
             >
+                <AnimatePresence>
                 {displayedProjects.map(project => (
-                    <Reorder.Item 
+                    <motion.div 
                         key={project.id} 
-                        value={project}
+                        layout
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
+                        draggable
+                        onDragStart={(e: any) => {
+                            setDraggedProject(project);
+                            if (e.dataTransfer) {
+                                e.dataTransfer.effectAllowed = 'move';
+                            }
+                        }}
+                        onDragEnter={(e) => {
+                            e.preventDefault();
+                            if (draggedProject && draggedProject.id !== project.id) {
+                                const newOrder = [...displayedProjects];
+                                const dragIndex = newOrder.findIndex(p => p.id === draggedProject.id);
+                                const hoverIndex = newOrder.findIndex(p => p.id === project.id);
+                                
+                                newOrder.splice(dragIndex, 1);
+                                newOrder.splice(hoverIndex, 0, draggedProject);
+                                
+                                const otherProjects = projects.filter(p => !displayedProjects.find(dp => dp.id === p.id));
+                                reorderProjects([...newOrder, ...otherProjects]);
+                            }
+                        }}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDragEnd={() => {
+                            setDraggedProject(null);
+                        }}
+                        style={{ 
+                            listStyle: 'none', 
+                            opacity: draggedProject?.id === project.id ? 0 : 1,
+                            cursor: draggedProject ? 'grabbing' : 'auto'
+                        }}
                     >
                         <ProjectCard 
                             project={project} 
@@ -135,9 +160,10 @@ export const ProyectosDashboard = ({
                             onEdit={() => setEditingProject(project)}
                             onOpenDetail={onOpenDetail}
                         />
-                    </Reorder.Item>
+                    </motion.div>
                 ))}
-            </Reorder.Group>
+                </AnimatePresence>
+            </div>
 
             {displayedProjects.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '4rem 2rem', background: 'white', borderRadius: '24px', border: '2px dashed #F1F5F9' }}>
@@ -183,71 +209,79 @@ const ProjectCard = ({
     return (
         <GlassCard 
             style={{ 
-                padding: '1rem', 
-                height: 'auto',
+                padding: '1.5rem', 
+                height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
-                borderLeft: `6px solid ${project.color}`,
+                borderTop: `6px solid ${project.color}`,
                 cursor: 'pointer',
                 background: 'white',
-                gap: '12px'
+                gap: '16px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
+                borderRadius: '20px',
+                transition: 'transform 0.2s, box-shadow 0.2s'
             }}
             onClick={() => onOpenDetail(project.id)}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.06)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.03)'; }}
         >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-                    <GripVertical size={16} color="#DDD" style={{ cursor: 'grab' }} />
+                <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <div style={{ padding: '2px 0', cursor: 'grab' }}>
+                        <GripVertical size={16} color="#CBD5E1" />
+                    </div>
                     <div>
-                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-carbon)', lineHeight: 1.2 }}>
+                        <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)', lineHeight: 1.2 }}>
                             {project.name}
                         </h4>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
                             {hasSubProjects && (
-                                <span style={{ fontSize: '0.6rem', fontWeight: 900, color: project.color, background: `${project.color}15`, padding: '1px 6px', borderRadius: '4px' }}>
-                                    📁 {subProjects.length} HIJOS
+                                <span style={{ fontSize: '0.65rem', fontWeight: 900, color: project.color, background: `${project.color}15`, padding: '4px 8px', borderRadius: '8px' }}>
+                                    📁 {subProjects.length} PROYECTOS HIJOS
                                 </span>
                             )}
                             {project.parentId && (
-                                <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#AAA' }}>
+                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#888', background: '#F1F5F9', padding: '4px 8px', borderRadius: '8px' }}>
                                     En: {allProjects.find(p => p.id === project.parentId)?.name || '...'}
                                 </span>
                             )}
                         </div>
                     </div>
                 </div>
-                <div style={{ display: 'flex', gap: '6px' }}>
+                <div style={{ display: 'flex', gap: '6px', marginLeft: '12px' }}>
                     <button 
                         onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                        style={{ background: '#F1F5F9', border: 'none', color: '#64748B', borderRadius: '8px', padding: '6px', cursor: 'pointer' }}
+                        style={{ background: '#F8FAFC', border: 'none', color: '#64748B', borderRadius: '10px', padding: '8px', cursor: 'pointer', transition: 'background 0.2s' }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#E2E8F0'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#F8FAFC'}
                     >
-                        <Edit2 size={14} />
+                        <Edit2 size={16} />
                     </button>
                     <button 
                         onClick={(e) => { e.stopPropagation(); if(confirm('¿Borrar proyecto?')) deleteProject(project.id); }}
-                        style={{ background: '#F1F5F9', border: 'none', color: '#EF4444', borderRadius: '8px', padding: '6px', cursor: 'pointer' }}
+                        style={{ background: '#FEF2F2', border: 'none', color: '#EF4444', borderRadius: '10px', padding: '8px', cursor: 'pointer', transition: 'background 0.2s' }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#FEE2E2'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#FEF2F2'}
                     >
-                        <Trash2 size={14} />
+                        <Trash2 size={16} />
                     </button>
                 </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#94A3B8' }}>PROGRESO</span>
-                        <span style={{ fontSize: '0.6rem', fontWeight: 900, color: project.color }}>{Math.round(progress)}%</span>
+            <div style={{ marginTop: 'auto', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#F8FAFC', padding: '4px 10px', borderRadius: '12px' }}>
+                        <ListTodo size={14} color="#64748B" />
+                        <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#334155' }}>{completedCount}/{totalCount} Tareas</span>
                     </div>
-                    <div style={{ width: '100%', height: '6px', background: '#F1F5F9', borderRadius: '3px', overflow: 'hidden' }}>
-                        <motion.div 
-                            initial={{ width: 0 }}
-                            animate={{ width: `${progress}%` }}
-                            style={{ height: '100%', background: project.color }}
-                        />
-                    </div>
+                    <span style={{ fontSize: '1rem', fontWeight: 900, color: project.color }}>{Math.round(progress)}%</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#F8FAFC', padding: '4px 8px', borderRadius: '8px' }}>
-                    <ListTodo size={12} color="#94A3B8" />
-                    <span style={{ fontSize: '0.7rem', fontWeight: 900, color: '#334155' }}>{completedCount}/{totalCount}</span>
+                <div style={{ width: '100%', height: '8px', background: '#F1F5F9', borderRadius: '4px', overflow: 'hidden' }}>
+                    <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progress}%` }}
+                        style={{ height: '100%', background: project.color, borderRadius: '4px' }}
+                    />
                 </div>
             </div>
         </GlassCard>

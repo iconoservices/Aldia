@@ -32,10 +32,29 @@ export const VidaDashboard = ({
     const normalizedDay = (new Date().getDay() + 6) % 7;
 
     return (
-        <div style={{ paddingBottom: '5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ paddingBottom: '5rem' }}>
+            <style>{`
+                .vida-layout {
+                    display: grid;
+                    grid-template-columns: 1fr;
+                    gap: 1.5rem;
+                    align-items: start;
+                }
+                @media (min-width: 1024px) {
+                    .vida-layout {
+                        grid-template-columns: 380px 1fr;
+                        gap: 2.5rem;
+                    }
+                    .habitos-col {
+                        position: sticky;
+                        top: 2rem;
+                    }
+                }
+            `}</style>
             
+            <div className="vida-layout">
             {/* MOTOR DE HÁBITOS (SECCIÓN PRINCIPAL) */}
-            <div>
+            <div className="habitos-col">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>🌿 Fábrica de Hábitos</h3>
                     <button 
@@ -322,7 +341,7 @@ export const VidaDashboard = ({
                                                 axis="y" 
                                                 values={rutina.items} 
                                                 onReorder={(newItems: any[]) => reorderRoutineItems(rutina.id, newItems)}
-                                                style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px', marginTop: '12px', listStyle: 'none', padding: 0 }}
+                                                style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', listStyle: 'none', padding: 0 }}
                                             >
                                                 {rutina.items.map(item => {
                                                     const isDone = item.completed;
@@ -469,7 +488,8 @@ export const VidaDashboard = ({
                         </motion.div>
                     )}
                 </AnimatePresence>
-            </div>
+            </div> {/* FIN DE LA COLUMNA DE RUTINAS */}
+            </div> {/* FIN DEL LAYOUT GRID */}
 
             {/* CHECKLISTS (MAESTROS / ASÍNCRONOS) */}
             {/* CHECKLISTS (MAESTROS / ASÍNCRONOS) - Hidden until implemented */}

@@ -66,7 +66,7 @@ function App() {
         onProfileClick={() => setIsProfileOpen(true)}
       />
 
-      <main className="dashboard">
+      <main className={`dashboard ${activeTab === 'Calendario' ? 'full-bleed' : ''}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -77,7 +77,7 @@ function App() {
             style={{
               width: '100%',
               ...(activeTab === 'Calendario' && {
-                height: 'calc(100dvh - 120px)',
+                height: 'calc(100dvh - 65px)', /* Altura de la cabecera */
                 overflow: 'hidden',
                 display: 'flex',
                 flexDirection: 'column'

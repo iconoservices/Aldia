@@ -535,7 +535,40 @@ export const ProjectDetailView = ({
         }
     };
 
-
+    const renderTabButtons = () => (
+        (['objectives', 'inventory', 'categorias', 'subprojects', 'accounts', 'balance'] as const).map(tab => (
+            <button
+                key={tab}
+                className="project-tab-btn"
+                onClick={() => setActiveTab(tab)}
+                style={{
+                    flex: '1 0 auto',
+                    minWidth: '65px',
+                    borderRadius: '12px', border: 'none',
+                    background: activeTab === tab ? 'white' : 'transparent',
+                    color: activeTab === tab ? project.color : '#64748B',
+                    fontWeight: 900, fontSize: '0.65rem', cursor: 'pointer',
+                    boxShadow: activeTab === tab ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
+                    whiteSpace: 'nowrap'
+                }}
+            >
+                <span className="tab-icon">
+                    {tab === 'objectives' ? '🎯' : 
+                     tab === 'inventory' ? '📦' : 
+                     tab === 'categorias' ? '🏷️' : 
+                     tab === 'subprojects' ? '📂' : 
+                     tab === 'accounts' ? '💳' : '💰'}
+                </span>
+                <span>
+                    {tab === 'objectives' ? 'Plan' : 
+                     tab === 'inventory' ? 'Stock' : 
+                     tab === 'categorias' ? 'Tipos' : 
+                     tab === 'subprojects' ? 'Hijos' : 
+                     tab === 'accounts' ? 'Cuentas' : 'Saldo'}
+                </span>
+            </button>
+        ))
+    );
 
     return (
         <motion.div 
@@ -555,9 +588,15 @@ export const ProjectDetailView = ({
                     <ArrowLeft size={20} />
                 </button>
                 <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{project.name}</h2>
-                        <div style={{ background: `${project.color}15`, padding: '4px 10px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '4px', border: `1px solid ${project.color}33` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)', whiteSpace: 'nowrap' }}>{project.name}</h2>
+                        
+                        {/* PC ONLY Tabs */}
+                        <div className="project-tabs-container desktop-only" style={{ marginBottom: 0, padding: '4px' }}>
+                            {renderTabButtons()}
+                        </div>
+
+                        <div style={{ background: `${project.color}15`, padding: '4px 10px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '4px', border: `1px solid ${project.color}33`, marginLeft: 'auto' }}>
                             <span style={{ fontSize: '0.8rem', fontWeight: 900, color: project.color }}>S/.{totalBalance.toLocaleString()}</span>
                         </div>
                     </div>
@@ -582,38 +621,9 @@ export const ProjectDetailView = ({
                 </div>
             )}
 
-            {/* Tabs Navigation - Grilla optimizada para 6 elementos (3x2) en iPhone 13 */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '1rem', background: '#F1F5F9', padding: '6px', borderRadius: '16px' }}>
-                {(['objectives', 'inventory', 'categorias', 'subprojects', 'accounts', 'balance'] as const).map(tab => (
-                    <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        style={{
-                            padding: '10px 4px', borderRadius: '12px', border: 'none',
-                            background: activeTab === tab ? 'white' : 'transparent',
-                            color: activeTab === tab ? project.color : '#64748B',
-                            fontWeight: 900, fontSize: '0.65rem', cursor: 'pointer',
-                            boxShadow: activeTab === tab ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px',
-                            transition: 'all 0.2s'
-                        }}
-                    >
-                        <span style={{ fontSize: '1.2rem' }}>
-                            {tab === 'objectives' ? '🎯' : 
-                             tab === 'inventory' ? '📦' : 
-                             tab === 'categorias' ? '🏷️' : 
-                             tab === 'subprojects' ? '📂' : 
-                             tab === 'accounts' ? '💳' : '💰'}
-                        </span>
-                        <span>
-                            {tab === 'objectives' ? 'Plan' : 
-                             tab === 'inventory' ? 'Stock' : 
-                             tab === 'categorias' ? 'Tipos' : 
-                             tab === 'subprojects' ? 'Hijos' : 
-                             tab === 'accounts' ? 'Cuentas' : 'Saldo'}
-                        </span>
-                    </button>
-                ))}
+            {/* Tabs Navigation - Grilla original en celular */}
+            <div className="project-tabs-container mobile-only">
+                {renderTabButtons()}
             </div>
 
             {/* TAB CONTENT */}
