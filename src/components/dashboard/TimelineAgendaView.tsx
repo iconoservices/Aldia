@@ -1,27 +1,20 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Filter, Trash2, X, Star } from 'lucide-react';
+import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Filter, Trash2, Star } from 'lucide-react';
 
 interface TimelineAgendaViewProps {
     calendarEvents: any[];
     projects: any[];
     rutinas?: any[];
     habits?: any[];
-    timeBlocks?: any[];
     onRemoveEvent?: (id: number) => void;
-    onUpdateEvent?: (id: number, updates: any) => void;
-    onRemoveRoutine?: (id: number) => void;
-    onUpdateRoutine?: (id: number, updates: any) => void;
-    onRemoveTimeBlock?: (id: number) => void;
-    onUpdateTimeBlock?: (id: number, updates: any) => void;
     missions?: any[];
     onToggleMission?: (id: number) => void;
 }
 
 export const TimelineAgendaView = ({ 
-    calendarEvents, projects, rutinas = [], timeBlocks = [], missions = [], habits = [],
-    onRemoveEvent, onUpdateEvent, onRemoveRoutine, onUpdateRoutine, onRemoveTimeBlock, onUpdateTimeBlock, 
-    onToggleMission
+    calendarEvents, projects = [], rutinas = [], missions = [], habits = [],
+    onRemoveEvent, onToggleMission
 }: TimelineAgendaViewProps) => {
     const [viewMode, setViewMode] = useState<'timeline' | 'month' | 'appointments' | 'tasks'>('timeline');
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -39,8 +32,6 @@ export const TimelineAgendaView = ({
     
     // Estado para edición
     const [editTitle, setEditTitle] = useState('');
-    const [editStart, setEditStart] = useState('');
-    const [editEnd, setEditEnd] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // Sincronizar estado de edición al abrir el modal
@@ -49,16 +40,10 @@ export const TimelineAgendaView = ({
             const { type, data } = editingItem;
             if (type === 'calendar') {
                 setEditTitle(data.title || '');
-                setEditStart(data.startTime || '');
-                setEditEnd(data.endTime || '');
             } else if (type === 'routine') {
                 setEditTitle(data.title || '');
-                setEditStart(data.startTime || '');
-                setEditEnd(data.endTime || '');
             } else if (type === 'timeblock') {
                 setEditTitle(data.label || '');
-                setEditStart(data.start || '');
-                setEditEnd(data.end || '');
             }
         }
     }, [editingItem]);
@@ -548,7 +533,7 @@ export const TimelineAgendaView = ({
 
                                         allItems.sort((a, b) => a.time.localeCompare(b.time));
 
-                                        return allItems.map((item: any, idx: number) => (
+                                        return allItems.map((item: any) => (
                                             <div key={item.id} style={{ display: 'flex', gap: '15px', marginBottom: '16px', position: 'relative' }}>
                                                 <div style={{ width: '45px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', paddingTop: '4px', flexShrink: 0 }}>
                                                     <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{item.time}</span>
