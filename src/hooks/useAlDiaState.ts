@@ -205,7 +205,8 @@ export const useAlDiaState = () => {
         updateRoutine, addRoutine, removeRoutine, updateProjectTask,
         addProjectCategory, removeProjectCategory, reorderRoutineItems,
         addProjectObjective, updateProjectObjective, removeProjectObjective,
-        addProjectNode, updateProjectNode, removeProjectNode, promoteNodeToRoutine
+        addProjectNode, updateProjectNode, removeProjectNode, promoteNodeToRoutine,
+        promoteRoutineItemToProject
     } = useProyectosState();
 
     const {
@@ -515,6 +516,7 @@ export const useAlDiaState = () => {
         rutinas, addRoutineItem: lw(addRoutineItem), updateRoutineItem: lw(updateRoutineItem),
         toggleRoutineItem: lw(toggleRoutineItem), removeRoutineItem: lw(removeRoutineItem),
         updateRoutine: lw(updateRoutine), addRoutine: lw(addRoutine), removeRoutine: lw(removeRoutine), reorderRoutineItems: lw(reorderRoutineItems),
+        promoteRoutineItemToProject: lw(promoteRoutineItemToProject),
         // Otros
         notes, addNote: lw(addNote), removeNote: lw(removeNote), toggleNoteItem: lw(toggleNoteItem), updateNote: lw(updateNote),
         accounts, setAccounts: lw(setAccounts),

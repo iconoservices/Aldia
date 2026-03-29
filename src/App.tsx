@@ -138,6 +138,8 @@ function App() {
                 addRoutine={state.addRoutine}
                 removeRoutine={state.removeRoutine}
                 reorderRoutineItems={state.reorderRoutineItems}
+                projects={state.projects}
+                promoteRoutineItemToProject={state.promoteRoutineItemToProject}
               />
             ) : activeTab === 'Cerebro' ? (
               <CerebroDashboard

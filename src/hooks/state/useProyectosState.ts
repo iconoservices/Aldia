@@ -77,19 +77,23 @@ export const useProyectosState = () => {
     };
 
     const toggleProjectTask = (projectId: number, taskId: number) => {
+        const pId = Number(projectId);
+        const tId = Number(taskId);
         setProjects(prev => {
             if (!Array.isArray(prev)) return [];
             return prev.map(p => {
-                if (p.id !== projectId) return p;
+                if (Number(p.id) !== pId) return p;
                 const currentChecklist = Array.isArray(p.checklist) ? p.checklist : [];
                 const updatedChecklist = currentChecklist.map(t => {
-                    if (t.id !== taskId) return t;
+                    if (Number(t.id) !== tId) return t;
                     const newCompleted = !t.completed;
                     // Sync linked routine item if exists
                     if (t.linkedRoutineId && t.linkedRoutineItemId) {
+                        const lrId = Number(t.linkedRoutineId);
+                        const lriId = Number(t.linkedRoutineItemId);
                         setRutinas(prevR => prevR.map(r => {
-                            if (r.id !== t.linkedRoutineId) return r;
-                            return { ...r, items: r.items.map(it => it.id === t.linkedRoutineItemId ? { ...it, completed: newCompleted } : it) };
+                            if (Number(r.id) !== lrId) return r;
+                            return { ...r, items: r.items.map(it => Number(it.id) === lriId ? { ...it, completed: newCompleted } : it) };
                         }));
                     }
                     return { ...t, completed: newCompleted };
@@ -100,24 +104,40 @@ export const useProyectosState = () => {
     };
 
     const toggleRoutineItem = (routineId: number, itemId: number) => {
+        const rId = Number(routineId);
+        const iId = Number(itemId);
         setRutinas(prev => prev.map(r => {
-            if (r.id !== routineId) return r;
+            if (Number(r.id) !== rId) return r;
             return {
                 ...r,
                 items: r.items.map(it => {
-                    if (it.id !== itemId) return it;
+                    if (Number(it.id) !== iId) return it;
                     const newCompleted = !it.completed;
                     const todayStr = new Date().toLocaleDateString('en-CA');
+                    
+                    // Sync linked project checklist if exists
+                    if (it.linkedProjectId && it.linkedTaskId) {
+                        const lpId = Number(it.linkedProjectId);
+                        const ltId = Number(it.linkedTaskId);
+                        setProjects(prevP => prevP.map(p => {
+                            if (Number(p.id) !== lpId) return p;
+                            return { ...p, checklist: (p.checklist || []).map(t => Number(t.id) === ltId ? { ...t, completed: newCompleted } : t) };
+                        }));
+                    }
+                    
                     // Sync linked project node if exists
                     if (it.linkedProjectId && it.linkedObjectiveId) {
+                        const lpId = Number(it.linkedProjectId);
+                        const loId = Number(it.linkedObjectiveId);
                         setProjects(prevP => prevP.map(p => {
-                            if (p.id !== it.linkedProjectId) return p;
+                            if (Number(p.id) !== lpId) return p;
                             return {
                                 ...p,
                                 objectives: (p.objectives || []).map(o => {
-                                    if (o.id !== it.linkedObjectiveId) return o;
+                                    if (Number(o.id) !== loId) return o;
                                     if (it.linkedNodeId) {
-                                        return { ...o, nodes: (o.nodes || []).map(n => n.id === it.linkedNodeId ? { ...n, completed: newCompleted } : n) };
+                                        const lnId = Number(it.linkedNodeId);
+                                        return { ...o, nodes: (o.nodes || []).map(n => Number(n.id) === lnId ? { ...n, completed: newCompleted } : n) };
                                     } else {
                                         return { ...o, completed: newCompleted };
                                     }
@@ -125,13 +145,7 @@ export const useProyectosState = () => {
                             };
                         }));
                     }
-                    // Original checklist sync
-                    if (it.linkedProjectId && it.linkedTaskId) {
-                        setProjects(prevP => prevP.map(p => {
-                            if (p.id !== it.linkedProjectId) return p;
-                            return { ...p, checklist: (p.checklist || []).map(t => t.id === it.linkedTaskId ? { ...t, completed: newCompleted } : t) };
-                        }));
-                    }
+                    
                     return { ...it, completed: newCompleted, completedDate: newCompleted ? todayStr : undefined };
                 })
             };
@@ -296,7 +310,11 @@ export const useProyectosState = () => {
         }));
     };
 
-    const updateRoutineItem = (routineId: number, itemId: number, updates: Partial<{ text: string, completed: boolean, time: string }>) => {
+    const updateRoutineItem = (routineId: number, itemId: number, updates: Partial<{
+        text: string; completed: boolean; time: string;
+        linkedProjectId: number | undefined; linkedTaskId: number | undefined;
+        linkedObjectiveId: number | undefined; linkedNodeId: number | undefined;
+    }>) => {
         setRutinas(prev => prev.map(r => {
             if (r.id !== routineId) return r;
             return {
@@ -340,6 +358,49 @@ export const useProyectosState = () => {
 
     const reorderRoutineItems = (routineId: number, newItems: any[]) => {
         setRutinas(prev => prev.map(r => r.id === routineId ? { ...r, items: newItems } : r));
+    };
+
+    // Promoción inversa: ítem de rutina → tarea del checklist de un proyecto
+    const promoteRoutineItemToProject = (routineId: number, itemId: number, projectId: number) => {
+        const rId = Number(routineId);
+        const iId = Number(itemId);
+        const pId = Number(projectId);
+
+        const rutina = rutinas.find(r => Number(r.id) === rId);
+        const item = rutina?.items.find(it => Number(it.id) === iId);
+        
+        if (!item) {
+            console.warn("Promote fail: Item not found", { rId, iId, rutinas });
+            return;
+        }
+
+        const newTaskId = Date.now() + Math.random();
+
+        // 1. Añadir tarea al checklist del proyecto con el vínculo hacia la rutina
+        setProjects(prev => prev.map(p => {
+            if (Number(p.id) !== pId) return p;
+            const newTask = {
+                id: Date.now() + Math.random(),
+                text: item.text,
+                completed: item.completed,
+                linkedRoutineId: rId,
+                linkedRoutineItemId: iId
+            };
+            return { ...p, checklist: [...(p.checklist || []), newTask] };
+        }));
+
+        // 2. Marcar el ítem de rutina con el vínculo hacia la tarea del proyecto
+        setRutinas(prev => prev.map(r => {
+            if (Number(r.id) !== rId) return r;
+            return {
+                ...r,
+                items: r.items.map(it => Number(it.id) === iId ? {
+                    ...it,
+                    linkedProjectId: pId,
+                    linkedTaskId: newTaskId
+                } : it)
+            };
+        }));
     };
 
     const addProjectCategory = (projectId: number, type: 'ingreso' | 'gasto', categoryName: string) => {
@@ -471,6 +532,7 @@ export const useProyectosState = () => {
         removeProjectObjective,
         addProjectNode,
         updateProjectNode,
-        reorderProjects
+        reorderProjects,
+        promoteRoutineItemToProject
     };
 };

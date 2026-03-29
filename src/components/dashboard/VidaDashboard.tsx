@@ -1,5 +1,5 @@
-import { Plus, Check, Trash2, Calendar, LayoutGrid, Clock, Edit2, GripVertical, Leaf } from 'lucide-react';
-import type { Habit, Routine } from '../../hooks/useAlDiaState';
+import { Plus, Check, Trash2, Calendar, LayoutGrid, Clock, Edit2, GripVertical, Leaf, Folder } from 'lucide-react';
+import type { Habit, Routine, Project } from '../../hooks/useAlDiaState';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { useState } from 'react';
 import { RoutineEditOverlay } from '../features/RoutineEditOverlay';
@@ -9,24 +9,31 @@ interface VidaProps {
     toggleHabit: (id: number, dayIndex: number) => void;
     addHabit: (name: string, schedule?: number[], linkedRoutineId?: number, linkedRoutineItemId?: number) => void;
     removeHabit: (id: number) => void;
+    projects: Project[];
     rutinas: Routine[];
     addRoutineItem: (routineId: number, text: string) => void;
     toggleRoutineItem: (routineId: number, itemId: number) => void;
     removeRoutineItem: (routineId: number, itemId: number) => void;
     updateRoutine: (id: number, updates: Partial<Routine>) => void;
-    updateRoutineItem: (routineId: number, itemId: number, updates: Partial<{ text: string, completed: boolean, time: string }>) => void;
+    updateRoutineItem: (routineId: number, itemId: number, updates: Partial<{ 
+        text: string, completed: boolean, time: string, 
+        linkedProjectId?: number, linkedTaskId?: number 
+    }>) => void;
     addRoutine: (title: string) => void;
     removeRoutine: (id: number) => void;
     reorderRoutineItems: (routineId: number, newItems: any[]) => void;
+    promoteRoutineItemToProject: (routineId: number, itemId: number, projectId: number) => void;
 }
 
 export const VidaDashboard = ({ 
     habits, toggleHabit, addHabit, removeHabit,
     rutinas, addRoutineItem, toggleRoutineItem, removeRoutineItem, updateRoutine,
-    updateRoutineItem, addRoutine, removeRoutine, reorderRoutineItems
+    updateRoutineItem, addRoutine, removeRoutine, reorderRoutineItems,
+    projects, promoteRoutineItemToProject
 }: VidaProps) => {
     const [viewMode, setViewMode] = useState<'hoy' | 'semana'>('hoy');
     const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
+    const [linkingItem, setLinkingItem] = useState<{ rId: number, iId: number } | null>(null);
     const days = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
     const todayStr = new Date().toLocaleDateString('en-CA');
     const normalizedDay = (new Date().getDay() + 6) % 7;
@@ -40,6 +47,13 @@ export const VidaDashboard = ({
                     gap: 1.5rem;
                     align-items: start;
                 }
+                .vida-main-container {
+                    padding: 1.2rem;
+                    background: white;
+                    border-radius: 24px;
+                    border: 1px solid rgba(138, 92, 246, 0.1);
+                    transition: all 0.3s ease;
+                }
                 .time-input-clean::-webkit-calendar-picker-indicator {
                     display: none;
                     -webkit-appearance: none;
@@ -50,12 +64,22 @@ export const VidaDashboard = ({
                 @media (min-width: 1024px) {
                     .vida-layout {
                         grid-template-columns: 380px 1fr;
-                        gap: 2.5rem;
                     }
-                    .habitos-col {
-                        position: sticky;
-                        top: 2rem;
+                    .vida-main-container {
+                        background: transparent;
+                        border: none;
+                        padding: 0;
+                        box-shadow: none;
                     }
+                }
+                @media (max-width: 1023px) {
+                    .vida-main-container {
+                        box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+                    }
+                }
+                .habitos-col {
+                    position: sticky;
+                    top: 2rem;
                 }
             `}</style>
             
@@ -232,12 +256,8 @@ export const VidaDashboard = ({
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
-                            className="glass-card"
+                            className="vida-main-container"
                             style={{ 
-                                padding: '1.2rem', 
-                                background: 'white', 
-                                borderRadius: '24px', 
-                                border: '1px solid rgba(138, 92, 246, 0.1)',
                                 display: 'flex',
                                 flexDirection: 'column'
                             }}
@@ -453,6 +473,80 @@ export const VidaDashboard = ({
                                                                 );
                                                             })()}
 
+                                                            {/* Botón Vincular con Proyecto */}
+                                                            <div style={{ position: 'relative' }}>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        if (item.linkedProjectId) {
+                                                                            // Navegar al proyecto o desvincular (aquí simplemente desvinculamos por simplicidad en este paso)
+                                                                            if (confirm('¿Desvincular esta tarea del proyecto?')) {
+                                                                                updateRoutineItem(rutina.id, item.id, { linkedProjectId: undefined, linkedTaskId: undefined });
+                                                                            }
+                                                                        } else {
+                                                                            setLinkingItem(linkingItem?.iId === item.id ? null : { rId: rutina.id, iId: item.id });
+                                                                        }
+                                                                    }}
+                                                                    title={item.linkedProjectId ? 'Ver proyecto vinculado' : 'Vincular con proyecto'}
+                                                                    style={{ 
+                                                                        background: item.linkedProjectId ? 'rgba(67,97,238,0.15)' : 'transparent', 
+                                                                        border: 'none', borderRadius: '6px', cursor: 'pointer', padding: '3px 5px', 
+                                                                        display: 'flex', alignItems: 'center', transition: 'all 0.2s' 
+                                                                    }}
+                                                                >
+                                                                    <Folder size={10} color={item.linkedProjectId ? 'var(--domain-purple)' : '#BBB'} fill={item.linkedProjectId ? 'var(--domain-purple)' : 'none'} />
+                                                                </button>
+
+                                                                {/* Menú de Selección de Proyecto */}
+                                                                <AnimatePresence>
+                                                                    {linkingItem?.iId === item.id && (
+                                                                        <motion.div
+                                                                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                                                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                                                                            style={{ 
+                                                                                position: 'absolute', top: '100%', right: 0, zIndex: 100,
+                                                                                background: 'white', borderRadius: '12px', padding: '8px', 
+                                                                                boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #EEE',
+                                                                                minWidth: '160px', marginTop: '8px'
+                                                                            }}
+                                                                        >
+                                                                            <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#AAA', marginBottom: '6px', padding: '0 4px' }}>ENVIAR A PROYECTO:</div>
+                                                                            <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                                                {projects.filter(p => p.status === 'activo').map(proj => (
+                                                                                    <div
+                                                                                        key={proj.id}
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation();
+                                                                                            e.preventDefault();
+                                                                                            console.log("Linking to project:", proj.id, "from routine item:", item.id);
+                                                                                            promoteRoutineItemToProject(rutina.id, item.id, proj.id);
+                                                                                            // Pequeño timeout para asegurar que el estado se procesa antes de desmontar el menú
+                                                                                            setTimeout(() => setLinkingItem(null), 100);
+                                                                                        }}
+                                                                                        style={{ 
+                                                                                            textAlign: 'left', background: 'transparent', border: 'none', 
+                                                                                            padding: '8px 10px', borderRadius: '8px', fontSize: '0.75rem', 
+                                                                                            fontWeight: 800, color: 'var(--text-carbon)', cursor: 'pointer',
+                                                                                            display: 'flex', alignItems: 'center', gap: '8px',
+                                                                                            transition: 'all 0.2s'
+                                                                                        }}
+                                                                                        onMouseEnter={(e) => { e.currentTarget.style.background = '#F5F5F7'; e.currentTarget.style.color = proj.color; }}
+                                                                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-carbon)'; }}
+                                                                                    >
+                                                                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: proj.color, boxShadow: `0 0 10px ${proj.color}44` }} />
+                                                                                        {proj.name}
+                                                                                    </div>
+                                                                                ))}
+                                                                                {projects.length === 0 && (
+                                                                                    <div style={{ fontSize: '0.65rem', color: '#CCC', textAlign: 'center', padding: '10px' }}>No hay proyectos activos</div>
+                                                                                )}
+                                                                            </div>
+                                                                        </motion.div>
+                                                                    )}
+                                                                </AnimatePresence>
+                                                            </div>
+
                                                             <button 
                                                                 onClick={(e) => { e.stopPropagation(); removeRoutineItem(rutina.id, item.id); }}
                                                                 style={{ background: 'transparent', border: 'none', color: '#EEE', cursor: 'pointer', padding: '4px', opacity: 0.1 }}
@@ -489,8 +583,8 @@ export const VidaDashboard = ({
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
-                            className="glass-card"
-                            style={{ background: 'white', padding: '1.5rem', borderRadius: '24px', overflowX: 'auto' }}
+                            className="vida-main-container"
+                            style={{ overflowX: 'auto' }}
                         >
                             <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(7, 1fr)', gap: '12px', minWidth: '700px' }}>
                                 <div />
