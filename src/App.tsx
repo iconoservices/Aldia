@@ -59,7 +59,7 @@ function App() {
   }
 
   return (
-    <div className="aldia-container">
+    <div className={`aldia-container ${activeTab === 'Calendario' ? 'no-scroll' : ''}`}>
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}

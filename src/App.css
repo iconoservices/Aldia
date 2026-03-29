@@ -11,6 +11,11 @@
   background-color: var(--bg-cream);
 }
 
+/* Evita barra de scroll doble cuando el Calendario toma pantalla completa */
+.aldia-container.no-scroll {
+  overflow: hidden !important;
+}
+
 /* 1. Base para TODA la aplicación */
 ::-webkit-scrollbar {
   width: 6px;
@@ -406,12 +411,32 @@ h3 {
   padding-bottom: 7rem;
 }
 
+.dashboard.full-bleed {
+  padding: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+/* Altura calculada para la vista de Calendario evitando scrollbars anidados */
+.agenda-wrapper {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  /* Altura total (100dvh) - Cabecera (65px) - Navbar Bottom (~70px) */
+  height: calc(100dvh - 135px);
+}
+
 /* Escritorio (PC/Tablet Landscape) */
 @media (min-width: 900px) {
   .aldia-container {
     padding: 0;
     margin: 0;
     max-width: 100%;
+  }
+
+  .agenda-wrapper {
+    /* En PC no hay Navbar inferior flotante, usamos más espacio */
+    height: calc(100dvh - 65px);
   }
 
   .dashboard {
@@ -423,12 +448,6 @@ h3 {
     padding: 0.5rem 1rem;
     padding-bottom: 5rem;
     transition: all 0.3s ease;
-  }
-
-  .dashboard.full-bleed {
-    padding: 0 !important;
-    max-width: none !important;
-    margin: 0 !important;
   }
 
   /* Agrupamos la lista de misiones y upcoming a la derecha */
@@ -619,6 +638,36 @@ h3 {
   border-right: none;
 }
 
+/* ================================
+   PANEL LATERAL DERECHO (MISIONES)
+   ================================ */
+.agenda-right-sidebar {
+  width: 320px;
+  height: 100%;
+  background: white;
+  border-left: 1px solid #E2E8F0;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 50;
+}
+
+.agenda-right-sidebar.collapsed {
+  width: 0;
+  opacity: 0;
+  pointer-events: none;
+  border-left: none;
+}
+
+/* Ocultar en móviles por diseño responsive */
+@media (max-width: 900px) {
+  .agenda-right-sidebar {
+    display: none !important;
+  }
+}
+
 .agenda-main-content {
   flex: 1;
   height: 100%;
@@ -632,7 +681,7 @@ h3 {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
-  padding: 8px;
+  padding: 4px 0;
 }
 
 .mini-date-cell {
