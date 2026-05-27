@@ -31,9 +31,9 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
         return () => window.removeEventListener('storage', handleStorage);
     }, [user]);
 
-    const allTabs = ['🔥 Acción', '📅 Calendario', '🧠 Cerebro', '🌿 Vida', '📁 Proyectos', '📋 Tablero', '💸 Finanzas', '📊 Stats'];
-    const mainTabs = allTabs.slice(0, 7);
-    const statsTab = allTabs[7];
+    const allTabs = ['🔥 Acción', '📅 Calendario', '🧱 Bloques', '🧠 Cerebro', '🌿 Vida', '📁 Proyectos', '📋 Tablero', '🎨 Lienzo', '💸 Finanzas', '📊 Stats'];
+    const mainTabs = allTabs.slice(0, 9);
+    const statsTab = allTabs[9];
 
     const renderTab = (tab: string, className = "") => {
         const tabValue = tab.split(' ')[1];
@@ -50,6 +50,11 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
 
     return (
         <header className="aldia-header">
+            <div className="sidebar-logo desktop-only">
+                <div className="logo-placeholder">A</div>
+                <span className="logo-text">AlDía</span>
+            </div>
+
             <div className="tabs-container">
                 {mainTabs.map(tab => renderTab(tab))}
                 {/* Desktop only Stats */}

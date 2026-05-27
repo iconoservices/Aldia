@@ -1,5 +1,5 @@
 // Final deployment build - Aldia App
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 import { Header } from './components/layout/Header';
@@ -12,6 +12,7 @@ import { StatsDashboard } from './components/dashboard/StatsDashboard';
 import { ProyectosDashboard } from './components/dashboard/ProyectosDashboard';
 import { ProjectDetailView } from './components/dashboard/ProjectDetailView';
 import { ProjectsKanbanView } from './components/dashboard/ProjectsKanbanView';
+import { LienzoDashboard } from './components/dashboard/LienzoDashboard';
 import { TimelineAgendaView } from './components/dashboard/TimelineAgendaView';
 import { SuperFab } from './components/features/SuperFab';
 import { NoteDetailView } from './components/dashboard/NoteDetailView';
@@ -23,9 +24,47 @@ import type { Mission, Note } from './hooks/useAlDiaState';
 import { ProfileOverlay } from './components/layout/ProfileOverlay';
 import { usePWA } from './hooks/usePWA';
 import { RefreshCw } from 'lucide-react';
+import { BloquesDashboard } from './components/dashboard/BloquesDashboard';
 
 function App() {
-  const [activeTab, setActiveTab] = useState('Acción');
+  const [activeTab, setActiveTab] = useState(() => {
+    const path = window.location.pathname.toLowerCase();
+    if (path.includes('/lienzo')) return 'Lienzo';
+    if (path.includes('/stats')) return 'Stats';
+    if (path.includes('/finanzas')) return 'Finanzas';
+    if (path.includes('/proyectos')) return 'Proyectos';
+    if (path.includes('/tablero')) return 'Tablero';
+    if (path.includes('/vida')) return 'Vida';
+    if (path.includes('/cerebro')) return 'Cerebro';
+    if (path.includes('/bloques')) return 'Bloques';
+    if (path.includes('/calendario')) return 'Calendario';
+    return 'Acción';
+  });
+
+  useEffect(() => {
+    const path = activeTab === 'Acción' ? '/' : `/${activeTab.toLowerCase()}`;
+    if (window.location.pathname !== path) {
+      window.history.pushState(null, '', path);
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname.toLowerCase();
+      if (path.includes('/lienzo')) setActiveTab('Lienzo');
+      else if (path.includes('/stats')) setActiveTab('Stats');
+      else if (path.includes('/finanzas')) setActiveTab('Finanzas');
+      else if (path.includes('/proyectos')) setActiveTab('Proyectos');
+      else if (path.includes('/tablero')) setActiveTab('Tablero');
+      else if (path.includes('/vida')) setActiveTab('Vida');
+      else if (path.includes('/cerebro')) setActiveTab('Cerebro');
+      else if (path.includes('/bloques')) setActiveTab('Bloques');
+      else if (path.includes('/calendario')) setActiveTab('Calendario');
+      else setActiveTab('Acción');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [viewingNoteId, setViewingNoteId] = useState<number | null>(null);
   const [isAddingProject, setIsAddingProject] = useState(false);
@@ -60,14 +99,14 @@ function App() {
   }
 
   return (
-    <div className={`aldia-container ${activeTab === 'Calendario' ? 'no-scroll' : ''}`}>
+    <div className={`aldia-container ${activeTab === 'Calendario' || activeTab === 'Lienzo' ? 'no-scroll' : ''}`}>
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onProfileClick={() => setIsProfileOpen(true)}
       />
 
-      <main className={`dashboard ${activeTab === 'Calendario' ? 'full-bleed' : ''}`}>
+      <main className={`dashboard ${activeTab === 'Calendario' || activeTab === 'Lienzo' ? 'full-bleed' : ''}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -77,8 +116,8 @@ function App() {
             transition={{ duration: 0.2, ease: "easeOut" }}
             style={{
               width: '100%',
-              ...(activeTab === 'Calendario' && {
-                height: 'calc(100dvh - 65px)', /* Altura de la cabecera */
+              ...((activeTab === 'Calendario' || activeTab === 'Lienzo') && {
+                height: 'calc(100dvh - var(--header-height, 65px))', /* Altura de la cabecera */
                 overflow: 'hidden',
                 display: 'flex',
                 flexDirection: 'column'
@@ -149,6 +188,14 @@ function App() {
                 toggleNoteItem={state.toggleNoteItem}
                 onOpenNote={setViewingNoteId}
               />
+            ) : activeTab === 'Bloques' ? (
+              <BloquesDashboard
+                dailyBlocks={state.dailyBlocks}
+                addDailyBlock={state.addDailyBlock}
+                toggleDailyBlock={state.toggleDailyBlock}
+                removeDailyBlock={state.removeDailyBlock}
+                updateDailyBlock={state.updateDailyBlock}
+              />
             ) : activeTab === 'Finanzas' ? (
               <FinanzasDashboard
                 balance={state.balance}
@@ -213,6 +260,8 @@ function App() {
                 updateProjectTask={state.updateProjectTask}
                 reorderProjectTasks={state.reorderProjectTasks}
               />
+            ) : activeTab === 'Lienzo' ? (
+              <LienzoDashboard />
             ) : activeTab === 'Stats' ? (
               <StatsDashboard
                 performanceScore={state.performanceScore}
@@ -250,21 +299,23 @@ function App() {
         habits={state.habits}
       />
 
-      <SuperFab
-        addMission={state.addMission}
-        addTransaction={state.addTransaction}
-        addHabit={state.addHabit}
-        addRoutineItem={state.addRoutineItem}
-        addCalendarEvent={state.addCalendarEvent}
-        addNote={state.addNote}
-        addTimeBlock={state.addTimeBlock}
-        addProject={state.addProject}
-        projects={state.projects}
-        accounts={state.accounts}
-        rutinas={state.rutinas}
-        forceOpenType={isAddingProject ? 'proyecto' : undefined}
-        onForceOpenClose={() => setIsAddingProject(false)}
-      />
+      {activeTab !== 'Lienzo' && (
+        <SuperFab
+          addMission={state.addMission}
+          addTransaction={state.addTransaction}
+          addHabit={state.addHabit}
+          addRoutineItem={state.addRoutineItem}
+          addCalendarEvent={state.addCalendarEvent}
+          addNote={state.addNote}
+          addTimeBlock={state.addTimeBlock}
+          addProject={state.addProject}
+          projects={state.projects}
+          accounts={state.accounts}
+          rutinas={state.rutinas}
+          forceOpenType={isAddingProject ? 'proyecto' : undefined}
+          onForceOpenClose={() => setIsAddingProject(false)}
+        />
+      )}
 
       <AnimatePresence>
         {selectedProjectDetailId && selectedProjectDetail && (

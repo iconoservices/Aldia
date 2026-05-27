@@ -110,6 +110,14 @@ export interface TimeBlock {
     projectId?: number;
 }
 
+export interface DailyBlock {
+    id: number;
+    label: string;
+    completed: boolean;
+    period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro';
+    date: string; // YYYY-MM-DD
+}
+
 export interface UserPreferences {
     isBudgetFixed: boolean;
 }
@@ -215,6 +223,7 @@ export const useAlDiaState = () => {
 
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
+    const [dailyBlocks, setDailyBlocks] = useState<DailyBlock[]>([]);
     const [hasLoadedFromCloud, setHasLoadedFromCloud] = useState(false);
     // Timestamp del último cambio local del usuario. Los snapshots de Firestore con lastSync
     // anterior a este valor serán ignorados para evitar sobreescribir cambios pendientes.
@@ -241,7 +250,8 @@ export const useAlDiaState = () => {
                 budget: parseFloat(localStorage.getItem('aldia_monthly_budget') || '0'),
                 fixed: JSON.parse(localStorage.getItem('aldia_fixed_expenses') || '[]'),
                 accounts: JSON.parse(localStorage.getItem('aldia_accounts') || '[]'),
-                preferences: JSON.parse(localStorage.getItem('aldia_preferences') || JSON.stringify(DEFAULT_PREFERENCES))
+                preferences: JSON.parse(localStorage.getItem('aldia_preferences') || JSON.stringify(DEFAULT_PREFERENCES)),
+                dailyblocks: JSON.parse(localStorage.getItem('aldia_dailyblocks') || '[]')
             };
             setMisionesDirect(data.missions);
             setTransactions(data.transactions);
@@ -255,6 +265,7 @@ export const useAlDiaState = () => {
             setFixedExpenses(data.fixed);
             setAccounts(data.accounts);
             setPreferences(data.preferences);
+            setDailyBlocks(data.dailyblocks);
         } catch (e) { console.error("Error inicial local:", e); }
     }, []); // Una sola vez al montar
 
@@ -315,6 +326,7 @@ export const useAlDiaState = () => {
                 sync(cloud.timeBlocks, setTimeBlocks);
                 sync(cloud.accounts, setAccounts);
                 sync(cloud.preferences, setPreferences);
+                sync(cloud.dailyBlocks, setDailyBlocks);
                 if (cloud.monthlyBudget !== undefined) {
                     setMonthlyBudget(prev => Math.abs(cloud.monthlyBudget - prev) > 0.01 ? Number(cloud.monthlyBudget) : prev);
                 }
@@ -339,11 +351,11 @@ export const useAlDiaState = () => {
     // Esto previene "stale closures" en el setTimeout del debounced save,
     // donde un array viejo de transactions podía enviarse a Firestore y causar un rollback visual.
     const latestStateRef = useRef({
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks
     });
     // Actualizamos la ref en CADA render
     latestStateRef.current = {
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks
     };
 
     // 3. Persistencia Cloud (Debounced) y Local (Immediate)
@@ -364,6 +376,7 @@ export const useAlDiaState = () => {
         localStorage.setItem('aldia_fixed_expenses', JSON.stringify(fixedExpenses));
         localStorage.setItem('aldia_accounts', JSON.stringify(accounts));
         localStorage.setItem('aldia_preferences', JSON.stringify(preferences));
+        localStorage.setItem('aldia_dailyblocks', JSON.stringify(dailyBlocks));
 
         // Guardado Cloud debounced
         if (user) {
@@ -388,7 +401,7 @@ export const useAlDiaState = () => {
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, preferences]);
+    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, preferences, dailyBlocks]);
 
     // 4. Migraciones y Lógica Derivada
     useEffect(() => {
@@ -457,12 +470,35 @@ export const useAlDiaState = () => {
     const clearAllData = async () => {
         setMisionesDirect([]); setTransactions([]); setHabits([]); setAgenda([]);
         setNotes([]); setProjects([]); setRutinas([]); setMonthlyBudget(0);
-        setFixedExpenses([]); setAccounts([]);
+        setFixedExpenses([]); setAccounts([]); setDailyBlocks([]);
         localStorage.clear();
         if (user) {
             const docRef = doc(db, 'users', user.uid);
             await setDoc(docRef, { lastSync: new Date().toISOString() }, { merge: false });
         }
+    };
+
+    const addDailyBlock = (label: string, period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro', date: string) => {
+        const newBlock: DailyBlock = {
+            id: Date.now(),
+            label,
+            completed: false,
+            period,
+            date
+        };
+        setDailyBlocks(prev => [...prev, newBlock]);
+    };
+
+    const toggleDailyBlock = (id: number) => {
+        setDailyBlocks(prev => prev.map(b => b.id === id ? { ...b, completed: !b.completed } : b));
+    };
+
+    const removeDailyBlock = (id: number) => {
+        setDailyBlocks(prev => prev.filter(b => b.id !== id));
+    };
+
+    const updateDailyBlock = (id: number, updates: Partial<DailyBlock>) => {
+        setDailyBlocks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
     };
 
     // Helper: marca escritura local antes de cualquier mutación.
@@ -521,6 +557,8 @@ export const useAlDiaState = () => {
         notes, addNote: lw(addNote), removeNote: lw(removeNote), toggleNoteItem: lw(toggleNoteItem), updateNote: lw(updateNote),
         accounts, setAccounts: lw(setAccounts),
         preferences, updatePreference: lw((key: keyof UserPreferences, value: any) => setPreferences(prev => ({ ...prev, [key]: value }))),
+        // Bloques Diarios
+        dailyBlocks, addDailyBlock: lw(addDailyBlock), toggleDailyBlock: lw(toggleDailyBlock), removeDailyBlock: lw(removeDailyBlock), updateDailyBlock: lw(updateDailyBlock),
         user, isInitialLoad, clearAllData
     };
 };
