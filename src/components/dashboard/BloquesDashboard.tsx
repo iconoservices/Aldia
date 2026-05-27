@@ -6,7 +6,7 @@ import type { DailyBlock } from '../../hooks/useAlDiaState';
 
 interface BloquesDashboardProps {
     dailyBlocks: DailyBlock[];
-    addDailyBlock: (label: string, period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro', date: string) => void;
+    addDailyBlock: (label: string, period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro', date: string, completed?: boolean) => void;
     toggleDailyBlock: (id: number) => void;
     removeDailyBlock: (id: number) => void;
     updateDailyBlock: (id: number, updates: Partial<DailyBlock>) => void;
@@ -114,18 +114,19 @@ export const BloquesDashboard = ({
             }
         } else {
             // Si no existe, crearlo directamente completado para ese día
-            addDailyBlock(label, period, date);
-            // Pequeño delay para que se renderice el nuevo elemento y luego marcarlo completado
-            setTimeout(() => {
-                const created = dailyBlocks.find(b => 
-                    b.label.toLowerCase() === label.toLowerCase() && 
-                    b.period === period && 
-                    b.date === date
-                );
-                if (created && !created.completed) {
-                    toggleDailyBlock(created.id);
-                }
-            }, 50);
+            addDailyBlock(label, period, date, true);
+
+            // Confeti si al crearlo completado, todos los bloques de ese día están completados
+            const dayBlocks = dailyBlocks.filter(b => b.date === date);
+            const incompleteCount = dayBlocks.filter(b => !b.completed).length;
+            if (incompleteCount === 0) { // Al crear este completado, ya no quedan incompletos
+                confetti({
+                    particleCount: 80,
+                    spread: 60,
+                    origin: { y: 0.7 },
+                    colors: ['#FF8C42', '#FFD700', '#A8DADC', '#0055FF']
+                });
+            }
         }
     };
 

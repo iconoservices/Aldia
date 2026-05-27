@@ -478,11 +478,11 @@ export const useAlDiaState = () => {
         }
     };
 
-    const addDailyBlock = (label: string, period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro', date: string) => {
+    const addDailyBlock = (label: string, period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro', date: string, completed: boolean = false) => {
         const newBlock: DailyBlock = {
             id: Date.now(),
             label,
-            completed: false,
+            completed,
             period,
             date
         };
