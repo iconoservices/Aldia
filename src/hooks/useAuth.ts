@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { auth, googleProvider } from '../firebase';
 import { 
     signInWithPopup, 
+    signInWithRedirect,
     signOut, 
     onAuthStateChanged, 
     updateProfile,
@@ -24,12 +25,30 @@ export const useAuth = () => {
 
     const loginWithGoogle = async () => {
         try {
-            // signInWithPopup is more reliable for development and matches Selvaflix
+            // Attempt popup login (preferred in desktop/flexible envs)
             await signInWithPopup(auth, googleProvider);
         } catch (error) {
-            console.error("Error starting Google Login:", error);
-            alert("Error al iniciar sesión: " + (error instanceof Error ? error.message : "Desconocido"));
-            throw error;
+            console.error("Error starting Google Login with popup:", error);
+            
+            // Check if the error is due to browser blocking the popup
+            const isPopupBlocked = error instanceof Error && 
+                ((error as any).code === 'auth/popup-blocked' || 
+                 error.message.includes('popup-blocked') || 
+                 error.message.includes('cancelled-by-user')); // sometimes browser blocks show up as cancelled/closed by browser policies
+            
+            if (isPopupBlocked) {
+                console.log("Popup blocked. Trying login with redirect...");
+                try {
+                    await signInWithRedirect(auth, googleProvider);
+                } catch (redirectError) {
+                    console.error("Error starting Google Login with redirect:", redirectError);
+                    alert("Error al iniciar sesión con redirección: " + (redirectError instanceof Error ? redirectError.message : "Desconocido"));
+                    throw redirectError;
+                }
+            } else {
+                alert("Error al iniciar sesión: " + (error instanceof Error ? error.message : "Desconocido"));
+                throw error;
+            }
         }
     };
 

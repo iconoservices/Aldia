@@ -31,9 +31,9 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
         return () => window.removeEventListener('storage', handleStorage);
     }, [user]);
 
-    const allTabs = ['🔥 Acción', '📅 Calendario', '🧱 Bloques', '🧠 Cerebro', '🌿 Vida', '📁 Proyectos', '📋 Tablero', '🎨 Lienzo', '💸 Finanzas', '📊 Stats'];
-    const mainTabs = allTabs.slice(0, 9);
-    const statsTab = allTabs[9];
+    const allTabs = ['🔥 Acción', '📅 Calendario', '🧱 Bloques', '✅ Checklist', '🗺️ Ruta', '🌐 Mapa', '🧠 Cerebro', '🌿 Vida', '📁 Proyectos', '📋 Tablero', '🎨 Lienzo', '💸 Finanzas', '📊 Stats'];
+    const mainTabs = allTabs.slice(0, 11);
+    const statsTab = allTabs[11];
 
     const renderTab = (tab: string, className = "") => {
         const tabValue = tab.split(' ')[1];

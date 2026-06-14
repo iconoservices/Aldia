@@ -25,6 +25,9 @@ import { ProfileOverlay } from './components/layout/ProfileOverlay';
 import { usePWA } from './hooks/usePWA';
 import { RefreshCw } from 'lucide-react';
 import { BloquesDashboard } from './components/dashboard/BloquesDashboard';
+import { ChecklistDiario } from './components/dashboard/ChecklistDiario';
+import { RitaDashboard } from './components/dashboard/RitaDashboard';
+import { EcosistemaMap } from './components/dashboard/EcosistemaMap';
 
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -37,7 +40,10 @@ function App() {
     if (path.includes('/vida')) return 'Vida';
     if (path.includes('/cerebro')) return 'Cerebro';
     if (path.includes('/bloques')) return 'Bloques';
+    if (path.includes('/checklist')) return 'Checklist';
     if (path.includes('/calendario')) return 'Calendario';
+    if (path.includes('/ruta')) return 'Ruta';
+    if (path.includes('/mapa')) return 'Mapa';
     return 'Acción';
   });
 
@@ -59,7 +65,10 @@ function App() {
       else if (path.includes('/vida')) setActiveTab('Vida');
       else if (path.includes('/cerebro')) setActiveTab('Cerebro');
       else if (path.includes('/bloques')) setActiveTab('Bloques');
+      else if (path.includes('/checklist')) setActiveTab('Checklist');
       else if (path.includes('/calendario')) setActiveTab('Calendario');
+      else if (path.includes('/ruta')) setActiveTab('Ruta');
+      else if (path.includes('/mapa')) setActiveTab('Mapa');
       else setActiveTab('Acción');
     };
     window.addEventListener('popstate', handlePopState);
@@ -195,7 +204,30 @@ function App() {
                 toggleDailyBlock={state.toggleDailyBlock}
                 removeDailyBlock={state.removeDailyBlock}
                 updateDailyBlock={state.updateDailyBlock}
+                projects={state.projects}
               />
+            ) : activeTab === 'Checklist' ? (
+              <ChecklistDiario
+                dailyBlocks={state.dailyBlocks}
+                addDailyBlock={state.addDailyBlock}
+                toggleDailyBlock={state.toggleDailyBlock}
+                removeDailyBlock={state.removeDailyBlock}
+                projects={state.projects}
+              />
+            ) : activeTab === 'Ruta' ? (
+              <RitaDashboard
+                entries={state.ritaEntries}
+                addEntry={state.addRitaEntry}
+                removeEntry={state.removeRitaEntry}
+                updateEntry={state.updateRitaEntry}
+                addSubitem={state.addRitaSubitem}
+                toggleSubitem={state.toggleRitaSubitem}
+                removeSubitem={state.removeRitaSubitem}
+                addHabit={state.addHabit}
+                habits={state.habits}
+              />
+            ) : activeTab === 'Mapa' ? (
+              <EcosistemaMap />
             ) : activeTab === 'Finanzas' ? (
               <FinanzasDashboard
                 balance={state.balance}

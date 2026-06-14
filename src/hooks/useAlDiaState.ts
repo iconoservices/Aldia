@@ -6,6 +6,7 @@ import { useFinanzasState } from './state/useFinanzasState';
 import { useMisionesState } from './state/useMisionesState';
 import { useProyectosState } from './state/useProyectosState';
 import { useCerebroState } from './state/useCerebroState';
+import { useRitaState } from './state/useRitaState';
 
 // Tipos de datos
 export interface Mission {
@@ -116,6 +117,8 @@ export interface DailyBlock {
     completed: boolean;
     period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro';
     date: string; // YYYY-MM-DD
+    projectId?: number;
+    repeatDays?: number[];
 }
 
 export interface UserPreferences {
@@ -221,6 +224,12 @@ export const useAlDiaState = () => {
         notes, setNotes, addNote, removeNote, toggleNoteItem, updateNote
     } = useCerebroState();
 
+    const {
+        ritaEntries, setRitaEntries,
+        addEntry: addRitaEntry, removeEntry: removeRitaEntry, updateEntry: updateRitaEntry,
+        addSubitem: addRitaSubitem, toggleSubitem: toggleRitaSubitem, removeSubitem: removeRitaSubitem
+    } = useRitaState();
+
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
     const [dailyBlocks, setDailyBlocks] = useState<DailyBlock[]>([]);
@@ -251,7 +260,8 @@ export const useAlDiaState = () => {
                 fixed: JSON.parse(localStorage.getItem('aldia_fixed_expenses') || '[]'),
                 accounts: JSON.parse(localStorage.getItem('aldia_accounts') || '[]'),
                 preferences: JSON.parse(localStorage.getItem('aldia_preferences') || JSON.stringify(DEFAULT_PREFERENCES)),
-                dailyblocks: JSON.parse(localStorage.getItem('aldia_dailyblocks') || '[]')
+                dailyblocks: JSON.parse(localStorage.getItem('aldia_dailyblocks') || '[]'),
+                ritaEntries: JSON.parse(localStorage.getItem('aldia_rita_entries') || '[]')
             };
             setMisionesDirect(data.missions);
             setTransactions(data.transactions);
@@ -266,6 +276,7 @@ export const useAlDiaState = () => {
             setAccounts(data.accounts);
             setPreferences(data.preferences);
             setDailyBlocks(data.dailyblocks);
+            setRitaEntries(data.ritaEntries);
         } catch (e) { console.error("Error inicial local:", e); }
     }, []); // Una sola vez al montar
 
@@ -327,6 +338,7 @@ export const useAlDiaState = () => {
                 sync(cloud.accounts, setAccounts);
                 sync(cloud.preferences, setPreferences);
                 sync(cloud.dailyBlocks, setDailyBlocks);
+                sync(cloud.ritaEntries, setRitaEntries);
                 if (cloud.monthlyBudget !== undefined) {
                     setMonthlyBudget(prev => Math.abs(cloud.monthlyBudget - prev) > 0.01 ? Number(cloud.monthlyBudget) : prev);
                 }
@@ -351,11 +363,11 @@ export const useAlDiaState = () => {
     // Esto previene "stale closures" en el setTimeout del debounced save,
     // donde un array viejo de transactions podía enviarse a Firestore y causar un rollback visual.
     const latestStateRef = useRef({
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks, ritaEntries
     });
     // Actualizamos la ref en CADA render
     latestStateRef.current = {
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks, ritaEntries
     };
 
     // 3. Persistencia Cloud (Debounced) y Local (Immediate)
@@ -377,6 +389,7 @@ export const useAlDiaState = () => {
         localStorage.setItem('aldia_accounts', JSON.stringify(accounts));
         localStorage.setItem('aldia_preferences', JSON.stringify(preferences));
         localStorage.setItem('aldia_dailyblocks', JSON.stringify(dailyBlocks));
+        localStorage.setItem('aldia_rita_entries', JSON.stringify(ritaEntries));
 
         // Guardado Cloud debounced
         if (user) {
@@ -401,7 +414,7 @@ export const useAlDiaState = () => {
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, preferences, dailyBlocks]);
+    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, preferences, dailyBlocks, ritaEntries]);
 
     // 4. Migraciones y Lógica Derivada
     useEffect(() => {
@@ -427,7 +440,90 @@ export const useAlDiaState = () => {
         if (hasId1 && !projects.some(p => p.id === 1)) {
             setProjects(prev => [{ id: 1, name: '☕ Personal (Recuperado)', color: '#888', status: 'activo' }, ...prev]);
         }
-    }, [isInitialLoad, transactions.length, misionesState.length, accounts.length, projects.length]);
+
+        // Sembrado automático de proyectos y tareas diarias por defecto del ecosistema
+        if (hasLoadedFromCloud) {
+            const requiredProjects = [
+                { id: 1, name: '☕ Personal', color: '#8A9A9D' },
+                { id: 2, name: '🌴 Yo soy de la Selva', color: '#06D6A0' },
+                { id: 3, name: '🎬 RCC', color: '#F72585' },
+                { id: 4, name: '🛒 Boga Marketplace', color: '#6BCB77' },
+                { id: 5, name: '📸 ICONO Agency', color: '#4D96FF' },
+                { id: 6, name: '🎞️ Geekoedia', color: '#CBD5E1' },
+                { id: 7, name: '👤 Juanma', color: '#FF8E53' }
+            ];
+
+            let projectsChanged = false;
+            const updatedProjects = [...projects];
+
+            requiredProjects.forEach(rp => {
+                const searchName = rp.name.split(' ').slice(1).join(' ').toLowerCase();
+                const exists = projects.some(p => p.name.toLowerCase().includes(searchName));
+                if (!exists) {
+                    updatedProjects.push({
+                        id: rp.id,
+                        name: rp.name,
+                        color: rp.color,
+                        status: 'activo',
+                        checklist: [],
+                        inventoryItems: []
+                    } as any);
+                    projectsChanged = true;
+                }
+            });
+
+            if (projectsChanged) {
+                setProjects(updatedProjects);
+            }
+
+            // Sembrar bloques si dailyBlocks está vacío
+            if (dailyBlocks.length === 0 && !localStorage.getItem('has_seeded_daily_blocks')) {
+                const current = new Date();
+                const day = current.getDay();
+                const diff = current.getDate() - day + (day === 0 ? -6 : 1);
+                const startOfWeek = new Date(current.setDate(diff));
+
+                const seededBlocks: DailyBlock[] = [];
+                const taskTemplates = [
+                    { label: 'Bañarme', period: 'Mañana' as const, projectId: 1, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
+                    { label: 'Comer', period: 'Mañana' as const, projectId: 1, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
+                    { label: 'Leer', period: 'Tarde' as const, projectId: 1, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
+                    { label: 'Subir noticia 1', period: 'Mañana' as const, projectId: 2, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
+                    { label: 'Subir noticia 2', period: 'Tarde' as const, projectId: 2, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
+                    { label: 'Subir noticia 3', period: 'Tarde' as const, projectId: 2, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
+                    { label: 'Subir noticia 4', period: 'Noche' as const, projectId: 2, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
+                    { label: 'Subir video Geekpedia', period: 'Tarde' as const, projectId: 6, repeatDays: [2, 5] },
+                    { label: 'Sesiones de fotos / Grabación', period: 'Tarde' as const, projectId: 5, repeatDays: [0, 1, 2, 3, 4] }
+                ];
+
+                for (let i = 0; i < 7; i++) {
+                    const tempDate = new Date(startOfWeek);
+                    tempDate.setDate(startOfWeek.getDate() + i);
+                    const dateStr = tempDate.toLocaleDateString('en-CA');
+                    const dayOfWeek = i;
+
+                    taskTemplates.forEach(t => {
+                        if (t.repeatDays.includes(dayOfWeek)) {
+                            seededBlocks.push({
+                                id: Date.now() + Math.random(),
+                                label: t.label,
+                                completed: false,
+                                period: t.period,
+                                date: dateStr,
+                                projectId: t.projectId,
+                                repeatDays: t.repeatDays
+                            });
+                        }
+                    });
+                }
+
+                if (seededBlocks.length > 0) {
+                    setDailyBlocks(seededBlocks);
+                    localStorage.setItem('has_seeded_daily_blocks', 'true');
+                }
+            }
+        }
+    }, [isInitialLoad, transactions.length, misionesState.length, accounts.length, projects.length, hasLoadedFromCloud, dailyBlocks.length]);
 
     const todayStr = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
     const todayIndex = useMemo(() => (new Date().getDay() + 6) % 7, []); // 0=Mon
@@ -470,7 +566,7 @@ export const useAlDiaState = () => {
     const clearAllData = async () => {
         setMisionesDirect([]); setTransactions([]); setHabits([]); setAgenda([]);
         setNotes([]); setProjects([]); setRutinas([]); setMonthlyBudget(0);
-        setFixedExpenses([]); setAccounts([]); setDailyBlocks([]);
+        setFixedExpenses([]); setAccounts([]); setDailyBlocks([]); setRitaEntries([]);
         localStorage.clear();
         if (user) {
             const docRef = doc(db, 'users', user.uid);
@@ -478,13 +574,15 @@ export const useAlDiaState = () => {
         }
     };
 
-    const addDailyBlock = (label: string, period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro', date: string, completed: boolean = false) => {
+    const addDailyBlock = (label: string, period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro', date: string, completed: boolean = false, projectId?: number, repeatDays?: number[]) => {
         const newBlock: DailyBlock = {
             id: Date.now(),
             label,
             completed,
             period,
-            date
+            date,
+            projectId,
+            repeatDays
         };
         setDailyBlocks(prev => [...prev, newBlock]);
     };
@@ -493,8 +591,9 @@ export const useAlDiaState = () => {
         setDailyBlocks(prev => prev.map(b => b.id === id ? { ...b, completed: !b.completed } : b));
     };
 
-    const removeDailyBlock = (id: number) => {
-        setDailyBlocks(prev => prev.filter(b => b.id !== id));
+    const removeDailyBlock = (idOrIds: number | number[]) => {
+        const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+        setDailyBlocks(prev => prev.filter(b => !ids.includes(b.id)));
     };
 
     const updateDailyBlock = (id: number, updates: Partial<DailyBlock>) => {
@@ -559,6 +658,10 @@ export const useAlDiaState = () => {
         preferences, updatePreference: lw((key: keyof UserPreferences, value: any) => setPreferences(prev => ({ ...prev, [key]: value }))),
         // Bloques Diarios
         dailyBlocks, addDailyBlock: lw(addDailyBlock), toggleDailyBlock: lw(toggleDailyBlock), removeDailyBlock: lw(removeDailyBlock), updateDailyBlock: lw(updateDailyBlock),
+        // Hoja de Rita
+        ritaEntries,
+        addRitaEntry: lw(addRitaEntry), removeRitaEntry: lw(removeRitaEntry), updateRitaEntry: lw(updateRitaEntry),
+        addRitaSubitem: lw(addRitaSubitem), toggleRitaSubitem: lw(toggleRitaSubitem), removeRitaSubitem: lw(removeRitaSubitem),
         user, isInitialLoad, clearAllData
     };
 };
