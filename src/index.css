@@ -78,3 +78,22 @@ body {
 .capsule {
   border-radius: 9999px;
 }
+
+/* ── Checklist task card hover interactions ─────────────────── */
+.task-card-row:hover .delete-btn,
+.task-card-row:hover .drag-handle {
+  opacity: 1 !important;
+}
+
+.delete-btn:hover {
+  background: rgba(186, 26, 26, 0.08) !important;
+}
+
+.drag-handle:active {
+  cursor: grabbing !important;
+}
+
+/* ── Period icon in task label ──────────────────────────────── */
+.period-icon {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
