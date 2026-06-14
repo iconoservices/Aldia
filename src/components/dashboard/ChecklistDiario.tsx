@@ -906,7 +906,7 @@ export const ChecklistDiario = ({
                     </section>
 
                     {/* Categories */}
-                    <section style={{ ...bentoCard, padding: '1.25rem' }}>
+                    <section style={{ padding: '0.25rem 0' }}>
                         <h3 style={{ margin: '0 0 10px 4px', fontSize: '0.65rem', fontWeight: 700, color: C.onSurfaceVariant, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                             Jornada
                         </h3>
