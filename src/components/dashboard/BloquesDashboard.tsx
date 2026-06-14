@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import type { DailyBlock } from '../../hooks/useAlDiaState';
@@ -67,6 +67,23 @@ export const BloquesDashboard = ({
     const [sortBy, setSortBy] = useState<'period' | 'name' | 'progress'>('period');
     const [showGroupMenu, setShowGroupMenu] = useState(false);
     const [showSortMenu, setShowSortMenu] = useState(false);
+
+    // ── Mobile state ─────────────────────────────────────────────
+    const [isMobile, setIsMobile] = useState(false);
+    const [selectedDayIndex, setSelectedDayIndex] = useState<number>(() => {
+        const today = new Date();
+        const day = today.getDay();
+        // Convert Sunday=0 to index 6, Mon=1 to 0, etc.
+        return day === 0 ? 6 : day - 1;
+    });
+    const [showMobileAddModal, setShowMobileAddModal] = useState(false);
+
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth <= 768);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
 
     const todayStr = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
 
@@ -328,8 +345,435 @@ export const BloquesDashboard = ({
         });
     };
 
+    // ── Mobile View ──────────────────────────────────────────────
+    if (isMobile) {
+        const selectedDay = weekDays[selectedDayIndex] ?? weekDays[0];
+        const selectedDate = selectedDay?.date ?? '';
+
+        // Blocks for selected day grouped by period
+        const dayBlocksByPeriod = (['Mañana', 'Tarde', 'Noche', 'Otro'] as const).map(period => {
+            const rows = blockRows.filter(r => r.period === period);
+            return { period, rows };
+        }).filter(g => g.rows.length > 0);
+
+        // Count blocks per day for dots
+        const dayBlockCounts = weekDays.map(day =>
+            blockRows.filter(row =>
+                dailyBlocks.some(b =>
+                    b.label.toLowerCase() === row.label.toLowerCase() &&
+                    b.period === row.period &&
+                    b.date === day.date
+                )
+            ).length
+        );
+
+        const periodColors: Record<string, { color: string; bg: string; icon: string; accentBg: string }> = {
+            'Mañana': { color: '#944a18', bg: 'rgba(148,74,24,0.08)', icon: 'light_mode', accentBg: '#ffdbc9' },
+            'Tarde':  { color: '#785900', bg: 'rgba(120,89,0,0.08)',  icon: 'wb_sunny',  accentBg: '#ffdf9e' },
+            'Noche':  { color: '#4858ab', bg: 'rgba(72,88,171,0.08)', icon: 'dark_mode', accentBg: '#dee0ff' },
+            'Otro':   { color: '#877369', bg: 'rgba(135,115,105,0.08)', icon: 'settings', accentBg: '#e1e3e4' },
+        };
+
+        return (
+            <div style={{ background: '#f8f9fa', minHeight: '100%', paddingBottom: '7rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+
+                {/* ── Sticky Header ── */}
+                <div style={{
+                    position: 'sticky', top: 0, zIndex: 10,
+                    background: '#ffffff',
+                    borderBottom: '1px solid #e7e8e9',
+                    padding: '14px 20px 10px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                        <div>
+                            <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#191c1d', letterSpacing: '-0.01em' }}>
+                                Registro Semanal
+                            </h2>
+                            <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#54433a', fontWeight: '500', opacity: 0.7 }}>
+                                {getWeekRangeLabel()}
+                            </p>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <button
+                                onClick={() => adjustWeek(-1)}
+                                style={{ background: '#f3f4f5', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#54433a' }}
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chevron_left</span>
+                            </button>
+                            <button
+                                onClick={() => { setReferenceDate(new Date()); setSelectedDayIndex(new Date().getDay() === 0 ? 6 : new Date().getDay() - 1); }}
+                                style={{ background: '#ff9f66', border: 'none', borderRadius: '10px', padding: '6px 12px', cursor: 'pointer', color: '#773401', fontSize: '12px', fontWeight: '700' }}
+                            >
+                                Hoy
+                            </button>
+                            <button
+                                onClick={() => adjustWeek(1)}
+                                style={{ background: '#f3f4f5', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#54433a' }}
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chevron_right</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* ── Day Picker Strip ── */}
+                    <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: '2px' }}>
+                        {weekDays.map((day, idx) => {
+                            const isSelected = idx === selectedDayIndex;
+                            const isToday = day.isToday;
+                            const count = dayBlockCounts[idx];
+                            return (
+                                <button
+                                    key={day.date}
+                                    onClick={() => setSelectedDayIndex(idx)}
+                                    style={{
+                                        flexShrink: 0,
+                                        display: 'flex', flexDirection: 'column', alignItems: 'center',
+                                        padding: '8px 10px', gap: '4px',
+                                        borderRadius: '14px', border: 'none',
+                                        background: isSelected ? '#944a18' : (isToday ? '#ffdbc9' : 'transparent'),
+                                        cursor: 'pointer', minWidth: '44px',
+                                        transition: 'all 0.15s',
+                                    }}
+                                >
+                                    <span style={{ fontSize: '11px', fontWeight: '700', color: isSelected ? 'rgba(255,255,255,0.8)' : '#877369', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                                        {day.label}
+                                    </span>
+                                    <span style={{ fontSize: '16px', fontWeight: '800', color: isSelected ? '#ffffff' : (isToday ? '#944a18' : '#191c1d') }}>
+                                        {day.dayNum}
+                                    </span>
+                                    <div style={{ display: 'flex', gap: '2px', minHeight: '5px' }}>
+                                        {count > 0 && (
+                                            <div style={{
+                                                width: count > 3 ? '16px' : `${count * 5}px`,
+                                                height: '4px', borderRadius: '2px',
+                                                background: isSelected ? 'rgba(255,255,255,0.6)' : '#ff9f66',
+                                                transition: 'width 0.2s',
+                                            }} />
+                                        )}
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* ── Main Content ── */}
+                <div style={{ padding: '16px 16px 0' }}>
+
+                    {dayBlocksByPeriod.length === 0 ? (
+                        /* Empty state */
+                        <div style={{ textAlign: 'center', padding: '48px 20px', color: '#877369' }}>
+                            <div style={{ width: '64px', height: '64px', borderRadius: '20px', background: '#ffdbc9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: '32px', color: '#944a18' }}>calendar_view_week</span>
+                            </div>
+                            <p style={{ margin: '0 0 4px', fontWeight: '700', fontSize: '16px', color: '#191c1d' }}>Sin bloques esta semana</p>
+                            <p style={{ margin: 0, fontSize: '13px', opacity: 0.7 }}>Añade un bloque con el botón +</p>
+                        </div>
+                    ) : (
+                        dayBlocksByPeriod.map(({ period, rows }) => {
+                            const pStyle = periodColors[period] ?? periodColors['Otro'];
+                            return (
+                                <div key={period} style={{ marginBottom: '16px' }}>
+                                    {/* Period header */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', padding: '0 4px' }}>
+                                        <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: pStyle.accentBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                            <span className="material-symbols-outlined" style={{ fontSize: '16px', color: pStyle.color }}>
+                                                {pStyle.icon}
+                                            </span>
+                                        </div>
+                                        <span style={{ fontSize: '12px', fontWeight: '700', color: pStyle.color, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                                            {period}
+                                        </span>
+                                        <span style={{ fontSize: '11px', color: '#877369', fontWeight: '600', marginLeft: 'auto', background: pStyle.bg, padding: '2px 8px', borderRadius: '999px' }}>
+                                            {rows.length} bloque{rows.length !== 1 ? 's' : ''}
+                                        </span>
+                                    </div>
+
+                                    {/* Block cards */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        {rows.map(row => {
+                                            const existingBlock = dailyBlocks.find(b =>
+                                                b.label.toLowerCase() === row.label.toLowerCase() &&
+                                                b.period === row.period &&
+                                                b.date === selectedDate
+                                            );
+                                            const isDone = existingBlock?.completed ?? false;
+                                            const isScheduled = !!existingBlock;
+                                            const project = projects.find(p => p.id === row.projectId);
+
+                                            return (
+                                                <motion.div
+                                                    key={row.key}
+                                                    layout
+                                                    initial={{ opacity: 0, y: 4 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    style={{
+                                                        background: '#ffffff',
+                                                        borderRadius: '16px',
+                                                        border: `1px solid ${isDone ? pStyle.accentBg : '#e7e8e9'}`,
+                                                        padding: '14px 16px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '12px',
+                                                        boxShadow: isDone ? 'none' : '0 2px 8px rgba(0,0,0,0.03)',
+                                                        opacity: isDone ? 0.75 : 1,
+                                                        transition: 'all 0.2s',
+                                                    }}
+                                                >
+                                                    {/* Checkbox */}
+                                                    <button
+                                                        onClick={() => handleCellToggle(row.label, row.period, selectedDate)}
+                                                        style={{
+                                                            width: '24px', height: '24px', borderRadius: '7px', flexShrink: 0,
+                                                            border: `2px solid ${isDone ? pStyle.color : '#dac2b6'}`,
+                                                            background: isDone ? pStyle.color : 'transparent',
+                                                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            transition: 'all 0.15s',
+                                                        }}
+                                                    >
+                                                        {isDone && (
+                                                            <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#fff', fontVariationSettings: "'FILL' 1" }}>check</span>
+                                                        )}
+                                                    </button>
+
+                                                    {/* Label */}
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <p style={{
+                                                            margin: 0, fontSize: '15px', fontWeight: '600',
+                                                            color: isDone ? '#877369' : '#191c1d',
+                                                            textDecoration: isDone ? 'line-through' : 'none',
+                                                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                                            transition: 'all 0.2s',
+                                                        }}>
+                                                            {row.label}
+                                                        </p>
+                                                        {project && (
+                                                            <span style={{ fontSize: '11px', fontWeight: '600', color: project.color || '#877369', display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
+                                                                <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>folder</span>
+                                                                {project.name}
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Status chip / add-to-day indicator */}
+                                                    {!isScheduled ? (
+                                                        <button
+                                                            onClick={() => handleCellToggle(row.label, row.period, selectedDate)}
+                                                            style={{
+                                                                background: pStyle.bg, border: `1px solid ${pStyle.accentBg}`,
+                                                                color: pStyle.color, borderRadius: '999px', padding: '4px 10px',
+                                                                fontSize: '11px', fontWeight: '700', cursor: 'pointer', flexShrink: 0,
+                                                                display: 'flex', alignItems: 'center', gap: '3px',
+                                                            }}
+                                                        >
+                                                            <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>add</span>
+                                                            Añadir
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => {
+                                                                const ids = dailyBlocks.filter(b =>
+                                                                    b.label.toLowerCase() === row.label.toLowerCase() &&
+                                                                    b.period === row.period &&
+                                                                    b.date === selectedDate
+                                                                ).map(b => b.id);
+                                                                if (ids.length) removeDailyBlock(ids);
+                                                            }}
+                                                            style={{
+                                                                background: 'transparent', border: 'none',
+                                                                color: '#877369', borderRadius: '8px', padding: '4px 6px',
+                                                                cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0,
+                                                                opacity: 0.6,
+                                                            }}
+                                                            title="Quitar del día"
+                                                        >
+                                                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete</span>
+                                                        </button>
+                                                    )}
+                                                </motion.div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+
+                {/* ── FAB ── */}
+                <button
+                    onClick={() => setShowMobileAddModal(true)}
+                    style={{
+                        position: 'fixed', bottom: '84px', right: '20px',
+                        width: '56px', height: '56px', borderRadius: '50%',
+                        background: '#944a18', color: '#ffffff', border: 'none',
+                        boxShadow: '0 4px 16px rgba(148,74,24,0.35)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', zIndex: 999,
+                    }}
+                    title="Añadir bloque"
+                >
+                    <span className="material-symbols-outlined" style={{ fontSize: '28px', fontVariationSettings: "'wght' 600" }}>add</span>
+                </button>
+
+                {/* ── Add Modal (Bottom Sheet) ── */}
+                <AnimatePresence>
+                    {showMobileAddModal && (
+                        <>
+                            <motion.div
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                onClick={() => setShowMobileAddModal(false)}
+                                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000 }}
+                            />
+                            <motion.div
+                                initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                                transition={{ type: 'spring', stiffness: 400, damping: 40 }}
+                                style={{
+                                    position: 'fixed', bottom: 0, left: 0, right: 0,
+                                    background: '#ffffff', borderRadius: '24px 24px 0 0',
+                                    padding: '20px 20px 40px', zIndex: 1001,
+                                    boxShadow: '0 -8px 32px rgba(0,0,0,0.12)',
+                                }}
+                            >
+                                <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: '#e1e3e4', margin: '0 auto 20px' }} />
+                                <h3 style={{ margin: '0 0 20px', fontSize: '18px', fontWeight: '700', color: '#191c1d', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: '22px', color: '#944a18' }}>add_circle</span>
+                                    Nuevo Bloque de Enfoque
+                                </h3>
+
+                                <form onSubmit={(e) => { handleAddRow(e); setShowMobileAddModal(false); }} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                                    {/* Nombre */}
+                                    <div>
+                                        <label style={{ fontSize: '12px', fontWeight: '600', color: '#54433a', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>NOMBRE</label>
+                                        <input
+                                            type="text"
+                                            value={newBlockText}
+                                            onChange={e => setNewBlockText(e.target.value)}
+                                            placeholder="Ej: Programar, Gimnasio..."
+                                            autoFocus
+                                            style={{
+                                                width: '100%', background: '#f3f4f5', border: 'none',
+                                                borderRadius: '12px', padding: '12px 16px',
+                                                fontSize: '16px', fontWeight: '500', outline: 'none',
+                                                color: '#191c1d', boxSizing: 'border-box',
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* Franja horaria */}
+                                    <div>
+                                        <label style={{ fontSize: '12px', fontWeight: '600', color: '#54433a', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>FRANJA</label>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            {(['Mañana', 'Tarde', 'Noche'] as const).map(p => {
+                                                const ps = getPeriodStyles(p);
+                                                const isSel = newBlockPeriod === p;
+                                                return (
+                                                    <button key={p} type="button" onClick={() => setNewBlockPeriod(p)}
+                                                        style={{
+                                                            flex: 1, padding: '10px 4px', borderRadius: '12px', border: 'none',
+                                                            background: isSel ? ps.color : '#f3f4f5',
+                                                            color: isSel ? '#ffffff' : '#54433a',
+                                                            fontSize: '13px', fontWeight: '700', cursor: 'pointer',
+                                                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+                                                            transition: 'all 0.15s',
+                                                            boxShadow: isSel ? `0 4px 12px ${ps.color}40` : 'none',
+                                                        }}
+                                                    >
+                                                        <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{ps.iconName}</span>
+                                                        {p}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Proyecto */}
+                                    {projects.length > 0 && (
+                                        <div>
+                                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#54433a', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>PROYECTO (OPCIONAL)</label>
+                                            <select
+                                                value={selectedProjectIdForNewBlock || ''}
+                                                onChange={e => setSelectedProjectIdForNewBlock(e.target.value ? Number(e.target.value) : undefined)}
+                                                style={{
+                                                    width: '100%', background: '#f3f4f5', border: 'none',
+                                                    borderRadius: '12px', padding: '12px 16px',
+                                                    fontSize: '15px', fontWeight: '600', outline: 'none',
+                                                    color: '#191c1d', cursor: 'pointer', boxSizing: 'border-box',
+                                                    appearance: 'none',
+                                                }}
+                                            >
+                                                <option value="">Sin Proyecto / General</option>
+                                                {projects.map(p => (
+                                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+
+                                    {/* Días activos */}
+                                    <div>
+                                        <label style={{ fontSize: '12px', fontWeight: '600', color: '#54433a', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>DÍAS ACTIVOS</label>
+                                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'space-between' }}>
+                                            {['L','M','M','J','V','S','D'].map((d, i) => {
+                                                const isAct = newBlockDays.includes(i);
+                                                return (
+                                                    <button key={i} type="button"
+                                                        onClick={() => setNewBlockDays(prev => prev.includes(i) ? prev.filter(day => day !== i) : [...prev, i].sort())}
+                                                        style={{
+                                                            width: '38px', height: '38px', borderRadius: '50%', border: 'none',
+                                                            background: isAct ? '#ff9f66' : '#f3f4f5',
+                                                            color: isAct ? '#773401' : '#54433a',
+                                                            fontSize: '13px', fontWeight: '700', cursor: 'pointer',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            transition: 'all 0.1s',
+                                                            boxShadow: isAct ? '0 2px 8px rgba(148,74,24,0.2)' : 'none',
+                                                        }}
+                                                    >{d}</button>
+                                                );
+                                            })}
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                                            {[['L–V', [0,1,2,3,4]], ['Fin', [5,6]], ['Todos', [0,1,2,3,4,5,6]]].map(([label, days]) => (
+                                                <button key={label as string} type="button"
+                                                    onClick={() => setNewBlockDays(days as number[])}
+                                                    style={{ background: 'none', border: 'none', color: '#4858ab', fontSize: '13px', fontWeight: '700', cursor: 'pointer', padding: 0 }}
+                                                >{label as string}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Submit */}
+                                    <button
+                                        type="submit"
+                                        disabled={!newBlockText.trim()}
+                                        style={{
+                                            width: '100%', height: '50px',
+                                            background: newBlockText.trim() ? '#944a18' : '#e1e3e4',
+                                            color: newBlockText.trim() ? '#ffffff' : '#877369',
+                                            border: 'none', borderRadius: '14px',
+                                            fontSize: '16px', fontWeight: '700', cursor: newBlockText.trim() ? 'pointer' : 'default',
+                                            marginTop: '4px', transition: 'all 0.15s',
+                                            boxShadow: newBlockText.trim() ? '0 4px 16px rgba(148,74,24,0.25)' : 'none',
+                                        }}
+                                    >
+                                        Añadir Bloque
+                                    </button>
+                                </form>
+                            </motion.div>
+                        </>
+                    )}
+                </AnimatePresence>
+
+                {/* Hide scrollbar on day strip */}
+                <style>{`.bloques-day-strip::-webkit-scrollbar { display: none; }`}</style>
+            </div>
+        );
+    }
+
     return (
         <div style={{ padding: '0.5rem 0 2rem 0', width: '100%', maxWidth: '1200px', margin: '0 auto', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+
             
             {/* Cabecera del Dashboard */}
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.5rem' }}>
