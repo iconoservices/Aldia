@@ -31,26 +31,51 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
         return () => window.removeEventListener('storage', handleStorage);
     }, [user]);
 
+    const TAB_ICONS: Record<string, string> = {
+        'Checklist': 'checklist',
+        'Acción': 'bolt',
+        'Calendario': 'calendar_today',
+        'Bloques': 'calendar_view_week',
+        'Ruta': 'route',
+        'Mapa': 'map',
+        'Cerebro': 'psychology',
+        'Vida': 'spa',
+        'Proyectos': 'folder',
+        'Tablero': 'view_kanban',
+        'Lienzo': 'palette',
+        'Finanzas': 'payments',
+        'Stats': 'analytics'
+    };
+
     const allTabs = [
-        '✅ Checklist', '🔥 Acción', '📅 Calendario', '🧱 Bloques', 
-        '🗺️ Ruta', '🌐 Mapa', '🧠 Cerebro', '🌿 Vida', 
-        '📁 Proyectos', '📋 Tablero', '🎨 Lienzo', '💸 Finanzas', '📊 Stats'
+        'Checklist', 'Acción', 'Calendario', 'Bloques', 
+        'Ruta', 'Mapa', 'Cerebro', 'Vida', 
+        'Proyectos', 'Tablero', 'Lienzo', 'Finanzas', 'Stats'
     ];
     const mainTabs = allTabs.slice(0, 11);
     const statsTab = allTabs[11];
 
     const renderTab = (tab: string, className = "") => {
-        const tabValue = tab.split(' ')[1];
+        const iconName = TAB_ICONS[tab] || 'star';
         return (
             <button
                 key={tab}
-                className={`tab-btn ${activeTab === tabValue ? 'active-tab' : ''} ${className}`}
+                className={`tab-btn ${activeTab === tab ? 'active-tab' : ''} ${className}`}
                 onClick={() => {
-                    setActiveTab(tabValue);
+                    setActiveTab(tab);
                     setIsDrawerOpen(false);
                 }}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                }}
             >
-                {tab}
+                <span className="material-symbols-outlined tab-icon" style={{ fontSize: '18px', transition: 'color 0.15s' }}>
+                    {iconName}
+                </span>
+                <span className="tab-label">{tab}</span>
             </button>
         );
     };
