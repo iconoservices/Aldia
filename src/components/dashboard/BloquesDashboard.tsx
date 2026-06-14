@@ -720,9 +720,9 @@ export const BloquesDashboard = ({
                     <div style={{ 
                         display: 'grid', 
                         gridTemplateColumns: 'repeat(12, 1fr)', 
-                        gap: '16px', 
-                        alignItems: 'end', 
-                        padding: '16px', 
+                        gap: '10px', 
+                        alignItems: 'center', 
+                        padding: '10px 16px', 
                         background: '#edeeef',
                         borderRadius: '16px 16px 0 0',
                         borderBottom: '1px solid #dac2b6'
@@ -771,10 +771,10 @@ export const BloquesDashboard = ({
                                     {groupBy !== 'none' && (
                                         <div style={{ 
                                             backgroundColor: group.bg, 
-                                            padding: '12px 32px', 
+                                            padding: '8px 16px', 
                                             display: 'flex', 
                                             alignItems: 'center', 
-                                            gap: '12px', 
+                                            gap: '10px', 
                                             borderBottom: `1px solid ${group.border}`
                                         }}>
                                             <span className="material-symbols-outlined" style={{ color: group.color, fontSize: '18px' }}>
@@ -808,9 +808,9 @@ export const BloquesDashboard = ({
                                                     style={{ 
                                                         display: 'grid',
                                                         gridTemplateColumns: 'repeat(12, 1fr)',
-                                                        gap: '16px',
+                                                        gap: '10px',
                                                         alignItems: 'center',
-                                                        padding: '16px 24px',
+                                                        padding: '8px 16px',
                                                         borderBottom: '1px solid rgba(218, 194, 182, 0.15)',
                                                         backgroundColor: hoveredRowId === row.key ? 'white' : 'transparent',
                                                         transition: 'background-color 0.2s'
@@ -1069,7 +1069,7 @@ export const BloquesDashboard = ({
                                                                                         justifyContent: 'center',
                                                                                         width: '100%',
                                                                                         aspectRatio: '1',
-                                                                                        maxWidth: '46px',
+                                                                                        maxWidth: '38px',
                                                                                         borderRadius: '8px',
                                                                                         border: '2px solid #944a18', // terracotta brand color
                                                                                         background: '#944a18',
@@ -1084,7 +1084,7 @@ export const BloquesDashboard = ({
                                                                                         e.currentTarget.style.transform = 'none';
                                                                                     }}
                                                                                 >
-                                                                                    <span className="material-symbols-outlined" style={{ fontSize: '18px', fontWeight: 'bold' }}>check</span>
+                                                                                    <span className="material-symbols-outlined" style={{ fontSize: '16px', fontWeight: 'bold' }}>check</span>
                                                                                 </button>
                                                                             ) : isScheduled ? (
                                                                                 <button
@@ -1095,7 +1095,7 @@ export const BloquesDashboard = ({
                                                                                         justifyContent: 'center',
                                                                                         width: '100%',
                                                                                         aspectRatio: '1',
-                                                                                        maxWidth: '46px',
+                                                                                        maxWidth: '38px',
                                                                                         borderRadius: '8px',
                                                                                         border: '2px solid rgba(218, 194, 182, 0.3)', // outline-variant/30
                                                                                         background: 'transparent',
@@ -1114,7 +1114,7 @@ export const BloquesDashboard = ({
                                                                                         e.currentTarget.style.background = 'transparent';
                                                                                     }}
                                                                                 >
-                                                                                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
+                                                                                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span>
                                                                                 </button>
                                                                             ) : (
                                                                                 <div
@@ -1122,7 +1122,7 @@ export const BloquesDashboard = ({
                                                                                     style={{
                                                                                         width: '100%',
                                                                                         aspectRatio: '1',
-                                                                                        maxWidth: '46px',
+                                                                                        maxWidth: '38px',
                                                                                         borderRadius: '8px',
                                                                                         backgroundColor: '#edeeef', // surface-container
                                                                                         opacity: 0.4

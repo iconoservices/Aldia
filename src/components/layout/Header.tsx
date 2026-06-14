@@ -48,7 +48,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
     };
 
     const allTabs = [
-        'Checklist', 'Acción', 'Calendario', 'Bloques', 
+        'Checklist', 'Bloques', 'Acción', 'Calendario', 
         'Ruta', 'Mapa', 'Cerebro', 'Vida', 
         'Proyectos', 'Tablero', 'Lienzo', 'Finanzas', 'Stats'
     ];
@@ -64,12 +64,6 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
                 onClick={() => {
                     setActiveTab(tab);
                     setIsDrawerOpen(false);
-                }}
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px'
                 }}
             >
                 <span className="material-symbols-outlined tab-icon" style={{ fontSize: '18px', transition: 'color 0.15s' }}>
