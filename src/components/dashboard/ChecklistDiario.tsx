@@ -505,29 +505,57 @@ export const ChecklistDiario = ({
                                     <button
                                         key={cat.key}
                                         onClick={() => setActiveCategory(cat.key)}
+                                        data-icon-color={cat.color}
                                         style={{
                                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                            padding: '9px 12px', borderRadius: '10px', border: 'none',
+                                            padding: '10px 12px',
+                                            borderRadius: '8px',
+                                            border: 'none',
+                                            borderRight: `4px solid ${isActive ? C.primary : 'transparent'}`,
                                             cursor: 'pointer', width: '100%', textAlign: 'left',
-                                            background: isActive ? C.primary : 'transparent',
-                                            color: isActive ? '#fff' : C.onSurfaceVariant,
+                                            background: isActive ? C.surfaceContainerHigh : 'transparent',
+                                            color: isActive ? C.primary : C.onSurfaceVariant,
                                             fontFamily: 'inherit', fontWeight: isActive ? 700 : 500,
                                             fontSize: '0.88rem', transition: 'all 0.15s',
                                         }}
-                                        onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = C.surfaceContainerHigh; }}
-                                        onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                                        onMouseEnter={e => {
+                                            if (!isActive) {
+                                                const btn = e.currentTarget as HTMLButtonElement;
+                                                btn.style.background = C.surfaceContainerHigh;
+                                                btn.style.color = C.primary;
+                                                const icon = btn.querySelector('.cat-icon') as HTMLElement;
+                                                if (icon) icon.style.color = C.primary;
+                                            }
+                                        }}
+                                        onMouseLeave={e => {
+                                            if (!isActive) {
+                                                const btn = e.currentTarget as HTMLButtonElement;
+                                                btn.style.background = 'transparent';
+                                                btn.style.color = C.onSurfaceVariant;
+                                                const icon = btn.querySelector('.cat-icon') as HTMLElement;
+                                                if (icon) icon.style.color = btn.getAttribute('data-icon-color') || '';
+                                            }
+                                        }}
                                     >
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: isActive ? '#fff' : cat.color }}>
+                                            <span 
+                                                className="material-symbols-outlined cat-icon" 
+                                                style={{ 
+                                                    fontSize: '18px', 
+                                                    color: isActive ? C.primary : cat.color,
+                                                    transition: 'color 0.15s',
+                                                }}
+                                            >
                                                 {cat.icon}
                                             </span>
                                             <span>{cat.label}</span>
                                         </div>
                                         <span style={{
                                             fontSize: '0.72rem', fontWeight: 700,
-                                            background: isActive ? 'rgba(255,255,255,0.22)' : C.surfaceContainerHigh,
+                                            background: isActive ? C.primary : C.surfaceContainerHigh,
                                             color: isActive ? '#fff' : C.onSurfaceVariant,
                                             padding: '2px 8px', borderRadius: '8px',
+                                            transition: 'all 0.15s',
                                         }}>
                                             {catCount[cat.key] ?? 0}
                                         </span>
