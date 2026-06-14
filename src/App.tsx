@@ -44,11 +44,17 @@ function App() {
     if (path.includes('/calendario')) return 'Calendario';
     if (path.includes('/ruta')) return 'Ruta';
     if (path.includes('/mapa')) return 'Mapa';
-    return 'Acción';
+    if (path.includes('/accion')) return 'Acción';
+    return 'Checklist';
   });
 
   useEffect(() => {
-    const path = activeTab === 'Acción' ? '/' : `/${activeTab.toLowerCase()}`;
+    let path = `/${activeTab.toLowerCase()}`;
+    if (activeTab === 'Checklist') {
+      path = '/';
+    } else if (activeTab === 'Acción') {
+      path = '/accion';
+    }
     if (window.location.pathname !== path) {
       window.history.pushState(null, '', path);
     }
@@ -69,7 +75,8 @@ function App() {
       else if (path.includes('/calendario')) setActiveTab('Calendario');
       else if (path.includes('/ruta')) setActiveTab('Ruta');
       else if (path.includes('/mapa')) setActiveTab('Mapa');
-      else setActiveTab('Acción');
+      else if (path.includes('/accion')) setActiveTab('Acción');
+      else setActiveTab('Checklist');
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
