@@ -59,7 +59,7 @@ const CATEGORIES: { key: CategoryKey; label: string; icon: string; color: string
     { key: 'Otro',   label: 'Otro',   icon: 'more_time',  color: '#877369'   },
 ];
 
-type SortMode = 'cronologico' | 'proyecto' | 'pendientes';
+type SortMode = 'cronologico' | 'proyecto';
 
 /* ─── bento card base style ─────────────────────────────────── */
 const bentoCard: React.CSSProperties = {
@@ -223,10 +223,11 @@ export const ChecklistDiario = ({
     const todayLabel = useMemo(() =>
         new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }), []);
 
-    const [activeCategory, setActiveCategory] = useState<CategoryKey>('Todas');
-    const [searchQuery,    setSearchQuery]     = useState('');
-    const [sortMode,       setSortMode]        = useState<SortMode>('cronologico');
-    const [customOrder,    setCustomOrder]     = useState<string[]>([]);
+    const [activeCategory,  setActiveCategory]  = useState<CategoryKey>('Todas');
+    const [searchQuery,     setSearchQuery]      = useState('');
+    const [sortMode,        setSortMode]         = useState<SortMode>('cronologico');
+    const [pendientesFirst, setPendientesFirst]  = useState(true);
+    const [customOrder,     setCustomOrder]      = useState<string[]>([]);
     const [activeId,       setActiveId]        = useState<string | null>(null);
     const [quickAddText,   setQuickAddText]    = useState('');
     const [quickAddPeriod, setQuickAddPeriod]  = useState<Period>('Mañana');
@@ -283,6 +284,7 @@ export const ChecklistDiario = ({
     const sortedTasks = useMemo(() => {
         let list = [...todayTemplates];
 
+        // Base sort
         if (sortMode === 'cronologico') {
             list.sort((a, b) => PERIOD_ORDER.indexOf(a.period) - PERIOD_ORDER.indexOf(b.period));
         } else if (sortMode === 'proyecto') {
@@ -291,12 +293,14 @@ export const ChecklistDiario = ({
                 const nameB = projects.find(p => p.id === b.projectId)?.name || 'ZZ';
                 return nameA.localeCompare(nameB);
             });
-        } else if (sortMode === 'pendientes') {
+        }
+
+        // Secondary: pendientes primero (stable, preserves base order within each group)
+        if (pendientesFirst) {
             list.sort((a, b) => {
                 const doneA = dailyBlocks.find(bl => bl.label.toLowerCase() === a.label.toLowerCase() && bl.period === a.period && bl.date === todayStr)?.completed ? 1 : 0;
                 const doneB = dailyBlocks.find(bl => bl.label.toLowerCase() === b.label.toLowerCase() && bl.period === b.period && bl.date === todayStr)?.completed ? 1 : 0;
-                if (doneA !== doneB) return doneA - doneB;
-                return PERIOD_ORDER.indexOf(a.period) - PERIOD_ORDER.indexOf(b.period);
+                return doneA - doneB;
             });
         }
 
@@ -392,14 +396,12 @@ export const ChecklistDiario = ({
 
     /* ── Sort label ── */
     const sortLabel: Record<SortMode, string> = {
-        cronologico: 'Mañana → Noche',
+        cronologico: 'Cronológico',
         proyecto:    'Por Proyecto',
-        pendientes:  'Pendientes primero',
     };
     const nextSort: Record<SortMode, SortMode> = {
         cronologico: 'proyecto',
-        proyecto:    'pendientes',
-        pendientes:  'cronologico',
+        proyecto:    'cronologico',
     };
 
     /* ── Reset custom order ── */
@@ -549,8 +551,8 @@ export const ChecklistDiario = ({
                                 </span>
                             )}
                         </h3>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            {/* Custom order indicator + reset */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {/* Reset custom order */}
                             {customOrder.length > 0 && (
                                 <button
                                     onClick={resetOrder}
@@ -560,18 +562,52 @@ export const ChecklistDiario = ({
                                         background: 'rgba(148,74,24,0.08)', border: 'none',
                                         borderRadius: '8px', padding: '5px 10px',
                                         fontSize: '0.72rem', color: C.primary, fontWeight: 600,
-                                        cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.15s',
+                                        cursor: 'pointer', fontFamily: 'inherit',
                                     }}
                                 >
                                     <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>restart_alt</span>
-                                    Resetear orden
+                                    Resetear
                                 </button>
                             )}
 
-                            {/* Sort mode toggle */}
+                            {/* Pendientes primero toggle */}
+                            <button
+                                onClick={() => setPendientesFirst(v => !v)}
+                                title={pendientesFirst ? 'Pendientes primero: ON' : 'Pendientes primero: OFF'}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '7px',
+                                    background: pendientesFirst ? 'rgba(148,74,24,0.10)' : C.surfaceContainerHigh,
+                                    border: `1.5px solid ${pendientesFirst ? C.primary : C.outlineVariant}`,
+                                    borderRadius: '999px', padding: '4px 12px 4px 8px',
+                                    fontSize: '0.72rem',
+                                    color: pendientesFirst ? C.primary : C.onSurfaceVariant,
+                                    fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                                    transition: 'all 0.2s',
+                                }}
+                            >
+                                {/* Toggle switch visual */}
+                                <div style={{
+                                    width: '28px', height: '16px', borderRadius: '999px',
+                                    background: pendientesFirst ? C.primary : C.outlineVariant,
+                                    position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+                                }}>
+                                    <motion.div
+                                        animate={{ x: pendientesFirst ? 14 : 2 }}
+                                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                        style={{
+                                            position: 'absolute', top: '2px',
+                                            width: '12px', height: '12px', borderRadius: '50%',
+                                            background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                                        }}
+                                    />
+                                </div>
+                                Pendientes primero
+                            </button>
+
+                            {/* Sort mode */}
                             <button
                                 onClick={() => { setSortMode(nextSort[sortMode]); saveOrder([]); }}
-                                title="Cambiar orden"
+                                title="Cambiar orden base"
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '5px',
                                     background: C.surfaceContainerHigh, border: 'none',
