@@ -231,6 +231,15 @@ export const ChecklistDiario = ({
     const [activeId,       setActiveId]        = useState<string | null>(null);
     const [quickAddText,   setQuickAddText]    = useState('');
     const [quickAddPeriod, setQuickAddPeriod]  = useState<Period>('Mañana');
+    const [isMobile, setIsMobile] = useState(false);
+    const [showMobileAddForm, setShowMobileAddForm] = useState(false);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     /* ── Load saved order from localStorage ── */
     useEffect(() => {
@@ -410,6 +419,409 @@ export const ChecklistDiario = ({
     };
 
     /* ────────────────────────────────────────────────────────── */
+    if (isMobile) {
+        return (
+            <div style={{ padding: '12px 12px 6rem', minHeight: '100%', background: C.surface }}>
+                
+                {/* Search / Filter toolbar */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem', width: '100%' }}>
+                    {/* Search */}
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                        background: C.surfaceContainerLow, padding: '6px 12px',
+                        borderRadius: '999px', border: `1px solid ${C.outlineVariant}`,
+                        flex: 1,
+                    }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.onSurfaceVariant }}>search</span>
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            placeholder="Buscar tarea..."
+                            style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: '0.85rem', color: C.onSurface, width: '100%', fontFamily: 'inherit' }}
+                        />
+                    </div>
+
+                    {/* Pendientes primero toggle */}
+                    <button
+                        onClick={() => setPendientesFirst(v => !v)}
+                        title={pendientesFirst ? 'Pendientes primero: ON' : 'Pendientes primero: OFF'}
+                        style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: pendientesFirst ? 'rgba(148,74,24,0.10)' : C.surfaceContainerHigh,
+                            border: `1.5px solid ${pendientesFirst ? C.primary : C.outlineVariant}`,
+                            borderRadius: '999px', padding: '6px 10px',
+                            cursor: 'pointer',
+                        }}
+                    >
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: pendientesFirst ? C.primary : C.onSurfaceVariant }}>
+                            vertical_align_top
+                        </span>
+                    </button>
+
+                    {/* Sort mode */}
+                    <button
+                        onClick={() => { setSortMode(nextSort[sortMode]); saveOrder([]); }}
+                        title="Cambiar orden base"
+                        style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: C.surfaceContainerHigh, border: 'none',
+                            borderRadius: '999px', padding: '6px 10px',
+                            cursor: 'pointer',
+                        }}
+                    >
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.onSurfaceVariant }}>sort</span>
+                    </button>
+
+                    {/* Reset custom order */}
+                    {customOrder.length > 0 && (
+                        <button
+                            onClick={resetOrder}
+                            title="Restaurar orden automático"
+                            style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                background: 'rgba(148,74,24,0.08)', border: 'none',
+                                borderRadius: '999px', padding: '6px 10px',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.primary }}>restart_alt</span>
+                        </button>
+                    )}
+                </div>
+
+                {/* Progress Card */}
+                <div style={{
+                    background: '#ffffff',
+                    border: `1px solid ${C.outlineVariant}`,
+                    borderRadius: '1.25rem',
+                    padding: '1.25rem',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+                    marginBottom: '1rem'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: C.onSurface }}>
+                                Tu progreso hoy
+                            </h3>
+                            <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: C.onSurfaceVariant, fontWeight: 500 }}>
+                                {progressPct === 100 ? '¡Jornada completada! 🎉' : 
+                                 progressPct >= 75 ? '¡Casi terminas tu jornada!' : 
+                                 progressPct >= 50 ? '¡Vas por la mitad, sigue así!' : 
+                                 progressPct > 0 ? '¡Buen comienzo, adelante!' : 
+                                 'Sin tareas completadas hoy.'}
+                            </p>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'baseline', color: C.primary }}>
+                            <span style={{ fontSize: '2.2rem', fontWeight: 800 }}>{progressPct}</span>
+                            <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>%</span>
+                        </div>
+                    </div>
+
+                    <div style={{ width: '100%', height: '8px', background: C.surfaceContainer, borderRadius: '999px', overflow: 'hidden', marginBottom: '16px' }}>
+                        <motion.div
+                            animate={{ width: `${progressPct}%` }}
+                            transition={{ duration: 0.7, ease: 'easeOut' }}
+                            style={{ height: '100%', background: '#ff9f66', borderRadius: '999px' }}
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            background: 'rgba(148,74,24,0.08)', color: C.primary,
+                            padding: '6px 12px', borderRadius: '999px',
+                            fontSize: '0.75rem', fontWeight: 700,
+                        }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '14px', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                            {completedToday} completadas
+                        </div>
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            background: C.surfaceContainer, color: C.onSurfaceVariant,
+                            padding: '6px 12px', borderRadius: '999px',
+                            fontSize: '0.75rem', fontWeight: 700,
+                        }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>schedule</span>
+                            {totalToday - completedToday} pendientes
+                        </div>
+                    </div>
+                </div>
+
+                {/* Horizontal Category scroll */}
+                <div style={{
+                    display: 'flex',
+                    gap: '8px',
+                    overflowX: 'auto',
+                    padding: '4px 0 12px',
+                    width: '100%',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                }} className="mobile-categories-scroll">
+                    {CATEGORIES.map(cat => {
+                        const isActive = activeCategory === cat.key;
+                        return (
+                            <button
+                                key={cat.key}
+                                onClick={() => setActiveCategory(cat.key)}
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '8px 16px',
+                                    borderRadius: '999px',
+                                    border: `1px solid ${isActive ? C.primary : C.outlineVariant}`,
+                                    background: isActive ? C.primary : '#ffffff',
+                                    color: isActive ? '#ffffff' : C.onSurfaceVariant,
+                                    fontSize: '0.82rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap',
+                                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+                                    transition: 'all 0.15s',
+                                    flexShrink: 0,
+                                }}
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: '16px', color: isActive ? '#ffffff' : cat.color }}>
+                                    {cat.icon}
+                                </span>
+                                {cat.label}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {/* Mobile Quick Add Form slide-down */}
+                <AnimatePresence>
+                    {showMobileAddForm && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            style={{ overflow: 'hidden', marginBottom: '12px' }}
+                        >
+                            <form
+                                onSubmit={(e) => {
+                                    handleQuickAdd(e);
+                                    setShowMobileAddForm(false);
+                                }}
+                                style={{
+                                    display: 'flex', flexDirection: 'column', gap: '10px',
+                                    padding: '16px',
+                                    background: '#ffffff',
+                                    border: `1.5px dashed ${C.outlineVariant}`,
+                                    borderRadius: '1.25rem',
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: '20px', color: C.primary }}>add_circle</span>
+                                    <input
+                                        type="text"
+                                        value={quickAddText}
+                                        onChange={e => setQuickAddText(e.target.value)}
+                                        placeholder="Añadir una nueva tarea para hoy..."
+                                        style={{
+                                            flex: 1, background: 'transparent', border: 'none',
+                                            outline: 'none', fontSize: '0.9rem', color: C.onSurface,
+                                            fontFamily: 'inherit',
+                                        }}
+                                        autoFocus
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                                    <select
+                                        value={quickAddPeriod}
+                                        onChange={e => setQuickAddPeriod(e.target.value as Period)}
+                                        style={{
+                                            background: C.surfaceContainer, border: 'none', outline: 'none',
+                                            borderRadius: '8px', padding: '6px 12px',
+                                            fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant,
+                                            cursor: 'pointer', fontFamily: 'inherit',
+                                        }}
+                                    >
+                                        <option value="Mañana">☀️ Mañana</option>
+                                        <option value="Tarde">🌤 Tarde</option>
+                                        <option value="Noche">🌙 Noche</option>
+                                        <option value="Otro">⏱ Otro</option>
+                                    </select>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowMobileAddForm(false)}
+                                            style={{
+                                                background: 'transparent', border: 'none', color: C.onSurfaceVariant,
+                                                padding: '6px 12px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
+                                            }}
+                                        >
+                                            Cancelar
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={!quickAddText.trim()}
+                                            style={{
+                                                background: quickAddText.trim() ? C.primary : C.surfaceContainer,
+                                                color: quickAddText.trim() ? '#fff' : C.onSurfaceVariant,
+                                                border: 'none', borderRadius: '8px',
+                                                padding: '6px 16px', fontSize: '0.8rem', fontWeight: 700,
+                                                cursor: quickAddText.trim() ? 'pointer' : 'default',
+                                            }}
+                                        >
+                                            Añadir
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* DnD Tasks List */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
+                    >
+                        <SortableContext items={visibleIds} strategy={verticalListSortingStrategy}>
+                            <AnimatePresence initial={false}>
+                                {visibleTasks.length > 0 ? (
+                                    visibleTasks.map(task => {
+                                        const block = dailyBlocks.find(b =>
+                                            b.label.toLowerCase() === task.label.toLowerCase() &&
+                                            b.period === task.period && b.date === todayStr
+                                        );
+                                        const isDone = block?.completed ?? false;
+                                        const project = projects.find(p => p.id === task.projectId);
+                                        const projColor = project?.color || C.outline;
+                                        const projName  = project?.name  || 'General';
+                                        const id = taskKey(task.label, task.period);
+
+                                        return (
+                                            <TaskCard
+                                                key={id}
+                                                id={id}
+                                                label={task.label}
+                                                period={task.period}
+                                                isDone={isDone}
+                                                projColor={projColor}
+                                                projName={projName}
+                                                onToggle={() => handleToggle(task.label, task.period)}
+                                                onRemove={() => handleRemove(task.label, task.period)}
+                                            />
+                                        );
+                                    })
+                                ) : (
+                                    <motion.div
+                                        key="empty"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        style={{ ...bentoCard, padding: '3rem 2rem', textAlign: 'center', color: C.onSurfaceVariant }}
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: '48px', color: C.outlineVariant, display: 'block', marginBottom: '12px' }}>
+                                            checklist
+                                        </span>
+                                        <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: '0.95rem', color: C.onSurface }}>
+                                            {searchQuery ? 'Sin resultados' : 'Sin tareas programadas'}
+                                        </p>
+                                        <p style={{ margin: 0, fontSize: '0.8rem' }}>
+                                            {searchQuery ? 'Intenta con otro término.' : 'Crea bloques en el Registro Semanal.'}
+                                        </p>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </SortableContext>
+
+                        <DragOverlay>
+                            {activeDragTask ? (
+                                <div style={{
+                                    ...bentoCard,
+                                    padding: '14px 16px',
+                                    display: 'flex', alignItems: 'center', gap: '10px',
+                                    boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
+                                    background: C.surfaceLowest,
+                                    cursor: 'grabbing',
+                                    opacity: 0.95,
+                                }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.primary }}>drag_indicator</span>
+                                    <div>
+                                        <div style={{ fontSize: '0.92rem', fontWeight: 600, color: C.onSurface }}>{activeDragTask.label}</div>
+                                        <span style={{
+                                            background: PERIOD_CFG[activeDragTask.period].bg,
+                                            color: PERIOD_CFG[activeDragTask.period].color,
+                                            fontSize: '0.65rem', fontWeight: 700,
+                                            padding: '2px 8px', borderRadius: '999px', marginTop: '4px', display: 'inline-block',
+                                        }}>{PERIOD_CFG[activeDragTask.period].label}</span>
+                                    </div>
+                                </div>
+                            ) : null}
+                        </DragOverlay>
+                    </DndContext>
+                </div>
+
+                {/* Motivational Banner at the bottom */}
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    textAlign: 'center',
+                    marginTop: '24px',
+                    padding: '24px 16px 40px',
+                    color: '#877369',
+                }}>
+                    <div style={{
+                        width: '48px', height: '48px', borderRadius: '50%',
+                        background: '#ffffff', border: `1px solid ${C.outlineVariant}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                    }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '24px', color: C.primary, fontVariationSettings: "'FILL' 1" }}>verified</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: 600, maxWidth: '240px', lineHeight: 1.4 }}>
+                        Vas por buen camino. Completa tus tareas para alcanzar tu meta diaria.
+                    </p>
+                </div>
+
+                {/* Mobile FAB */}
+                <button
+                    onClick={() => setShowMobileAddForm(v => !v)}
+                    style={{
+                        position: 'fixed',
+                        bottom: '84px',
+                        right: '20px',
+                        width: '56px',
+                        height: '56px',
+                        borderRadius: '50%',
+                        background: '#ff9f66',
+                        color: '#ffffff',
+                        border: 'none',
+                        boxShadow: '0 4px 16px rgba(255, 159, 102, 0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        zIndex: 999,
+                    }}
+                    title="Añadir tarea"
+                >
+                    <span className="material-symbols-outlined" style={{ fontSize: '28px', fontVariationSettings: "'wght' 600" }}>add</span>
+                </button>
+
+                {/* CSS styles for mobile category scroll hide */}
+                <style>{`
+                    .mobile-categories-scroll::-webkit-scrollbar {
+                        display: none;
+                    }
+                    .drag-handle, .delete-btn {
+                        opacity: 1 !important;
+                    }
+                `}</style>
+            </div>
+        );
+    }
+
     return (
         <div style={{ padding: '1.5rem 2rem 3rem', minHeight: '100%', background: C.surface }}>
 
