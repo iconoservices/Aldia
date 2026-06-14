@@ -70,13 +70,8 @@ export const BloquesDashboard = ({
 
     // ── Mobile state ─────────────────────────────────────────────
     const [isMobile, setIsMobile] = useState(false);
-    const [selectedDayIndex, setSelectedDayIndex] = useState<number>(() => {
-        const today = new Date();
-        const day = today.getDay();
-        // Convert Sunday=0 to index 6, Mon=1 to 0, etc.
-        return day === 0 ? 6 : day - 1;
-    });
     const [showMobileAddModal, setShowMobileAddModal] = useState(false);
+    const [mobileEditingRow, setMobileEditingRow] = useState<{ key: string; label: string; period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro'; projectId?: number; repeatDays?: number[] } | null>(null);
 
     useEffect(() => {
         const check = () => setIsMobile(window.innerWidth <= 768);
@@ -347,31 +342,67 @@ export const BloquesDashboard = ({
 
     // ── Mobile View ──────────────────────────────────────────────
     if (isMobile) {
-        const selectedDay = weekDays[selectedDayIndex] ?? weekDays[0];
-        const selectedDate = selectedDay?.date ?? '';
-
-        // Blocks for selected day grouped by period
+        // Blocks grouped by period
         const dayBlocksByPeriod = (['Mañana', 'Tarde', 'Noche', 'Otro'] as const).map(period => {
             const rows = blockRows.filter(r => r.period === period);
             return { period, rows };
         }).filter(g => g.rows.length > 0);
 
-        // Count blocks per day for dots
-        const dayBlockCounts = weekDays.map(day =>
-            blockRows.filter(row =>
-                dailyBlocks.some(b =>
-                    b.label.toLowerCase() === row.label.toLowerCase() &&
-                    b.period === row.period &&
-                    b.date === day.date
-                )
-            ).length
-        );
-
         const periodColors: Record<string, { color: string; bg: string; icon: string; accentBg: string }> = {
-            'Mañana': { color: '#944a18', bg: 'rgba(148,74,24,0.08)', icon: 'light_mode', accentBg: '#ffdbc9' },
-            'Tarde':  { color: '#785900', bg: 'rgba(120,89,0,0.08)',  icon: 'wb_sunny',  accentBg: '#ffdf9e' },
-            'Noche':  { color: '#4858ab', bg: 'rgba(72,88,171,0.08)', icon: 'dark_mode', accentBg: '#dee0ff' },
-            'Otro':   { color: '#877369', bg: 'rgba(135,115,105,0.08)', icon: 'settings', accentBg: '#e1e3e4' },
+            'Mañana': { color: '#785900', bg: 'rgba(255, 193, 7, 0.08)', icon: 'light_mode', accentBg: '#e6ae00' },
+            'Tarde':  { color: '#944a18', bg: 'rgba(255, 159, 102, 0.08)', icon: 'wb_sunny', accentBg: '#ff9f66' },
+            'Noche':  { color: '#4858ab', bg: 'rgba(72, 88, 171, 0.08)', icon: 'dark_mode', accentBg: '#96a5ff' },
+            'Otro':   { color: '#877369', bg: 'rgba(135, 115, 105, 0.08)', icon: 'settings', accentBg: '#dac2b6' },
+        };
+
+        const handleFormSubmit = (e: React.FormEvent) => {
+            e.preventDefault();
+            if (!newBlockText.trim()) return;
+
+            if (mobileEditingRow) {
+                // Edit Mode
+                const weekDates = weekDays.map(d => d.date);
+                
+                // Find all existing blocks for this definition in this week
+                const toUpdate = dailyBlocks.filter(b =>
+                    b.label.toLowerCase() === mobileEditingRow.label.toLowerCase() &&
+                    b.period === mobileEditingRow.period &&
+                    weekDates.includes(b.date)
+                );
+
+                if (toUpdate.length > 0) {
+                    toUpdate.forEach(b => {
+                        updateDailyBlock(b.id, {
+                            label: newBlockText.trim(),
+                            period: newBlockPeriod,
+                            projectId: selectedProjectIdForNewBlock,
+                            repeatDays: newBlockDays
+                        });
+                    });
+                } else {
+                    const defaultDate = weekDays.some(d => d.isToday) 
+                        ? new Date().toLocaleDateString('en-CA') 
+                        : weekDays[0].date;
+                    addDailyBlock(newBlockText.trim(), newBlockPeriod, defaultDate, false, selectedProjectIdForNewBlock, newBlockDays);
+                }
+
+                // Clear state
+                setNewBlockText('');
+                setSelectedProjectIdForNewBlock(undefined);
+                setNewBlockDays([0, 1, 2, 3, 4, 5, 6]);
+                setMobileEditingRow(null);
+            } else {
+                // Add Mode
+                const defaultDate = weekDays.some(d => d.isToday) 
+                    ? new Date().toLocaleDateString('en-CA') 
+                    : weekDays[0].date;
+
+                addDailyBlock(newBlockText.trim(), newBlockPeriod, defaultDate, false, selectedProjectIdForNewBlock, newBlockDays);
+                setNewBlockText('');
+                setSelectedProjectIdForNewBlock(undefined);
+                setNewBlockDays([0, 1, 2, 3, 4, 5, 6]);
+            }
+            setShowMobileAddModal(false);
         };
 
         return (
@@ -382,10 +413,10 @@ export const BloquesDashboard = ({
                     position: 'sticky', top: 0, zIndex: 10,
                     background: '#ffffff',
                     borderBottom: '1px solid #e7e8e9',
-                    padding: '14px 20px 10px',
+                    padding: '14px 20px 14px',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div>
                             <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#191c1d', letterSpacing: '-0.01em' }}>
                                 Registro Semanal
@@ -402,7 +433,7 @@ export const BloquesDashboard = ({
                                 <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chevron_left</span>
                             </button>
                             <button
-                                onClick={() => { setReferenceDate(new Date()); setSelectedDayIndex(new Date().getDay() === 0 ? 6 : new Date().getDay() - 1); }}
+                                onClick={() => setReferenceDate(new Date())}
                                 style={{ background: '#ff9f66', border: 'none', borderRadius: '10px', padding: '6px 12px', cursor: 'pointer', color: '#773401', fontSize: '12px', fontWeight: '700' }}
                             >
                                 Hoy
@@ -415,51 +446,10 @@ export const BloquesDashboard = ({
                             </button>
                         </div>
                     </div>
-
-                    {/* ── Day Picker Strip ── */}
-                    <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: '2px' }}>
-                        {weekDays.map((day, idx) => {
-                            const isSelected = idx === selectedDayIndex;
-                            const isToday = day.isToday;
-                            const count = dayBlockCounts[idx];
-                            return (
-                                <button
-                                    key={day.date}
-                                    onClick={() => setSelectedDayIndex(idx)}
-                                    style={{
-                                        flexShrink: 0,
-                                        display: 'flex', flexDirection: 'column', alignItems: 'center',
-                                        padding: '8px 10px', gap: '4px',
-                                        borderRadius: '14px', border: 'none',
-                                        background: isSelected ? '#944a18' : (isToday ? '#ffdbc9' : 'transparent'),
-                                        cursor: 'pointer', minWidth: '44px',
-                                        transition: 'all 0.15s',
-                                    }}
-                                >
-                                    <span style={{ fontSize: '11px', fontWeight: '700', color: isSelected ? 'rgba(255,255,255,0.8)' : '#877369', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                                        {day.label}
-                                    </span>
-                                    <span style={{ fontSize: '16px', fontWeight: '800', color: isSelected ? '#ffffff' : (isToday ? '#944a18' : '#191c1d') }}>
-                                        {day.dayNum}
-                                    </span>
-                                    <div style={{ display: 'flex', gap: '2px', minHeight: '5px' }}>
-                                        {count > 0 && (
-                                            <div style={{
-                                                width: count > 3 ? '16px' : `${count * 5}px`,
-                                                height: '4px', borderRadius: '2px',
-                                                background: isSelected ? 'rgba(255,255,255,0.6)' : '#ff9f66',
-                                                transition: 'width 0.2s',
-                                            }} />
-                                        )}
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
                 </div>
 
-                {/* ── Main Content ── */}
-                <div style={{ padding: '16px 16px 0' }}>
+                {/* ── Main Content (Weekly Routines View) ── */}
+                <div style={{ padding: '20px 20px 0' }}>
 
                     {dayBlocksByPeriod.length === 0 ? (
                         /* Empty state */
@@ -468,134 +458,193 @@ export const BloquesDashboard = ({
                                 <span className="material-symbols-outlined" style={{ fontSize: '32px', color: '#944a18' }}>calendar_view_week</span>
                             </div>
                             <p style={{ margin: '0 0 4px', fontWeight: '700', fontSize: '16px', color: '#191c1d' }}>Sin bloques esta semana</p>
-                            <p style={{ margin: 0, fontSize: '13px', opacity: 0.7 }}>Añade un bloque con el botón +</p>
+                            <p style={{ margin: 0, fontSize: '13px', opacity: 0.7 }}>Añade un block con el botón +</p>
                         </div>
                     ) : (
                         dayBlocksByPeriod.map(({ period, rows }) => {
                             const pStyle = periodColors[period] ?? periodColors['Otro'];
+
                             return (
-                                <div key={period} style={{ marginBottom: '16px' }}>
-                                    {/* Period header */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', padding: '0 4px' }}>
-                                        <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: pStyle.accentBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                            <span className="material-symbols-outlined" style={{ fontSize: '16px', color: pStyle.color }}>
+                                <motion.div 
+                                    key={period} 
+                                    initial={{ opacity: 0, y: 8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    style={{ 
+                                        background: '#ffffff',
+                                        borderRadius: '16px',
+                                        border: '1px solid #e7e8e9',
+                                        boxShadow: '0 4px 10px rgba(0,0,0,0.03)',
+                                        padding: '20px 16px',
+                                        marginBottom: '20px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '16px'
+                                    }}
+                                >
+                                    {/* Jornada Card Header */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <div style={{ 
+                                            width: '36px', height: '36px', borderRadius: '50%', 
+                                            background: pStyle.bg, display: 'flex', 
+                                            alignItems: 'center', justifyContent: 'center', flexShrink: 0 
+                                        }}>
+                                            <span className="material-symbols-outlined" style={{ fontSize: '20px', color: pStyle.color }}>
                                                 {pStyle.icon}
                                             </span>
                                         </div>
-                                        <span style={{ fontSize: '12px', fontWeight: '700', color: pStyle.color, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                                            {period}
-                                        </span>
-                                        <span style={{ fontSize: '11px', color: '#877369', fontWeight: '600', marginLeft: 'auto', background: pStyle.bg, padding: '2px 8px', borderRadius: '999px' }}>
-                                            {rows.length} bloque{rows.length !== 1 ? 's' : ''}
-                                        </span>
+                                        <div>
+                                            <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#191c1d' }}>
+                                                {period}
+                                            </h4>
+                                            <p style={{ margin: 0, fontSize: '12px', color: '#877369', fontWeight: '500' }}>
+                                                {rows.length} bloque{rows.length !== 1 ? 's' : ''} activo{rows.length !== 1 ? 's' : ''}
+                                            </p>
+                                        </div>
                                     </div>
 
-                                    {/* Block cards */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                        {rows.map(row => {
-                                            const existingBlock = dailyBlocks.find(b =>
-                                                b.label.toLowerCase() === row.label.toLowerCase() &&
-                                                b.period === row.period &&
-                                                b.date === selectedDate
-                                            );
-                                            const isDone = existingBlock?.completed ?? false;
-                                            const isScheduled = !!existingBlock;
+                                    {/* List of routine blocks */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                                        {rows.map((row, rIdx) => {
+                                            const repeatDays = row.repeatDays || [0, 1, 2, 3, 4, 5, 6];
+                                            const totalScheduledDays = repeatDays.length;
+                                            
+                                            // Count days completed in the current week
+                                            let daysCompleted = 0;
+                                            weekDays.forEach(day => {
+                                                const existingBlock = dailyBlocks.find(b =>
+                                                    b.label.toLowerCase() === row.label.toLowerCase() &&
+                                                    b.period === row.period &&
+                                                    b.date === day.date
+                                                );
+                                                if (existingBlock?.completed) {
+                                                    daysCompleted++;
+                                                }
+                                            });
+
                                             const project = projects.find(p => p.id === row.projectId);
 
                                             return (
-                                                <motion.div
-                                                    key={row.key}
-                                                    layout
-                                                    initial={{ opacity: 0, y: 4 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    style={{
-                                                        background: '#ffffff',
-                                                        borderRadius: '16px',
-                                                        border: `1px solid ${isDone ? pStyle.accentBg : '#e7e8e9'}`,
-                                                        padding: '14px 16px',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '12px',
-                                                        boxShadow: isDone ? 'none' : '0 2px 8px rgba(0,0,0,0.03)',
-                                                        opacity: isDone ? 0.75 : 1,
-                                                        transition: 'all 0.2s',
+                                                <div 
+                                                    key={row.key} 
+                                                    style={{ 
+                                                        borderTop: rIdx > 0 ? '1px solid #f3f4f5' : 'none', 
+                                                        paddingTop: rIdx > 0 ? '16px' : '0' 
                                                     }}
                                                 >
-                                                    {/* Checkbox */}
-                                                    <button
-                                                        onClick={() => handleCellToggle(row.label, row.period, selectedDate)}
-                                                        style={{
-                                                            width: '24px', height: '24px', borderRadius: '7px', flexShrink: 0,
-                                                            border: `2px solid ${isDone ? pStyle.color : '#dac2b6'}`,
-                                                            background: isDone ? pStyle.color : 'transparent',
-                                                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                            transition: 'all 0.15s',
-                                                        }}
-                                                    >
-                                                        {isDone && (
-                                                            <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#fff', fontVariationSettings: "'FILL' 1" }}>check</span>
-                                                        )}
-                                                    </button>
+                                                    {/* Block info row */}
+                                                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                                <span style={{
+                                                                    margin: 0, fontSize: '15px', fontWeight: '700',
+                                                                    color: '#191c1d',
+                                                                    wordBreak: 'break-word'
+                                                                }}>
+                                                                    {row.label}
+                                                                </span>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setNewBlockText(row.label);
+                                                                        setNewBlockPeriod(row.period);
+                                                                        setSelectedProjectIdForNewBlock(row.projectId);
+                                                                        setNewBlockDays(repeatDays);
+                                                                        setMobileEditingRow(row);
+                                                                        setShowMobileAddModal(true);
+                                                                    }}
+                                                                    style={{
+                                                                        background: 'none', border: 'none', color: '#877369',
+                                                                        cursor: 'pointer', display: 'flex', alignItems: 'center',
+                                                                        padding: '2px', opacity: 0.6
+                                                                    }}
+                                                                    title="Editar rutina"
+                                                                >
+                                                                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>edit</span>
+                                                                </button>
+                                                            </div>
+                                                            {project && (
+                                                                <span style={{ fontSize: '11px', fontWeight: '600', color: project.color || '#877369', display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
+                                                                    <span className="material-symbols-outlined" style={{ fontSize: '11px' }}>folder</span>
+                                                                    {project.name}
+                                                                </span>
+                                                            )}
+                                                        </div>
 
-                                                    {/* Label */}
-                                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                                        <p style={{
-                                                            margin: 0, fontSize: '15px', fontWeight: '600',
-                                                            color: isDone ? '#877369' : '#191c1d',
-                                                            textDecoration: isDone ? 'line-through' : 'none',
-                                                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                                                            transition: 'all 0.2s',
+                                                        {/* Progress badge */}
+                                                        <span style={{
+                                                            background: 'rgba(72, 88, 171, 0.08)',
+                                                            color: '#4858ab',
+                                                            borderRadius: '999px',
+                                                            padding: '4px 10px',
+                                                            fontSize: '11px',
+                                                            fontWeight: '700',
+                                                            flexShrink: 0
                                                         }}>
-                                                            {row.label}
-                                                        </p>
-                                                        {project && (
-                                                            <span style={{ fontSize: '11px', fontWeight: '600', color: project.color || '#877369', display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
-                                                                <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>folder</span>
-                                                                {project.name}
-                                                            </span>
-                                                        )}
+                                                            {daysCompleted}/{totalScheduledDays} Días
+                                                        </span>
                                                     </div>
 
-                                                    {/* Status chip / add-to-day indicator */}
-                                                    {!isScheduled ? (
-                                                        <button
-                                                            onClick={() => handleCellToggle(row.label, row.period, selectedDate)}
-                                                            style={{
-                                                                background: pStyle.bg, border: `1px solid ${pStyle.accentBg}`,
-                                                                color: pStyle.color, borderRadius: '999px', padding: '4px 10px',
-                                                                fontSize: '11px', fontWeight: '700', cursor: 'pointer', flexShrink: 0,
-                                                                display: 'flex', alignItems: 'center', gap: '3px',
-                                                            }}
-                                                        >
-                                                            <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>add</span>
-                                                            Añadir
-                                                        </button>
-                                                    ) : (
-                                                        <button
-                                                            onClick={() => {
-                                                                const ids = dailyBlocks.filter(b =>
-                                                                    b.label.toLowerCase() === row.label.toLowerCase() &&
-                                                                    b.period === row.period &&
-                                                                    b.date === selectedDate
-                                                                ).map(b => b.id);
-                                                                if (ids.length) removeDailyBlock(ids);
-                                                            }}
-                                                            style={{
-                                                                background: 'transparent', border: 'none',
-                                                                color: '#877369', borderRadius: '8px', padding: '4px 6px',
-                                                                cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0,
-                                                                opacity: 0.6,
-                                                            }}
-                                                            title="Quitar del día"
-                                                        >
-                                                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete</span>
-                                                        </button>
-                                                    )}
-                                                </motion.div>
+                                                    {/* Weekdays inline tracker (L, M, X, J, V, S, D) */}
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '4px', marginTop: '12px' }}>
+                                                        {weekDays.map((day, idx) => {
+                                                            const isRepeatDay = repeatDays.includes(idx);
+                                                            
+                                                            const existingBlock = dailyBlocks.find(b =>
+                                                                b.label.toLowerCase() === row.label.toLowerCase() &&
+                                                                b.period === row.period &&
+                                                                b.date === day.date
+                                                            );
+                                                            const isDone = existingBlock?.completed ?? false;
+                                                            const isToday = day.isToday;
+
+                                                            const dayLetters = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+                                                            const dayLetter = dayLetters[idx];
+
+                                                            return (
+                                                                <div key={day.date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', flex: 1 }}>
+                                                                    <span style={{ 
+                                                                        fontSize: '11px', 
+                                                                        fontWeight: '700', 
+                                                                        color: isToday ? pStyle.color : '#877369',
+                                                                        opacity: isRepeatDay ? 1 : 0.4,
+                                                                        marginBottom: '2px'
+                                                                    }}>
+                                                                        {dayLetter}
+                                                                    </span>
+                                                                    <button
+                                                                        onClick={() => handleCellToggle(row.label, row.period, day.date)}
+                                                                        disabled={!isRepeatDay}
+                                                                        style={{
+                                                                            width: '32px',
+                                                                            height: '32px',
+                                                                            borderRadius: '8px',
+                                                                            border: isRepeatDay 
+                                                                                ? (isDone ? `2px solid ${pStyle.color}` : `2px solid ${pStyle.accentBg}`) 
+                                                                                : 'none',
+                                                                            background: isRepeatDay
+                                                                                ? (isDone ? pStyle.accentBg : '#ffffff')
+                                                                                : '#f3f4f5',
+                                                                            cursor: isRepeatDay ? 'pointer' : 'default',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            transition: 'all 0.15s ease'
+                                                                        }}
+                                                                    >
+                                                                        {isRepeatDay && isDone && (
+                                                                            <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#ffffff', fontVariationSettings: "'FILL' 1" }}>
+                                                                                check
+                                                                            </span>
+                                                                        )}
+                                                                    </button>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
                                             );
                                         })}
                                     </div>
-                                </div>
+                                </motion.div>
                             );
                         })
                     )}
@@ -603,7 +652,14 @@ export const BloquesDashboard = ({
 
                 {/* ── FAB ── */}
                 <button
-                    onClick={() => setShowMobileAddModal(true)}
+                    onClick={() => {
+                        setMobileEditingRow(null);
+                        setNewBlockText('');
+                        setNewBlockPeriod('Mañana');
+                        setSelectedProjectIdForNewBlock(undefined);
+                        setNewBlockDays([0, 1, 2, 3, 4, 5, 6]);
+                        setShowMobileAddModal(true);
+                    }}
                     style={{
                         position: 'fixed', bottom: '84px', right: '20px',
                         width: '56px', height: '56px', borderRadius: '50%',
@@ -617,13 +673,16 @@ export const BloquesDashboard = ({
                     <span className="material-symbols-outlined" style={{ fontSize: '28px', fontVariationSettings: "'wght' 600" }}>add</span>
                 </button>
 
-                {/* ── Add Modal (Bottom Sheet) ── */}
+                {/* ── Add/Edit Modal (Bottom Sheet) ── */}
                 <AnimatePresence>
                     {showMobileAddModal && (
                         <>
                             <motion.div
                                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                                onClick={() => setShowMobileAddModal(false)}
+                                onClick={() => {
+                                    setShowMobileAddModal(false);
+                                    setMobileEditingRow(null);
+                                }}
                                 style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000 }}
                             />
                             <motion.div
@@ -634,15 +693,18 @@ export const BloquesDashboard = ({
                                     background: '#ffffff', borderRadius: '24px 24px 0 0',
                                     padding: '20px 20px 40px', zIndex: 1001,
                                     boxShadow: '0 -8px 32px rgba(0,0,0,0.12)',
+                                    maxHeight: '90vh', overflowY: 'auto'
                                 }}
                             >
                                 <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: '#e1e3e4', margin: '0 auto 20px' }} />
                                 <h3 style={{ margin: '0 0 20px', fontSize: '18px', fontWeight: '700', color: '#191c1d', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span className="material-symbols-outlined" style={{ fontSize: '22px', color: '#944a18' }}>add_circle</span>
-                                    Nuevo Bloque de Enfoque
+                                    <span className="material-symbols-outlined" style={{ fontSize: '22px', color: '#944a18' }}>
+                                        {mobileEditingRow ? 'edit_note' : 'add_circle'}
+                                    </span>
+                                    {mobileEditingRow ? 'Editar Bloque de Enfoque' : 'Nuevo Bloque de Enfoque'}
                                 </h3>
 
-                                <form onSubmit={(e) => { handleAddRow(e); setShowMobileAddModal(false); }} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                                <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                                     {/* Nombre */}
                                     <div>
                                         <label style={{ fontSize: '12px', fontWeight: '600', color: '#54433a', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>NOMBRE</label>
@@ -715,7 +777,7 @@ export const BloquesDashboard = ({
                                     <div>
                                         <label style={{ fontSize: '12px', fontWeight: '600', color: '#54433a', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>DÍAS ACTIVOS</label>
                                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'space-between' }}>
-                                            {['L','M','M','J','V','S','D'].map((d, i) => {
+                                            {['L','M','X','J','V','S','D'].map((d, i) => {
                                                 const isAct = newBlockDays.includes(i);
                                                 return (
                                                     <button key={i} type="button"
@@ -743,22 +805,50 @@ export const BloquesDashboard = ({
                                         </div>
                                     </div>
 
-                                    {/* Submit */}
-                                    <button
-                                        type="submit"
-                                        disabled={!newBlockText.trim()}
-                                        style={{
-                                            width: '100%', height: '50px',
-                                            background: newBlockText.trim() ? '#944a18' : '#e1e3e4',
-                                            color: newBlockText.trim() ? '#ffffff' : '#877369',
-                                            border: 'none', borderRadius: '14px',
-                                            fontSize: '16px', fontWeight: '700', cursor: newBlockText.trim() ? 'pointer' : 'default',
-                                            marginTop: '4px', transition: 'all 0.15s',
-                                            boxShadow: newBlockText.trim() ? '0 4px 16px rgba(148,74,24,0.25)' : 'none',
-                                        }}
-                                    >
-                                        Añadir Bloque
-                                    </button>
+                                    {/* Submit and Delete */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                                        <button
+                                            type="submit"
+                                            disabled={!newBlockText.trim()}
+                                            style={{
+                                                width: '100%', height: '50px',
+                                                background: newBlockText.trim() ? '#944a18' : '#e1e3e4',
+                                                color: newBlockText.trim() ? '#ffffff' : '#877369',
+                                                border: 'none', borderRadius: '14px',
+                                                fontSize: '16px', fontWeight: '700', cursor: newBlockText.trim() ? 'pointer' : 'default',
+                                                transition: 'all 0.15s',
+                                                boxShadow: newBlockText.trim() ? '0 4px 16px rgba(148,74,24,0.25)' : 'none',
+                                            }}
+                                        >
+                                            {mobileEditingRow ? 'Guardar Cambios' : 'Añadir Bloque'}
+                                        </button>
+
+                                        {mobileEditingRow && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    handleRemoveRow(mobileEditingRow.label, mobileEditingRow.period);
+                                                    setNewBlockText('');
+                                                    setSelectedProjectIdForNewBlock(undefined);
+                                                    setNewBlockDays([0, 1, 2, 3, 4, 5, 6]);
+                                                    setMobileEditingRow(null);
+                                                    setShowMobileAddModal(false);
+                                                }}
+                                                style={{
+                                                    width: '100%', height: '50px',
+                                                    background: '#ffdad6',
+                                                    color: '#ba1a1a',
+                                                    border: 'none', borderRadius: '14px',
+                                                    fontSize: '16px', fontWeight: '700', cursor: 'pointer',
+                                                    transition: 'all 0.15s',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                                                }}
+                                            >
+                                                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>delete</span>
+                                                Eliminar Bloque
+                                            </button>
+                                        )}
+                                    </div>
                                 </form>
                             </motion.div>
                         </>
