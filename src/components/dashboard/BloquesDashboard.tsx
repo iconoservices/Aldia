@@ -1170,7 +1170,7 @@ export const BloquesDashboard = ({
                         <div style={{ gridColumn: 'span 12', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', borderTop: '1px solid rgba(218, 194, 182, 0.3)', paddingTop: '14px', marginTop: '6px' }}>
                             <span style={{ fontSize: '12px', fontWeight: '600', color: '#54433a', letterSpacing: '0.05em' }}>Días activos:</span>
                             <div style={{ display: 'flex', gap: '4px' }}>
-                                {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => {
+                                {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d, i) => {
                                     const isAct = newBlockDays.includes(i);
                                     return (
                                         <button
