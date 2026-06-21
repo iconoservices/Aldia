@@ -1275,6 +1275,17 @@ export const BloquesDashboard = ({
                                 >
                                     <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>chevron_right</span>
                                 </button>
+                                <button
+                                    onClick={() => setReferenceDate(new Date())}
+                                    style={{
+                                        background: '#ff9f66', border: 'none', borderRadius: '8px',
+                                        padding: '4px 10px', cursor: 'pointer', color: '#773401',
+                                        fontSize: '12px', fontWeight: '700', marginLeft: '8px'
+                                    }}
+                                    type="button"
+                                >
+                                    Hoy
+                                </button>
                             </div>
                         </div>
                     </div>
