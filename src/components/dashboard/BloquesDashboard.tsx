@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import type { DailyBlock } from '../../hooks/useAlDiaState';
@@ -42,6 +42,7 @@ export const BloquesDashboard = ({
 }: BloquesDashboardProps) => {
     // 📅 Fecha de referencia para la semana actual
     const [referenceDate, setReferenceDate] = useState(() => new Date());
+    const hydratedWeekRef = useRef<string>('');
 
     const [newBlockText, setNewBlockText] = useState('');
     const [newBlockPeriod, setNewBlockPeriod] = useState<'Mañana' | 'Tarde' | 'Noche' | 'Otro'>('Mañana');
@@ -112,6 +113,45 @@ export const BloquesDashboard = ({
         nextDate.setDate(nextDate.getDate() + weeks * 7);
         setReferenceDate(nextDate);
     };
+
+    // Hidratar bloques faltantes al navegar entre semanas
+    useEffect(() => {
+        const weekKey = weekDays.map(d => d.date).join(',');
+        if (hydratedWeekRef.current === weekKey) return;
+        hydratedWeekRef.current = weekKey;
+
+        const weekDates = weekDays.map(d => d.date);
+        const templates = new Map<string, { label: string; period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro'; projectId?: number; repeatDays: number[] }>();
+
+        dailyBlocks.forEach(b => {
+            if (b.repeatDays && b.repeatDays.length > 0) {
+                const key = `${b.label.toLowerCase()}|${b.period}`;
+                if (!templates.has(key)) {
+                    templates.set(key, { label: b.label, period: b.period, projectId: b.projectId, repeatDays: b.repeatDays });
+                }
+            }
+        });
+
+        const toAdd: { label: string; period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro'; date: string; projectId?: number; repeatDays: number[] }[] = [];
+        templates.forEach(template => {
+            weekDays.forEach((day, idx) => {
+                if (template.repeatDays.includes(idx)) {
+                    const exists = dailyBlocks.some(b =>
+                        b.label.toLowerCase() === template.label.toLowerCase() &&
+                        b.period === template.period &&
+                        b.date === day.date
+                    );
+                    if (!exists) {
+                        toAdd.push({ ...template, date: day.date });
+                    }
+                }
+            });
+        });
+
+        if (toAdd.length > 0) {
+            toAdd.forEach(block => addDailyBlock(block.label, block.period, block.date, false, block.projectId, block.repeatDays));
+        }
+    }, [weekDays]);
 
     const getWeekRangeLabel = () => {
         const first = new Date(weekDays[0].date + 'T00:00:00');
@@ -292,11 +332,19 @@ export const BloquesDashboard = ({
         e.preventDefault();
         if (!newBlockText.trim()) return;
 
-        const defaultDate = weekDays.some(d => d.isToday) 
-            ? new Date().toLocaleDateString('en-CA') 
-            : weekDays[0].date;
-
-        addDailyBlock(newBlockText.trim(), newBlockPeriod, defaultDate, false, selectedProjectIdForNewBlock, newBlockDays);
+        const label = newBlockText.trim();
+        weekDays.forEach((day, idx) => {
+            if (newBlockDays.includes(idx)) {
+                const exists = dailyBlocks.some(b =>
+                    b.label.toLowerCase() === label.toLowerCase() &&
+                    b.period === newBlockPeriod &&
+                    b.date === day.date
+                );
+                if (!exists) {
+                    addDailyBlock(label, newBlockPeriod, day.date, false, selectedProjectIdForNewBlock, newBlockDays);
+                }
+            }
+        });
         setNewBlockText('');
         setSelectedProjectIdForNewBlock(undefined);
         setNewBlockDays([0, 1, 2, 3, 4, 5, 6]);
@@ -319,11 +367,31 @@ export const BloquesDashboard = ({
         const textToSave = editingText.trim() || oldLabel;
         const weekDates = weekDays.map(d => d.date);
 
-        dailyBlocks.forEach(b => {
-            if (b.label.toLowerCase() === oldLabel.toLowerCase() && b.period === oldPeriod && weekDates.includes(b.date)) {
-                updateDailyBlock(b.id, { label: textToSave, projectId: editingProjectId, repeatDays: editingRepeatDays, period: editingPeriod });
+        const blocksInWeek = dailyBlocks.filter(b =>
+            b.label.toLowerCase() === oldLabel.toLowerCase() && b.period === oldPeriod && weekDates.includes(b.date)
+        );
+
+        // Actualizar bloques existentes
+        blocksInWeek.forEach(b => {
+            updateDailyBlock(b.id, { label: textToSave, projectId: editingProjectId, repeatDays: editingRepeatDays, period: editingPeriod });
+        });
+
+        // Agregar bloques para días que ahora están activos y no existían
+        weekDays.forEach((day, idx) => {
+            if (editingRepeatDays.includes(idx)) {
+                const alreadyHasBlock = dailyBlocks.some(b => {
+                    const isUpdatedBlock = blocksInWeek.some(ub => ub.date === day.date && ub.id === b.id);
+                    if (isUpdatedBlock) return true;
+                    return b.label.toLowerCase() === textToSave.toLowerCase() &&
+                        b.period === editingPeriod &&
+                        b.date === day.date;
+                });
+                if (!alreadyHasBlock) {
+                    addDailyBlock(textToSave, editingPeriod, day.date, false, editingProjectId, editingRepeatDays);
+                }
             }
         });
+
         setEditingRowId(null);
     };
 
@@ -393,11 +461,19 @@ export const BloquesDashboard = ({
                 setMobileEditingRow(null);
             } else {
                 // Add Mode
-                const defaultDate = weekDays.some(d => d.isToday) 
-                    ? new Date().toLocaleDateString('en-CA') 
-                    : weekDays[0].date;
-
-                addDailyBlock(newBlockText.trim(), newBlockPeriod, defaultDate, false, selectedProjectIdForNewBlock, newBlockDays);
+                const label = newBlockText.trim();
+                weekDays.forEach((day, idx) => {
+                    if (newBlockDays.includes(idx)) {
+                        const exists = dailyBlocks.some(b =>
+                            b.label.toLowerCase() === label.toLowerCase() &&
+                            b.period === newBlockPeriod &&
+                            b.date === day.date
+                        );
+                        if (!exists) {
+                            addDailyBlock(label, newBlockPeriod, day.date, false, selectedProjectIdForNewBlock, newBlockDays);
+                        }
+                    }
+                });
                 setNewBlockText('');
                 setSelectedProjectIdForNewBlock(undefined);
                 setNewBlockDays([0, 1, 2, 3, 4, 5, 6]);
