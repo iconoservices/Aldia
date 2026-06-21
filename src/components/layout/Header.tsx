@@ -31,44 +31,82 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
         return () => window.removeEventListener('storage', handleStorage);
     }, [user]);
 
-    const TAB_ICONS: Record<string, string> = {
-        'Checklist': 'checklist',
-        'Acción': 'bolt',
-        'Calendario': 'calendar_today',
-        'Bloques': 'calendar_view_week',
-        'Ruta': 'route',
-        'Mapa': 'map',
-        'Cerebro': 'psychology',
-        'Vida': 'spa',
-        'Proyectos': 'folder',
-        'Tablero': 'view_kanban',
-        'Lienzo': 'palette',
-        'Finanzas': 'payments',
-        'Stats': 'analytics'
-    };
 
-    const allTabs = [
-        'Checklist', 'Bloques', 'Calendario', 
-        'Ruta', 'Mapa', 'Cerebro', 'Vida', 
-        'Proyectos', 'Tablero', 'Lienzo', 'Finanzas', 'Stats', 'Acción'
+    // ── Primary sidebar items ─────────────────────────────────────────
+    const PRIMARY_ITEMS = [
+        { label: 'Checklist', tab: 'Checklist', icon: 'task_alt' },
+        { label: 'Bloques', tab: 'Bloques',   icon: 'history_edu'    },
+        { label: 'Ajustes',  tab: '__profile', icon: 'settings'       },
     ];
-    const mainTabs = allTabs;
 
-    const renderTab = (tab: string, className = "") => {
-        const iconName = TAB_ICONS[tab] || 'star';
+    // ── Secondary / all other tools ────────────────────────────────────
+    const SECONDARY_ITEMS = [
+        { label: 'Acción',     tab: 'Acción',     icon: 'bolt'          },
+        { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
+        { label: 'Vida',       tab: 'Vida',        icon: 'spa'           },
+        { label: 'Cerebro',    tab: 'Cerebro',     icon: 'psychology'    },
+        { label: 'Ruta',       tab: 'Ruta',        icon: 'route'         },
+        { label: 'Mapa',       tab: 'Mapa',        icon: 'map'           },
+        { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
+        { label: 'Tablero',    tab: 'Tablero',     icon: 'view_kanban'   },
+        { label: 'Lienzo',     tab: 'Lienzo',      icon: 'palette'       },
+        { label: 'Datos',      tab: 'Stats',       icon: 'analytics'     },
+        { label: 'Finanzas',   tab: 'Finanzas',    icon: 'payments'      },
+    ];
+
+    // ── Shared sidebar button renderer ─────────────────────────────────
+    const renderSidebarBtn = (item: { label: string; tab: string; icon: string }) => {
+        const isActive = item.tab === '__profile' ? false : activeTab === item.tab;
         return (
             <button
-                key={tab}
-                className={`tab-btn ${activeTab === tab ? 'active-tab' : ''} ${className}`}
+                key={item.label}
                 onClick={() => {
-                    setActiveTab(tab);
-                    setIsDrawerOpen(false);
+                    if (item.tab === '__profile') { onProfileClick(); }
+                    else { setActiveTab(item.tab); }
+                }}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '8px 14px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    fontSize: '14px',
+                    fontWeight: isActive ? 700 : 500,
+                    textAlign: 'left',
+                    width: '100%',
+                    transition: 'all 0.15s ease',
+                    background: isActive ? '#edeeef' : 'transparent',
+                    color: isActive ? '#944a18' : '#54433a',
+                    boxShadow: isActive ? 'inset -3px 0 0 #944a18' : 'none',
+                }}
+                onMouseEnter={e => {
+                    if (!isActive) {
+                        (e.currentTarget as HTMLElement).style.background = '#f3f4f5';
+                        (e.currentTarget as HTMLElement).style.color = '#944a18';
+                    }
+                }}
+                onMouseLeave={e => {
+                    if (!isActive) {
+                        (e.currentTarget as HTMLElement).style.background = 'transparent';
+                        (e.currentTarget as HTMLElement).style.color = '#54433a';
+                    }
                 }}
             >
-                <span className="material-symbols-outlined tab-icon" style={{ fontSize: '18px', transition: 'color 0.15s' }}>
-                    {iconName}
+                <span
+                    className="material-symbols-outlined"
+                    style={{
+                        fontSize: '18px',
+                        fontVariationSettings: isActive ? "'FILL' 1, 'wght' 600" : "'FILL' 0, 'wght' 400",
+                        color: 'inherit',
+                        flexShrink: 0,
+                    }}
+                >
+                    {item.icon}
                 </span>
-                <span className="tab-label">{tab}</span>
+                <span>{item.label}</span>
             </button>
         );
     };
@@ -95,59 +133,79 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
 
     return (
         <>
-            {/* ── Desktop Header ── */}
+            {/* ── Desktop Sidebar ── */}
             <header className="aldia-header desktop-header-only">
-                <div className="sidebar-logo desktop-only">
+                {/* Logo */}
+                <div className="sidebar-logo desktop-only" style={{ padding: '0 4px', flexShrink: 0 }}>
                     <div className="logo-placeholder">A</div>
-                    <span className="logo-text">AlDía</span>
+                    <div>
+                        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: '#944a18', letterSpacing: '-0.01em', lineHeight: 1 }}>AIDía</h1>
+                        <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#54433a', opacity: 0.7, fontWeight: 600, letterSpacing: '0.04em' }}>Productivity Focus</p>
+                    </div>
                 </div>
 
-                <div className="tabs-container">
-                    {mainTabs.map(tab => renderTab(tab))}
-                </div>
+                {/* Nav Items */}
+                <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', overflowY: 'auto', paddingRight: '2px' }}>
+                    {/* Primary group */}
+                    {PRIMARY_ITEMS.map(item => renderSidebarBtn(item))}
 
-                <div className="header-right">
-                    {canInstall && !isInstalled && (
-                        <button
-                            onClick={install}
-                            className="install-btn-header"
-                            style={{
-                                background: 'var(--domain-orange)',
-                                color: 'white',
-                                border: 'none',
-                                padding: '8px 14px',
-                                borderRadius: '11px',
-                                fontSize: '0.7rem',
-                                fontWeight: 900,
-                                cursor: 'pointer',
-                                boxShadow: '0 4px 12px rgba(255, 140, 66, 0.3)',
-                                animation: 'pulse-soft 2s infinite'
-                            }}
-                        >
-                            INSTALAR
+                    {/* Divider */}
+                    <div style={{ margin: '10px 0 6px', display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px' }}>
+                        <span style={{ flex: 1, height: '1px', background: '#e7e8e9' }} />
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#877369', letterSpacing: '0.08em', whiteSpace: 'nowrap', opacity: 0.7 }}>
+                            HERRAMIENTAS
+                        </span>
+                        <span style={{ flex: 1, height: '1px', background: '#e7e8e9' }} />
+                    </div>
+
+                    {/* Secondary group */}
+                    {SECONDARY_ITEMS.map(item => renderSidebarBtn(item))}
+                </nav>
+
+                {/* Bottom: Nueva Sesión + Install */}
+                <div style={{ borderTop: '1px solid #dac2b6', paddingTop: '12px', flexShrink: 0, display: 'flex', gap: '8px' }}>
+                    {!isInstalled && (
+                        <button onClick={install} title="Instalar app" style={{
+                            background: 'rgba(148,74,24,0.08)', border: 'none', borderRadius: '12px',
+                            padding: '0 12px', cursor: 'pointer', color: '#944a18', flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>download</span>
                         </button>
                     )}
-
-                    <div
-                        className="profile-pic"
+                    <button
                         onClick={onProfileClick}
                         style={{
-                            cursor: 'pointer',
-                            background: '#f0f0f0',
-                            border: '2px solid var(--domain-orange)',
+                            flex: 1,
+                            background: '#ff9f66',
+                            color: '#773401',
+                            border: 'none',
+                            padding: '12px 16px',
                             borderRadius: '14px',
-                            width: '40px',
-                            height: '40px',
+                            fontSize: '15px',
+                            fontWeight: 800,
+                            cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            overflow: 'hidden',
-                            backgroundSize: 'cover',
-                            backgroundImage: profilePic ? `url(${profilePic})` : 'none'
+                            gap: '8px',
+                            fontFamily: "'Plus Jakarta Sans', sans-serif",
+                            transition: 'opacity 0.15s',
                         }}
+                        onMouseEnter={e => (e.currentTarget.style.opacity = '0.88')}
+                        onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
                     >
-                        {!profilePic && <User size={20} color="#CCC" />}
-                    </div>
+                        {profilePic ? (
+                            <img
+                                src={profilePic}
+                                alt="Profile"
+                                style={{ width: '22px', height: '22px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                            />
+                        ) : (
+                            <User size={18} />
+                        )}
+                        Nueva Sesión
+                    </button>
                 </div>
             </header>
 
@@ -187,7 +245,15 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
                     </button>
                 </div>
                 <div className="mobile-drawer-tabs">
-                    {allTabs.map(tab => renderTab(tab, "mobile-drawer-tab-btn"))}
+                    {PRIMARY_ITEMS.map(item => renderSidebarBtn(item))}
+                    <div style={{ margin: '10px 0 6px', display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px' }}>
+                        <span style={{ flex: 1, height: '1px', background: '#e7e8e9' }} />
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#877369', letterSpacing: '0.08em', whiteSpace: 'nowrap', opacity: 0.7 }}>
+                            HERRAMIENTAS
+                        </span>
+                        <span style={{ flex: 1, height: '1px', background: '#e7e8e9' }} />
+                    </div>
+                    {SECONDARY_ITEMS.map(item => renderSidebarBtn(item))}
                 </div>
             </div>
 
@@ -198,7 +264,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
                     className={`mobile-nav-btn ${activeTab === 'Checklist' ? 'active' : ''}`}
                 >
                     <span className="material-symbols-outlined">task_alt</span>
-                    <span>Jornada</span>
+                    <span>Checklist</span>
                 </button>
 
                 <button 
@@ -206,7 +272,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
                     className={`mobile-nav-btn ${activeTab === 'Bloques' ? 'active' : ''}`}
                 >
                     <span className="material-symbols-outlined">calendar_view_week</span>
-                    <span>Registro</span>
+                    <span>Bloques</span>
                 </button>
 
                 <button 

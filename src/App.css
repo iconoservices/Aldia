@@ -443,16 +443,28 @@ h3 {
 
   .aldia-header {
     flex-direction: column;
-    width: 250px;
+    width: 220px;
     height: 100vh;
-    padding: 2rem 1.2rem;
+    padding: 1rem 1rem;
     margin: 0;
     border-right: 1px solid rgba(61, 49, 46, 0.08);
     background-color: var(--white);
     justify-content: flex-start;
     align-items: stretch;
     flex-shrink: 0;
-    gap: 2.5rem;
+    gap: 1rem;
+    overflow: hidden;
+  }
+
+  .aldia-header nav::-webkit-scrollbar {
+    width: 4px;
+  }
+  .aldia-header nav::-webkit-scrollbar-thumb {
+    background: rgba(148, 74, 24, 0.25);
+    border-radius: 4px;
+  }
+  .aldia-header nav::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 74, 24, 0.5);
   }
 
   .tabs-container {
