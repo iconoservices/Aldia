@@ -48,9 +48,9 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
     };
 
     const allTabs = [
-        'Checklist', 'Bloques', 'Acción', 'Calendario', 
+        'Checklist', 'Bloques', 'Calendario', 
         'Ruta', 'Mapa', 'Cerebro', 'Vida', 
-        'Proyectos', 'Tablero', 'Lienzo', 'Finanzas', 'Stats'
+        'Proyectos', 'Tablero', 'Lienzo', 'Finanzas', 'Stats', 'Acción'
     ];
     const mainTabs = allTabs.slice(0, 11);
     const statsTab = allTabs[11];
