@@ -10,7 +10,7 @@ interface HeaderProps {
 }
 
 export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps) => {
-    const { canInstall, install, isInstalled } = usePWA();
+    const { install, isInstalled } = usePWA();
     const { user } = useAuth();
     const [profilePic, setProfilePic] = useState<string | null>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
