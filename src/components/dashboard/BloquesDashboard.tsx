@@ -898,12 +898,24 @@ export const BloquesDashboard = ({
                                             })}
                                         </div>
                                         <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                                            {[['L–V', [0,1,2,3,4]], ['Fin', [5,6]], ['Todos', [0,1,2,3,4,5,6]]].map(([label, days]) => (
-                                                <button key={label as string} type="button"
-                                                    onClick={() => setNewBlockDays(days as number[])}
-                                                    style={{ background: 'none', border: 'none', color: '#4858ab', fontSize: '13px', fontWeight: '700', cursor: 'pointer', padding: 0 }}
-                                                >{label as string}</button>
-                                            ))}
+                                            {[
+                                                { label: 'L–V', days: [0,1,2,3,4] },
+                                                { label: 'Fin', days: [5,6] },
+                                                { label: 'Todos', days: [0,1,2,3,4,5,6] }
+                                            ].map(opt => {
+                                                const isActive = newBlockDays.length === opt.days.length && opt.days.every(d => newBlockDays.includes(d));
+                                                return (
+                                                    <button key={opt.label} type="button"
+                                                        onClick={() => setNewBlockDays(opt.days)}
+                                                        style={{
+                                                            background: 'none', border: 'none',
+                                                            color: isActive ? '#944a18' : '#4858ab',
+                                                            fontSize: '13px', fontWeight: '700',
+                                                            cursor: 'pointer', padding: 0
+                                                        }}
+                                                    >{opt.label}</button>
+                                                );
+                                            })}
                                         </div>
                                     </div>
 
@@ -1204,33 +1216,34 @@ export const BloquesDashboard = ({
                                 })}
                             </div>
                             <div style={{ display: 'flex', gap: '16px', marginLeft: '8px', borderLeft: '1px solid #dac2b6', paddingLeft: '16px' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setNewBlockDays([0,1,2,3,4])}
-                                    style={{ border: 'none', background: 'transparent', color: '#4858ab', fontSize: '14px', fontWeight: '700', cursor: 'pointer', textDecoration: 'none' }}
-                                    onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                                    onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                                >
-                                    Lunes a Viernes
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setNewBlockDays([5,6])}
-                                    style={{ border: 'none', background: 'transparent', color: '#54433a', opacity: 0.6, fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}
-                                    onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                                    onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
-                                >
-                                    Fin de Semana
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setNewBlockDays([0,1,2,3,4,5,6])}
-                                    style={{ border: 'none', background: 'transparent', color: '#54433a', opacity: 0.6, fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}
-                                    onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                                    onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
-                                >
-                                    Todos
-                                </button>
+                                {[
+                                    { label: 'Lunes a Viernes', days: [0,1,2,3,4] },
+                                    { label: 'Fin de Semana', days: [5,6] },
+                                    { label: 'Todos', days: [0,1,2,3,4,5,6] }
+                                ].map(opt => {
+                                    const isActive = newBlockDays.length === opt.days.length && opt.days.every(d => newBlockDays.includes(d));
+                                    return (
+                                        <button
+                                            key={opt.label}
+                                            type="button"
+                                            onClick={() => setNewBlockDays(opt.days)}
+                                            style={{
+                                                border: 'none',
+                                                background: 'transparent',
+                                                color: isActive ? '#944a18' : '#54433a',
+                                                opacity: isActive ? 1 : 0.6,
+                                                fontSize: '14px',
+                                                fontWeight: '700',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.1s'
+                                            }}
+                                            onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.textDecoration = 'underline'; }}
+                                            onMouseLeave={(e) => { e.currentTarget.style.opacity = isActive ? '1' : '0.6'; e.currentTarget.style.textDecoration = 'none'; }}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
