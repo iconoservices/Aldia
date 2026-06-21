@@ -114,14 +114,13 @@ const TaskCard = ({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 style={{
-                    ...bentoCard,
-                    padding: '14px 16px',
+                    padding: '10px 16px',
                     display: 'flex', alignItems: 'center', gap: '10px',
-                    background: isDone ? '#f3f4f5' : C.surfaceLowest,
+                    borderRadius: '8px',
                     opacity: isDone ? 0.72 : 1,
                     cursor: isDragging ? 'grabbing' : 'default',
                 }}
-                whileHover={!isSortDragging ? { boxShadow: '0 4px 20px rgba(0,0,0,0.08)' } as any : undefined}
+                whileHover={!isSortDragging ? { background: '#f3f4f5' } as any : undefined}
                 className="task-card-row"
             >
                 {/* Drag handle */}
