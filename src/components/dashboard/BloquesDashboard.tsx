@@ -43,6 +43,7 @@ export const BloquesDashboard = ({
     // 📅 Fecha de referencia para la semana actual
     const [referenceDate, setReferenceDate] = useState(() => new Date());
     const hydratedWeekRef = useRef<string>('');
+    const hydratedMonthRef = useRef<string>('');
 
     const [newBlockText, setNewBlockText] = useState('');
     const [newBlockPeriod, setNewBlockPeriod] = useState<'Mañana' | 'Tarde' | 'Noche' | 'Otro'>('Mañana');
@@ -114,13 +115,13 @@ export const BloquesDashboard = ({
         setReferenceDate(nextDate);
     };
 
-    // Hidratar bloques faltantes al navegar entre semanas
+    // Hidratar bloques faltantes al navegar entre semanas o meses
     useEffect(() => {
         const weekKey = weekDays.map(d => d.date).join(',');
-        if (hydratedWeekRef.current === weekKey) return;
-        hydratedWeekRef.current = weekKey;
+        const monthKey = `${refMonthDate.getFullYear()}-${refMonthDate.getMonth()}`;
 
-        const weekDates = weekDays.map(d => d.date);
+        if (hydratedWeekRef.current === weekKey && hydratedMonthRef.current === monthKey) return;
+
         const templates = new Map<string, { label: string; period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro'; projectId?: number; repeatDays: number[] }>();
 
         dailyBlocks.forEach(b => {
@@ -133,25 +134,50 @@ export const BloquesDashboard = ({
         });
 
         const toAdd: { label: string; period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro'; date: string; projectId?: number; repeatDays: number[] }[] = [];
-        templates.forEach(template => {
-            weekDays.forEach((day, idx) => {
-                if (template.repeatDays.includes(idx)) {
-                    const exists = dailyBlocks.some(b =>
-                        b.label.toLowerCase() === template.label.toLowerCase() &&
-                        b.period === template.period &&
-                        b.date === day.date
-                    );
-                    if (!exists) {
-                        toAdd.push({ ...template, date: day.date });
+
+        if (hydratedWeekRef.current !== weekKey) {
+            hydratedWeekRef.current = weekKey;
+            templates.forEach(template => {
+                weekDays.forEach((day, idx) => {
+                    if (template.repeatDays.includes(idx)) {
+                        const exists = dailyBlocks.some(b =>
+                            b.label.toLowerCase() === template.label.toLowerCase() &&
+                            b.period === template.period &&
+                            b.date === day.date
+                        );
+                        if (!exists) {
+                            toAdd.push({ ...template, date: day.date });
+                        }
                     }
-                }
+                });
             });
-        });
+        }
+
+        if (hydratedMonthRef.current !== monthKey) {
+            hydratedMonthRef.current = monthKey;
+            const daysInMonth = new Date(refMonthDate.getFullYear(), refMonthDate.getMonth() + 1, 0).getDate();
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${refMonthDate.getFullYear()}-${String(refMonthDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayOfWeek = (new Date(dateStr + 'T12:00:00').getDay() + 6) % 7;
+                templates.forEach(template => {
+                    if (template.repeatDays.includes(dayOfWeek)) {
+                        const exists = dailyBlocks.some(b =>
+                            b.label.toLowerCase() === template.label.toLowerCase() &&
+                            b.period === template.period &&
+                            b.date === dateStr
+                        );
+                        if (!exists) {
+                            toAdd.push({ ...template, date: dateStr });
+                        }
+                    }
+                });
+            }
+        }
 
         if (toAdd.length > 0) {
             toAdd.forEach(block => addDailyBlock(block.label, block.period, block.date, false, block.projectId, block.repeatDays));
         }
-    }, [weekDays]);
+    }, [weekDays, refMonthDate]);
 
     const getWeekRangeLabel = () => {
         const first = new Date(weekDays[0].date + 'T00:00:00');
@@ -1788,6 +1814,7 @@ export const BloquesDashboard = ({
                     const d = new Date(refMonthDate);
                     d.setMonth(d.getMonth() + delta);
                     setRefMonthDate(d);
+                    setReferenceDate(new Date(d.getFullYear(), d.getMonth(), 1));
                 };
 
                 const todayFull = new Date().toLocaleDateString('en-CA');
@@ -1804,7 +1831,7 @@ export const BloquesDashboard = ({
                                     <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>chevron_right</span>
                                 </button>
                             </div>
-                            <button onClick={() => setRefMonthDate(new Date())} style={{ border: '1px solid #dac2b6', background: 'white', borderRadius: '8px', padding: '6px 12px', fontSize: '0.75rem', fontWeight: 800, color: '#78909C', cursor: 'pointer' }}>Hoy</button>
+                            <button onClick={() => { setRefMonthDate(new Date()); setReferenceDate(new Date()); }} style={{ border: '1px solid #dac2b6', background: 'white', borderRadius: '8px', padding: '6px 12px', fontSize: '0.75rem', fontWeight: 800, color: '#78909C', cursor: 'pointer' }}>Hoy</button>
                         </div>
 
                         <div className="glass-card" style={{ background: 'white', borderRadius: '18px', padding: '1.2rem', border: '1px solid rgba(61,49,46,0.06)', boxShadow: '0 4px 20px rgba(0,0,0,0.015)' }}>
