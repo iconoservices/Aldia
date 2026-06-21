@@ -976,7 +976,7 @@ export const BloquesDashboard = ({
     }
 
     return (
-        <div style={{ padding: '0.5rem 0 2rem 0', width: '100%', maxWidth: '1200px', margin: '0 auto', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        <div style={{ padding: '0.5rem 0 2rem 0', width: '100%', maxWidth: '1200px', margin: '0 auto', fontFamily: "'Plus Jakarta Sans', sans-serif", background: '#f8f9fa' }}>
 
             
             {/* Cabecera del Dashboard */}
