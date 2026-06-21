@@ -52,8 +52,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
         'Ruta', 'Mapa', 'Cerebro', 'Vida', 
         'Proyectos', 'Tablero', 'Lienzo', 'Finanzas', 'Stats', 'Acción'
     ];
-    const mainTabs = allTabs.slice(0, 11);
-    const statsTab = allTabs[11];
+    const mainTabs = allTabs;
 
     const renderTab = (tab: string, className = "") => {
         const iconName = TAB_ICONS[tab] || 'star';
@@ -105,15 +104,9 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
 
                 <div className="tabs-container">
                     {mainTabs.map(tab => renderTab(tab))}
-                    <div className="desktop-only">
-                        {renderTab(statsTab)}
-                    </div>
                 </div>
 
                 <div className="header-right">
-                    <div className="mobile-only stats-mobile-wrapper">
-                        {renderTab(statsTab, "stats-mobile-btn")}
-                    </div>
                     {canInstall && !isInstalled && (
                         <button
                             onClick={install}
