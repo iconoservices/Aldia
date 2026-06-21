@@ -114,13 +114,14 @@ const TaskCard = ({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 style={{
-                    padding: '10px 16px',
+                    ...bentoCard,
+                    padding: '14px 16px',
                     display: 'flex', alignItems: 'center', gap: '10px',
-                    borderRadius: '8px',
+                    background: isDone ? '#f3f4f5' : C.surfaceLowest,
                     opacity: isDone ? 0.72 : 1,
                     cursor: isDragging ? 'grabbing' : 'default',
                 }}
-                whileHover={!isSortDragging ? { background: '#f3f4f5' } as any : undefined}
+                whileHover={!isSortDragging ? { boxShadow: '0 4px 20px rgba(0,0,0,0.08)' } as any : undefined}
                 className="task-card-row"
             >
                 {/* Drag handle */}
@@ -420,7 +421,7 @@ export const ChecklistDiario = ({
     /* ────────────────────────────────────────────────────────── */
     if (isMobile) {
         return (
-            <div style={{ padding: '12px 12px 6rem', minHeight: '100%', background: C.surface }}>
+            <div style={{ padding: '12px 12px 6rem', minHeight: '100%' }}>
                 
                 {/* Search / Filter toolbar */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem', width: '100%' }}>
@@ -822,7 +823,7 @@ export const ChecklistDiario = ({
     }
 
     return (
-        <div style={{ padding: '1.5rem 2rem 3rem', minHeight: '100%', background: C.surface }}>
+        <div style={{ padding: '1.5rem 2rem 3rem', minHeight: '100%' }}>
 
             {/* ── Header ── */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
