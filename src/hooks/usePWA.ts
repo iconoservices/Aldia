@@ -25,6 +25,7 @@ export const usePWA = () => {
             updated = true;
             setUpdatedAt(new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }));
             setShowUpdated(true);
+            setTimeout(() => location.reload(), 2000);
         };
 
         if (navigator.serviceWorker) {
