@@ -1,22 +1,37 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { registerSW } from 'virtual:pwa-register';
 
 export const usePWA = () => {
     const [installPrompt, setInstallPrompt] = useState<any>(null);
     const [isInstalled, setIsInstalled] = useState(false);
     const [needRefresh, setNeedRefresh] = useState(false);
-
-    const updateServiceWorker = registerSW({
-        onNeedRefresh() {
-            setNeedRefresh(true);
-        },
-        onOfflineReady() {
-            console.log('App lista para uso offline');
-        },
-    });
+    const [showUpdated, setShowUpdated] = useState(false);
+    const [updatedAt, setUpdatedAt] = useState<string>('');
+    const updateSWRef = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null);
 
     useEffect(() => {
-        // Detectar si ya está instalada
+        const updateServiceWorker = registerSW({
+            onNeedRefresh() {
+                setNeedRefresh(true);
+            },
+            onOfflineReady() {
+                console.log('App lista para uso offline');
+            },
+        });
+        updateSWRef.current = updateServiceWorker;
+    }, []);
+
+    // Auto-activate when needRefresh becomes true
+    useEffect(() => {
+        if (needRefresh && updateSWRef.current) {
+            updateSWRef.current(true);
+            setUpdatedAt(new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }));
+            setShowUpdated(true);
+            setNeedRefresh(false);
+        }
+    }, [needRefresh]);
+
+    useEffect(() => {
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
         setIsInstalled(isStandalone);
 
@@ -45,7 +60,6 @@ export const usePWA = () => {
         }
     };
 
-    // Detectar si es iOS
     const isIOS = () => {
         const userAgent = window.navigator.userAgent.toLowerCase();
         return /iphone|ipad|ipod/.test(userAgent);
@@ -56,7 +70,10 @@ export const usePWA = () => {
         isInstalled,
         install,
         needRefresh,
-        updateServiceWorker: () => updateServiceWorker(true),
+        updateServiceWorker: () => updateSWRef.current?.(true),
+        showUpdated,
+        setShowUpdated,
+        updatedAt,
         canInstall: !!installPrompt || (isIOS() && !isInstalled)
     };
 };

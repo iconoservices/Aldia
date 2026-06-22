@@ -23,7 +23,7 @@ import { useAlDiaState } from './hooks/useAlDiaState';
 import type { Mission, Note } from './hooks/useAlDiaState';
 import { ProfileOverlay } from './components/layout/ProfileOverlay';
 import { usePWA } from './hooks/usePWA';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, X } from 'lucide-react';
 import { BloquesDashboard } from './components/dashboard/BloquesDashboard';
 import { ChecklistDiario } from './components/dashboard/ChecklistDiario';
 import { RitaDashboard } from './components/dashboard/RitaDashboard';
@@ -89,9 +89,15 @@ function App() {
   const [selectedProjectDetailId, setSelectedProjectDetailId] = useState<number | null>(null);
 
   const state = useAlDiaState();
-  const { needRefresh, updateServiceWorker } = usePWA();
+  const { showUpdated, setShowUpdated, updatedAt } = usePWA();
   const viewingNote: Note | null = state.notes.find((n: Note) => n.id === viewingNoteId) || null;
   const selectedProjectDetail = state.projects.find((p: any) => p.id === selectedProjectDetailId);
+
+  useEffect(() => {
+    if (!showUpdated) return;
+    const timer = setTimeout(() => setShowUpdated(false), 5000);
+    return () => clearTimeout(timer);
+  }, [showUpdated]);
 
   if (state.isInitialLoad) {
     return (
@@ -416,11 +422,12 @@ function App() {
       />
 
       <AnimatePresence>
-        {needRefresh && (
+        {showUpdated && (
           <motion.div
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 50, opacity: 0 }}
+            transition={{ duration: 0.3 }}
             style={{
               position: 'fixed', bottom: '100px', left: '20px', right: '20px',
               zIndex: 9999, background: 'var(--domain-orange)', color: 'white',
@@ -431,18 +438,21 @@ function App() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <RefreshCw size={20} className="spin-slow" />
-              <span style={{ fontSize: '0.85rem', fontWeight: 900 }}>¡NUEVA VERSIÓN LISTA!</span>
+              <RefreshCw size={20} />
+              <span style={{ fontSize: '0.85rem', fontWeight: 900 }}>
+                App actualizada — {updatedAt}
+              </span>
             </div>
             <button
-              onClick={() => updateServiceWorker()}
+              onClick={() => setShowUpdated(false)}
               style={{
-                background: 'white', color: 'var(--domain-orange)', border: 'none',
-                padding: '6px 14px', borderRadius: '10px', fontSize: '0.75rem',
-                fontWeight: 900, cursor: 'pointer'
+                background: 'rgba(255,255,255,0.2)', color: 'white', border: 'none',
+                width: '30px', height: '30px', borderRadius: '10px', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                fontSize: '1rem', fontWeight: 900, flexShrink: 0
               }}
             >
-              ACTUALIZAR YA
+              <X size={16} />
             </button>
           </motion.div>
         )}
