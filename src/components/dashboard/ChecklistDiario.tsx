@@ -86,12 +86,12 @@ interface TaskCardProps {
     projName: string;
     isDragging?: boolean;
     onToggle: () => void;
-    onEdit: () => void;
+    onMenuClick: (e: React.MouseEvent, label: string, period: Period) => void;
 }
 
 const TaskCard = ({
     id, label, period, isDone, projColor, projName,
-    isDragging = false, onToggle, onEdit,
+    isDragging = false, onToggle, onMenuClick,
 }: TaskCardProps) => {
     const {
         attributes, listeners, setNodeRef,
@@ -184,11 +184,11 @@ const TaskCard = ({
                     </div>
                 </div>
 
-                {/* Edit */}
+                {/* Menu */}
                 <button
-                    onClick={onEdit}
-                    title="Editar"
-                    className="delete-btn"
+                    onClick={(e) => onMenuClick(e, label, period)}
+                    title="Más opciones"
+                    className="menu-btn"
                     style={{
                         background: 'none', border: 'none', cursor: 'pointer',
                         color: '#877369', opacity: 0, transition: 'opacity 0.15s',
@@ -196,7 +196,7 @@ const TaskCard = ({
                         borderRadius: '8px', flexShrink: 0,
                     }}
                 >
-                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>more_vert</span>
                 </button>
             </motion.div>
         </div>
@@ -237,6 +237,8 @@ export const ChecklistDiario = ({
     const [confirmDelete, setConfirmDelete] = useState<{ label: string; period: Period } | null>(null);
     const [editingTask, setEditingTask] = useState<{ label: string; period: Period } | null>(null);
     const [editText, setEditText] = useState('');
+    const [openMenu, setOpenMenu] = useState<{ label: string; period: Period; anchor: HTMLElement | null } | null>(null);
+    const [editingRepeat, setEditingRepeat] = useState<{ label: string; period: Period; repeatDays: number[] } | null>(null);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -366,11 +368,6 @@ export const ChecklistDiario = ({
         }
     }, [dailyBlocks, todayStr, toggleDailyBlock, addDailyBlock]);
 
-    const handleEdit = useCallback((label: string, period: Period) => {
-        setEditText(label);
-        setEditingTask({ label, period });
-    }, []);
-
     const handleSaveEdit = useCallback(() => {
         if (!editingTask || !editText.trim()) return;
         const ids = dailyBlocks.filter(b => b.label.toLowerCase() === editingTask.label.toLowerCase() && b.period === editingTask.period).map(b => b.id);
@@ -384,13 +381,55 @@ export const ChecklistDiario = ({
 
     const executeRemove = useCallback(() => {
         if (!confirmDelete) return;
-        const match = dailyBlocks.find(b =>
+        const matches = dailyBlocks.filter(b =>
             b.label.toLowerCase() === confirmDelete.label.toLowerCase() &&
-            b.period === confirmDelete.period && b.date === todayStr
+            b.period === confirmDelete.period
+        );
+        if (matches.length) removeDailyBlock(matches.map(m => m.id));
+        setConfirmDelete(null);
+    }, [confirmDelete, dailyBlocks, removeDailyBlock]);
+
+    const handleMenuClick = useCallback((e: React.MouseEvent, label: string, period: Period) => {
+        e.stopPropagation();
+        const anchor = e.currentTarget as HTMLElement;
+        setOpenMenu({ label, period, anchor });
+    }, []);
+
+    const handleRemoveToday = useCallback((label: string, period: Period) => {
+        const match = dailyBlocks.find(b =>
+            b.label.toLowerCase() === label.toLowerCase() &&
+            b.period === period && b.date === todayStr
         );
         if (match) removeDailyBlock(match.id);
-        setConfirmDelete(null);
-    }, [confirmDelete, dailyBlocks, removeDailyBlock, todayStr]);
+        setOpenMenu(null);
+    }, [dailyBlocks, removeDailyBlock, todayStr]);
+
+    const handleEditName = useCallback((label: string, period: Period) => {
+        setEditText(label);
+        setEditingTask({ label, period });
+        setOpenMenu(null);
+    }, []);
+
+    const handleRemoveAll = useCallback((label: string, period: Period) => {
+        setConfirmDelete({ label, period });
+        setOpenMenu(null);
+    }, []);
+
+    const handleEditRepeat = useCallback((label: string, period: Period) => {
+        const tmpl = dailyBlocks.find(b => b.label.toLowerCase() === label.toLowerCase() && b.period === period);
+        setEditingRepeat({ label, period, repeatDays: tmpl?.repeatDays || [0,1,2,3,4,5,6] });
+        setOpenMenu(null);
+    }, [dailyBlocks]);
+
+    const handleSaveRepeat = useCallback((repeatDays: number[]) => {
+        if (!editingRepeat) return;
+        const ids = dailyBlocks.filter(b => b.label.toLowerCase() === editingRepeat.label.toLowerCase() && b.period === editingRepeat.period).map(b => b.id);
+        ids.forEach(id => {
+            removeDailyBlock(id);
+            addDailyBlock(editingRepeat.label, editingRepeat.period, todayStr, false, undefined, repeatDays);
+        });
+        setEditingRepeat(null);
+    }, [editingRepeat, dailyBlocks, removeDailyBlock, addDailyBlock, todayStr]);
 
     const handleQuickAdd = (e: React.FormEvent) => {
         e.preventDefault();
@@ -732,7 +771,7 @@ export const ChecklistDiario = ({
                                                 projColor={projColor}
                                                 projName={projName}
                                                 onToggle={() => handleToggle(task.label, task.period)}
-                                                onEdit={() => handleEdit(task.label, task.period)}
+                                                onMenuClick={handleMenuClick}
                                             />
                                         );
                                     })
@@ -783,6 +822,20 @@ export const ChecklistDiario = ({
                         </DragOverlay>
                     </DndContext>
                 </div>
+
+                {/* Context Menu Dropdown */}
+                {openMenu && openMenu.anchor && (
+                    <DropdownMenu
+                        label={openMenu.label}
+                        period={openMenu.period}
+                        anchor={openMenu.anchor}
+                        onClose={() => setOpenMenu(null)}
+                        onRemoveToday={handleRemoveToday}
+                        onEditName={handleEditName}
+                        onRemoveAll={handleRemoveAll}
+                        onEditRepeat={handleEditRepeat}
+                    />
+                )}
 
                 {/* Motivational Banner at the bottom */}
                 <div style={{
@@ -839,7 +892,7 @@ export const ChecklistDiario = ({
                     .mobile-categories-scroll::-webkit-scrollbar {
                         display: none;
                     }
-                    .drag-handle, .delete-btn {
+                    .drag-handle, .menu-btn {
                         opacity: 1 !important;
                     }
                 `}</style>
@@ -894,19 +947,6 @@ export const ChecklistDiario = ({
                                         fontFamily: "'Plus Jakarta Sans', sans-serif",
                                     }}>Guardar</button>
                                 </div>
-                                <button
-                                    onClick={() => { setConfirmDelete(editingTask); setEditingTask(null); }}
-                                    style={{
-                                        marginTop: '12px', width: '100%', padding: '8px', borderRadius: '10px',
-                                        border: 'none', background: '#FEF2F2', color: '#DC2626',
-                                        fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer',
-                                        fontFamily: "'Plus Jakarta Sans', sans-serif",
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                                    }}
-                                >
-                                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>delete</span>
-                                    Eliminar tarea
-                                </button>
                             </motion.div>
                         </motion.div>
                     )}
@@ -976,21 +1016,8 @@ export const ChecklistDiario = ({
                                     border: 'none', background: '#944a18', color: 'white',
                                     fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
                                     fontFamily: "'Plus Jakarta Sans', sans-serif",
-                                }}>Guardar</button>
+}}>Guardar</button>
                             </div>
-                            <button
-                                onClick={() => { setConfirmDelete(editingTask); setEditingTask(null); }}
-                                style={{
-                                    marginTop: '12px', width: '100%', padding: '8px', borderRadius: '10px',
-                                    border: 'none', background: '#FEF2F2', color: '#DC2626',
-                                    fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer',
-                                    fontFamily: "'Plus Jakarta Sans', sans-serif",
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                                }}
-                            >
-                                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>delete</span>
-                                Eliminar tarea
-                            </button>
                         </motion.div>
                     </motion.div>
                 )}
@@ -1272,7 +1299,7 @@ export const ChecklistDiario = ({
                                                 projColor={projColor}
                                                 projName={projName}
                                                 onToggle={() => handleToggle(task.label, task.period)}
-                                                onEdit={() => handleEdit(task.label, task.period)}
+                                                onMenuClick={handleMenuClick}
                                             />
                                         );
                                     })
@@ -1391,10 +1418,24 @@ export const ChecklistDiario = ({
                 </div>
             </div>
 
+            {/* ── Context Menu ── */}
+            {openMenu && openMenu.anchor && (
+                <DropdownMenu
+                    label={openMenu.label}
+                    period={openMenu.period}
+                    anchor={openMenu.anchor}
+                    onClose={() => setOpenMenu(null)}
+                    onRemoveToday={handleRemoveToday}
+                    onEditName={handleEditName}
+                    onRemoveAll={handleRemoveAll}
+                    onEditRepeat={handleEditRepeat}
+                />
+            )}
+
             {/* ── Hover styles ── */}
             <style>{`
                 .task-card-row:hover .drag-handle { opacity: 1 !important; }
-                .task-card-row:hover .delete-btn  { opacity: 1 !important; }
+                .task-card-row:hover .menu-btn  { opacity: 1 !important; }
             `}</style>
 
             <ConfirmDialog
@@ -1406,6 +1447,166 @@ export const ChecklistDiario = ({
                 onConfirm={executeRemove}
                 onCancel={() => setConfirmDelete(null)}
             />
+
+            {/* ── RepeatDays Editor ── */}
+            {editingRepeat && (
+                <div onClick={() => setEditingRepeat(null)} style={{
+                    position: 'fixed', inset: 0, zIndex: 9998,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '20px',
+                }}>
+                    <div onClick={e => e.stopPropagation()} style={{
+                        background: 'white', borderRadius: '20px', padding: '24px',
+                        boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+                        width: '100%', maxWidth: '380px', boxSizing: 'border-box',
+                    }}>
+                        <h4 style={{ margin: '0 0 16px', fontSize: '1rem', fontWeight: 800, color: '#191c1d' }}>Repetir tarea</h4>
+                        <p style={{ margin: '0 0 12px', fontSize: '0.82rem', color: '#877369' }}>
+                            ¿Qué días de la semana se repite "{editingRepeat.label}"?
+                        </p>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '20px' }}>
+                            {['L','M','X','J','V','S','D'].map((day, i) => {
+                                const selected = editingRepeat.repeatDays.includes(i);
+                                return (
+                                    <button
+                                        key={i}
+                                        onClick={() => {
+                                            const days = editingRepeat.repeatDays.includes(i)
+                                                ? editingRepeat.repeatDays.filter(d => d !== i)
+                                                : [...editingRepeat.repeatDays, i];
+                                            setEditingRepeat({ ...editingRepeat, repeatDays: days });
+                                        }}
+                                        style={{
+                                            width: '40px', height: '40px', borderRadius: '12px',
+                                            border: selected ? 'none' : '2px solid #E5E7EB',
+                                            background: selected ? '#944a18' : 'transparent',
+                                            color: selected ? '#fff' : '#54433a',
+                                            fontWeight: 700, fontSize: '0.85rem',
+                                            cursor: 'pointer', fontFamily: 'inherit',
+                                        }}
+                                    >{day}</button>
+                                );
+                            })}
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button onClick={() => setEditingRepeat(null)} style={{
+                                flex: 1, padding: '10px', borderRadius: '12px',
+                                border: '2px solid #E5E7EB', background: 'white',
+                                color: '#54433a', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
+                                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                            }}>Cancelar</button>
+                            <button onClick={() => handleSaveRepeat(editingRepeat.repeatDays)} style={{
+                                flex: 1, padding: '10px', borderRadius: '12px',
+                                border: 'none', background: '#944a18', color: 'white',
+                                fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
+                                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                            }}>Guardar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+/* ══════════════════════════════════════════════════════════════
+   DropdownMenu — context menu for task options
+══════════════════════════════════════════════════════════════ */
+interface DropdownMenuProps {
+    label: string;
+    period: Period;
+    anchor: HTMLElement;
+    onClose: () => void;
+    onRemoveToday: (label: string, period: Period) => void;
+    onRemoveAll: (label: string, period: Period) => void;
+    onEditRepeat: (label: string, period: Period) => void;
+    onEditName: (label: string, period: Period) => void;
+}
+
+const DropdownMenu = ({
+    label, period, anchor, onClose,
+    onRemoveToday, onRemoveAll, onEditRepeat, onEditName,
+}: DropdownMenuProps) => {
+    useEffect(() => {
+        const handleClick = (e: MouseEvent) => {
+            if (anchor && !anchor.contains(e.target as Node)) {
+                const menu = document.getElementById(`menu-${period}-${label}`);
+                if (menu && !menu.contains(e.target as Node)) {
+                    onClose();
+                }
+            }
+        };
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [anchor, label, period, onClose]);
+
+    const rect = anchor.getBoundingClientRect();
+
+    return (
+        <div
+            id={`menu-${period}-${label}`}
+            style={{
+                position: 'fixed',
+                top: rect.bottom + 4,
+                left: Math.min(rect.left, window.innerWidth - 220),
+                background: '#ffffff',
+                borderRadius: '12px',
+                boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
+                border: '1px solid #E5E7EB',
+                padding: '4px',
+                zIndex: 9999,
+                minWidth: '200px',
+            }}
+        >
+            <button onClick={() => { onRemoveToday(label, period); onClose(); }} style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                width: '100%', padding: '10px 14px', border: 'none', background: 'transparent',
+                borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                fontSize: '0.85rem', color: '#54433a', fontWeight: 600,
+            }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F3F4F5'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+            >
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>today</span>
+                Quitar de hoy
+            </button>
+            <button onClick={() => { onEditName(label, period); onClose(); }} style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                width: '100%', padding: '10px 14px', border: 'none', background: 'transparent',
+                borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                fontSize: '0.85rem', color: '#54433a', fontWeight: 600,
+            }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F3F4F5'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+            >
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
+                Editar nombre
+            </button>
+            <button onClick={() => { onEditRepeat(label, period); onClose(); }} style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                width: '100%', padding: '10px 14px', border: 'none', background: 'transparent',
+                borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                fontSize: '0.85rem', color: '#54433a', fontWeight: 600,
+            }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F3F4F5'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+            >
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>repeat</span>
+                Editar recurrencia
+            </button>
+            <div style={{ height: '1px', background: '#E5E7EB', margin: '4px 8px' }} />
+            <button onClick={() => { onRemoveAll(label, period); onClose(); }} style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                width: '100%', padding: '10px 14px', border: 'none', background: 'transparent',
+                borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                fontSize: '0.85rem', color: '#DC2626', fontWeight: 600,
+            }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#FEF2F2'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+            >
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete</span>
+                Eliminar tarea (todo)
+            </button>
         </div>
     );
 };
