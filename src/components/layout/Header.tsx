@@ -162,12 +162,19 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
                     {SECONDARY_ITEMS.map(item => renderSidebarBtn(item))}
                 </nav>
 
-                {/* Bottom: Nueva Sesión + Install */}
-                <div style={{ borderTop: '1px solid #dac2b6', paddingTop: '12px', flexShrink: 0, display: 'flex', gap: '8px' }}>
+                {/* Bottom: iconos */}
+                <div style={{ borderTop: '1px solid #dac2b6', paddingTop: '12px', flexShrink: 0, display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                    <button onClick={() => {}} title="Papelera de reciclaje" style={{
+                        background: 'rgba(148,74,24,0.08)', border: 'none', borderRadius: '12px',
+                        padding: '10px 14px', cursor: 'pointer', color: '#944a18', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>delete</span>
+                    </button>
                     {!isInstalled && (
                         <button onClick={install} title="Instalar app" style={{
                             background: 'rgba(148,74,24,0.08)', border: 'none', borderRadius: '12px',
-                            padding: '0 12px', cursor: 'pointer', color: '#944a18', flexShrink: 0,
+                            padding: '10px 14px', cursor: 'pointer', color: '#944a18', flexShrink: 0,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
                             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>download</span>
@@ -175,21 +182,11 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
                     )}
                     <button
                         onClick={onProfileClick}
+                        title="Perfil y ajustes"
                         style={{
-                            flex: 1,
-                            background: '#ff9f66',
-                            color: '#773401',
-                            border: 'none',
-                            padding: '12px 16px',
-                            borderRadius: '14px',
-                            fontSize: '15px',
-                            fontWeight: 800,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            fontFamily: "'Plus Jakarta Sans', sans-serif",
+                            background: '#ff9f66', border: 'none', borderRadius: '12px',
+                            padding: '10px 14px', cursor: 'pointer', color: '#773401',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
                             transition: 'opacity 0.15s',
                         }}
                         onMouseEnter={e => (e.currentTarget.style.opacity = '0.88')}
@@ -204,7 +201,6 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
                         ) : (
                             <User size={18} />
                         )}
-                        Nueva Sesión
                     </button>
                 </div>
             </header>
