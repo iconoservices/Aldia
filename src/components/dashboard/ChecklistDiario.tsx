@@ -363,6 +363,7 @@ export const ChecklistDiario = ({
     }, [dailyBlocks, todayStr, toggleDailyBlock, addDailyBlock]);
 
     const handleRemove = useCallback((label: string, period: Period) => {
+        if (!window.confirm(`¿Borrar "${label}"?`)) return;
         const ids = dailyBlocks.filter(b => b.label.toLowerCase() === label.toLowerCase() && b.period === period).map(b => b.id);
         if (ids.length) removeDailyBlock(ids);
     }, [dailyBlocks, removeDailyBlock]);
