@@ -1,35 +1,42 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { registerSW } from 'virtual:pwa-register';
 
 export const usePWA = () => {
     const [installPrompt, setInstallPrompt] = useState<any>(null);
     const [isInstalled, setIsInstalled] = useState(false);
-    const [needRefresh, setNeedRefresh] = useState(false);
     const [showUpdated, setShowUpdated] = useState(false);
     const [updatedAt, setUpdatedAt] = useState<string>('');
-    const updateSWRef = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null);
 
     useEffect(() => {
-        const updateServiceWorker = registerSW({
+        registerSW({
             onNeedRefresh() {
-                setNeedRefresh(true);
+                // With autoUpdate, the SW activates automatically.
+                // Listen for controllerchange to know when it took over.
             },
             onOfflineReady() {
                 console.log('App lista para uso offline');
             },
         });
-        updateSWRef.current = updateServiceWorker;
-    }, []);
 
-    // Auto-activate when needRefresh becomes true
-    useEffect(() => {
-        if (needRefresh && updateSWRef.current) {
-            updateSWRef.current(true);
+        // Detect when a new service worker takes control
+        let updated = false;
+        const onControllerChange = () => {
+            if (updated) return;
+            updated = true;
             setUpdatedAt(new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }));
             setShowUpdated(true);
-            setNeedRefresh(false);
+        };
+
+        if (navigator.serviceWorker) {
+            navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
         }
-    }, [needRefresh]);
+
+        return () => {
+            if (navigator.serviceWorker) {
+                navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+            }
+        };
+    }, []);
 
     useEffect(() => {
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
@@ -69,8 +76,6 @@ export const usePWA = () => {
         installPrompt,
         isInstalled,
         install,
-        needRefresh,
-        updateServiceWorker: () => updateSWRef.current?.(true),
         showUpdated,
         setShowUpdated,
         updatedAt,
