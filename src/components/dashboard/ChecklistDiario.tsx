@@ -384,10 +384,13 @@ export const ChecklistDiario = ({
 
     const executeRemove = useCallback(() => {
         if (!confirmDelete) return;
-        const ids = dailyBlocks.filter(b => b.label.toLowerCase() === confirmDelete.label.toLowerCase() && b.period === confirmDelete.period).map(b => b.id);
-        if (ids.length) removeDailyBlock(ids);
+        const match = dailyBlocks.find(b =>
+            b.label.toLowerCase() === confirmDelete.label.toLowerCase() &&
+            b.period === confirmDelete.period && b.date === todayStr
+        );
+        if (match) removeDailyBlock(match.id);
         setConfirmDelete(null);
-    }, [confirmDelete, dailyBlocks, removeDailyBlock]);
+    }, [confirmDelete, dailyBlocks, removeDailyBlock, todayStr]);
 
     const handleQuickAdd = (e: React.FormEvent) => {
         e.preventDefault();
@@ -841,10 +844,67 @@ export const ChecklistDiario = ({
                     }
                 `}</style>
 
+                <AnimatePresence>
+                    {editingTask && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            style={{
+                                position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                                background: 'white', borderRadius: '20px', padding: '24px',
+                                boxShadow: '0 20px 60px rgba(0,0,0,0.15)', zIndex: 9998,
+                                width: '90%', maxWidth: '380px', boxSizing: 'border-box',
+                            }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <h4 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: 800, color: '#191c1d' }}>Editar tarea</h4>
+                            <input
+                                value={editText}
+                                onChange={e => setEditText(e.target.value)}
+                                autoFocus
+                                style={{
+                                    width: '100%', padding: '12px 16px', borderRadius: '12px',
+                                    border: '2px solid #E5E7EB', fontSize: '0.9rem', fontWeight: 600,
+                                    outline: 'none', boxSizing: 'border-box',
+                                }}
+                                onKeyDown={e => { if (e.key === 'Enter') handleSaveEdit(); if (e.key === 'Escape') setEditingTask(null); }}
+                            />
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                                <button onClick={() => setEditingTask(null)} style={{
+                                    flex: 1, padding: '10px', borderRadius: '12px',
+                                    border: '2px solid #E5E7EB', background: 'white',
+                                    color: '#54433a', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
+                                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                                }}>Cancelar</button>
+                                <button onClick={handleSaveEdit} style={{
+                                    flex: 1, padding: '10px', borderRadius: '12px',
+                                    border: 'none', background: '#944a18', color: 'white',
+                                    fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
+                                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                                }}>Guardar</button>
+                            </div>
+                            <button
+                                onClick={() => { setConfirmDelete(editingTask); setEditingTask(null); }}
+                                style={{
+                                    marginTop: '12px', width: '100%', padding: '8px', borderRadius: '10px',
+                                    border: 'none', background: '#FEF2F2', color: '#DC2626',
+                                    fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer',
+                                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                                }}
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>delete</span>
+                                Eliminar tarea
+                            </button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
                 <ConfirmDialog
                     open={!!confirmDelete}
                     title="Eliminar tarea"
-                    message={`¿Estás seguro de que quieres borrar "${confirmDelete?.label}"?`}
+                    message={`¿Estás seguro de que quieres enviar "${confirmDelete?.label}" a la papelera?`}
                     confirmLabel="Eliminar"
                     cancelLabel="Cancelar"
                     onConfirm={executeRemove}
@@ -867,7 +927,7 @@ export const ChecklistDiario = ({
                             position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
                             background: 'white', borderRadius: '20px', padding: '24px',
                             boxShadow: '0 20px 60px rgba(0,0,0,0.15)', zIndex: 9998,
-                            width: '90%', maxWidth: '380px',
+                            width: '90%', maxWidth: '380px', boxSizing: 'border-box',
                         }}
                         onClick={e => e.stopPropagation()}
                     >

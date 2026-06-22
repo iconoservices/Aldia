@@ -7,9 +7,10 @@ interface HeaderProps {
     activeTab: string;
     setActiveTab: (tab: string) => void;
     onProfileClick: () => void;
+    onTrashClick: () => void;
 }
 
-export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps) => {
+export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }: HeaderProps) => {
     const { install, isInstalled } = usePWA();
     const { user } = useAuth();
     const [profilePic, setProfilePic] = useState<string | null>(null);
@@ -164,7 +165,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick }: HeaderProps)
 
                 {/* Bottom: iconos */}
                 <div style={{ borderTop: '1px solid #dac2b6', paddingTop: '12px', flexShrink: 0, display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                    <button onClick={() => {}} title="Papelera de reciclaje" style={{
+                    <button onClick={onTrashClick} title="Papelera de reciclaje" style={{
                         background: 'rgba(148,74,24,0.08)', border: 'none', borderRadius: '12px',
                         padding: '10px 14px', cursor: 'pointer', color: '#944a18', flexShrink: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',

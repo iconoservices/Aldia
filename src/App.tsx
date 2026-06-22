@@ -13,6 +13,7 @@ import { ProyectosDashboard } from './components/dashboard/ProyectosDashboard';
 import { ProjectDetailView } from './components/dashboard/ProjectDetailView';
 import { ProjectsKanbanView } from './components/dashboard/ProjectsKanbanView';
 import { LienzoDashboard } from './components/dashboard/LienzoDashboard';
+import { RecycleBinView } from './components/features/RecycleBinView';
 import { TimelineAgendaView } from './components/dashboard/TimelineAgendaView';
 import { SuperFab } from './components/features/SuperFab';
 import { NoteDetailView } from './components/dashboard/NoteDetailView';
@@ -84,6 +85,7 @@ function App() {
   const [isAddingProject, setIsAddingProject] = useState(false);
   const [editingMission, setEditingMission] = useState<Mission | null>(null);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+  const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [selectedProjectDetailId, setSelectedProjectDetailId] = useState<number | null>(null);
 
   const state = useAlDiaState();
@@ -117,6 +119,7 @@ function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onProfileClick={() => setIsProfileOpen(true)}
+        onTrashClick={() => setIsTrashOpen(true)}
       />
 
       <main className={`dashboard ${activeTab === 'Calendario' || activeTab === 'Lienzo' ? 'full-bleed' : ''}`}>
@@ -410,6 +413,14 @@ function App() {
         clearAllData={state.clearAllData}
         preferences={state.preferences}
         updatePreference={state.updatePreference}
+      />
+
+      <RecycleBinView
+        open={isTrashOpen}
+        trash={state.trash}
+        onRestore={state.restoreFromTrash}
+        onClear={state.clearTrash}
+        onClose={() => setIsTrashOpen(false)}
       />
 
     </div>

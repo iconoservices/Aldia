@@ -121,6 +121,11 @@ export interface DailyBlock {
     repeatDays?: number[];
 }
 
+export interface TrashItem {
+    block: DailyBlock;
+    deletedAt: number;
+}
+
 export interface UserPreferences {
     isBudgetFixed: boolean;
 }
@@ -233,6 +238,7 @@ export const useAlDiaState = () => {
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
     const [dailyBlocks, setDailyBlocks] = useState<DailyBlock[]>([]);
+    const [trash, setTrash] = useState<TrashItem[]>([]);
     const [hasLoadedFromCloud, setHasLoadedFromCloud] = useState(false);
     // Timestamp del último cambio local del usuario. Los snapshots de Firestore con lastSync
     // anterior a este valor serán ignorados para evitar sobreescribir cambios pendientes.
@@ -261,7 +267,8 @@ export const useAlDiaState = () => {
                 accounts: JSON.parse(localStorage.getItem('aldia_accounts') || '[]'),
                 preferences: JSON.parse(localStorage.getItem('aldia_preferences') || JSON.stringify(DEFAULT_PREFERENCES)),
                 dailyblocks: JSON.parse(localStorage.getItem('aldia_dailyblocks') || '[]'),
-                ritaEntries: JSON.parse(localStorage.getItem('aldia_rita_entries') || '[]')
+                ritaEntries: JSON.parse(localStorage.getItem('aldia_rita_entries') || '[]'),
+                trash: JSON.parse(localStorage.getItem('aldia_trash') || '[]')
             };
             setMisionesDirect(data.missions);
             setTransactions(data.transactions);
@@ -277,6 +284,7 @@ export const useAlDiaState = () => {
             setPreferences(data.preferences);
             setDailyBlocks(data.dailyblocks);
             setRitaEntries(data.ritaEntries);
+            setTrash(data.trash.filter((t: TrashItem) => Date.now() - t.deletedAt < 60 * 24 * 60 * 60 * 1000));
         } catch (e) { console.error("Error inicial local:", e); }
     }, []); // Una sola vez al montar
 
@@ -339,6 +347,7 @@ export const useAlDiaState = () => {
                 sync(cloud.preferences, setPreferences);
                 sync(cloud.dailyBlocks, setDailyBlocks);
                 sync(cloud.ritaEntries, setRitaEntries);
+                sync(cloud.trash, setTrash);
                 if (cloud.monthlyBudget !== undefined) {
                     setMonthlyBudget(prev => Math.abs(cloud.monthlyBudget - prev) > 0.01 ? Number(cloud.monthlyBudget) : prev);
                 }
@@ -363,11 +372,11 @@ export const useAlDiaState = () => {
     // Esto previene "stale closures" en el setTimeout del debounced save,
     // donde un array viejo de transactions podía enviarse a Firestore y causar un rollback visual.
     const latestStateRef = useRef({
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks, ritaEntries
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks, ritaEntries, trash
     });
     // Actualizamos la ref en CADA render
     latestStateRef.current = {
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks, ritaEntries
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks, ritaEntries, trash
     };
 
     // 3. Persistencia Cloud (Debounced) y Local (Immediate)
@@ -390,6 +399,7 @@ export const useAlDiaState = () => {
         localStorage.setItem('aldia_preferences', JSON.stringify(preferences));
         localStorage.setItem('aldia_dailyblocks', JSON.stringify(dailyBlocks));
         localStorage.setItem('aldia_rita_entries', JSON.stringify(ritaEntries));
+        localStorage.setItem('aldia_trash', JSON.stringify(trash));
 
         // Guardado Cloud debounced
         if (user) {
@@ -414,7 +424,7 @@ export const useAlDiaState = () => {
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, preferences, dailyBlocks, ritaEntries]);
+    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, preferences, dailyBlocks, ritaEntries, trash]);
 
     // 4. Migraciones y Lógica Derivada
     useEffect(() => {
@@ -593,8 +603,38 @@ export const useAlDiaState = () => {
 
     const removeDailyBlock = (idOrIds: number | number[]) => {
         const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+        const removed = dailyBlocks.filter(b => ids.includes(b.id));
+        if (removed.length) {
+            setTrash(t => {
+                const existingIds = new Set(t.map(i => i.block.id));
+                return [...t, ...removed.filter(b => !existingIds.has(b.id)).map(block => ({ block, deletedAt: Date.now() }))];
+            });
+        }
         setDailyBlocks(prev => prev.filter(b => !ids.includes(b.id)));
     };
+
+    const restoreFromTrash = (id: number) => {
+        setTrash(prev => {
+            const item = prev.find(t => t.block.id === id);
+            if (item) {
+                setDailyBlocks(b => [...b, item.block]);
+                return prev.filter(t => t.block.id !== id);
+            }
+            return prev;
+        });
+    };
+
+    const clearTrash = () => setTrash([]);
+
+    // Auto-limpiar items de la papelera después de 60 días
+    const TRASH_EXPIRY_MS = 60 * 24 * 60 * 60 * 1000;
+    useEffect(() => {
+        const now = Date.now();
+        setTrash(prev => {
+            const filtered = prev.filter(t => now - t.deletedAt < TRASH_EXPIRY_MS);
+            return filtered.length !== prev.length ? filtered : prev;
+        });
+    }, [trash.length]);
 
     const updateDailyBlock = (id: number, updates: Partial<DailyBlock>) => {
         setDailyBlocks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
@@ -658,6 +698,7 @@ export const useAlDiaState = () => {
         preferences, updatePreference: lw((key: keyof UserPreferences, value: any) => setPreferences(prev => ({ ...prev, [key]: value }))),
         // Bloques Diarios
         dailyBlocks, addDailyBlock: lw(addDailyBlock), toggleDailyBlock: lw(toggleDailyBlock), removeDailyBlock: lw(removeDailyBlock), updateDailyBlock: lw(updateDailyBlock),
+        trash, restoreFromTrash: lw(restoreFromTrash), clearTrash: lw(clearTrash),
         // Hoja de Rita
         ritaEntries,
         addRitaEntry: lw(addRitaEntry), removeRitaEntry: lw(removeRitaEntry), updateRitaEntry: lw(updateRitaEntry),
