@@ -22,8 +22,6 @@ import { ActionBanner } from './components/dashboard/ActionBanner';
 import { useAlDiaState } from './hooks/useAlDiaState';
 import type { Mission, Note } from './hooks/useAlDiaState';
 import { ProfileOverlay } from './components/layout/ProfileOverlay';
-import { usePWA } from './hooks/usePWA';
-import { RefreshCw, X } from 'lucide-react';
 import { BloquesDashboard } from './components/dashboard/BloquesDashboard';
 import { ChecklistDiario } from './components/dashboard/ChecklistDiario';
 import { RitaDashboard } from './components/dashboard/RitaDashboard';
@@ -89,15 +87,8 @@ function App() {
   const [selectedProjectDetailId, setSelectedProjectDetailId] = useState<number | null>(null);
 
   const state = useAlDiaState();
-  const { showUpdated, setShowUpdated, updatedAt } = usePWA();
   const viewingNote: Note | null = state.notes.find((n: Note) => n.id === viewingNoteId) || null;
   const selectedProjectDetail = state.projects.find((p: any) => p.id === selectedProjectDetailId);
-
-  useEffect(() => {
-    if (!showUpdated) return;
-    const timer = setTimeout(() => setShowUpdated(false), 5000);
-    return () => clearTimeout(timer);
-  }, [showUpdated]);
 
   if (state.isInitialLoad) {
     return (
@@ -421,42 +412,6 @@ function App() {
         updatePreference={state.updatePreference}
       />
 
-      <AnimatePresence>
-        {showUpdated && (
-          <motion.div
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 50, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            style={{
-              position: 'fixed', bottom: '100px', left: '20px', right: '20px',
-              zIndex: 9999, background: 'var(--domain-orange)', color: 'white',
-              padding: '12px 20px', borderRadius: '16px', display: 'flex',
-              alignItems: 'center', justifyContent: 'space-between',
-              boxShadow: '0 10px 30px rgba(255, 140, 66, 0.4)',
-              border: '2px solid rgba(255,255,255,0.2)'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <RefreshCw size={20} />
-              <span style={{ fontSize: '0.85rem', fontWeight: 900 }}>
-                App actualizada — {updatedAt}
-              </span>
-            </div>
-            <button
-              onClick={() => setShowUpdated(false)}
-              style={{
-                background: 'rgba(255,255,255,0.2)', color: 'white', border: 'none',
-                width: '30px', height: '30px', borderRadius: '10px', display: 'flex',
-                alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                fontSize: '1rem', fontWeight: 900, flexShrink: 0
-              }}
-            >
-              <X size={16} />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
