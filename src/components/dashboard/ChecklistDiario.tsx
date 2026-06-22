@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import {
     DndContext,
     closestCenter,
@@ -233,6 +234,7 @@ export const ChecklistDiario = ({
     const [quickAddPeriod, setQuickAddPeriod]  = useState<Period>('Mañana');
     const [isMobile, setIsMobile] = useState(false);
     const [showMobileAddForm, setShowMobileAddForm] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState<{ label: string; period: Period } | null>(null);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -363,10 +365,15 @@ export const ChecklistDiario = ({
     }, [dailyBlocks, todayStr, toggleDailyBlock, addDailyBlock]);
 
     const handleRemove = useCallback((label: string, period: Period) => {
-        if (!window.confirm(`¿Borrar "${label}"?`)) return;
-        const ids = dailyBlocks.filter(b => b.label.toLowerCase() === label.toLowerCase() && b.period === period).map(b => b.id);
+        setConfirmDelete({ label, period });
+    }, []);
+
+    const executeRemove = useCallback(() => {
+        if (!confirmDelete) return;
+        const ids = dailyBlocks.filter(b => b.label.toLowerCase() === confirmDelete.label.toLowerCase() && b.period === confirmDelete.period).map(b => b.id);
         if (ids.length) removeDailyBlock(ids);
-    }, [dailyBlocks, removeDailyBlock]);
+        setConfirmDelete(null);
+    }, [confirmDelete, dailyBlocks, removeDailyBlock]);
 
     const handleQuickAdd = (e: React.FormEvent) => {
         e.preventDefault();
@@ -819,6 +826,16 @@ export const ChecklistDiario = ({
                         opacity: 1 !important;
                     }
                 `}</style>
+
+                <ConfirmDialog
+                    open={!!confirmDelete}
+                    title="Eliminar tarea"
+                    message={`¿Estás seguro de que quieres borrar "${confirmDelete?.label}"?`}
+                    confirmLabel="Eliminar"
+                    cancelLabel="Cancelar"
+                    onConfirm={executeRemove}
+                    onCancel={() => setConfirmDelete(null)}
+                />
             </div>
         );
     }
@@ -1220,6 +1237,16 @@ export const ChecklistDiario = ({
                 .task-card-row:hover .drag-handle { opacity: 1 !important; }
                 .task-card-row:hover .delete-btn  { opacity: 1 !important; }
             `}</style>
+
+            <ConfirmDialog
+                open={!!confirmDelete}
+                title="Eliminar tarea"
+                message={`¿Estás seguro de que quieres borrar "${confirmDelete?.label}"?`}
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                onConfirm={executeRemove}
+                onCancel={() => setConfirmDelete(null)}
+            />
         </div>
     );
 };
