@@ -86,12 +86,12 @@ interface TaskCardProps {
     projName: string;
     isDragging?: boolean;
     onToggle: () => void;
-    onRemove: () => void;
+    onEdit: () => void;
 }
 
 const TaskCard = ({
     id, label, period, isDone, projColor, projName,
-    isDragging = false, onToggle, onRemove,
+    isDragging = false, onToggle, onEdit,
 }: TaskCardProps) => {
     const {
         attributes, listeners, setNodeRef,
@@ -184,19 +184,19 @@ const TaskCard = ({
                     </div>
                 </div>
 
-                {/* Delete */}
+                {/* Edit */}
                 <button
-                    onClick={onRemove}
-                    title="Eliminar"
+                    onClick={onEdit}
+                    title="Editar"
                     className="delete-btn"
                     style={{
                         background: 'none', border: 'none', cursor: 'pointer',
-                        color: '#ba1a1a', opacity: 0, transition: 'opacity 0.15s',
+                        color: '#877369', opacity: 0, transition: 'opacity 0.15s',
                         padding: '4px', display: 'flex', alignItems: 'center',
                         borderRadius: '8px', flexShrink: 0,
                     }}
                 >
-                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
                 </button>
             </motion.div>
         </div>
@@ -235,6 +235,8 @@ export const ChecklistDiario = ({
     const [isMobile, setIsMobile] = useState(false);
     const [showMobileAddForm, setShowMobileAddForm] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState<{ label: string; period: Period } | null>(null);
+    const [editingTask, setEditingTask] = useState<{ label: string; period: Period } | null>(null);
+    const [editText, setEditText] = useState('');
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -364,9 +366,21 @@ export const ChecklistDiario = ({
         }
     }, [dailyBlocks, todayStr, toggleDailyBlock, addDailyBlock]);
 
-    const handleRemove = useCallback((label: string, period: Period) => {
-        setConfirmDelete({ label, period });
+    const handleEdit = useCallback((label: string, period: Period) => {
+        setEditText(label);
+        setEditingTask({ label, period });
     }, []);
+
+    const handleSaveEdit = useCallback(() => {
+        if (!editingTask || !editText.trim()) return;
+        const ids = dailyBlocks.filter(b => b.label.toLowerCase() === editingTask.label.toLowerCase() && b.period === editingTask.period).map(b => b.id);
+        ids.forEach(id => {
+            removeDailyBlock(id);
+            addDailyBlock(editText.trim(), editingTask.period, todayStr, false, undefined, [0,1,2,3,4,5,6]);
+        });
+        setEditingTask(null);
+        setEditText('');
+    }, [editingTask, editText, dailyBlocks, removeDailyBlock, addDailyBlock, todayStr]);
 
     const executeRemove = useCallback(() => {
         if (!confirmDelete) return;
@@ -715,7 +729,7 @@ export const ChecklistDiario = ({
                                                 projColor={projColor}
                                                 projName={projName}
                                                 onToggle={() => handleToggle(task.label, task.period)}
-                                                onRemove={() => handleRemove(task.label, task.period)}
+                                                onEdit={() => handleEdit(task.label, task.period)}
                                             />
                                         );
                                     })
@@ -840,8 +854,71 @@ export const ChecklistDiario = ({
         );
     }
 
+    /* ── Desktop ── */
     return (
         <div style={{ padding: '1.5rem 2rem 3rem', minHeight: '100%' }}>
+            <AnimatePresence>
+                {editingTask && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        style={{
+                            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                            background: 'white', borderRadius: '20px', padding: '24px',
+                            boxShadow: '0 20px 60px rgba(0,0,0,0.15)', zIndex: 9998,
+                            width: '90%', maxWidth: '380px',
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <h4 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: 800, color: '#191c1d' }}>Editar tarea</h4>
+                        <input
+                            value={editText}
+                            onChange={e => setEditText(e.target.value)}
+                            autoFocus
+                            style={{
+                                width: '100%', padding: '12px 16px', borderRadius: '12px',
+                                border: '2px solid #E5E7EB', fontSize: '0.9rem', fontWeight: 600,
+                                outline: 'none', boxSizing: 'border-box',
+                            }}
+                            onKeyDown={e => { if (e.key === 'Enter') handleSaveEdit(); if (e.key === 'Escape') setEditingTask(null); }}
+                        />
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                                <button onClick={() => setEditingTask(null)} style={{
+                                    flex: 1, padding: '10px', borderRadius: '12px',
+                                    border: '2px solid #E5E7EB', background: 'white',
+                                    color: '#54433a', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
+                                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                                }}>Cancelar</button>
+                                <button onClick={handleSaveEdit} style={{
+                                    flex: 1, padding: '10px', borderRadius: '12px',
+                                    border: 'none', background: '#944a18', color: 'white',
+                                    fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
+                                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                                }}>Guardar</button>
+                            </div>
+                            <button
+                                onClick={() => { setConfirmDelete(editingTask); setEditingTask(null); }}
+                                style={{
+                                    marginTop: '12px', width: '100%', padding: '8px', borderRadius: '10px',
+                                    border: 'none', background: '#FEF2F2', color: '#DC2626',
+                                    fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer',
+                                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                                }}
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>delete</span>
+                                Eliminar tarea
+                            </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+            {editingTask && (
+                <div style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+                    backdropFilter: 'blur(4px)', zIndex: 9997,
+                }} onClick={() => setEditingTask(null)} />
+            )}
 
             {/* ── Header ── */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
@@ -1113,7 +1190,7 @@ export const ChecklistDiario = ({
                                                 projColor={projColor}
                                                 projName={projName}
                                                 onToggle={() => handleToggle(task.label, task.period)}
-                                                onRemove={() => handleRemove(task.label, task.period)}
+                                                onEdit={() => handleEdit(task.label, task.period)}
                                             />
                                         );
                                     })
