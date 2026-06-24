@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, LogOut, Download, Share, Camera, User, RefreshCw, Settings, Grid, Shield, ChevronLeft, Smile } from 'lucide-react';
+import { X, LogOut, Download, Share, Camera, User, RefreshCw, Settings, Grid, Shield, ChevronLeft } from 'lucide-react';
 import { usePWA } from '../../hooks/usePWA';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -19,8 +19,7 @@ export const ProfileOverlay = ({ isOpen, onClose, clearAllData, preferences, upd
     const { isInstalled, install, canInstall } = usePWA();
     const [showIOSGuide, setShowIOSGuide] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
-    const [view, setView] = useState<'main' | 'prefs' | 'glossary' | 'avatar'>('main');
-    const [selectedAnimal, setSelectedAnimal] = useState(() => localStorage.getItem('aldia_animal_avatar') || '');
+    const [view, setView] = useState<'main' | 'prefs' | 'glossary'>('main');
 
     // Syncing local identity for guest users (simplified)
     const [guestName, setGuestName] = useState(() => localStorage.getItem('aldia_user_name') || 'Usuario AlDía');
@@ -76,14 +75,6 @@ export const ProfileOverlay = ({ isOpen, onClose, clearAllData, preferences, upd
     const displayName = user?.displayName || guestName;
     const photoURL = user?.photoURL || guestPic;
 
-    const ANIMALES = ['🐶','🐱','🐼','🐨','🐯','🦊','🐸','🐵','🐰','🦁','🐮','🐷','🐔','🐧','🦄','🐢','🐙','🦖','🐳','🦅','🦋','🐞','🐠','🦜'];
-
-    const handleSelectAnimal = (emoji: string) => {
-        setSelectedAnimal(emoji);
-        localStorage.setItem('aldia_animal_avatar', emoji);
-        window.dispatchEvent(new Event('storage'));
-    };
-
     return (
         <AnimatePresence>
             {isOpen && (
@@ -92,65 +83,55 @@ export const ProfileOverlay = ({ isOpen, onClose, clearAllData, preferences, upd
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-onClick={onClose}
-                                        style={overlayBackdropStyle}
-                                    />
+                        onClick={onClose}
+                        style={overlayBackdropStyle}
+                    />
 
-                                    <motion.div
-                                        initial={{ opacity: 0, y: '100%' }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: '100%' }}
-                                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                                        style={modalContainerStyle}
-                                    >
-                                        {/* Header Handle for Mobile feel */}
-                                        <div style={handleStyle} />
+                    <motion.div
+                        initial={{ opacity: 0, y: '100%' }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: '100%' }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        style={modalContainerStyle}
+                    >
+                        {/* Header Handle for Mobile feel */}
+                        <div style={handleStyle} />
 
-                                        <button onClick={onClose} style={closeButtonStyle}><X size={20} /></button>
+                        <button onClick={onClose} style={closeButtonStyle}><X size={20} /></button>
 
-                                        <div style={{ padding: '2rem 1.5rem' }}>
-                                            {view === 'main' && (
-                                                <div>
-                                                    {/* Profile Section */}
-                                                    <div style={profileHeaderStyle}>
-                                                        <div style={avatarWrapperStyle}>
-                                                            <div 
-                                                                style={{ 
-                                                                    ...avatarStyle, 
-                                                                    backgroundImage: photoURL && !selectedAnimal ? `url(${photoURL})` : 'none',
-                                                                    fontSize: selectedAnimal ? '3rem' : 'inherit'
-                                                                }}
-                                                            >
-                                                                {selectedAnimal ? (
-                                                                    <span>{selectedAnimal}</span>
-                                                                ) : !photoURL ? (
-                                                                    <User size={40} color="#AAA" />
-                                                                ) : null}
-                                                                {(authLoading || isUpdating) && (
-                                                                    <div style={avatarOverlayStyle}><RefreshCw size={24} className="spin-slow" color="white" /></div>
-                                                                )}
-                                                            </div>
-                                                            <label style={cameraButtonStyle}>
-                                                                <Camera size={16} />
-                                                                <input type="file" hidden accept="image/*" onChange={handleFileChange} />
-                                                            </label>
-                                                        </div>
+                        <div style={{ padding: '2rem 1.5rem' }}>
+                            {view === 'main' && (
+                                <div>
+                                    {/* Profile Section */}
+                                    <div style={profileHeaderStyle}>
+                                        <div style={avatarWrapperStyle}>
+                                            <div style={{ ...avatarStyle, backgroundImage: photoURL ? `url(${photoURL})` : 'none' }}>
+                                                {!photoURL && <User size={40} color="#AAA" />}
+                                                {(authLoading || isUpdating) && (
+                                                    <div style={avatarOverlayStyle}><RefreshCw size={24} className="spin-slow" color="white" /></div>
+                                                )}
+                                            </div>
+                                            <label style={cameraButtonStyle}>
+                                                <Camera size={16} />
+                                                <input type="file" hidden accept="image/*" onChange={handleFileChange} />
+                                            </label>
+                                        </div>
 
-                                                        <h2 onClick={handleUpdateName} style={nameStyle}>{displayName}</h2>
-                                                        <p style={versionStyle}>Mi Mente Digital v1.1.0</p>
-                                                    </div>
+                                        <h2 onClick={handleUpdateName} style={nameStyle}>{displayName}</h2>
+                                        <p style={versionStyle}>Mi Mente Digital v1.1.0</p>
+                                    </div>
 
-                                                    {/* Action Cards */}
-                                                    <div style={actionGridStyle}>
-                                                        <div onClick={() => setView('avatar')} style={actionCardStyle}>
-                                                            <span style={{ fontSize: '1.5rem' }}>{selectedAnimal || '🐾'}</span>
-                                                            <span>Avatar</span>
-                                                        </div>
-                                                        <div onClick={() => alert('Próximamente...')} style={actionCardStyle}>
-                                                            <Shield size={20} color="var(--domain-purple)" />
-                                                            <span>Seguridad</span>
-                                                        </div>
-                                                    </div>
+                                    {/* Action Cards */}
+                                    <div style={actionGridStyle}>
+                                        <div onClick={handleUpdateName} style={actionCardStyle}>
+                                            <Grid size={20} color="var(--domain-orange)" />
+                                            <span>Editar Perfil</span>
+                                        </div>
+                                        <div onClick={() => alert('Próximamente...')} style={actionCardStyle}>
+                                            <Shield size={20} color="var(--domain-purple)" />
+                                            <span>Seguridad</span>
+                                        </div>
+                                    </div>
 
                                     {/* Settings List */}
                                     <div style={settingsListStyle}>
@@ -248,73 +229,6 @@ onClick={onClose}
                                             Estas preferencias se sincronizan automáticamente con tu cuenta.
                                         </p>
                                     </div>
-                                </div>
-                            )}
-
-                            {view === 'avatar' && (
-                                <div style={{ padding: '0.5rem 0' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                                        <button onClick={() => setView('main')} style={{ border: 'none', background: '#F5F5F5', padding: '8px', borderRadius: '50%', cursor: 'pointer', display: 'flex' }}>
-                                            <ChevronLeft size={20} />
-                                        </button>
-                                        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900 }}>Elige tu Animalito</h3>
-                                    </div>
-
-                                    <div style={{ 
-                                        display: 'grid', 
-                                        gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', 
-                                        gap: '10px',
-                                        maxHeight: '300px',
-                                        overflowY: 'auto',
-                                        padding: '4px'
-                                    }}>
-                                        {ANIMALES.map(emoji => {
-                                            const isSelected = selectedAnimal === emoji;
-                                            return (
-                                                <motion.button
-                                                    key={emoji}
-                                                    whileTap={{ scale: 0.9 }}
-                                                    onClick={() => handleSelectAnimal(emoji)}
-                                                    style={{
-                                                        width: '60px',
-                                                        height: '60px',
-                                                        borderRadius: '16px',
-                                                        border: isSelected ? '3px solid var(--domain-orange)' : '2px solid #EEE',
-                                                        background: isSelected ? '#FFF7ED' : 'white',
-                                                        cursor: 'pointer',
-                                                        fontSize: '2rem',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        transition: 'all 0.2s',
-                                                        boxShadow: isSelected ? '0 4px 12px rgba(255, 140, 66, 0.2)' : 'none'
-                                                    }}
-                                                >
-                                                    {emoji}
-                                                </motion.button>
-                                            );
-                                        })}
-                                    </div>
-
-                                    {selectedAnimal && (
-                                        <button
-                                            onClick={() => handleSelectAnimal('')}
-                                            style={{
-                                                marginTop: '1.5rem',
-                                                width: '100%',
-                                                padding: '12px',
-                                                borderRadius: '14px',
-                                                border: '1px solid #EEE',
-                                                background: '#F5F5F5',
-                                                color: '#888',
-                                                fontSize: '0.8rem',
-                                                fontWeight: 700,
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            Quitar avatar {selectedAnimal}
-                                        </button>
-                                    )}
                                 </div>
                             )}
 
