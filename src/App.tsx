@@ -27,6 +27,7 @@ import { BloquesDashboard } from './components/dashboard/BloquesDashboard';
 import { ChecklistDiario } from './components/dashboard/ChecklistDiario';
 import { RitaDashboard } from './components/dashboard/RitaDashboard';
 import { EcosistemaMap } from './components/dashboard/EcosistemaMap';
+import { BienestarDashboard } from './components/dashboard/BienestarDashboard';
 
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -44,6 +45,8 @@ function App() {
     if (path.includes('/ruta')) return 'Ruta';
     if (path.includes('/mapa')) return 'Mapa';
     if (path.includes('/accion')) return 'Acción';
+    if (path.includes('/bloques')) return 'Bloques';
+    if (path.includes('/bienestar')) return 'Bienestar';
     return 'Checklist';
   });
 
@@ -75,6 +78,8 @@ function App() {
       else if (path.includes('/ruta')) setActiveTab('Ruta');
       else if (path.includes('/mapa')) setActiveTab('Mapa');
       else if (path.includes('/accion')) setActiveTab('Acción');
+      else if (path.includes('/bloques')) setActiveTab('Bloques');
+      else if (path.includes('/bienestar')) setActiveTab('Bienestar');
       else setActiveTab('Checklist');
     };
     window.addEventListener('popstate', handlePopState);
@@ -235,6 +240,8 @@ function App() {
               />
             ) : activeTab === 'Mapa' ? (
               <EcosistemaMap />
+            ) : activeTab === 'Bienestar' ? (
+              <BienestarDashboard />
             ) : activeTab === 'Finanzas' ? (
               <FinanzasDashboard
                 balance={state.balance}

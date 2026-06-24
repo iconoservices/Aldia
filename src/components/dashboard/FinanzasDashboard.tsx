@@ -95,6 +95,16 @@ export const FinanzasDashboard = ({
     const isBudgetFixed = !!preferences.isBudgetFixed;
     const [includeDebts, setIncludeDebts] = useState(false);
 
+    const toggleBudgetMode = () => {
+        if (!isBudgetFixed) {
+            if (confirm("¿Activar modo FIJO?\n\nSe guardará como tu configuración permanente para el balance mensual.")) {
+                updatePreference('isBudgetFixed', true);
+            }
+        } else {
+            updatePreference('isBudgetFixed', false);
+        }
+    };
+
     // Lógica dinámica: 
     // Si es FIJO: balance actual + ingreso fijo esperado − gastos pendientes (como YNAB/Mint).
     //   Ejemplo: balance=$100, base=$1000 → proyectas $1100 antes de gastos.
@@ -333,21 +343,26 @@ export const FinanzasDashboard = ({
                             ${projectedSavings.toLocaleString()}
                         </h3>
                         
-                        {/* Progress Bar Ingreso Real vs Meta (solo si hay base) */}
+                        {/* Progress Bar Ingreso Real vs Meta/Fijo */}
                         {monthlyBudget > 0 && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#888', fontWeight: 700 }}>
-                                    <span>{isBudgetFixed ? 'Ingreso real logrado' : 'Progreso hacia meta'}</span>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.6rem', color: '#888', fontWeight: 700 }}>
+                                    <span>{isBudgetFixed ? 'Ingreso fijo esperado' : 'Meta de ingreso'}</span>
                                     <span style={{ color: realIncomeThisMonth >= monthlyBudget ? 'var(--domain-green)' : '#888' }}>
                                         ${realIncomeThisMonth.toLocaleString()} / ${monthlyBudget.toLocaleString()}
                                     </span>
                                 </div>
-                                <div style={{ width: '100%', height: '4px', background: '#F1F5F9', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ width: '100%', height: '6px', background: '#F1F5F9', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
                                     <motion.div 
                                         initial={{ width: 0 }}
                                         animate={{ width: `${Math.min(100, Math.max(0, (realIncomeThisMonth / monthlyBudget) * 100))}%` }}
                                         style={{ height: '100%', background: realIncomeThisMonth >= monthlyBudget ? 'var(--domain-green)' : 'var(--domain-orange)', borderRadius: '4px' }}
                                     />
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                                    <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#888' }}>
+                                        {Math.round((realIncomeThisMonth / monthlyBudget) * 100)}%
+                                    </span>
                                 </div>
                             </div>
                         )}
@@ -614,35 +629,77 @@ export const FinanzasDashboard = ({
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-carbon)' }}>📊 Planificador Mensual</h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div 
-                            onClick={() => {
-                                if (!isBudgetFixed) {
-                                    if (confirm("¿Activar modo FIJO?\n\nSe guardará como tu configuración permanente para el balance mensual.")) {
-                                        updatePreference('isBudgetFixed', true);
-                                    }
-                                } else {
-                                    updatePreference('isBudgetFixed', false);
-                                }
-                            }}
+                        {/* Toggle Checkbox Fijo/Meta */}
+                        <button
+                            onClick={toggleBudgetMode}
                             style={{
-                                display: 'flex', alignItems: 'center', gap: '4px',
-                                background: isBudgetFixed ? 'var(--domain-green)' : '#E2E8F0',
-                                border: 'none', borderRadius: '8px',
-                                padding: '4px 8px', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: '6px',
+                                background: isBudgetFixed ? 'var(--domain-green)' : '#F1F5F9',
+                                border: isBudgetFixed ? 'none' : '1px solid #CBD5E1',
+                                borderRadius: '10px',
+                                padding: '5px 10px', cursor: 'pointer',
                                 transition: 'all 0.2s',
                                 ...(isBudgetFixed ? { boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)' } : {})
                             }}
+                            title={isBudgetFixed ? 'Ingreso Fijo: Se suma al balance para calcular el proyectado' : 'Meta: Solo muestra progreso'}
                         >
-                            <span style={{ fontSize: '0.55rem', fontWeight: 900, color: isBudgetFixed ? 'white' : '#64748B', whiteSpace: 'nowrap' }}>
-                                {isBudgetFixed ? '✓ FIJO' : 'FIJO?'}
+                            <div style={{
+                                width: '16px', height: '16px', borderRadius: '4px',
+                                background: isBudgetFixed ? 'white' : 'transparent',
+                                border: isBudgetFixed ? 'none' : '2px solid #64748B',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                {isBudgetFixed && <Check size={12} color="var(--domain-green)" />}
+                            </div>
+                            <span style={{ fontSize: '0.6rem', fontWeight: 900, color: isBudgetFixed ? 'white' : '#64748B', whiteSpace: 'nowrap' }}>
+                                {isBudgetFixed ? 'INGRESO FIJO' : 'META'}
                             </span>
-                        </div>
-                        <div style={{ background: '#F0EBE6', padding: '4px 8px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#888' }}>BASE</span>
-                            <input type="number" value={monthlyBudget || ''} onChange={(e) => updateMonthlyBudget(e.target.value === '' ? 0 : Number(e.target.value))} style={{ border: 'none', background: 'transparent', width: '50px', fontSize: '0.75rem', fontWeight: 900, outline: 'none', color: 'var(--domain-blue)' }} />
+                        </button>
+                        <div style={{ background: isBudgetFixed ? '#F0FDF4' : '#F0EBE6', padding: '6px 10px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px', border: isBudgetFixed ? '1px solid #BBF7D0' : '1px solid #E0E0E0' }}>
+                            <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#888' }}>{isBudgetFixed ? 'FIJO' : 'META'}</span>
+                            <input type="number" value={monthlyBudget || ''} onChange={(e) => updateMonthlyBudget(e.target.value === '' ? 0 : Number(e.target.value))} style={{ border: 'none', background: 'transparent', width: '60px', fontSize: '0.8rem', fontWeight: 900, outline: 'none', color: 'var(--domain-blue)', textAlign: 'right' }} />
                         </div>
                     </div>
                 </div>
+
+                {/* RESUMEN DE INGRESOS Y GASTOS DEL MES */}
+                {monthlyBudget > 0 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+                        <GlassCard
+                            style={{
+                                background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                                color: 'white',
+                                padding: '1.2rem',
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                <TrendingUp size={18} />
+                                <span style={{ fontSize: '0.7rem', fontWeight: 800, opacity: 0.9, textTransform: 'uppercase' }}>Ingresos Reales</span>
+                            </div>
+                            <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: 900 }}>${realIncomeThisMonth.toLocaleString()}</h2>
+                            <div style={{ marginTop: '8px', fontSize: '0.65rem', fontWeight: 700, opacity: 0.9 }}>
+                                {isBudgetFixed ? '📌 Fijo esperado' : '🎯 Meta'}: ${monthlyBudget.toLocaleString()}
+                            </div>
+                        </GlassCard>
+
+                        <GlassCard
+                            style={{
+                                background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+                                color: 'white',
+                                padding: '1.2rem',
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                <TrendingDown size={18} />
+                                <span style={{ fontSize: '0.7rem', fontWeight: 800, opacity: 0.9, textTransform: 'uppercase' }}>Gastos Fijos</span>
+                            </div>
+                            <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: 900 }}>${totalFixedPending.toLocaleString()}</h2>
+                            <div style={{ marginTop: '8px', fontSize: '0.65rem', fontWeight: 700, opacity: 0.9 }}>
+                                Pendientes de pago
+                            </div>
+                        </GlassCard>
+                    </div>
+                )}
 
                 <div className="glass-card" style={{ padding: '1rem', background: '#FFF' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

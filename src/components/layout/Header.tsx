@@ -37,6 +37,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     const PRIMARY_ITEMS = [
         { label: 'Checklist', tab: 'Checklist', icon: 'task_alt' },
         { label: 'Bloques', tab: 'Bloques',   icon: 'history_edu'    },
+        { label: 'Finanzas',  tab: 'Finanzas',  icon: 'payments'      },
         { label: 'Ajustes',  tab: '__profile', icon: 'settings'       },
     ];
 
@@ -52,7 +53,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Tablero',    tab: 'Tablero',     icon: 'view_kanban'   },
         { label: 'Lienzo',     tab: 'Lienzo',      icon: 'palette'       },
         { label: 'Datos',      tab: 'Stats',       icon: 'analytics'     },
-        { label: 'Finanzas',   tab: 'Finanzas',    icon: 'payments'      },
+        { label: 'Bienestar',  tab: 'Bienestar',   icon: 'favorite'      },
     ];
 
     // ── Shared sidebar button renderer ─────────────────────────────────
@@ -117,10 +118,10 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         switch (tab) {
             case 'Checklist': return 'Checklist Diario';
             case 'Bloques': return 'Registro Semanal';
+            case 'Finanzas': return 'Finanzas';
             case 'Acción': return 'Mi Acción';
             case 'Calendario': return 'Calendario';
             case 'Stats': return 'Estadísticas';
-            case 'Finanzas': return 'Finanzas';
             case 'Cerebro': return 'Cerebro';
             case 'Vida': return 'Mi Vida';
             case 'Proyectos': return 'Proyectos';
@@ -128,6 +129,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             case 'Lienzo': return 'Lienzo';
             case 'Ruta': return 'Mi Ruta';
             case 'Mapa': return 'Mapa';
+            case 'Bienestar': return 'Bienestar';
             default: return tab;
         }
     };
@@ -273,11 +275,11 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                 </button>
 
                 <button 
-                    onClick={() => setActiveTab('Stats')}
-                    className={`mobile-nav-btn ${activeTab === 'Stats' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('Finanzas')}
+                    className={`mobile-nav-btn ${activeTab === 'Finanzas' ? 'active' : ''}`}
                 >
-                    <span className="material-symbols-outlined">analytics</span>
-                    <span>Datos</span>
+                    <span className="material-symbols-outlined">payments</span>
+                    <span>Finanzas</span>
                 </button>
 
                 <button 
