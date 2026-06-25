@@ -128,10 +128,12 @@ export interface TrashItem {
 
 export interface UserPreferences {
     isBudgetFixed: boolean;
+    fixedIncomes: string; // JSON: { id: number, name: string, amount: number, active: boolean }[]
 }
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
-    isBudgetFixed: false
+    isBudgetFixed: false,
+    fixedIncomes: "[]"
 };
 
 export interface ProjectNode {
