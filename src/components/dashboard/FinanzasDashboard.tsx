@@ -482,19 +482,6 @@ export const FinanzasDashboard = ({
                             opacity: includeBalance ? 1 : 0.65
                         },
                         { 
-                            label: "Gastos Fijos", 
-                            val: projectedFixedVal, 
-                            color: includeFixed ? "#EF4444" : "#94A3B8", 
-                            sub: includeFixed 
-                                ? (topPeriod === "month" || topPeriod === "all" 
-                                    ? `Pendiente: S/ ${projectedFixedVal.toFixed(0)} / Total: S/ ${monthlyFixedTotal.toFixed(0)}`
-                                    : "Fijos proyectados")
-                                : "Fijos excluidos",
-                            checked: includeFixed,
-                            onToggle: () => setIncludeFixed(v => !v),
-                            opacity: includeFixed ? 1 : 0.65
-                        },
-                        { 
                             label: "Debo", 
                             val: realOwe, 
                             color: includeDebts ? "#EF4444" : "#94A3B8", 
