@@ -481,12 +481,6 @@ export const FinanzasDashboard = ({
                             onToggle: () => setIncludeBalance(v => !v),
                             opacity: includeBalance ? 1 : 0.65
                         },
-                        {
-                            label: "Ingresos Proy.",
-                            val: periodBalance + (includeSalary ? fixedIncomeTotal * periodMultiplier : 0),
-                            color: (periodBalance + (includeSalary ? fixedIncomeTotal * periodMultiplier : 0)) >= 0 ? "#10B981" : "#EF4444",
-                            sub: "Neto + proyectado"
-                        },
                         { 
                             label: "Gastos Fijos", 
                             val: projectedFixedVal, 
