@@ -26,6 +26,7 @@ import { ProfileOverlay } from './components/layout/ProfileOverlay';
 import { BloquesDashboard } from './components/dashboard/BloquesDashboard';
 import { ChecklistDiario } from './components/dashboard/ChecklistDiario';
 import { BaseDatosDashboard } from './components/dashboard/BaseDatosDashboard';
+import { ProyeccionOriginalDashboard } from './components/dashboard/ProyeccionOriginalDashboard';
 import { RitaDashboard } from './components/dashboard/RitaDashboard';
 import { EcosistemaMap } from './components/dashboard/EcosistemaMap';
 import { BienestarDashboard } from './components/dashboard/BienestarDashboard';
@@ -47,6 +48,7 @@ function App() {
     if (path.includes('/mapa')) return 'Mapa';
     if (path.includes('/accion')) return 'Acción';
     if (path.includes('/base')) return 'Base de Datos';
+    if (path.includes('/proyeccion')) return 'Proyección';
     if (path.includes('/bloques')) return 'Bloques';
     if (path.includes('/bienestar')) return 'Bienestar';
     return 'Checklist';
@@ -60,6 +62,8 @@ function App() {
       path = '/accion';
     } else if (activeTab === 'Base de Datos') {
       path = '/base';
+    } else if (activeTab === 'Proyección') {
+      path = '/proyeccion';
     }
     if (window.location.pathname !== path) {
       window.history.pushState(null, '', path);
@@ -83,6 +87,7 @@ function App() {
       else if (path.includes('/mapa')) setActiveTab('Mapa');
       else if (path.includes('/accion')) setActiveTab('Acción');
       else if (path.includes('/base')) setActiveTab('Base de Datos');
+      else if (path.includes('/proyeccion')) setActiveTab('Proyección');
       else if (path.includes('/bloques')) setActiveTab('Bloques');
       else if (path.includes('/bienestar')) setActiveTab('Bienestar');
       else setActiveTab('Checklist');
@@ -181,6 +186,13 @@ function App() {
               </div>
             ) : activeTab === 'Base de Datos' ? (
               <BaseDatosDashboard />
+            ) : activeTab === 'Proyección' ? (
+              <ProyeccionOriginalDashboard
+                transactions={state.transactions}
+                fixedExpenses={state.fixedExpenses}
+                fixedIncomeItems={(() => { try { return JSON.parse(state.preferences.fixedIncomes || '[]'); } catch { return []; }})()}
+                currentMonthStr={new Date().toLocaleDateString('en-CA').substring(0, 7)}
+              />
             ) : activeTab === 'Calendario' ? (
               <TimelineAgendaView
                 calendarEvents={state.agenda}
