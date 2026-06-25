@@ -185,6 +185,12 @@ export const FinanzasDashboard = ({
 
     const realOwe = useMemo(() => activeDebtsAndCollections.filter(d => d.isOwe).reduce((s, d) => s + d.amount, 0), [activeDebtsAndCollections]);
     const realOwed = useMemo(() => activeDebtsAndCollections.filter(d => !d.isOwe).reduce((s, d) => s + d.amount, 0), [activeDebtsAndCollections]);
+    const activeOweTotal = useMemo(() =>
+        activeDebtsAndCollections.filter(d => d.isOwe && (debtActiveMap[d.name + "::" + (d.contact || "")] ?? true)).reduce((s, d) => s + d.amount, 0),
+        [activeDebtsAndCollections, debtActiveMap]);
+    const activeOwedTotal = useMemo(() =>
+        activeDebtsAndCollections.filter(d => !d.isOwe && (debtActiveMap[d.name + "::" + (d.contact || "")] ?? true)).reduce((s, d) => s + d.amount, 0),
+        [activeDebtsAndCollections, debtActiveMap]);
 
     const monthlyFixedTotal = useMemo(() =>
         fixedExpenses.filter(e => e.active).reduce((a, e) => a + e.amount, 0),
@@ -241,6 +247,8 @@ export const FinanzasDashboard = ({
     const [editingIncomeId, setEditingIncomeId] = useState<number | null>(null);
     const [editIncomeName, setEditIncomeName] = useState("");
     const [editIncomeAmount, setEditIncomeAmount] = useState("");
+    const [debtActiveMap, setDebtActiveMap] = useState<Record<string, boolean>>({});
+    const toggleDebtActive = (key: string) => setDebtActiveMap(m => ({ ...m, [key]: !(m[key] ?? true) }));
     const submitNewIncome = () => {
         if (newIncomeName.trim() && newIncomeAmount) {
             addFixedIncome(newIncomeName.trim(), parseFloat(newIncomeAmount));
@@ -278,8 +286,8 @@ export const FinanzasDashboard = ({
             .reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
     }, [transactions, topPeriod, balance]);
 
-    const projectedResources = (includeBalance ? periodBalance : 0) + (includeSalary ? fixedIncomeTotal * periodMultiplier : 0) + (includeOwed ? realOwed : 0);
-    const projectedExpenses = (includeFixed ? projectedFixedVal : 0) + (includeDebts ? realOwe : 0);
+    const projectedResources = (includeBalance ? periodBalance : 0) + (includeSalary ? fixedIncomeTotal * periodMultiplier : 0) + (includeOwed ? activeOwedTotal : 0);
+    const projectedExpenses = (includeFixed ? projectedFixedVal : 0) + (includeDebts ? activeOweTotal : 0);
     const projectedSavings = projectedResources - projectedExpenses;
 
     const totalIncomePending = useMemo(() =>
@@ -294,10 +302,10 @@ export const FinanzasDashboard = ({
     }, [topPeriod, totalIncomePending, fixedIncomeTotal]);
 
     const adjustedSavings = useMemo(() => {
-        const res = (includeBalance ? periodBalance : 0) + (includeSalary ? projectedIncomeVal : 0) + (includeOwed ? realOwed : 0);
-        const exp = (includeFixed ? projectedFixedVal : 0) + (includeDebts ? realOwe : 0);
+        const res = (includeBalance ? periodBalance : 0) + (includeSalary ? projectedIncomeVal : 0) + (includeOwed ? activeOwedTotal : 0);
+        const exp = (includeFixed ? projectedFixedVal : 0) + (includeDebts ? activeOweTotal : 0);
         return res - exp;
-    }, [includeBalance, periodBalance, includeSalary, projectedIncomeVal, includeOwed, realOwed, includeFixed, projectedFixedVal, includeDebts, realOwe]);
+    }, [includeBalance, periodBalance, includeSalary, projectedIncomeVal, includeOwed, activeOwedTotal, includeFixed, projectedFixedVal, includeDebts, activeOweTotal]);
 
     const topTxs = useMemo(() => {
         const { start, end } = getPeriodBounds(topPeriod, new Date());
@@ -723,6 +731,64 @@ export const FinanzasDashboard = ({
                     {/* Add new expense */}
                     <div style={{ marginTop: "0.2rem" }}>
                         <NewFixedExpenseForm addFixedExpense={addFixedExpense} projects={projects} />
+                    </div>
+                </div>
+
+                {/* Debts card */}
+                <div style={{ ...CARD, borderLeft: "4px solid #8B5CF6", display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={LABEL}>Deudas</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#EF4444" }}>Debo: S/ {realOwe.toFixed(2)}</span>
+                            <TrendingDown size={14} color="#EF4444" />
+                        </div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", flex: 1, overflowY: "auto", maxHeight: "160px" }}>
+                        {activeDebtsAndCollections.filter(d => d.isOwe).length === 0 && (
+                            <p style={{ fontSize: "0.75rem", color: "#94A3B8", margin: 0 }}>Sin deudas pendientes.</p>
+                        )}
+                        {activeDebtsAndCollections.filter(d => d.isOwe).map(d => {
+                            const dk = d.name + "::" + (d.contact || "");
+                            const isActive = debtActiveMap[dk] ?? true;
+                            return (
+                            <div key={dk} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 0", borderBottom: "1px solid #F1F5F9", opacity: isActive ? 1 : 0.45 }}>
+                                <div onClick={() => toggleDebtActive(dk)} style={{ width: "28px", height: "16px", borderRadius: "8px", background: isActive ? "#8B5CF6" : "#CBD5E1", position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
+                                    <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: isActive ? "14px" : "2px", transition: "left 0.15s" }} />
+                                </div>
+                                <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-carbon)" }}>
+                                    {d.name}{d.contact ? ` (${d.contact})` : ""}
+                                </span>
+                                <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "#EF4444" }}>
+                                    S/ {d.amount.toFixed(2)}
+                                </span>
+                                <button onClick={() => repayDebt(d.originalTx, d.amount, accounts[0]?.id)} style={{ background: "#10B981", border: "none", borderRadius: "50%", width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+                                    <span style={{ color: "white", fontSize: "0.62rem", fontWeight: 900 }}>ok</span>
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                    <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: "0.35rem", marginTop: "0.2rem" }}>
+                        <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#10B981" }}>Me deben: S/ {realOwed.toFixed(2)}</span>
+                        {activeDebtsAndCollections.filter(d => !d.isOwe).map(d => {
+                            const dk = d.name + "::" + (d.contact || "");
+                            const isActive = debtActiveMap[dk] ?? true;
+                            return (
+                                <div key={dk} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 0", opacity: isActive ? 1 : 0.45 }}>
+                                    <div onClick={() => toggleDebtActive(dk)} style={{ width: "28px", height: "16px", borderRadius: "8px", background: isActive ? "#10B981" : "#CBD5E1", position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
+                                        <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: isActive ? "14px" : "2px", transition: "left 0.15s" }} />
+                                    </div>
+                                    <span style={{ flex: 1, fontSize: "0.78rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-carbon)" }}>
+                                        {d.name}{d.contact ? ` (${d.contact})` : ""}
+                                    </span>
+                                    <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#10B981" }}>
+                                        S/ {d.amount.toFixed(2)}
+                                    </span>
+                                    <button onClick={() => repayDebt(d.originalTx, d.amount, accounts[0]?.id)} style={{ background: "#10B981", border: "none", borderRadius: "50%", width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+                                        <span style={{ color: "white", fontSize: "0.62rem", fontWeight: 900 }}>ok</span>
+                                    </button>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
