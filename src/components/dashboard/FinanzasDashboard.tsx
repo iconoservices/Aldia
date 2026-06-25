@@ -445,7 +445,8 @@ export const FinanzasDashboard = ({
                         { label: "Balance Neto", val: topIncome - topExpense, color: (topIncome - topExpense) >= 0 ? "#10B981" : "#EF4444", sub: "Ingresos - Gastos" },
                         { label: "Debo", val: realOwe, color: "#EF4444", sub: realOwe > 0 ? "Deudas pendientes" : "Sin deudas" },
                         { label: "Me Deben", val: realOwed, color: "#10B981", sub: realOwed > 0 ? "Por cobrar" : "Sin cobros" },
-                        { label: "Patrimonio Neto", val: periodBalance - realOwe + realOwed, color: (periodBalance - realOwe + realOwed) >= 0 ? "var(--domain-blue)" : "#EF4444", sub: "Balance - Deudas + Cobros" },
+                        { label: "Deuda Neta", val: realOwed - realOwe, color: (realOwed - realOwe) >= 0 ? "#10B981" : "#EF4444", sub: "Me deben - Debo" },
+                        { label: "Patrimonio Neto", val: periodBalance - realOwe + realOwed, color: (periodBalance - realOwe + realOwed) >= 0 ? "var(--domain-blue)" : "#EF4444", sub: "Balance Neto + Deuda Neta" },
                     ].map((item, i) => (
                         <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? "1px solid #E2E8F0" : "none" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
