@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import {
     Wallet, Plus, TrendingUp, TrendingDown,
-    Trash2, Edit2, PieChart,
+    Trash2, Edit2, PieChart, X,
     UserMinus, UserPlus, Check, PiggyBank, ArrowDownCircle, DollarSign,
     ChevronLeft, ChevronRight, Calendar, BarChart3
 } from "lucide-react";
@@ -211,6 +211,8 @@ export const FinanzasDashboard = ({
         saveFixedIncomes(fixedIncomeItems.filter(f => f.id !== id));
     const toggleFixedIncome = (id: number) =>
         saveFixedIncomes(fixedIncomeItems.map(f => f.id === id ? { ...f, active: !f.active } : f));
+    const updateFixedIncome = (id: number, name: string, amount: number) =>
+        saveFixedIncomes(fixedIncomeItems.map(f => f.id === id ? { ...f, name, amount } : f));
     const markFixedIncomeReceived = (id: number, monthStr: string) => {
         const item = fixedIncomeItems.find(f => f.id === id);
         if (!item) return;
@@ -236,6 +238,9 @@ export const FinanzasDashboard = ({
     const [isAddingIncome, setIsAddingIncome] = useState(false);
     const [newIncomeName, setNewIncomeName] = useState("");
     const [newIncomeAmount, setNewIncomeAmount] = useState("");
+    const [editingIncomeId, setEditingIncomeId] = useState<number | null>(null);
+    const [editIncomeName, setEditIncomeName] = useState("");
+    const [editIncomeAmount, setEditIncomeAmount] = useState("");
     const submitNewIncome = () => {
         if (newIncomeName.trim() && newIncomeAmount) {
             addFixedIncome(newIncomeName.trim(), parseFloat(newIncomeAmount));
@@ -638,6 +643,7 @@ export const FinanzasDashboard = ({
                         )}
                         {fixedIncomeItems.map(item => {
                             const isReceived = item.lastReceivedMonth === currentMonthStr;
+                            const isEditing = editingIncomeId === item.id;
                             return (
                                 <div key={item.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 0", borderBottom: "1px solid #F1F5F9", opacity: item.active ? 1 : 0.45, transition: "opacity 0.15s" }}>
                                     {/* mini toggle */}
@@ -648,13 +654,32 @@ export const FinanzasDashboard = ({
                                     <button onClick={() => isReceived ? unmarkFixedIncomeReceived(item.id, currentMonthStr) : markFixedIncomeReceived(item.id, currentMonthStr)} style={{ background: isReceived ? "#10B981" : "#F1F5F9", border: "none", borderRadius: "50%", width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
                                         <span style={{ color: isReceived ? "white" : "#94A3B8", fontSize: "0.62rem", fontWeight: 900 }}>ok</span>
                                     </button>
-                                    <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isReceived ? "line-through" : "none", color: isReceived ? "#94A3B8" : "var(--text-carbon)" }}>
-                                        {item.name}
-                                    </span>
-                                    <span style={{ fontSize: "0.8rem", fontWeight: 800, color: isReceived ? "#10B981" : (item.active ? "var(--domain-blue)" : "#94A3B8") }}>
-                                        S/ {item.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                    </span>
-                                    <button onClick={() => removeFixedIncome(item.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "2px", display: "flex" }}><Trash2 size={11} /></button>
+                                    {isEditing ? (
+                                        <>
+                                            <input autoFocus value={editIncomeName} onChange={e => setEditIncomeName(e.target.value)}
+                                                onKeyDown={e => { if (e.key === "Enter") { updateFixedIncome(item.id, editIncomeName.trim(), parseFloat(editIncomeAmount) || 0); setEditingIncomeId(null); } if (e.key === "Escape") setEditingIncomeId(null); }}
+                                                style={{ flex: 1, padding: "3px 6px", borderRadius: "5px", border: "1px solid #E2E8F0", fontSize: "0.78rem", outline: "none" }} />
+                                            <div style={{ position: "relative", width: "70px" }}>
+                                                <span style={{ position: "absolute", left: "4px", top: "50%", transform: "translateY(-50%)", fontSize: "0.62rem", fontWeight: 700, color: "#64748B" }}>S/</span>
+                                                <input type="number" value={editIncomeAmount} onChange={e => setEditIncomeAmount(e.target.value)}
+                                                    onKeyDown={e => { if (e.key === "Enter") { updateFixedIncome(item.id, editIncomeName.trim(), parseFloat(editIncomeAmount) || 0); setEditingIncomeId(null); } if (e.key === "Escape") setEditingIncomeId(null); }}
+                                                    style={{ width: "100%", padding: "3px 3px 3px 18px", borderRadius: "5px", border: "1px solid #E2E8F0", fontSize: "0.78rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
+                                            </div>
+                                            <button onClick={() => { updateFixedIncome(item.id, editIncomeName.trim(), parseFloat(editIncomeAmount) || 0); setEditingIncomeId(null); }} style={{ background: "var(--domain-blue)", color: "white", border: "none", borderRadius: "4px", padding: "3px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>OK</button>
+                                            <button onClick={() => setEditingIncomeId(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "2px", display: "flex" }}><X size={11} /></button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isReceived ? "line-through" : "none", color: isReceived ? "#94A3B8" : "var(--text-carbon)" }}>
+                                                {item.name}
+                                            </span>
+                                            <span style={{ fontSize: "0.8rem", fontWeight: 800, color: isReceived ? "#10B981" : (item.active ? "var(--domain-blue)" : "#94A3B8") }}>
+                                                S/ {item.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                            </span>
+                                            <button onClick={() => { setEditingIncomeId(item.id); setEditIncomeName(item.name); setEditIncomeAmount(String(item.amount)); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "2px", display: "flex" }}><Edit2 size={11} /></button>
+                                            <button onClick={() => removeFixedIncome(item.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "2px", display: "flex" }}><Trash2 size={11} /></button>
+                                        </>
+                                    )}
                                 </div>
                             );
                         })}
