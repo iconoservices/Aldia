@@ -140,7 +140,7 @@ export const FinanzasDashboard = ({
     balance, transactions,
     fixedExpenses, addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense,
     markFixedExpensePaid, unmarkFixedExpensePaid,
-    repayDebt, removeTransaction, addTransaction,
+    removeTransaction, addTransaction,
     projects, accounts, setAccounts,
     addProjectTask, toggleProjectTask, removeProjectTask, updateProjectTask,
     reorderProjectTasks, promoteTaskToRoutine, rutinas,
