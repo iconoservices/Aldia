@@ -8,7 +8,6 @@ import {
 import { AnalyticsView } from "./AnalyticsView";
 import { motion, AnimatePresence } from "framer-motion";
 import { ProjectDetailView } from "./ProjectDetailView";
-import { DebtDetailView } from "./DebtDetailView";
 import type { Transaction, FixedExpense, Project, Routine, UserPreferences } from "../../hooks/useAlDiaState";
 
 interface FinanzasProps {
@@ -54,6 +53,7 @@ interface FinanzasProps {
     setSelectedProjectDetailId?: (id: number | null) => void;
     preferences: UserPreferences;
     updatePreference: (key: keyof UserPreferences, value: any) => void;
+    onNavigate?: (tab: string) => void;
 }
 
 type PeriodMode = "day" | "week" | "month" | "year" | "all";
@@ -147,7 +147,8 @@ export const FinanzasDashboard = ({
     addProjectCategory, removeProjectCategory,
     addInventoryItem, updateInventoryItemQuantity, removeInventoryItem,
     updateProject,
-    preferences, updatePreference
+    preferences, updatePreference,
+    onNavigate
 }: FinanzasProps) => {
     const currentMonthStr = useMemo(() => new Date().toLocaleDateString("en-CA").substring(0, 7), []);
 
@@ -158,6 +159,7 @@ export const FinanzasDashboard = ({
     const [includeBalance, setIncludeBalance] = useState(true);
     const [includeSalary, setIncludeSalary] = useState(true);
     const [topPeriod, setTopPeriod] = useState<PeriodMode>("month");
+    const [debtActiveMap, setDebtActiveMap] = useState<Record<string, boolean>>({});
 
     // ── Debt groups (corrected: subtracts payments) ───────────────────────
     const activeDebtsAndCollections = useMemo(() => {
@@ -247,7 +249,6 @@ export const FinanzasDashboard = ({
     const [editingIncomeId, setEditingIncomeId] = useState<number | null>(null);
     const [editIncomeName, setEditIncomeName] = useState("");
     const [editIncomeAmount, setEditIncomeAmount] = useState("");
-    const [debtActiveMap, setDebtActiveMap] = useState<Record<string, boolean>>({});
     const toggleDebtActive = (key: string) => setDebtActiveMap(m => ({ ...m, [key]: !(m[key] ?? true) }));
     const submitNewIncome = () => {
         if (newIncomeName.trim() && newIncomeAmount) {
@@ -364,8 +365,6 @@ export const FinanzasDashboard = ({
 
     // ── UI state ──────────────────────────────────────────────────────────
     const [isAccountsVisible, setIsAccountsVisible] = useState(false);
-    const [showDebtDetail, setShowDebtDetail] = useState(false);
-    const [debtMode, setDebtMode] = useState<"owe" | "owed">("owe");
     const [selectedProject, setSelectedProject] = useState<any>(null);
     const [showAnalytics, setShowAnalytics] = useState(false);
     const [chartPeriod, setChartPeriod] = useState<"7d" | "30d">("7d");
@@ -765,7 +764,8 @@ export const FinanzasDashboard = ({
                                     <span style={{ color: "white", fontSize: "0.62rem", fontWeight: 900 }}>ok</span>
                                 </button>
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
                     <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: "0.35rem", marginTop: "0.2rem" }}>
                         <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#10B981" }}>Me deben: S/ {realOwed.toFixed(2)}</span>
@@ -828,12 +828,15 @@ export const FinanzasDashboard = ({
                 </div>
 
                 {/* Debts & collections */}
-                <div style={{ ...CARD, display: "flex", flexDirection: "column", minHeight: "240px" }}>
+                <div 
+                    onClick={() => onNavigate?.('Deudas')}
+                    style={{ ...CARD, display: "flex", flexDirection: "column", minHeight: "240px", cursor: "pointer" }}
+                >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
                         <span style={{ fontSize: "0.9rem", fontWeight: 800 }}>Deudas y Cobros</span>
                         <div style={{ display: "flex", gap: "6px" }}>
-                            <button onClick={() => { setDebtMode("owe"); setShowDebtDetail(true); }} style={{ background: "rgba(239,68,68,0.08)", border: "none", color: "#EF4444", fontSize: "0.7rem", fontWeight: 800, cursor: "pointer", padding: "3px 10px", borderRadius: "8px" }}>Debo</button>
-                            <button onClick={() => { setDebtMode("owed"); setShowDebtDetail(true); }} style={{ background: "rgba(16,185,129,0.08)", border: "none", color: "#10B981", fontSize: "0.7rem", fontWeight: 800, cursor: "pointer", padding: "3px 10px", borderRadius: "8px" }}>Me Deben</button>
+                            <button onClick={(e) => { e.stopPropagation(); onNavigate?.('Deudas'); }} style={{ background: "rgba(239,68,68,0.08)", border: "none", color: "#EF4444", fontSize: "0.7rem", fontWeight: 800, cursor: "pointer", padding: "3px 10px", borderRadius: "8px" }}>Debo</button>
+                            <button onClick={(e) => { e.stopPropagation(); onNavigate?.('Deudas'); }} style={{ background: "rgba(16,185,129,0.08)", border: "none", color: "#10B981", fontSize: "0.7rem", fontWeight: 800, cursor: "pointer", padding: "3px 10px", borderRadius: "8px" }}>Me Deben</button>
                         </div>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", flex: 1, overflowY: "auto" }}>
@@ -843,7 +846,7 @@ export const FinanzasDashboard = ({
                                 <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>Sin deudas activas</span>
                             </div>
                         ) : activeDebtsAndCollections.map((debt, i) => (
-                            <div key={i} onClick={() => { setDebtMode(debt.isOwe ? "owe" : "owed"); setShowDebtDetail(true); }}
+                            <div key={i} onClick={(e) => { e.stopPropagation(); onNavigate?.('Deudas'); }}
                                 style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px", borderRadius: "12px", background: "#F8FAFC", border: "1px solid #F1F5F9", cursor: "pointer" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                                     <div style={{ width: "30px", height: "30px", borderRadius: "50%", background: debt.isOwe ? "rgba(239,68,68,0.1)" : "rgba(16,185,129,0.1)", color: debt.isOwe ? "#EF4444" : "#10B981", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -1001,7 +1004,6 @@ export const FinanzasDashboard = ({
             {/* ── Modals ─── */}
             <AnimatePresence>
                 {selectedProject && <ProjectDetailView project={selectedProject} onClose={() => setSelectedProject(null)} accounts={accounts} setAccounts={setAccounts} transactions={transactions} addProjectTask={addProjectTask} toggleProjectTask={toggleProjectTask} removeProjectTask={removeProjectTask} updateProjectTask={updateProjectTask} reorderProjectTasks={reorderProjectTasks} promoteTaskToRoutine={promoteTaskToRoutine} rutinas={rutinas} addProjectCategory={addProjectCategory} removeProjectCategory={removeProjectCategory} addInventoryItem={addInventoryItem} updateInventoryItemQuantity={updateInventoryItemQuantity} removeInventoryItem={removeInventoryItem} projects={projects} updateProject={updateProject} />}
-                {showDebtDetail && <DebtDetailView transactions={transactions} accounts={accounts} initialMode={debtMode} onClose={() => setShowDebtDetail(false)} repayDebt={repayDebt} removeTransaction={removeTransaction} updateTransactionGroup={updateTransactionGroup} addTransaction={addTransaction} />}
             </AnimatePresence>
             <AnimatePresence>
                 {showAnalytics && <AnalyticsView transactions={transactions} onClose={() => setShowAnalytics(false)} />}

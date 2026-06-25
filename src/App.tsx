@@ -319,6 +319,7 @@ function App() {
                 removeInventoryItem={state.removeInventoryItem}
                 updateProject={state.updateProject}
                 setSelectedProjectDetailId={setSelectedProjectDetailId}
+                onNavigate={setActiveTab}
               />
             ) : activeTab === 'Proyectos' ? (
               <ProyectosDashboard
