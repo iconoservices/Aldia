@@ -282,6 +282,23 @@ export const FinanzasDashboard = ({
     const projectedExpenses = (includeFixed ? projectedFixedVal : 0) + (includeDebts ? realOwe : 0);
     const projectedSavings = projectedResources - projectedExpenses;
 
+    const totalIncomePending = useMemo(() =>
+        fixedIncomeItems.filter(f => f.active && f.lastReceivedMonth !== currentMonthStr).reduce((s, f) => s + f.amount, 0),
+        [fixedIncomeItems, currentMonthStr]);
+
+    const projectedIncomeVal = useMemo(() => {
+        if (topPeriod === "month" || topPeriod === "all") return totalIncomePending;
+        if (topPeriod === "day") return fixedIncomeTotal / 30;
+        if (topPeriod === "week") return (fixedIncomeTotal * 7) / 30;
+        return fixedIncomeTotal * 12; // "year"
+    }, [topPeriod, totalIncomePending, fixedIncomeTotal]);
+
+    const adjustedSavings = useMemo(() => {
+        const res = (includeBalance ? periodBalance : 0) + (includeSalary ? projectedIncomeVal : 0) + (includeOwed ? realOwed : 0);
+        const exp = (includeFixed ? projectedFixedVal : 0) + (includeDebts ? realOwe : 0);
+        return res - exp;
+    }, [includeBalance, periodBalance, includeSalary, projectedIncomeVal, includeOwed, realOwed, includeFixed, projectedFixedVal, includeDebts, realOwe]);
+
     const topTxs = useMemo(() => {
         const { start, end } = getPeriodBounds(topPeriod, new Date());
         return transactions.filter(tx => !tx.isDebt && tx.fullDate >= start && tx.fullDate <= end);
@@ -419,7 +436,8 @@ export const FinanzasDashboard = ({
                         { label: topPeriodDetails.labelExp, val: topExpense, color: "#EF4444", sub: topPeriodDetails.subExp },
                         { label: "Fijo", val: fixedExpenseActual, color: "#EF4444", sub: "Gastos activos" },
                         { label: "Variable", val: variableExpenseActual, color: "#EF4444", sub: "Gastos directos" },
-                        { label: "Balance Neto", val: periodBalance, color: periodBalance >= 0 ? "#10B981" : "#EF4444", sub: "Ingresos - Gastos" },
+                        { label: "Balance Neto", val: topIncome - topExpense, color: (topIncome - topExpense) >= 0 ? "#10B981" : "#EF4444", sub: "Ingresos - Gastos" },
+                        { label: "Saldo Actual", val: periodBalance, color: periodBalance >= 0 ? "#10B981" : "#EF4444", sub: "Disponible real" },
                         { label: "Debo", val: realOwe, color: "#EF4444", sub: realOwe > 0 ? "Deudas pendientes" : "Sin deudas" },
                         { label: "Me Deben", val: realOwed, color: "#10B981", sub: realOwed > 0 ? "Por cobrar" : "Sin cobros" },
                         { label: "Patrimonio Neto", val: periodBalance - realOwe + realOwed, color: (periodBalance - realOwe + realOwed) >= 0 ? "var(--domain-blue)" : "#EF4444", sub: "Balance - Deudas + Cobros" },
@@ -462,10 +480,10 @@ export const FinanzasDashboard = ({
                         { label: "Fijo", val: fixedExpenseProyectado, color: "#EF4444", sub: "Gastos activos" },
                         { label: "Variable", val: variableExpenseActual, color: "#EF4444", sub: "Gastos directos" },
                         {
-                            label: "Balance Neto",
+                            label: "Saldo Actual",
                             val: periodBalance,
                             color: includeBalance ? "#10B981" : "#94A3B8",
-                            sub: includeBalance ? "Incluido" : "Excluido",
+                            sub: includeBalance ? "Disponible" : "Excluido",
                             checked: includeBalance,
                             onToggle: () => setIncludeBalance(v => !v),
                             opacity: includeBalance ? 1 : 0.65
@@ -512,7 +530,103 @@ export const FinanzasDashboard = ({
                 </div>
             </div>
 
-            {/* ── Row 3: Ingresos Fijos + Gastos Fijos ─── */}
+            {/* ── Row 3: Ejecución y Proyección Ajustada ─── */}
+            <div style={{ ...CARD, borderLeft: "4px solid #8B5CF6", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", flexWrap: "wrap", gap: "8px" }}>
+                    <span style={LABEL}>Ejecución y Proyección Ajustada</span>
+                    <TrendingUp size={16} color="#8B5CF6" style={{ marginLeft: "4px" }} />
+                </div>
+                <span style={{ fontSize: "0.65rem", color: "#94A3B8", marginBottom: "0.8rem", display: "block" }}>Mix ajustable con toggles — incluí/excluí fijos, deudas y cobros</span>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
+                    {[
+                        { label: topPeriodDetails.label, val: topIncome, color: "#10B981", sub: topPeriodDetails.sub },
+                        { label: topPeriodDetails.labelExp, val: topExpense, color: "#EF4444", sub: topPeriodDetails.subExp },
+                        {
+                            label: "Saldo Actual",
+                            val: periodBalance,
+                            color: includeBalance ? "#10B981" : "#94A3B8",
+                            sub: includeBalance ? "Disponible" : "Excluido",
+                            checked: includeBalance,
+                            onToggle: () => setIncludeBalance(v => !v),
+                            opacity: includeBalance ? 1 : 0.65
+                        },
+                        {
+                            label: "Ingreso Fijo",
+                            val: projectedIncomeVal,
+                            color: (fixedIncomeTotal > 0) ? (includeSalary ? "#10B981" : "#94A3B8") : "#94A3B8",
+                            sub: fixedIncomeTotal > 0 
+                                ? (includeSalary 
+                                    ? (topPeriod === "month" || topPeriod === "all"
+                                        ? `Pendiente: S/ ${projectedIncomeVal.toFixed(0)} / Total: S/ ${fixedIncomeTotal.toFixed(0)}`
+                                        : "Fijos proyectados")
+                                    : "Fijos excluidos") 
+                                : "Sin ingresos fijos",
+                            checked: fixedIncomeTotal > 0 ? includeSalary : false,
+                            onToggle: fixedIncomeTotal > 0 ? (() => setIncludeSalary(v => !v)) : undefined,
+                            opacity: fixedIncomeTotal === 0 ? 0.5 : (includeSalary ? 1 : 0.65)
+                        },
+                        {
+                            label: "Ingresos Proy.",
+                            val: periodBalance + (includeSalary ? projectedIncomeVal : 0),
+                            color: (periodBalance + (includeSalary ? projectedIncomeVal : 0)) >= 0 ? "#10B981" : "#EF4444",
+                            sub: "Neto + proyectado"
+                        },
+                        { 
+                            label: "Gastos Fijos", 
+                            val: projectedFixedVal, 
+                            color: includeFixed ? "#EF4444" : "#94A3B8", 
+                            sub: includeFixed 
+                                ? (topPeriod === "month" || topPeriod === "all" 
+                                    ? `Pendiente: S/ ${projectedFixedVal.toFixed(0)} / Total: S/ ${monthlyFixedTotal.toFixed(0)}`
+                                    : "Fijos proyectados")
+                                : "Fijos excluidos",
+                            checked: includeFixed,
+                            onToggle: () => setIncludeFixed(v => !v),
+                            opacity: includeFixed ? 1 : 0.65
+                        },
+                        { 
+                            label: "Debo", 
+                            val: realOwe, 
+                            color: includeDebts ? "#EF4444" : "#94A3B8", 
+                            sub: includeDebts ? "Debo (incluido)" : "Debo (excluido)", 
+                            checked: includeDebts,
+                            onToggle: () => setIncludeDebts(v => !v),
+                            opacity: includeDebts ? 1 : 0.65 
+                        },
+                        { 
+                            label: "Me Deben", 
+                            val: realOwed, 
+                            color: includeOwed ? "#10B981" : "#94A3B8", 
+                            sub: includeOwed ? "Cobros incluidos" : "Cobros excluidos",
+                            checked: includeOwed,
+                            onToggle: () => setIncludeOwed(v => !v),
+                            opacity: includeOwed ? 1 : 0.65
+                        },
+                        { 
+                            label: "Balance Neto", 
+                            val: adjustedSavings, 
+                            color: adjustedSavings >= 0 ? "var(--domain-blue)" : "#EF4444", 
+                            sub: projectedPeriodLabel 
+                        },
+                    ].map((item, i) => (
+                        <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? "1px solid #E2E8F0" : "none", opacity: item.opacity ?? 1, transition: "opacity 0.2s" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
+                                {item.onToggle && (
+                                    <CircleCheckbox checked={item.checked ?? false} onChange={item.onToggle} />
+                                )}
+                                <span style={{ ...LABEL }}>{item.label}</span>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "baseline", gap: "1px", color: item.color }}>
+                                <span style={{ fontSize: "0.8rem", fontWeight: 800 }}>S/ </span>
+                                <span style={{ fontSize: "1.25rem", fontWeight: 900, lineHeight: 1 }}>{item.val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <span style={{ fontSize: "0.58rem", color: "#94A3B8", marginTop: "2px" }}>{item.sub}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* ── Row 4: Ingresos Fijos + Gastos Fijos ─── */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem" }}>
 
                 {/* Fixed incomes card */}
