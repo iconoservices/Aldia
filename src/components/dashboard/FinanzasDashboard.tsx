@@ -478,15 +478,6 @@ export const FinanzasDashboard = ({
                         { label: "Gastos Proy.", val: projectedExpenseTotal, color: "#EF4444", sub: "Fijos + Variables" },
                         { label: "Fijo", val: fixedExpenseProyectado, color: "#EF4444", sub: "Gastos activos" },
                         { label: "Variable", val: variableExpenseActual, color: "#EF4444", sub: "Gastos directos" },
-                        {
-                            label: "Saldo Actual",
-                            val: periodBalance,
-                            color: includeBalance ? "#10B981" : "#94A3B8",
-                            sub: includeBalance ? "Disponible" : "Excluido",
-                            checked: includeBalance,
-                            onToggle: () => setIncludeBalance(v => !v),
-                            opacity: includeBalance ? 1 : 0.65
-                        },
                         { 
                             label: "Debo", 
                             val: realOwe, 
