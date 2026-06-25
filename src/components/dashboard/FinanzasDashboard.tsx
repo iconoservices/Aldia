@@ -190,6 +190,10 @@ export const FinanzasDashboard = ({
         fixedExpenses.filter(e => e.active).reduce((a, e) => a + e.amount, 0),
         [fixedExpenses]);
 
+    const fixedExpensePaidTotal = useMemo(() =>
+        fixedExpenses.filter(e => e.active && e.lastPaidMonth === currentMonthStr).reduce((a, e) => a + e.amount, 0),
+        [fixedExpenses, currentMonthStr]);
+
     const totalFixedPending = useMemo(() =>
         fixedExpenses.filter(e => e.active && e.lastPaidMonth !== currentMonthStr).reduce((a, e) => a + e.amount, 0),
         [fixedExpenses, currentMonthStr]);
@@ -303,6 +307,25 @@ export const FinanzasDashboard = ({
         topTxs.filter(tx => tx.type === "gasto").reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0),
         [topTxs]);
 
+    const activeFixedIncomeNames = useMemo(() =>
+        new Set(fixedIncomeItems.filter(f => f.active).map(f => `Depósito: ${f.name}`)),
+        [fixedIncomeItems]);
+
+    const fixedIncomeActual = useMemo(() =>
+        topTxs.filter(tx => tx.type === "ingreso" && activeFixedIncomeNames.has(tx.text)).reduce((s, tx) => s + (Number(tx.amount) || 0), 0),
+        [topTxs, activeFixedIncomeNames]);
+
+    const variableIncomeActual = useMemo(() => topIncome - fixedIncomeActual, [topIncome, fixedIncomeActual]);
+
+    const fixedExpenseActual = useMemo(() => {
+        if (topPeriod === "day") return fixedExpensePaidTotal / 30;
+        if (topPeriod === "week") return (fixedExpensePaidTotal * 7) / 30;
+        if (topPeriod === "year") return fixedExpensePaidTotal * 12;
+        return fixedExpensePaidTotal;
+    }, [topPeriod, fixedExpensePaidTotal]);
+
+    const variableExpenseActual = useMemo(() => topExpense - fixedExpenseActual, [topExpense, fixedExpenseActual]);
+
     const topPeriodDetails = useMemo(() => {
         const mapping = {
             day: { label: "Ingresos (Día)", labelExp: "Gastos (Día)", sub: "Recibido hoy", subExp: "Gastado hoy" },
@@ -390,11 +413,16 @@ export const FinanzasDashboard = ({
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
                     {[
                         { label: topPeriodDetails.label, val: topIncome, color: "#10B981", sub: topPeriodDetails.sub },
+                        { label: "Fijo", val: fixedIncomeActual, color: "#10B981", sub: "Activos recibidos" },
+                        { label: "Variable", val: variableIncomeActual, color: "#10B981", sub: "Ingresos directos" },
                         { label: topPeriodDetails.labelExp, val: topExpense, color: "#EF4444", sub: topPeriodDetails.subExp },
+                        { label: "Fijo", val: fixedExpenseActual, color: "#EF4444", sub: "Gastos activos" },
+                        { label: "Variable", val: variableExpenseActual, color: "#EF4444", sub: "Gastos directos" },
                         { label: "Saldo Actual", val: periodBalance, color: periodBalance >= 0 ? "#10B981" : "#EF4444", sub: "Disponible real" },
                         { label: "Debo", val: realOwe, color: "#EF4444", sub: realOwe > 0 ? "Deudas pendientes" : "Sin deudas" },
                         { label: "Me Deben", val: realOwed, color: "#10B981", sub: realOwed > 0 ? "Por cobrar" : "Sin cobros" },
                         { label: "Patrimonio Neto", val: periodBalance - realOwe + realOwed, color: (periodBalance - realOwe + realOwed) >= 0 ? "var(--domain-blue)" : "#EF4444", sub: "Balance - Deudas + Cobros" },
+                        { label: "Balance Proyectado", val: periodBalance + (topIncome - topExpense), color: (periodBalance + topIncome - topExpense) >= 0 ? "#10B981" : "#EF4444", sub: "Saldo + (Ingresos - Gastos)" },
                     ].map((item, i) => (
                         <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? "1px solid #E2E8F0" : "none" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
@@ -1056,3 +1084,4 @@ const QuickTransactionForm = ({ addTransaction, accounts }: any) => {
         </motion.div>
     );
 };
+
