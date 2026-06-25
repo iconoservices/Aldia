@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { GlassCard } from '../ui/GlassCard';
-import { Search, Filter, Download } from 'lucide-react';
+import { Search, Download } from 'lucide-react';
 
 interface Item {
     id: number;

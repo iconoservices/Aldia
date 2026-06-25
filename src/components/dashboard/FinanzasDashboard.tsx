@@ -137,10 +137,7 @@ function shiftPeriod(mode: PeriodMode, ref: Date, dir: -1 | 1): Date {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export const FinanzasDashboard = ({
-    balance, todayIncomeReal, todayExpenseReal, todayNet,
-    totalIncomeReal, totalExpenseReal, totalNetReal,
-    owe, owed, transactions,
-    monthlyBudget, updateMonthlyBudget,
+    balance, transactions,
     fixedExpenses, addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense,
     markFixedExpensePaid, unmarkFixedExpensePaid,
     repayDebt, removeTransaction, updateTransactionGroup, addTransaction,
@@ -149,13 +146,12 @@ export const FinanzasDashboard = ({
     reorderProjectTasks, promoteTaskToRoutine, rutinas,
     addProjectCategory, removeProjectCategory,
     addInventoryItem, updateInventoryItemQuantity, removeInventoryItem,
-    updateProject, setSelectedProjectDetailId,
+    updateProject,
     preferences, updatePreference
 }: FinanzasProps) => {
     const currentMonthStr = useMemo(() => new Date().toLocaleDateString("en-CA").substring(0, 7), []);
 
     // ── Config ────────────────────────────────────────────────────────────
-    const isBudgetFixed = !!preferences.isBudgetFixed;
     const [includeDebts, setIncludeDebts] = useState(false);
     const [includeFixed, setIncludeFixed] = useState(true);
     const [includeOwed, setIncludeOwed] = useState(false);
@@ -746,12 +742,6 @@ export const FinanzasDashboard = ({
 };
 
 // ─── Shared micro-components ──────────────────────────────────────────────────
-const Toggle = ({ on, onToggle, color }: { on: boolean; onToggle: () => void; color: string }) => (
-    <div onClick={onToggle} style={{ width: "38px", height: "22px", borderRadius: "11px", background: on ? color : "#CBD5E1", position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}>
-        <motion.div animate={{ x: on ? 18 : 2 }} transition={{ type: "spring", stiffness: 500, damping: 30 }} style={{ width: "18px", height: "18px", borderRadius: "50%", background: "white", position: "absolute", top: "2px" }} />
-    </div>
-);
-
 const LegendDot = ({ color, label }: { color: string; label: string }) => (
     <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
         <div style={{ width: "8px", height: "8px", borderRadius: "2px", background: color }} />
@@ -770,7 +760,7 @@ const PillToggle = ({ options, labels, value, onChange }: { options: string[]; l
 );
 
 // ─── Fixed expense row ────────────────────────────────────────────────────────
-const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, updateFixedExpense, markFixedExpensePaid, unmarkFixedExpensePaid, isPaid, projects }: any) => {
+const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, updateFixedExpense, markFixedExpensePaid, unmarkFixedExpensePaid, isPaid }: any) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(expense.text);
     const [editAmount, setEditAmount] = useState(String(expense.amount));
