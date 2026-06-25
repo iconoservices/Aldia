@@ -381,7 +381,36 @@ export const FinanzasDashboard = ({
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", paddingBottom: "5rem", color: "var(--text-carbon)" }}>
 
-            {/* ── Row 1: Proyección Financiera (Original / Teórica) ─── */}
+            {/* ── Row 1: Situación Financiera Real ─── */}
+            <div style={{ ...CARD, borderLeft: "4px solid #059669" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "8px" }}>
+                    <span style={LABEL}>Situación Financiera Real</span>
+                    <TrendingUp size={16} color="#059669" />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
+                    {[
+                        { label: topPeriodDetails.label, val: topIncome, color: "#10B981", sub: topPeriodDetails.sub },
+                        { label: topPeriodDetails.labelExp, val: topExpense, color: "#EF4444", sub: topPeriodDetails.subExp },
+                        { label: "Saldo Actual", val: periodBalance, color: periodBalance >= 0 ? "#10B981" : "#EF4444", sub: "Disponible real" },
+                        { label: "Debo", val: realOwe, color: "#EF4444", sub: realOwe > 0 ? "Deudas pendientes" : "Sin deudas" },
+                        { label: "Me Deben", val: realOwed, color: "#10B981", sub: realOwed > 0 ? "Por cobrar" : "Sin cobros" },
+                        { label: "Patrimonio Neto", val: periodBalance - realOwe + realOwed, color: (periodBalance - realOwe + realOwed) >= 0 ? "var(--domain-blue)" : "#EF4444", sub: "Balance - Deudas + Cobros" },
+                    ].map((item, i) => (
+                        <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? "1px solid #E2E8F0" : "none" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
+                                <span style={{ ...LABEL }}>{item.label}</span>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "baseline", gap: "1px", color: item.color }}>
+                                <span style={{ fontSize: "0.8rem", fontWeight: 800 }}>S/ </span>
+                                <span style={{ fontSize: "1.25rem", fontWeight: 900, lineHeight: 1 }}>{item.val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <span style={{ fontSize: "0.58rem", color: "#94A3B8", marginTop: "2px" }}>{item.sub}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* ── Row 2: Proyección Financiera (Original) ─── */}
             <div style={{ ...CARD, borderLeft: "4px solid #10B981", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "8px" }}>
                     <span style={LABEL}>Proyección Financiera (Original)</span>
@@ -478,36 +507,7 @@ export const FinanzasDashboard = ({
                 </div>
             </div>
 
-            {/* ── Row 1.5: Situación Financiera Real ─── */}
-            <div style={{ ...CARD, borderLeft: "4px solid #059669" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "8px" }}>
-                    <span style={LABEL}>Situación Financiera Real</span>
-                    <TrendingUp size={16} color="#059669" />
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
-                    {[
-                        { label: topPeriodDetails.label, val: topIncome, color: "#10B981", sub: topPeriodDetails.sub },
-                        { label: topPeriodDetails.labelExp, val: topExpense, color: "#EF4444", sub: topPeriodDetails.subExp },
-                        { label: "Saldo Actual", val: periodBalance, color: periodBalance >= 0 ? "#10B981" : "#EF4444", sub: "Disponible real" },
-                        { label: "Debo", val: realOwe, color: "#EF4444", sub: realOwe > 0 ? "Deudas pendientes" : "Sin deudas" },
-                        { label: "Me Deben", val: realOwed, color: "#10B981", sub: realOwed > 0 ? "Por cobrar" : "Sin cobros" },
-                        { label: "Patrimonio Neto", val: periodBalance - realOwe + realOwed, color: (periodBalance - realOwe + realOwed) >= 0 ? "var(--domain-blue)" : "#EF4444", sub: "Balance - Deudas + Cobros" },
-                    ].map((item, i) => (
-                        <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? "1px solid #E2E8F0" : "none" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
-                                <span style={{ ...LABEL }}>{item.label}</span>
-                            </div>
-                            <div style={{ display: "flex", alignItems: "baseline", gap: "1px", color: item.color }}>
-                                <span style={{ fontSize: "0.8rem", fontWeight: 800 }}>S/ </span>
-                                <span style={{ fontSize: "1.25rem", fontWeight: 900, lineHeight: 1 }}>{item.val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                            </div>
-                            <span style={{ fontSize: "0.58rem", color: "#94A3B8", marginTop: "2px" }}>{item.sub}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* ── Row 2: Ejecución y Proyección Ajustada (Ajustada por ok/recibidos) ─── */}
+            {/* ── Row 3: Ejecución y Proyección Ajustada ─── */}
             <div style={{ ...CARD, borderLeft: "4px solid #8B5CF6", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "8px" }}>
                     <span style={LABEL}>Ejecución y Proyección Ajustada</span>
@@ -602,7 +602,7 @@ export const FinanzasDashboard = ({
                 </div>
             </div>
 
-            {/* ── Row 3: Ingresos Fijos + Gastos Fijos (Lado a Lado) ─── */}
+            {/* ── Row 4: Ingresos Fijos + Gastos Fijos ─── */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem" }}>
 
                 {/* Fixed incomes card */}
@@ -694,7 +694,7 @@ export const FinanzasDashboard = ({
 
             </div>
 
-            {/* ── Row 3: Chart + Debts (Fila Central) ─── */}
+            {/* ── Row 5: Chart + Debts ─── */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
 
                 {/* Cash flow chart */}
