@@ -44,6 +44,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     // ── Secondary / all other tools ────────────────────────────────────
     const SECONDARY_ITEMS = [
         { label: 'Acción',     tab: 'Acción',     icon: 'bolt'          },
+        { label: 'Base de Datos', tab: 'Base de Datos', icon: 'database' },
         { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
         { label: 'Vida',       tab: 'Vida',        icon: 'spa'           },
         { label: 'Cerebro',    tab: 'Cerebro',     icon: 'psychology'    },
@@ -120,6 +121,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             case 'Bloques': return 'Registro Semanal';
             case 'Finanzas': return 'Finanzas';
             case 'Acción': return 'Mi Acción';
+            case 'Base de Datos': return 'Base de Datos';
             case 'Calendario': return 'Calendario';
             case 'Stats': return 'Estadísticas';
             case 'Cerebro': return 'Cerebro';

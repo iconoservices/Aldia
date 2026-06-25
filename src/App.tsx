@@ -25,6 +25,7 @@ import type { Mission, Note } from './hooks/useAlDiaState';
 import { ProfileOverlay } from './components/layout/ProfileOverlay';
 import { BloquesDashboard } from './components/dashboard/BloquesDashboard';
 import { ChecklistDiario } from './components/dashboard/ChecklistDiario';
+import { BaseDatosDashboard } from './components/dashboard/BaseDatosDashboard';
 import { RitaDashboard } from './components/dashboard/RitaDashboard';
 import { EcosistemaMap } from './components/dashboard/EcosistemaMap';
 import { BienestarDashboard } from './components/dashboard/BienestarDashboard';
@@ -45,6 +46,7 @@ function App() {
     if (path.includes('/ruta')) return 'Ruta';
     if (path.includes('/mapa')) return 'Mapa';
     if (path.includes('/accion')) return 'Acción';
+    if (path.includes('/base')) return 'Base de Datos';
     if (path.includes('/bloques')) return 'Bloques';
     if (path.includes('/bienestar')) return 'Bienestar';
     return 'Checklist';
@@ -56,6 +58,8 @@ function App() {
       path = '/';
     } else if (activeTab === 'Acción') {
       path = '/accion';
+    } else if (activeTab === 'Base de Datos') {
+      path = '/base';
     }
     if (window.location.pathname !== path) {
       window.history.pushState(null, '', path);
@@ -78,6 +82,7 @@ function App() {
       else if (path.includes('/ruta')) setActiveTab('Ruta');
       else if (path.includes('/mapa')) setActiveTab('Mapa');
       else if (path.includes('/accion')) setActiveTab('Acción');
+      else if (path.includes('/base')) setActiveTab('Base de Datos');
       else if (path.includes('/bloques')) setActiveTab('Bloques');
       else if (path.includes('/bienestar')) setActiveTab('Bienestar');
       else setActiveTab('Checklist');
@@ -174,6 +179,8 @@ function App() {
                   />
                 </div>
               </div>
+            ) : activeTab === 'Base de Datos' ? (
+              <BaseDatosDashboard />
             ) : activeTab === 'Calendario' ? (
               <TimelineAgendaView
                 calendarEvents={state.agenda}
