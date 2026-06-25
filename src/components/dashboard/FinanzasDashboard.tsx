@@ -427,7 +427,7 @@ export const FinanzasDashboard = ({
                     <span style={LABEL}>Situación Financiera Real</span>
                     <TrendingUp size={16} color="#059669" />
                 </div>
-                <span style={{ fontSize: "0.65rem", color: "#94A3B8", marginBottom: "0.8rem", display: "block" }}>Transacciones reales del período — lo que ya pasó</span>
+                <span style={{ fontSize: "0.65rem", color: "#94A3B8", marginBottom: "0.8rem", display: "block" }}>Ingresos y gastos reales + deudas y patrimonio — lo que ya pasó</span>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
                     {[
                         { label: topPeriodDetails.label, val: topIncome, color: "#10B981", sub: topPeriodDetails.sub },
@@ -437,7 +437,6 @@ export const FinanzasDashboard = ({
                         { label: "Fijo", val: fixedExpenseActual, color: "#EF4444", sub: "Gastos activos" },
                         { label: "Variable", val: variableExpenseActual, color: "#EF4444", sub: "Gastos directos" },
                         { label: "Balance Neto", val: topIncome - topExpense, color: (topIncome - topExpense) >= 0 ? "#10B981" : "#EF4444", sub: "Ingresos - Gastos" },
-                        { label: "Saldo Actual", val: periodBalance, color: periodBalance >= 0 ? "#10B981" : "#EF4444", sub: "Disponible real" },
                         { label: "Debo", val: realOwe, color: "#EF4444", sub: realOwe > 0 ? "Deudas pendientes" : "Sin deudas" },
                         { label: "Me Deben", val: realOwed, color: "#10B981", sub: realOwed > 0 ? "Por cobrar" : "Sin cobros" },
                         { label: "Patrimonio Neto", val: periodBalance - realOwe + realOwed, color: (periodBalance - realOwe + realOwed) >= 0 ? "var(--domain-blue)" : "#EF4444", sub: "Balance - Deudas + Cobros" },
