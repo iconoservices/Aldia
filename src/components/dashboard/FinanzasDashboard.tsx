@@ -140,7 +140,7 @@ export const FinanzasDashboard = ({
     balance, transactions,
     fixedExpenses, addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense,
     markFixedExpensePaid, unmarkFixedExpensePaid,
-    repayDebt, removeTransaction, updateTransactionGroup, addTransaction,
+    repayDebt, removeTransaction, addTransaction,
     projects, accounts, setAccounts,
     addProjectTask, toggleProjectTask, removeProjectTask, updateProjectTask,
     reorderProjectTasks, promoteTaskToRoutine, rutinas,
@@ -347,7 +347,6 @@ export const FinanzasDashboard = ({
         return monthlyFixedTotal;
     }, [topPeriod, monthlyFixedTotal]);
 
-    const variableExpenseProyectado = useMemo(() => topExpense - fixedExpenseProyectado, [topExpense, fixedExpenseProyectado]);
 
     const projectedIncomeTotal = useMemo(() => (fixedIncomeTotal * periodMultiplier) + variableIncomeActual, [fixedIncomeTotal, periodMultiplier, variableIncomeActual]);
     const projectedExpenseTotal = useMemo(() => fixedExpenseProyectado + variableExpenseActual, [fixedExpenseProyectado, variableExpenseActual]);
