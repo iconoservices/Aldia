@@ -326,6 +326,18 @@ export const FinanzasDashboard = ({
 
     const variableExpenseActual = useMemo(() => topExpense - fixedExpenseActual, [topExpense, fixedExpenseActual]);
 
+    const fixedExpenseProyectado = useMemo(() => {
+        if (topPeriod === "day") return monthlyFixedTotal / 30;
+        if (topPeriod === "week") return (monthlyFixedTotal * 7) / 30;
+        if (topPeriod === "year") return monthlyFixedTotal * 12;
+        return monthlyFixedTotal;
+    }, [topPeriod, monthlyFixedTotal]);
+
+    const variableExpenseProyectado = useMemo(() => topExpense - fixedExpenseProyectado, [topExpense, fixedExpenseProyectado]);
+
+    const projectedIncomeTotal = useMemo(() => (fixedIncomeTotal * periodMultiplier) + variableIncomeActual, [fixedIncomeTotal, periodMultiplier, variableIncomeActual]);
+    const projectedExpenseTotal = useMemo(() => fixedExpenseProyectado + variableExpenseActual, [fixedExpenseProyectado, variableExpenseActual]);
+
     const topPeriodDetails = useMemo(() => {
         const mapping = {
             day: { label: "Ingresos (Día)", labelExp: "Gastos (Día)", sub: "Recibido hoy", subExp: "Gastado hoy" },
@@ -439,7 +451,7 @@ export const FinanzasDashboard = ({
             </div>
 
             {/* ── Row 2: Proyección Financiera (Original) ─── */}
-            <div style={{ ...CARD, borderLeft: "4px solid #10B981", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div style={{ ...CARD, borderLeft: "4px solid #F59E0B", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "8px" }}>
                     <span style={LABEL}>Proyección Financiera (Original)</span>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -454,8 +466,12 @@ export const FinanzasDashboard = ({
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
                     {[
-                        { label: topPeriodDetails.label, val: topIncome, color: "#10B981", sub: topPeriodDetails.sub },
-                        { label: topPeriodDetails.labelExp, val: topExpense, color: "#EF4444", sub: topPeriodDetails.subExp },
+                        { label: "Ingresos Proy.", val: projectedIncomeTotal, color: "#10B981", sub: "Fijos + Variables" },
+                        { label: "Fijo", val: fixedIncomeTotal * periodMultiplier, color: "#10B981", sub: "Activos proyectados" },
+                        { label: "Variable", val: variableIncomeActual, color: "#10B981", sub: "Ingresos directos" },
+                        { label: "Gastos Proy.", val: projectedExpenseTotal, color: "#EF4444", sub: "Fijos + Variables" },
+                        { label: "Fijo", val: fixedExpenseProyectado, color: "#EF4444", sub: "Gastos activos" },
+                        { label: "Variable", val: variableExpenseActual, color: "#EF4444", sub: "Gastos directos" },
                         {
                             label: "Saldo Actual",
                             val: periodBalance,
@@ -464,15 +480,6 @@ export const FinanzasDashboard = ({
                             checked: includeBalance,
                             onToggle: () => setIncludeBalance(v => !v),
                             opacity: includeBalance ? 1 : 0.65
-                        },
-                        {
-                            label: "Ingreso Fijo",
-                            val: fixedIncomeTotal * periodMultiplier,
-                            color: (fixedIncomeTotal > 0) ? (includeSalary ? "#10B981" : "#94A3B8") : "#94A3B8",
-                            sub: fixedIncomeTotal > 0 ? (includeSalary ? "Fijo incluido" : "Fijo excluido") : "Sin ingresos fijos",
-                            checked: fixedIncomeTotal > 0 ? includeSalary : false,
-                            onToggle: fixedIncomeTotal > 0 ? (() => setIncludeSalary(v => !v)) : undefined,
-                            opacity: fixedIncomeTotal === 0 ? 0.5 : (includeSalary ? 1 : 0.65)
                         },
                         {
                             label: "Ingresos Proy.",
