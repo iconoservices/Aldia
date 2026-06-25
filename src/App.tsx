@@ -30,6 +30,7 @@ import { ProyeccionOriginalDashboard } from './components/dashboard/ProyeccionOr
 import { RitaDashboard } from './components/dashboard/RitaDashboard';
 import { EcosistemaMap } from './components/dashboard/EcosistemaMap';
 import { BienestarDashboard } from './components/dashboard/BienestarDashboard';
+import { DeudasyCobrosDashboard } from './components/dashboard/DeudasyCobrosDashboard';
 
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -50,6 +51,7 @@ function App() {
     if (path.includes('/base')) return 'Base de Datos';
     if (path.includes('/proyeccion')) return 'Proyección';
     if (path.includes('/bloques')) return 'Bloques';
+    if (path.includes('/deudas')) return 'Deudas';
     if (path.includes('/bienestar')) return 'Bienestar';
     return 'Checklist';
   });
@@ -64,6 +66,8 @@ function App() {
       path = '/base';
     } else if (activeTab === 'Proyección') {
       path = '/proyeccion';
+    } else if (activeTab === 'Deudas') {
+      path = '/deudas';
     }
     if (window.location.pathname !== path) {
       window.history.pushState(null, '', path);
@@ -90,6 +94,7 @@ function App() {
       else if (path.includes('/proyeccion')) setActiveTab('Proyección');
       else if (path.includes('/bloques')) setActiveTab('Bloques');
       else if (path.includes('/bienestar')) setActiveTab('Bienestar');
+      else if (path.includes('/deudas')) setActiveTab('Deudas');
       else setActiveTab('Checklist');
     };
     window.addEventListener('popstate', handlePopState);
@@ -261,6 +266,14 @@ function App() {
               <EcosistemaMap />
             ) : activeTab === 'Bienestar' ? (
               <BienestarDashboard />
+            ) : activeTab === 'Deudas' ? (
+              <DeudasyCobrosDashboard
+                transactions={state.transactions}
+                addTransaction={state.addTransaction}
+                removeTransaction={state.removeTransaction}
+                repayDebt={state.repayDebt}
+                accounts={state.accounts}
+              />
             ) : activeTab === 'Finanzas' ? (
               <FinanzasDashboard
                 balance={state.balance}

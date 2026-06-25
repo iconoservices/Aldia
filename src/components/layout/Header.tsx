@@ -43,6 +43,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
 
     // ── Secondary / all other tools ────────────────────────────────────
     const SECONDARY_ITEMS = [
+        { label: 'Deudas',     tab: 'Deudas',     icon: 'receipt_long'  },
         { label: 'Acción',     tab: 'Acción',     icon: 'bolt'          },
         { label: 'Base de Datos', tab: 'Base de Datos', icon: 'database' },
         { label: 'Proyección',   tab: 'Proyección',  icon: 'trending_up' },
@@ -121,6 +122,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             case 'Checklist': return 'Checklist Diario';
             case 'Bloques': return 'Registro Semanal';
             case 'Finanzas': return 'Finanzas';
+            case 'Deudas': return 'Deudas y Cobros';
             case 'Acción': return 'Mi Acción';
             case 'Base de Datos': return 'Base de Datos';
             case 'Proyección': return 'Proyección Financiera';
