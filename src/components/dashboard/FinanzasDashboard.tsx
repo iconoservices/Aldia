@@ -195,7 +195,7 @@ export const FinanzasDashboard = ({
         [fixedExpenses, currentMonthStr]);
 
     // ── Fixed incomes (stored in preferences as JSON) ─────────────────────
-    type FixedIncomeItem = { id: number; name: string; amount: number; active: boolean };
+    type FixedIncomeItem = { id: number; name: string; amount: number; active: boolean; lastReceivedMonth?: string };
     const fixedIncomeItems: FixedIncomeItem[] = useMemo(() => {
         try { return JSON.parse(preferences.fixedIncomes || "[]"); } catch { return []; }
     }, [preferences.fixedIncomes]);
@@ -207,6 +207,24 @@ export const FinanzasDashboard = ({
         saveFixedIncomes(fixedIncomeItems.filter(f => f.id !== id));
     const toggleFixedIncome = (id: number) =>
         saveFixedIncomes(fixedIncomeItems.map(f => f.id === id ? { ...f, active: !f.active } : f));
+    const markFixedIncomeReceived = (id: number, monthStr: string) => {
+        const item = fixedIncomeItems.find(f => f.id === id);
+        if (!item) return;
+        saveFixedIncomes(fixedIncomeItems.map(f => f.id === id ? { ...f, lastReceivedMonth: monthStr } : f));
+        if (item.lastReceivedMonth !== monthStr) {
+            addTransaction(`Depósito: ${item.name}`, item.amount, 'ingreso', false, undefined, undefined, false, 'Sueldo');
+        }
+    };
+    const unmarkFixedIncomeReceived = (id: number, monthStr: string) => {
+        const item = fixedIncomeItems.find(f => f.id === id);
+        if (!item) return;
+        saveFixedIncomes(fixedIncomeItems.map(f => f.id === id ? { ...f, lastReceivedMonth: undefined } : f));
+        const targetTxPrefix = `Depósito: ${item.name}`;
+        const matchedTx = transactions.find(t => t.text === targetTxPrefix && t.fullDate.startsWith(monthStr) && Number(t.amount) === item.amount);
+        if (matchedTx) {
+            removeTransaction(matchedTx.id);
+        }
+    };
     const fixedIncomeTotal = useMemo(() =>
         fixedIncomeItems.filter(f => f.active).reduce((s, f) => s + f.amount, 0),
         [fixedIncomeItems]);
@@ -254,6 +272,23 @@ export const FinanzasDashboard = ({
     const projectedResources = (includeBalance ? periodBalance : 0) + (includeSalary ? fixedIncomeTotal * periodMultiplier : 0) + (includeOwed ? realOwed : 0);
     const projectedExpenses = (includeFixed ? projectedFixedVal : 0) + (includeDebts ? realOwe : 0);
     const projectedSavings = projectedResources - projectedExpenses;
+
+    const totalIncomePending = useMemo(() =>
+        fixedIncomeItems.filter(f => f.active && f.lastReceivedMonth !== currentMonthStr).reduce((s, f) => s + f.amount, 0),
+        [fixedIncomeItems, currentMonthStr]);
+
+    const projectedIncomeVal = useMemo(() => {
+        if (topPeriod === "month" || topPeriod === "all") return totalIncomePending;
+        if (topPeriod === "day") return fixedIncomeTotal / 30;
+        if (topPeriod === "week") return (fixedIncomeTotal * 7) / 30;
+        return fixedIncomeTotal * 12; // "year"
+    }, [topPeriod, totalIncomePending, fixedIncomeTotal]);
+
+    const adjustedSavings = useMemo(() => {
+        const res = (includeBalance ? periodBalance : 0) + (includeSalary ? projectedIncomeVal : 0) + (includeOwed ? realOwed : 0);
+        const exp = (includeFixed ? projectedFixedVal : 0) + (includeDebts ? realOwe : 0);
+        return res - exp;
+    }, [includeBalance, periodBalance, includeSalary, projectedIncomeVal, includeOwed, realOwed, includeFixed, projectedFixedVal, includeDebts, realOwe]);
 
     const topTxs = useMemo(() => {
         const { start, end } = getPeriodBounds(topPeriod, new Date());
@@ -346,11 +381,10 @@ export const FinanzasDashboard = ({
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", paddingBottom: "5rem", color: "var(--text-carbon)" }}>
 
-            {/* ── Row 1: Proyección Financiera (Solito Arriba) ─── */}
-            {/* Projection summary */}
+            {/* ── Row 1: Proyección Financiera (Original / Teórica) ─── */}
             <div style={{ ...CARD, borderLeft: "4px solid #10B981", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "8px" }}>
-                    <span style={LABEL}>Proyección Financiera</span>
+                    <span style={LABEL}>Proyección Financiera (Original)</span>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                         <PillToggle
                             options={["day", "week", "month", "year", "all"]}
@@ -444,7 +478,102 @@ export const FinanzasDashboard = ({
                 </div>
             </div>
 
-            {/* ── Row 2: Ingresos Fijos + Gastos Fijos (Lado a Lado) ─── */}
+            {/* ── Row 2: Ejecución y Proyección Ajustada (Ajustada por ok/recibidos) ─── */}
+            <div style={{ ...CARD, borderLeft: "4px solid #8B5CF6", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "8px" }}>
+                    <span style={LABEL}>Ejecución y Proyección Ajustada</span>
+                    <TrendingUp size={16} color="#8B5CF6" style={{ marginLeft: "4px" }} />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
+                    {[
+                        { label: topPeriodDetails.label, val: topIncome, color: "#10B981", sub: topPeriodDetails.sub },
+                        { label: topPeriodDetails.labelExp, val: topExpense, color: "#EF4444", sub: topPeriodDetails.subExp },
+                        {
+                            label: "Saldo Actual",
+                            val: periodBalance,
+                            color: includeBalance ? "#10B981" : "#94A3B8",
+                            sub: includeBalance ? "Disponible" : "Excluido",
+                            checked: includeBalance,
+                            onToggle: () => setIncludeBalance(v => !v),
+                            opacity: includeBalance ? 1 : 0.65
+                        },
+                        {
+                            label: "Ingreso Fijo",
+                            val: projectedIncomeVal,
+                            color: (fixedIncomeTotal > 0) ? (includeSalary ? "#10B981" : "#94A3B8") : "#94A3B8",
+                            sub: fixedIncomeTotal > 0 
+                                ? (includeSalary 
+                                    ? (topPeriod === "month" || topPeriod === "all"
+                                        ? `Pendiente: S/ ${projectedIncomeVal.toFixed(0)} / Total: S/ ${fixedIncomeTotal.toFixed(0)}`
+                                        : "Fijos proyectados")
+                                    : "Fijos excluidos") 
+                                : "Sin ingresos fijos",
+                            checked: fixedIncomeTotal > 0 ? includeSalary : false,
+                            onToggle: fixedIncomeTotal > 0 ? (() => setIncludeSalary(v => !v)) : undefined,
+                            opacity: fixedIncomeTotal === 0 ? 0.5 : (includeSalary ? 1 : 0.65)
+                        },
+                        {
+                            label: "Ingresos Proy.",
+                            val: periodBalance + (includeSalary ? projectedIncomeVal : 0),
+                            color: (periodBalance + (includeSalary ? projectedIncomeVal : 0)) >= 0 ? "#10B981" : "#EF4444",
+                            sub: "Neto + proyectado"
+                        },
+                        { 
+                            label: "Gastos Fijos", 
+                            val: projectedFixedVal, 
+                            color: includeFixed ? "#EF4444" : "#94A3B8", 
+                            sub: includeFixed 
+                                ? (topPeriod === "month" || topPeriod === "all" 
+                                    ? `Pendiente: S/ ${projectedFixedVal.toFixed(0)} / Total: S/ ${monthlyFixedTotal.toFixed(0)}`
+                                    : "Fijos proyectados")
+                                : "Fijos excluidos",
+                            checked: includeFixed,
+                            onToggle: () => setIncludeFixed(v => !v),
+                            opacity: includeFixed ? 1 : 0.65
+                        },
+                        { 
+                            label: "Debo", 
+                            val: realOwe, 
+                            color: includeDebts ? "#EF4444" : "#94A3B8", 
+                            sub: includeDebts ? "Debo (incluido)" : "Debo (excluido)", 
+                            checked: includeDebts,
+                            onToggle: () => setIncludeDebts(v => !v),
+                            opacity: includeDebts ? 1 : 0.65 
+                        },
+                        { 
+                            label: "Me Deben", 
+                            val: realOwed, 
+                            color: includeOwed ? "#10B981" : "#94A3B8", 
+                            sub: includeOwed ? "Cobros incluidos" : "Cobros excluidos",
+                            checked: includeOwed,
+                            onToggle: () => setIncludeOwed(v => !v),
+                            opacity: includeOwed ? 1 : 0.65
+                        },
+                        { 
+                            label: "Balance Neto", 
+                            val: adjustedSavings, 
+                            color: adjustedSavings >= 0 ? "var(--domain-blue)" : "#EF4444", 
+                            sub: projectedPeriodLabel 
+                        },
+                    ].map((item, i) => (
+                        <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? "1px solid #E2E8F0" : "none", opacity: item.opacity ?? 1, transition: "opacity 0.2s" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
+                                {item.onToggle && (
+                                    <CircleCheckbox checked={item.checked ?? false} onChange={item.onToggle} />
+                                )}
+                                <span style={{ ...LABEL }}>{item.label}</span>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "baseline", gap: "1px", color: item.color }}>
+                                <span style={{ fontSize: "0.8rem", fontWeight: 800 }}>S/ </span>
+                                <span style={{ fontSize: "1.25rem", fontWeight: 900, lineHeight: 1 }}>{item.val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <span style={{ fontSize: "0.58rem", color: "#94A3B8", marginTop: "2px" }}>{item.sub}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* ── Row 3: Ingresos Fijos + Gastos Fijos (Lado a Lado) ─── */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem" }}>
 
                 {/* Fixed incomes card */}
@@ -462,17 +591,28 @@ export const FinanzasDashboard = ({
                         {fixedIncomeItems.length === 0 && (
                             <p style={{ fontSize: "0.75rem", color: "#94A3B8", margin: 0 }}>Sin ingresos fijos. Agrega uno abajo.</p>
                         )}
-                        {fixedIncomeItems.map(item => (
-                            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 0", borderBottom: "1px solid #F1F5F9", opacity: item.active ? 1 : 0.45, transition: "opacity 0.15s" }}>
-                                {/* mini toggle */}
-                                <div onClick={() => toggleFixedIncome(item.id)} style={{ width: "28px", height: "16px", borderRadius: "8px", background: item.active ? "var(--domain-blue)" : "#CBD5E1", position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
-                                    <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: item.active ? "14px" : "2px", transition: "left 0.15s" }} />
+                        {fixedIncomeItems.map(item => {
+                            const isReceived = item.lastReceivedMonth === currentMonthStr;
+                            return (
+                                <div key={item.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 0", borderBottom: "1px solid #F1F5F9", opacity: item.active ? 1 : 0.45, transition: "opacity 0.15s" }}>
+                                    {/* mini toggle */}
+                                    <div onClick={() => toggleFixedIncome(item.id)} style={{ width: "28px", height: "16px", borderRadius: "8px", background: item.active ? "var(--domain-blue)" : "#CBD5E1", position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
+                                        <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: item.active ? "14px" : "2px", transition: "left 0.15s" }} />
+                                    </div>
+                                    {/* ok button to mark as received */}
+                                    <button onClick={() => isReceived ? unmarkFixedIncomeReceived(item.id, currentMonthStr) : markFixedIncomeReceived(item.id, currentMonthStr)} style={{ background: isReceived ? "#10B981" : "#F1F5F9", border: "none", borderRadius: "50%", width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+                                        <span style={{ color: isReceived ? "white" : "#94A3B8", fontSize: "0.62rem", fontWeight: 900 }}>ok</span>
+                                    </button>
+                                    <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isReceived ? "line-through" : "none", color: isReceived ? "#94A3B8" : "var(--text-carbon)" }}>
+                                        {item.name}
+                                    </span>
+                                    <span style={{ fontSize: "0.8rem", fontWeight: 800, color: isReceived ? "#10B981" : (item.active ? "var(--domain-blue)" : "#94A3B8") }}>
+                                        S/ {item.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                    </span>
+                                    <button onClick={() => removeFixedIncome(item.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "2px", display: "flex" }}><Trash2 size={11} /></button>
                                 </div>
-                                <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
-                                <span style={{ fontSize: "0.8rem", fontWeight: 800, color: item.active ? "var(--domain-blue)" : "#94A3B8" }}>S/ {item.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                                <button onClick={() => removeFixedIncome(item.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "2px", display: "flex" }}><Trash2 size={11} /></button>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     {/* Add new income */}
