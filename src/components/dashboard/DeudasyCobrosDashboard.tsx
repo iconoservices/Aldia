@@ -124,6 +124,7 @@ export const DeudasyCobrosDashboard = ({
     transactions,
     addTransaction,
     removeTransaction,
+    accounts,
 }: DeudasyCobrosDashboardProps) => {
     const [filterType, setFilterType] = useState<FilterType>("todos");
     const [filterEstado, setFilterEstado] = useState<FilterEstado>("todos");
@@ -135,6 +136,26 @@ export const DeudasyCobrosDashboard = ({
     const [newAmount, setNewAmount] = useState("");
     const [confirmPayId, setConfirmPayId] = useState<number | null>(null);
     const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+    const [abonarId, setAbonarId] = useState<number | null>(null);
+    const [abonarAmount, setAbonarAmount] = useState<Record<number, string>>({});
+
+    const handleAbonar = (tx: Transaction, amount: number) => {
+        if (amount <= 0) return;
+        // Crear transacción REAL de pago (aparece en finanzas)
+        addTransaction(
+            `Pago: ${tx.text}`,
+            tx.type === "gasto" ? -amount : amount,
+            tx.type === "gasto" ? "gasto" : "ingreso",
+            false, // isDebt: false para que aparezca en finanzas
+            undefined,
+            accounts?.[0]?.id,
+            false, // isCashless: false
+            "Deudas",
+            tx.contact
+        );
+        setAbonarId(null);
+        setAbonarAmount(m => ({ ...m, [tx.id]: "" }));
+    };
 
     const handleEdit = (tx: Transaction) => {
         setEditingTx(tx);
@@ -228,20 +249,20 @@ export const DeudasyCobrosDashboard = ({
     const renderDebtTable = (items: Transaction[]) => (
         <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
+<thead>
                     <tr style={{ background: "#F2F3FD", borderBottom: "1px solid #C2C6D6" }}>
                         <th style={TH}>Acreedor</th>
                         <th style={TH}>Monto</th>
                         <th style={TH}>Fecha</th>
                         <th style={TH}>Estado</th>
-                        <th style={TH}></th>
+                        <th style={TH}>Acciones</th>
                     </tr>
                 </thead>
-                <tbody>
+<tbody>
                     {items.length === 0 && (
                         <tr>
                             <td colSpan={5} style={{ ...TD, textAlign: "center", color: "#727785", padding: "2.5rem", borderBottom: "none" }}>
-                                Sin deudas registradas ðŸŽ‰
+                                Sin deudas registradas 🎉
                             </td>
                         </tr>
                     )}
@@ -276,25 +297,28 @@ export const DeudasyCobrosDashboard = ({
                                         {badge.label}
                                     </span>
                                 </td>
-<td style={TD}>
-                                    {confirmPayId === tx.id ? (
-                                        <div style={{ display: "flex", gap: "4px" }}>
-                                            <button onClick={() => handleMarkPaid(tx)} style={{ ...BTN_PRIMARY, padding: "4px 10px", fontSize: "0.72rem", boxShadow: "none" }}>✓ Confirmar</button>
-                                            <button onClick={() => setConfirmPayId(null)} style={{ ...BTN_SECONDARY, padding: "4px 10px", fontSize: "0.72rem" }}>✗</button>
-                                        </div>
-                                    ) : (
-                                        <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-                                            <button onClick={() => handleEdit(tx)} title="Editar" style={{ background: "none", border: "1px solid #0058BE", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#0058BE" }}>
-                                                <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>edit</span>
-                                            </button>
-                                            <button onClick={() => handleDelete(tx)} title="Eliminar" style={{ background: "none", border: "1px solid #BA1A1A", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#BA1A1A" }}>
-                                                <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>delete</span>
-                                            </button>
-                                            <button onClick={() => setConfirmPayId(tx.id)} title="Marcar como pagado" style={{ background: "none", border: "1px solid #C2C6D6", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#424754" }}>
-                                                <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>check_circle</span>
-                                            </button>
-                                        </div>
-                                    )}
+                                <td style={TD}>
+                                    <div style={{ display: "flex", gap: "4px" }}>
+                                        {abonarId === tx.id ? (
+                                            <div style={{ display: "flex", gap: "3px", alignItems: "center" }}>
+                                                <input type="number" value={abonarAmount[tx.id] ?? Math.abs(tx.amount).toFixed(2)} onChange={e => setAbonarAmount(m => ({ ...m, [tx.id]: e.target.value }))}
+                                                    style={{ width: "60px", padding: "2px 4px", borderRadius: "4px", border: "1px solid #E2E8F0", fontSize: "0.65rem", fontWeight: 700, outline: "none" }} />
+                                                <button onClick={() => handleAbonar(tx, parseFloat(abonarAmount[tx.id] || String(Math.abs(tx.amount))))} style={{ background: "#10B981", color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Abonar</button>
+                                                <button onClick={() => handleAbonar(tx, Math.abs(tx.amount))} style={{ background: "#059669", color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Todo</button>
+                                                <button onClick={() => { setAbonarId(null); setAbonarAmount(m => ({ ...m, [tx.id]: "" })); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "2px", fontSize: "0.7rem", fontWeight: 800 }}>X</button>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <button onClick={() => { setAbonarId(tx.id); setAbonarAmount(m => ({ ...m, [tx.id]: String(Math.abs(tx.amount)) })); }} title="Abonar" style={{ background: "#E2E8F0", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#475569" }}>Abonar</button>
+                                                <button onClick={() => handleEdit(tx)} title="Editar" style={{ background: "none", border: "1px solid #0058BE", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#0058BE" }}>
+                                                    <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>edit</span>
+                                                </button>
+                                                <button onClick={() => handleDelete(tx)} title="Eliminar" style={{ background: "none", border: "1px solid #BA1A1A", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#BA1A1A" }}>
+                                                    <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>delete</span>
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
                                 </td>
                             </tr>
                         );
@@ -363,15 +387,28 @@ export const DeudasyCobrosDashboard = ({
                                         </div>
                                     ) : (
                                         <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-                                            <button onClick={() => handleEdit(tx)} title="Editar" style={{ background: "none", border: "1px solid #0058BE", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#0058BE" }}>
-                                                <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>edit</span>
-                                            </button>
-                                            <button onClick={() => handleDelete(tx)} title="Eliminar" style={{ background: "none", border: "1px solid #BA1A1A", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#BA1A1A" }}>
-                                                <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>delete</span>
-                                            </button>
-                                            <button onClick={() => setConfirmPayId(tx.id)} title="Marcar como cobrado" style={{ background: "none", border: "1px solid #C2C6D6", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#424754" }}>
-                                                <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>check_circle</span>
-                                            </button>
+                                            {abonarId === tx.id ? (
+                                                <div style={{ display: "flex", gap: "3px", alignItems: "center" }}>
+                                                    <input type="number" value={abonarAmount[tx.id] ?? Math.abs(tx.amount).toFixed(2)} onChange={e => setAbonarAmount(m => ({ ...m, [tx.id]: e.target.value }))}
+                                                        style={{ width: "60px", padding: "2px 4px", borderRadius: "4px", border: "1px solid #E2E8F0", fontSize: "0.65rem", fontWeight: 700, outline: "none" }} />
+                                                    <button onClick={() => handleAbonar(tx, parseFloat(abonarAmount[tx.id] || String(Math.abs(tx.amount))))} style={{ background: "#10B981", color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Cobrar</button>
+                                                    <button onClick={() => handleAbonar(tx, Math.abs(tx.amount))} style={{ background: "#059669", color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Todo</button>
+                                                    <button onClick={() => { setAbonarId(null); setAbonarAmount(m => ({ ...m, [tx.id]: "" })); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "2px", fontSize: "0.7rem", fontWeight: 800 }}>X</button>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <button onClick={() => { setAbonarId(tx.id); setAbonarAmount(m => ({ ...m, [tx.id]: String(Math.abs(tx.amount)) })); }} title="Cobrar" style={{ background: "#E2E8F0", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#475569" }}>Cobrar</button>
+                                                    <button onClick={() => handleEdit(tx)} title="Editar" style={{ background: "none", border: "1px solid #0058BE", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#0058BE" }}>
+                                                        <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>edit</span>
+                                                    </button>
+                                                    <button onClick={() => handleDelete(tx)} title="Eliminar" style={{ background: "none", border: "1px solid #BA1A1A", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#BA1A1A" }}>
+                                                        <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>delete</span>
+                                                    </button>
+                                                    <button onClick={() => setConfirmPayId(tx.id)} title="Marcar como cobrado" style={{ background: "none", border: "1px solid #C2C6D6", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#424754" }}>
+                                                        <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>check_circle</span>
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     )}
                                 </td>
