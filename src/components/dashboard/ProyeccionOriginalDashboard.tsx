@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { TrendingUp } from 'lucide-react';
-import { GlassCard } from '../ui/GlassCard';
 import type { Transaction, FixedExpense } from '../../hooks/useAlDiaState';
 
 type PeriodMode = "day" | "week" | "month" | "year" | "all";
