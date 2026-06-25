@@ -250,6 +250,17 @@ export const FinanzasDashboard = ({
     const [editIncomeName, setEditIncomeName] = useState("");
     const [editIncomeAmount, setEditIncomeAmount] = useState("");
     const toggleDebtActive = (key: string) => setDebtActiveMap(m => ({ ...m, [key]: !(m[key] ?? true) }));
+    const [payInputs, setPayInputs] = useState<Record<string, string>>({});
+    const [payOpen, setPayOpen] = useState<Record<string, boolean>>({});
+    const handlePay = (key: string, amount: number, d: typeof activeDebtsAndCollections[0]) => {
+        if (amount <= 0) return;
+        // Transacción REAL: aparece en topTxs (finanzas) y en periodBalance
+        addTransaction(`Pago: ${d.name}`, d.isOwe ? -amount : amount, d.isOwe ? 'gasto' : 'ingreso', false, undefined, accounts[0]?.id, false, 'Deudas', d.contact);
+        // Transacción de seguimiento: reduce la deuda en el grouping, sin afectar balance (isCashless: true)
+        addTransaction(`Pago: ${d.name}`, d.isOwe ? -amount : amount, d.isOwe ? 'gasto' : 'ingreso', true, undefined, undefined, true, 'Deudas', d.contact);
+        setPayInputs(m => ({ ...m, [key]: '' }));
+        setPayOpen(m => ({ ...m, [key]: false }));
+    };
     const submitNewIncome = () => {
         if (newIncomeName.trim() && newIncomeAmount) {
             addFixedIncome(newIncomeName.trim(), parseFloat(newIncomeAmount));
@@ -743,14 +754,14 @@ export const FinanzasDashboard = ({
                         </div>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", flex: 1, overflowY: "auto", maxHeight: "160px" }}>
-                        {activeDebtsAndCollections.filter(d => d.isOwe).length === 0 && (
+                        {activeDebtsAndCollections.filter(d => d.isOwe).length === 0 ? (
                             <p style={{ fontSize: "0.75rem", color: "#94A3B8", margin: 0 }}>Sin deudas pendientes.</p>
-                        )}
-                        {activeDebtsAndCollections.filter(d => d.isOwe).map(d => {
+                        ) : activeDebtsAndCollections.filter(d => d.isOwe).map(d => {
                             const dk = d.name + "::" + (d.contact || "");
                             const isActive = debtActiveMap[dk] ?? true;
+                            const isPaying = payOpen[dk] ?? false;
                             return (
-                            <div key={dk} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 0", borderBottom: "1px solid #F1F5F9", opacity: isActive ? 1 : 0.45 }}>
+                            <div key={dk} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 0", borderBottom: "1px solid #F1F5F9", opacity: isActive ? 1 : 0.45 }}>
                                 <div onClick={() => toggleDebtActive(dk)} style={{ width: "28px", height: "16px", borderRadius: "8px", background: isActive ? "#8B5CF6" : "#CBD5E1", position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
                                     <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: isActive ? "14px" : "2px", transition: "left 0.15s" }} />
                                 </div>
@@ -760,20 +771,31 @@ export const FinanzasDashboard = ({
                                 <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "#EF4444" }}>
                                     S/ {d.amount.toFixed(2)}
                                 </span>
-                                <button onClick={() => repayDebt(d.originalTx, d.amount, accounts[0]?.id)} style={{ background: "#10B981", border: "none", borderRadius: "50%", width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
-                                    <span style={{ color: "white", fontSize: "0.62rem", fontWeight: 900 }}>ok</span>
-                                </button>
+                                {isPaying ? (
+                                    <div style={{ display: "flex", gap: "3px", alignItems: "center" }}>
+                                        <input type="number" value={payInputs[dk] ?? d.amount.toFixed(2)} onChange={e => setPayInputs(m => ({ ...m, [dk]: e.target.value }))}
+                                            style={{ width: "55px", padding: "2px 4px", borderRadius: "4px", border: "1px solid #E2E8F0", fontSize: "0.65rem", fontWeight: 700, outline: "none" }} />
+                                        <button onClick={() => handlePay(dk, parseFloat(payInputs[dk]) || 0, d)} style={{ background: "#10B981", color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Abonar</button>
+                                        <button onClick={() => { setPayInputs(m => ({ ...m, [dk]: String(d.amount) })); handlePay(dk, d.amount, d); }} style={{ background: "#059669", color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Todo</button>
+                                        <button onClick={() => setPayOpen(m => ({ ...m, [dk]: false }))} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "2px", fontSize: "0.7rem", fontWeight: 800 }}>X</button>
+                                    </div>
+                                ) : (
+                                    <button onClick={() => { setPayInputs(m => ({ ...m, [dk]: String(d.amount) })); setPayOpen(m => ({ ...m, [dk]: true })); }} style={{ background: "#E2E8F0", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#475569", flexShrink: 0 }}>Abonar</button>
+                                )}
                             </div>
                             );
                         })}
                     </div>
                     <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: "0.35rem", marginTop: "0.2rem" }}>
                         <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#10B981" }}>Me deben: S/ {realOwed.toFixed(2)}</span>
-                        {activeDebtsAndCollections.filter(d => !d.isOwe).map(d => {
+                        {activeDebtsAndCollections.filter(d => !d.isOwe).length === 0 ? (
+                            <p style={{ fontSize: "0.72rem", color: "#94A3B8", margin: "4px 0 0 0" }}>Sin cobros pendientes.</p>
+                        ) : activeDebtsAndCollections.filter(d => !d.isOwe).map(d => {
                             const dk = d.name + "::" + (d.contact || "");
                             const isActive = debtActiveMap[dk] ?? true;
+                            const isPaying = payOpen[dk] ?? false;
                             return (
-                                <div key={dk} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 0", opacity: isActive ? 1 : 0.45 }}>
+                                <div key={dk} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 0", opacity: isActive ? 1 : 0.45 }}>
                                     <div onClick={() => toggleDebtActive(dk)} style={{ width: "28px", height: "16px", borderRadius: "8px", background: isActive ? "#10B981" : "#CBD5E1", position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
                                         <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: isActive ? "14px" : "2px", transition: "left 0.15s" }} />
                                     </div>
@@ -783,9 +805,17 @@ export const FinanzasDashboard = ({
                                     <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#10B981" }}>
                                         S/ {d.amount.toFixed(2)}
                                     </span>
-                                    <button onClick={() => repayDebt(d.originalTx, d.amount, accounts[0]?.id)} style={{ background: "#10B981", border: "none", borderRadius: "50%", width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
-                                        <span style={{ color: "white", fontSize: "0.62rem", fontWeight: 900 }}>ok</span>
-                                    </button>
+                                    {isPaying ? (
+                                        <div style={{ display: "flex", gap: "3px", alignItems: "center" }}>
+                                            <input type="number" value={payInputs[dk] ?? d.amount.toFixed(2)} onChange={e => setPayInputs(m => ({ ...m, [dk]: e.target.value }))}
+                                                style={{ width: "55px", padding: "2px 4px", borderRadius: "4px", border: "1px solid #E2E8F0", fontSize: "0.65rem", fontWeight: 700, outline: "none" }} />
+                                            <button onClick={() => handlePay(dk, parseFloat(payInputs[dk]) || 0, d)} style={{ background: "#10B981", color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Abonar</button>
+                                            <button onClick={() => { setPayInputs(m => ({ ...m, [dk]: String(d.amount) })); handlePay(dk, d.amount, d); }} style={{ background: "#059669", color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Todo</button>
+                                            <button onClick={() => setPayOpen(m => ({ ...m, [dk]: false }))} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "2px", fontSize: "0.7rem", fontWeight: 800 }}>X</button>
+                                        </div>
+                                    ) : (
+                                        <button onClick={() => { setPayInputs(m => ({ ...m, [dk]: String(d.amount) })); setPayOpen(m => ({ ...m, [dk]: true })); }} style={{ background: "#E2E8F0", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#475569", flexShrink: 0 }}>Abonar</button>
+                                    )}
                                 </div>
                             );
                         })}
