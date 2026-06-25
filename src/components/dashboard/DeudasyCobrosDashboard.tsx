@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+﻿import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Transaction } from "../../hooks/useAlDiaState";
 
@@ -28,18 +28,18 @@ const getEstadoBadge = (tx: Transaction): { label: string; bg: string; text: str
 
     if (tx.type === "gasto") {
         if (diffDays < 0) return { label: "Vencido", bg: "#FFDAD6", text: "#93000A" };
-        if (diffDays <= 5) return { label: "Próximo", bg: "#FFB786", text: "#6E2C00" };
+        if (diffDays <= 5) return { label: "PrÃ³ximo", bg: "#FFB786", text: "#6E2C00" };
         return { label: "Pendiente", bg: "#E2E8F0", text: "#475569" };
     } else {
         if (diffDays < 0) return { label: "Atrasado", bg: "#FFDAD6", text: "#93000A" };
-        if (diffDays <= 5) return { label: "Próximo", bg: "#FFB786", text: "#6E2C00" };
+        if (diffDays <= 5) return { label: "PrÃ³ximo", bg: "#FFB786", text: "#6E2C00" };
         if (diffDays <= 15) return { label: "Confirmado", bg: "#D1FAE5", text: "#065F46" };
         return { label: "Programado", bg: "#E2E8F0", text: "#475569" };
     }
 };
 
 const formatDate = (dateStr: string) => {
-    if (!dateStr) return "—";
+    if (!dateStr) return "â€”";
     const d = new Date(dateStr + "T12:00:00");
     return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
 };
@@ -60,7 +60,7 @@ const getContactIcon = (contact?: string, type?: string) => {
 
 const getIconColor = (badge: { label: string }) => {
     if (badge.label === "Vencido" || badge.label === "Atrasado") return { bg: "rgba(186,26,26,0.1)", color: "#BA1A1A" };
-    if (badge.label === "Próximo") return { bg: "rgba(146,71,0,0.1)", color: "#924700" };
+    if (badge.label === "PrÃ³ximo") return { bg: "rgba(146,71,0,0.1)", color: "#924700" };
     if (badge.label === "Confirmado") return { bg: "rgba(16,185,129,0.1)", color: "#10B981" };
     return { bg: "#DAE2FD", color: "#565E74" };
 };
@@ -134,6 +134,46 @@ export const DeudasyCobrosDashboard = ({
     const [newContact, setNewContact] = useState("");
     const [newAmount, setNewAmount] = useState("");
     const [confirmPayId, setConfirmPayId] = useState<number | null>(null);
+    const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+
+    const handleEdit = (tx: Transaction) => {
+        setEditingTx(tx);
+        setNewText(tx.text);
+        setNewContact(tx.contact || "");
+        setNewAmount(String(Math.abs(tx.amount)));
+        setNewType(tx.type);
+        setShowAddModal(true);
+    };
+
+    const handleSaveEdit = () => {
+        if (!editingTx) return;
+        const newAmountNum = parseFloat(newAmount);
+        if (!newText.trim() || isNaN(newAmountNum) || newAmountNum <= 0) return;
+        // Eliminar la transacción original y crear la nueva con datos editados
+        removeTransaction(editingTx.id);
+        addTransaction(
+            newText.trim(),
+            newType === "gasto" ? -newAmountNum : newAmountNum,
+            newType,
+            true,
+            undefined,
+            undefined,
+            false,
+            "Deudas",
+            newContact.trim() || undefined
+        );
+        setEditingTx(null);
+        setShowAddModal(false);
+        setNewText("");
+        setNewContact("");
+        setNewAmount("");
+    };
+
+    const handleDelete = (tx: Transaction) => {
+        if (confirm(`¿Eliminar esta ${tx.type === "gasto" ? "deuda" : "cobro"} de S/ ${Math.abs(tx.amount).toFixed(2)}?`)) {
+            removeTransaction(tx.id);
+        }
+    };
 
     const debtTxs = useMemo(() =>
         transactions.filter(t => t.isDebt && t.type === "gasto"),
@@ -201,7 +241,7 @@ export const DeudasyCobrosDashboard = ({
                     {items.length === 0 && (
                         <tr>
                             <td colSpan={5} style={{ ...TD, textAlign: "center", color: "#727785", padding: "2.5rem", borderBottom: "none" }}>
-                                Sin deudas registradas 🎉
+                                Sin deudas registradas ðŸŽ‰
                             </td>
                         </tr>
                     )}
@@ -236,16 +276,24 @@ export const DeudasyCobrosDashboard = ({
                                         {badge.label}
                                     </span>
                                 </td>
-                                <td style={TD}>
+<td style={TD}>
                                     {confirmPayId === tx.id ? (
                                         <div style={{ display: "flex", gap: "4px" }}>
                                             <button onClick={() => handleMarkPaid(tx)} style={{ ...BTN_PRIMARY, padding: "4px 10px", fontSize: "0.72rem", boxShadow: "none" }}>✓ Confirmar</button>
                                             <button onClick={() => setConfirmPayId(null)} style={{ ...BTN_SECONDARY, padding: "4px 10px", fontSize: "0.72rem" }}>✗</button>
                                         </div>
                                     ) : (
-                                        <button onClick={() => setConfirmPayId(tx.id)} title="Marcar como pagado" style={{ background: "none", border: "1px solid #C2C6D6", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#424754" }}>
-                                            <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>check_circle</span>
-                                        </button>
+                                        <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                                            <button onClick={() => handleEdit(tx)} title="Editar" style={{ background: "none", border: "1px solid #0058BE", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#0058BE" }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>edit</span>
+                                            </button>
+                                            <button onClick={() => handleDelete(tx)} title="Eliminar" style={{ background: "none", border: "1px solid #BA1A1A", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#BA1A1A" }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>delete</span>
+                                            </button>
+                                            <button onClick={() => setConfirmPayId(tx.id)} title="Marcar como pagado" style={{ background: "none", border: "1px solid #C2C6D6", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#424754" }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>check_circle</span>
+                                            </button>
+                                        </div>
                                     )}
                                 </td>
                             </tr>
@@ -307,16 +355,24 @@ export const DeudasyCobrosDashboard = ({
                                         {badge.label}
                                     </span>
                                 </td>
-                                <td style={TD}>
+<td style={TD}>
                                     {confirmPayId === tx.id ? (
                                         <div style={{ display: "flex", gap: "4px" }}>
                                             <button onClick={() => handleMarkPaid(tx)} style={{ ...BTN_PRIMARY, padding: "4px 10px", fontSize: "0.72rem", boxShadow: "none" }}>✓ Confirmar</button>
                                             <button onClick={() => setConfirmPayId(null)} style={{ ...BTN_SECONDARY, padding: "4px 10px", fontSize: "0.72rem" }}>✗</button>
                                         </div>
                                     ) : (
-                                        <button onClick={() => setConfirmPayId(tx.id)} title="Marcar como cobrado" style={{ background: "none", border: "1px solid #C2C6D6", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#424754" }}>
-                                            <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>check_circle</span>
-                                        </button>
+                                        <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                                            <button onClick={() => handleEdit(tx)} title="Editar" style={{ background: "none", border: "1px solid #0058BE", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#0058BE" }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>edit</span>
+                                            </button>
+                                            <button onClick={() => handleDelete(tx)} title="Eliminar" style={{ background: "none", border: "1px solid #BA1A1A", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#BA1A1A" }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>delete</span>
+                                            </button>
+                                            <button onClick={() => setConfirmPayId(tx.id)} title="Marcar como cobrado" style={{ background: "none", border: "1px solid #C2C6D6", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#424754" }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>check_circle</span>
+                                            </button>
+                                        </div>
                                     )}
                                 </td>
                             </tr>
@@ -330,7 +386,7 @@ export const DeudasyCobrosDashboard = ({
     return (
         <div style={{ fontFamily: "'Inter', sans-serif", minHeight: "100%", paddingBottom: "3rem", color: "#191B23" }}>
 
-            {/* ── HEADER ── */}
+            {/* â”€â”€ HEADER â”€â”€ */}
             <div style={{ marginBottom: "2rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "1rem", marginBottom: "1.5rem" }}>
                     <div>
@@ -353,7 +409,7 @@ export const DeudasyCobrosDashboard = ({
                     </div>
                 </div>
 
-                {/* ── SUMMARY CARDS ── */}
+                {/* â”€â”€ SUMMARY CARDS â”€â”€ */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1.25rem", marginBottom: "1.25rem" }}>
                     {[
                         {
@@ -371,7 +427,7 @@ export const DeudasyCobrosDashboard = ({
                         {
                             border: "#0058BE", label: "Balance Neto", icon: "balance",
                             iconColor: "#0058BE", amount: balanceNeto, amountColor: balanceNeto >= 0 ? "#0058BE" : "#BA1A1A",
-                            sub: balanceNeto >= 0 ? "Superávit neto" : "Déficit proyectado",
+                            sub: balanceNeto >= 0 ? "SuperÃ¡vit neto" : "DÃ©ficit proyectado",
                             subIcon: balanceNeto >= 0 ? "check_circle" : "warning",
                             subColor: balanceNeto >= 0 ? "#10B981" : "#BA1A1A",
                         },
@@ -392,7 +448,7 @@ export const DeudasyCobrosDashboard = ({
                     ))}
                 </div>
 
-                {/* ── FILTER BAR ── */}
+                {/* â”€â”€ FILTER BAR â”€â”€ */}
                 <div style={{ background: "#ECEDF7", borderRadius: "12px", padding: "1rem 1.25rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem", border: "1px solid #C2C6D6" }}>
                     <span style={{ fontSize: "0.78rem", color: "#424754", fontWeight: 600 }}>Filtrar por:</span>
                     <select value={filterType} onChange={e => setFilterType(e.target.value as FilterType)}
@@ -405,7 +461,7 @@ export const DeudasyCobrosDashboard = ({
                         style={{ background: "#fff", border: "1px solid #C2C6D6", borderRadius: "8px", padding: "6px 10px", fontSize: "0.82rem", fontFamily: "'Inter',sans-serif", color: "#191B23", cursor: "pointer" }}>
                         <option value="todos">Todos los Estados</option>
                         <option value="vencido">Vencido</option>
-                        <option value="proximo">Próximo</option>
+                        <option value="proximo">PrÃ³ximo</option>
                         <option value="pendiente">Pendiente</option>
                         <option value="confirmado">Confirmado</option>
                         <option value="atrasado">Atrasado</option>
@@ -421,7 +477,7 @@ export const DeudasyCobrosDashboard = ({
                 </div>
             </div>
 
-            {/* ── TABLES ── */}
+            {/* â”€â”€ TABLES â”€â”€ */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(380px, 1fr))", gap: "2rem" }}>
                 {filterType !== "cobro" && (
                     <section style={CARD}>
@@ -450,7 +506,7 @@ export const DeudasyCobrosDashboard = ({
                 )}
             </div>
 
-            {/* ── ADD MODAL ── */}
+            {/* â”€â”€ ADD MODAL â”€â”€ */}
             <AnimatePresence>
                 {showAddModal && (
                     <>
@@ -466,17 +522,17 @@ export const DeudasyCobrosDashboard = ({
                             transition={{ type: "spring", stiffness: 380, damping: 28 }}
                             style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", background: "#fff", borderRadius: "16px", padding: "2rem", zIndex: 201, width: "min(480px, 90vw)", boxShadow: "0px 12px 24px rgba(15,23,42,0.12)" }}
                         >
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                                <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#191B23", fontFamily: "'Inter',sans-serif" }}>Agregar Deuda / Cobro</h3>
-                                <button onClick={() => setShowAddModal(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#727785", padding: "4px" }}>
-                                    <span className="material-symbols-outlined">close</span>
-                                </button>
-                            </div>
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                            <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#191B23", fontFamily: "'Inter',sans-serif" }}>{editingTx ? "Editar Deuda / Cobro" : "Agregar Deuda / Cobro"}</h3>
+                            <button onClick={() => { setShowAddModal(false); setEditingTx(null); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#727785", padding: "4px" }}>
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
 
                             <div style={{ display: "flex", gap: "8px", marginBottom: "1.25rem" }}>
                                 {([
-                                    { value: "gasto", label: "💸 Deuda (Debo)", activeColor: "#BA1A1A", activeBg: "#FFDAD6", activeText: "#93000A" },
-                                    { value: "ingreso", label: "💰 Cobro (Me Deben)", activeColor: "#10B981", activeBg: "#D1FAE5", activeText: "#065F46" },
+                                    { value: "gasto", label: "ðŸ’¸ Deuda (Debo)", activeColor: "#BA1A1A", activeBg: "#FFDAD6", activeText: "#93000A" },
+                                    { value: "ingreso", label: "ðŸ’° Cobro (Me Deben)", activeColor: "#10B981", activeBg: "#D1FAE5", activeText: "#065F46" },
                                 ] as const).map(opt => (
                                     <button key={opt.value} onClick={() => setNewType(opt.value)}
                                         style={{ flex: 1, padding: "10px", borderRadius: "8px", border: `2px solid ${newType === opt.value ? opt.activeColor : "#C2C6D6"}`, background: newType === opt.value ? opt.activeBg : "#fff", color: newType === opt.value ? opt.activeText : "#424754", fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", transition: "all 0.15s" }}>
@@ -486,7 +542,7 @@ export const DeudasyCobrosDashboard = ({
                             </div>
 
                             {[
-                                { label: newType === "gasto" ? "Acreedor / Descripción" : "Deudor / Descripción", value: newText, setter: setNewText, placeholder: "Ej: Banco Nacional, Préstamo..." },
+                                { label: newType === "gasto" ? "Acreedor / DescripciÃ³n" : "Deudor / DescripciÃ³n", value: newText, setter: setNewText, placeholder: "Ej: Banco Nacional, PrÃ©stamo..." },
                                 { label: "Contacto (opcional)", value: newContact, setter: setNewContact, placeholder: "Ej: Carlos M., Tech Corp..." },
                                 { label: "Monto (S/)", value: newAmount, setter: setNewAmount, placeholder: "0.00" },
                             ].map(field => (
@@ -506,9 +562,9 @@ export const DeudasyCobrosDashboard = ({
                                 </div>
                             ))}
 
-                            <div style={{ display: "flex", gap: "8px", marginTop: "1.5rem" }}>
-                                <button onClick={() => setShowAddModal(false)} style={{ ...BTN_SECONDARY, flex: 1, justifyContent: "center" }}>Cancelar</button>
-                                <button onClick={handleAdd} style={{ ...BTN_PRIMARY, flex: 1, justifyContent: "center" }}>Guardar</button>
+<div style={{ display: "flex", gap: "8px", marginTop: "1.5rem" }}>
+                                <button onClick={() => { setShowAddModal(false); setEditingTx(null); }} style={{ ...BTN_SECONDARY, flex: 1, justifyContent: "center" }}>Cancelar</button>
+                                <button onClick={editingTx ? handleSaveEdit : handleAdd} style={{ ...BTN_PRIMARY, flex: 1, justifyContent: "center" }}>{editingTx ? "Guardar Cambios" : "Guardar"}</button>
                             </div>
                         </motion.div>
                     </>
@@ -517,3 +573,4 @@ export const DeudasyCobrosDashboard = ({
         </div>
     );
 };
+
