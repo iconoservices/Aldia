@@ -487,7 +487,7 @@ export const FinanzasDashboard = ({
                         { label: "Variable", val: variableExpenseActual, color: "#EF4444", sub: "Gastos directos" },
                         { 
                             label: "Debo", 
-                            val: realOwe, 
+                            val: activeOweTotal, 
                             color: includeDebts ? "#EF4444" : "#94A3B8", 
                             sub: includeDebts ? "Debo (incluido)" : "Debo (excluido)", 
                             checked: includeDebts,
@@ -496,7 +496,7 @@ export const FinanzasDashboard = ({
                         },
                         { 
                             label: "Me Deben", 
-                            val: realOwed, 
+                            val: activeOwedTotal, 
                             color: includeOwed ? "#10B981" : "#94A3B8", 
                             sub: includeOwed ? "Cobros incluidos" : "Cobros excluidos",
                             checked: includeOwed,
@@ -583,7 +583,7 @@ export const FinanzasDashboard = ({
                         },
                         { 
                             label: "Debo", 
-                            val: realOwe, 
+                            val: activeOweTotal, 
                             color: includeDebts ? "#EF4444" : "#94A3B8", 
                             sub: includeDebts ? "Debo (incluido)" : "Debo (excluido)", 
                             checked: includeDebts,
@@ -592,7 +592,7 @@ export const FinanzasDashboard = ({
                         },
                         { 
                             label: "Me Deben", 
-                            val: realOwed, 
+                            val: activeOwedTotal, 
                             color: includeOwed ? "#10B981" : "#94A3B8", 
                             sub: includeOwed ? "Cobros incluidos" : "Cobros excluidos",
                             checked: includeOwed,
@@ -600,7 +600,7 @@ export const FinanzasDashboard = ({
                             opacity: includeOwed ? 1 : 0.65
                         },
                         { 
-                            label: "Balance Neto", 
+                            label: "Balance Neto Proyectado", 
                             val: adjustedSavings, 
                             color: adjustedSavings >= 0 ? "var(--domain-blue)" : "#EF4444", 
                             sub: projectedPeriodLabel 
