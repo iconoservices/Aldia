@@ -178,7 +178,7 @@ export const ProyeccionOriginalDashboard = ({ transactions, fixedExpenses, fixed
         <div style={{ paddingBottom: '5rem' }}>
             <div style={{ ...CARD, borderLeft: "4px solid #10B981" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "8px" }}>
-                    <span style={LABEL}>Proyección Financiera (Original)</span>
+                    <span style={LABEL}>Proyección Financiera</span>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                         <PillToggle
                             options={["day", "week", "month", "year", "all"]}

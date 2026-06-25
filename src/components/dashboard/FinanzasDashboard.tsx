@@ -423,10 +423,11 @@ export const FinanzasDashboard = ({
 
             {/* ── Row 1: Situación Financiera Real ─── */}
             <div style={{ ...CARD, borderLeft: "4px solid #059669" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "8px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", flexWrap: "wrap", gap: "8px" }}>
                     <span style={LABEL}>Situación Financiera Real</span>
                     <TrendingUp size={16} color="#059669" />
                 </div>
+                <span style={{ fontSize: "0.65rem", color: "#94A3B8", marginBottom: "0.8rem", display: "block" }}>Transacciones reales del período — lo que ya pasó</span>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
                     {[
                         { label: topPeriodDetails.label, val: topIncome, color: "#10B981", sub: topPeriodDetails.sub },
@@ -435,11 +436,11 @@ export const FinanzasDashboard = ({
                         { label: topPeriodDetails.labelExp, val: topExpense, color: "#EF4444", sub: topPeriodDetails.subExp },
                         { label: "Fijo", val: fixedExpenseActual, color: "#EF4444", sub: "Gastos activos" },
                         { label: "Variable", val: variableExpenseActual, color: "#EF4444", sub: "Gastos directos" },
+                        { label: "Balance Neto", val: topIncome - topExpense, color: (topIncome - topExpense) >= 0 ? "#10B981" : "#EF4444", sub: "Ingresos - Gastos" },
                         { label: "Saldo Actual", val: periodBalance, color: periodBalance >= 0 ? "#10B981" : "#EF4444", sub: "Disponible real" },
                         { label: "Debo", val: realOwe, color: "#EF4444", sub: realOwe > 0 ? "Deudas pendientes" : "Sin deudas" },
                         { label: "Me Deben", val: realOwed, color: "#10B981", sub: realOwed > 0 ? "Por cobrar" : "Sin cobros" },
                         { label: "Patrimonio Neto", val: periodBalance - realOwe + realOwed, color: (periodBalance - realOwe + realOwed) >= 0 ? "var(--domain-blue)" : "#EF4444", sub: "Balance - Deudas + Cobros" },
-                        { label: "Balance Proyectado", val: periodBalance + (topIncome - topExpense), color: (periodBalance + topIncome - topExpense) >= 0 ? "#10B981" : "#EF4444", sub: "Saldo + (Ingresos - Gastos)" },
                     ].map((item, i) => (
                         <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? "1px solid #E2E8F0" : "none" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
@@ -455,10 +456,10 @@ export const FinanzasDashboard = ({
                 </div>
             </div>
 
-            {/* ── Row 2: Proyección Financiera (Original) ─── */}
+            {/* ── Row 2: Proyección Financiera ─── */}
             <div style={{ ...CARD, borderLeft: "4px solid #F59E0B", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "8px" }}>
-                    <span style={LABEL}>Proyección Financiera (Original)</span>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", flexWrap: "wrap", gap: "8px" }}>
+                    <span style={LABEL}>Proyección Financiera</span>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                         <PillToggle
                             options={["day", "week", "month", "year", "all"]}
@@ -469,6 +470,7 @@ export const FinanzasDashboard = ({
                         <TrendingUp size={16} color="#10B981" style={{ marginLeft: "4px" }} />
                     </div>
                 </div>
+                <span style={{ fontSize: "0.65rem", color: "#94A3B8", marginBottom: "0.8rem", display: "block" }}>Ingresos/gastos fijos proyectados + variables reales — lo que debería pasar</span>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
                     {[
                         { label: "Ingresos Proy.", val: projectedIncomeTotal, color: "#10B981", sub: "Fijos + Variables" },
@@ -505,7 +507,7 @@ export const FinanzasDashboard = ({
                             opacity: includeOwed ? 1 : 0.65
                         },
                         { 
-                            label: "Balance Neto", 
+                            label: "Balance Neto Proyectado", 
                             val: projectedSavings, 
                             color: projectedSavings >= 0 ? "var(--domain-blue)" : "#EF4444", 
                             sub: projectedPeriodLabel 
@@ -530,10 +532,11 @@ export const FinanzasDashboard = ({
 
             {/* ── Row 3: Ejecución y Proyección Ajustada ─── */}
             <div style={{ ...CARD, borderLeft: "4px solid #8B5CF6", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "8px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", flexWrap: "wrap", gap: "8px" }}>
                     <span style={LABEL}>Ejecución y Proyección Ajustada</span>
                     <TrendingUp size={16} color="#8B5CF6" style={{ marginLeft: "4px" }} />
                 </div>
+                <span style={{ fontSize: "0.65rem", color: "#94A3B8", marginBottom: "0.8rem", display: "block" }}>Mix ajustable con toggles — incluí/excluí fijos, deudas y cobros</span>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
                     {[
                         { label: topPeriodDetails.label, val: topIncome, color: "#10B981", sub: topPeriodDetails.sub },
