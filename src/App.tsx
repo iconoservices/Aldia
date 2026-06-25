@@ -364,7 +364,7 @@ function App() {
         habits={state.habits}
       />
 
-      {activeTab !== 'Lienzo' && activeTab !== 'Checklist' && activeTab !== 'Bloques' && activeTab !== 'Stats' && (
+      {activeTab !== 'Lienzo' && activeTab !== 'Checklist' && activeTab !== 'Bloques' && activeTab !== 'Stats' && activeTab !== 'Finanzas' && (
         <SuperFab
           addMission={state.addMission}
           addTransaction={state.addTransaction}
