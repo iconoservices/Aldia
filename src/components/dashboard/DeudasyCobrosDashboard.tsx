@@ -124,7 +124,6 @@ export const DeudasyCobrosDashboard = ({
     transactions,
     addTransaction,
     removeTransaction,
-    accounts,
 }: DeudasyCobrosDashboardProps) => {
     const [filterType, setFilterType] = useState<FilterType>("todos");
     const [filterEstado, setFilterEstado] = useState<FilterEstado>("todos");
