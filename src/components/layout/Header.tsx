@@ -38,12 +38,12 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Checklist', tab: 'Checklist', icon: 'task_alt' },
         { label: 'Bloques', tab: 'Bloques',   icon: 'history_edu'    },
         { label: 'Finanzas',  tab: 'Finanzas',  icon: 'payments'      },
+        { label: 'Deudas',     tab: 'Deudas',     icon: 'receipt_long'  },
         { label: 'Ajustes',  tab: '__profile', icon: 'settings'       },
     ];
 
     // ── Secondary / all other tools ────────────────────────────────────
     const SECONDARY_ITEMS = [
-        { label: 'Deudas',     tab: 'Deudas',     icon: 'receipt_long'  },
         { label: 'Acción',     tab: 'Acción',     icon: 'bolt'          },
         { label: 'Base de Datos', tab: 'Base de Datos', icon: 'database' },
         { label: 'Proyección',   tab: 'Proyección',  icon: 'trending_up' },
@@ -286,6 +286,14 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                 >
                     <span className="material-symbols-outlined">payments</span>
                     <span>Finanzas</span>
+                </button>
+
+                <button 
+                    onClick={() => setActiveTab('Deudas')}
+                    className={`mobile-nav-btn ${activeTab === 'Deudas' ? 'active' : ''}`}
+                >
+                    <span className="material-symbols-outlined">receipt_long</span>
+                    <span>Deudas</span>
                 </button>
 
                 <button 

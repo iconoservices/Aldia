@@ -171,8 +171,8 @@ export const FinanzasDashboard = ({
             const key = contact ? `${contact}::${baseText}` : `::${baseText}`;
             const isPayment = tx.text.startsWith("Pago: ");
             if (!groups[key]) {
-                const isOwe = (tx.type === "gasto" && tx.isCashless) || (tx.type === "ingreso" && !tx.isCashless);
-                groups[key] = { total: 0, originalTx: tx, isOwe: isPayment ? tx.type === "gasto" : isOwe };
+                const isOwe = isPayment ? (tx.type === "ingreso") : (tx.type === "gasto");
+                groups[key] = { total: 0, originalTx: tx, isOwe };
             }
             if (isPayment) groups[key].total -= Math.abs(tx.amount);
             else { groups[key].total += Math.abs(tx.amount); groups[key].originalTx = tx; }

@@ -141,15 +141,14 @@ export const DeudasyCobrosDashboard = ({
 
     const handleAbonar = (tx: Transaction, amount: number) => {
         if (amount <= 0) return;
-        // Crear transacción REAL de pago (aparece en finanzas)
         addTransaction(
             `Pago: ${tx.text}`,
-            tx.type === "gasto" ? -amount : amount,
-            tx.type === "gasto" ? "gasto" : "ingreso",
-            false, // isDebt: false para que aparezca en finanzas
+            tx.type === "gasto" ? amount : -amount,
+            tx.type === "gasto" ? "ingreso" : "gasto",
+            true,
             undefined,
-            accounts?.[0]?.id,
-            false, // isCashless: false
+            undefined,
+            true,
             "Deudas",
             tx.contact
         );

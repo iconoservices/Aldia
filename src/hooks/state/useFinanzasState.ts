@@ -149,11 +149,11 @@ export const useFinanzasState = () => {
     const totalNetReal = totalIncomeReal - totalExpenseReal;
 
     const debtsOwe = txArr
-        .filter(t => t.isDebt && ((t.type === 'gasto' && t.isCashless) || (t.type === 'ingreso' && !t.isCashless)))
+        .filter(t => t.isDebt && !t.text.startsWith('Pago: ') && t.type === 'gasto')
         .reduce((acc, t) => acc + Math.abs(Number(t?.amount) || 0), 0);
 
     const debtsOwed = txArr
-        .filter(t => t.isDebt && ((t.type === 'ingreso' && t.isCashless) || (t.type === 'gasto' && !t.isCashless)))
+        .filter(t => t.isDebt && !t.text.startsWith('Pago: ') && t.type === 'ingreso')
         .reduce((acc, t) => acc + Math.abs(Number(t?.amount) || 0), 0);
 
     const removeTransaction = (id: number) => {
