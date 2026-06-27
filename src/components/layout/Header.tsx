@@ -55,6 +55,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
         { label: 'Tablero',    tab: 'Tablero',     icon: 'view_kanban'   },
         { label: 'Lienzo',     tab: 'Lienzo',      icon: 'palette'       },
+        { label: 'Lienzo Ops', tab: 'Lienzo Ops',  icon: 'dashboard'     },
+        { label: 'Negocio',    tab: 'Negocio',      icon: 'storefront'    },
         { label: 'Datos',      tab: 'Stats',       icon: 'analytics'     },
         { label: 'Bienestar',  tab: 'Bienestar',   icon: 'favorite'      },
     ];
@@ -133,9 +135,9 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             case 'Proyectos': return 'Proyectos';
             case 'Tablero': return 'Tablero Kanban';
             case 'Lienzo': return 'Lienzo';
-            case 'Ruta': return 'Mi Ruta';
-            case 'Mapa': return 'Mapa';
+            case 'Lienzo Ops': return 'Lienzo de Operaciones';
             case 'Bienestar': return 'Bienestar';
+            case 'Negocio': return 'Simulador de Negocio';
             default: return tab;
         }
     };

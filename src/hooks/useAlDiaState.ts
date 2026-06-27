@@ -7,6 +7,7 @@ import { useMisionesState } from './state/useMisionesState';
 import { useProyectosState } from './state/useProyectosState';
 import { useCerebroState } from './state/useCerebroState';
 import { useRitaState } from './state/useRitaState';
+import { useNegocioState } from './state/useNegocioState';
 
 // Tipos de datos
 export interface Mission {
@@ -237,6 +238,14 @@ export const useAlDiaState = () => {
         addSubitem: addRitaSubitem, toggleSubitem: toggleRitaSubitem, removeSubitem: removeRitaSubitem
     } = useRitaState();
 
+    const {
+        negocioProjects, setNegocioProjects,
+        addNegocioProject, removeNegocioProject, updateNegocioProject,
+        addClient, updateClient, removeClient,
+        addWorker, updateWorker, removeWorker,
+        addExpense, updateExpense, removeExpense
+    } = useNegocioState();
+
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
     const [dailyBlocks, setDailyBlocks] = useState<DailyBlock[]>([]);
@@ -270,7 +279,8 @@ export const useAlDiaState = () => {
                 preferences: JSON.parse(localStorage.getItem('aldia_preferences') || JSON.stringify(DEFAULT_PREFERENCES)),
                 dailyblocks: JSON.parse(localStorage.getItem('aldia_dailyblocks') || '[]'),
                 ritaEntries: JSON.parse(localStorage.getItem('aldia_rita_entries') || '[]'),
-                trash: JSON.parse(localStorage.getItem('aldia_trash') || '[]')
+                trash: JSON.parse(localStorage.getItem('aldia_trash') || '[]'),
+                negocioProjects: JSON.parse(localStorage.getItem('aldia_negocio_projects') || '[]')
             };
             setMisionesDirect(data.missions);
             setTransactions(data.transactions);
@@ -286,6 +296,7 @@ export const useAlDiaState = () => {
             setPreferences(data.preferences);
             setDailyBlocks(data.dailyblocks);
             setRitaEntries(data.ritaEntries);
+            setNegocioProjects(data.negocioProjects);
             setTrash(data.trash.filter((t: TrashItem) => Date.now() - t.deletedAt < 60 * 24 * 60 * 60 * 1000));
         } catch (e) { console.error("Error inicial local:", e); }
     }, []); // Una sola vez al montar
@@ -349,6 +360,7 @@ export const useAlDiaState = () => {
                 sync(cloud.preferences, setPreferences);
                 sync(cloud.dailyBlocks, setDailyBlocks);
                 sync(cloud.ritaEntries, setRitaEntries);
+                sync(cloud.negocioProjects, setNegocioProjects);
                 sync(cloud.trash, setTrash);
                 if (cloud.monthlyBudget !== undefined) {
                     setMonthlyBudget(prev => Math.abs(cloud.monthlyBudget - prev) > 0.01 ? Number(cloud.monthlyBudget) : prev);
@@ -374,11 +386,10 @@ export const useAlDiaState = () => {
     // Esto previene "stale closures" en el setTimeout del debounced save,
     // donde un array viejo de transactions podía enviarse a Firestore y causar un rollback visual.
     const latestStateRef = useRef({
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks, ritaEntries, trash
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks, ritaEntries, negocioProjects, trash
     });
-    // Actualizamos la ref en CADA render
     latestStateRef.current = {
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks, ritaEntries, trash
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks, ritaEntries, negocioProjects, trash
     };
 
     // 3. Persistencia Cloud (Debounced) y Local (Immediate)
@@ -401,6 +412,7 @@ export const useAlDiaState = () => {
         localStorage.setItem('aldia_preferences', JSON.stringify(preferences));
         localStorage.setItem('aldia_dailyblocks', JSON.stringify(dailyBlocks));
         localStorage.setItem('aldia_rita_entries', JSON.stringify(ritaEntries));
+        localStorage.setItem('aldia_negocio_projects', JSON.stringify(negocioProjects));
         localStorage.setItem('aldia_trash', JSON.stringify(trash));
 
         // Guardado Cloud debounced
@@ -426,7 +438,7 @@ export const useAlDiaState = () => {
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, preferences, dailyBlocks, ritaEntries, trash]);
+    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, preferences, dailyBlocks, ritaEntries, negocioProjects, trash]);
 
     // 4. Migraciones y Lógica Derivada
     useEffect(() => {
@@ -579,6 +591,7 @@ export const useAlDiaState = () => {
         setMisionesDirect([]); setTransactions([]); setHabits([]); setAgenda([]);
         setNotes([]); setProjects([]); setRutinas([]); setMonthlyBudget(0);
         setFixedExpenses([]); setAccounts([]); setDailyBlocks([]); setRitaEntries([]);
+        setNegocioProjects([]);
         localStorage.clear();
         if (user) {
             const docRef = doc(db, 'users', user.uid);
@@ -705,6 +718,12 @@ export const useAlDiaState = () => {
         ritaEntries,
         addRitaEntry: lw(addRitaEntry), removeRitaEntry: lw(removeRitaEntry), updateRitaEntry: lw(updateRitaEntry),
         addRitaSubitem: lw(addRitaSubitem), toggleRitaSubitem: lw(toggleRitaSubitem), removeRitaSubitem: lw(removeRitaSubitem),
+        // Negocio
+        negocioProjects,
+        addNegocioProject: lw(addNegocioProject), removeNegocioProject: lw(removeNegocioProject), updateNegocioProject: lw(updateNegocioProject),
+        addClient: lw(addClient), updateClient: lw(updateClient), removeClient: lw(removeClient),
+        addWorker: lw(addWorker), updateWorker: lw(updateWorker), removeWorker: lw(removeWorker),
+        addExpense: lw(addExpense), updateExpense: lw(updateExpense), removeExpense: lw(removeExpense),
         user, isInitialLoad, clearAllData
     };
 };

@@ -31,6 +31,8 @@ import { RitaDashboard } from './components/dashboard/RitaDashboard';
 import { EcosistemaMap } from './components/dashboard/EcosistemaMap';
 import { BienestarDashboard } from './components/dashboard/BienestarDashboard';
 import { DeudasyCobrosDashboard } from './components/dashboard/DeudasyCobrosDashboard';
+import { NegocioDashboard } from './components/dashboard/NegocioDashboard';
+import { NegocioLienzo } from './components/dashboard/NegocioLienzo';
 
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -53,6 +55,8 @@ function App() {
     if (path.includes('/bloques')) return 'Bloques';
     if (path.includes('/deudas')) return 'Deudas';
     if (path.includes('/bienestar')) return 'Bienestar';
+    if (path.includes('/negocio')) return 'Negocio';
+    if (path.includes('/lienzo-ops')) return 'Lienzo Ops';
     return 'Checklist';
   });
 
@@ -68,6 +72,10 @@ function App() {
       path = '/proyeccion';
     } else if (activeTab === 'Deudas') {
       path = '/deudas';
+    } else if (activeTab === 'Negocio') {
+      path = '/negocio';
+    } else if (activeTab === 'Lienzo Ops') {
+      path = '/lienzo-ops';
     }
     if (window.location.pathname !== path) {
       window.history.pushState(null, '', path);
@@ -93,8 +101,10 @@ function App() {
       else if (path.includes('/base')) setActiveTab('Base de Datos');
       else if (path.includes('/proyeccion')) setActiveTab('Proyección');
       else if (path.includes('/bloques')) setActiveTab('Bloques');
-      else if (path.includes('/bienestar')) setActiveTab('Bienestar');
-      else if (path.includes('/deudas')) setActiveTab('Deudas');
+    else if (path.includes('/bienestar')) setActiveTab('Bienestar');
+    else if (path.includes('/negocio')) setActiveTab('Negocio');
+    else if (path.includes('/lienzo-ops')) setActiveTab('Lienzo Ops');
+    else if (path.includes('/deudas')) setActiveTab('Deudas');
       else setActiveTab('Checklist');
     };
     window.addEventListener('popstate', handlePopState);
@@ -134,7 +144,7 @@ function App() {
   }
 
   return (
-    <div className={`aldia-container ${activeTab === 'Calendario' || activeTab === 'Lienzo' ? 'no-scroll' : ''}`}>
+    <div className={`aldia-container ${activeTab === 'Calendario' || activeTab === 'Lienzo' || activeTab === 'Lienzo Ops' ? 'no-scroll' : ''}`}>
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -142,7 +152,7 @@ function App() {
         onTrashClick={() => setIsTrashOpen(true)}
       />
 
-      <main className={`dashboard ${activeTab === 'Calendario' || activeTab === 'Lienzo' ? 'full-bleed' : ''}`}>
+      <main className={`dashboard ${activeTab === 'Calendario' || activeTab === 'Lienzo' || activeTab === 'Lienzo Ops' ? 'full-bleed' : ''}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -152,7 +162,7 @@ function App() {
             transition={{ duration: 0.2, ease: "easeOut" }}
             style={{
               width: '100%',
-              ...((activeTab === 'Calendario' || activeTab === 'Lienzo') && {
+              ...((activeTab === 'Calendario' || activeTab === 'Lienzo' || activeTab === 'Lienzo Ops') && {
                 height: 'calc(100dvh - var(--header-height, 65px))', /* Altura de la cabecera */
                 overflow: 'hidden',
                 display: 'flex',
@@ -266,6 +276,24 @@ function App() {
               <EcosistemaMap />
             ) : activeTab === 'Bienestar' ? (
               <BienestarDashboard />
+            ) : activeTab === 'Lienzo Ops' ? (
+              <NegocioLienzo />
+            ) : activeTab === 'Negocio' ? (
+              <NegocioDashboard
+                negocioProjects={state.negocioProjects}
+                addNegocioProject={state.addNegocioProject}
+                removeNegocioProject={state.removeNegocioProject}
+                updateNegocioProject={state.updateNegocioProject}
+                addClient={state.addClient}
+                updateClient={state.updateClient}
+                removeClient={state.removeClient}
+                addWorker={state.addWorker}
+                updateWorker={state.updateWorker}
+                removeWorker={state.removeWorker}
+                addExpense={state.addExpense}
+                updateExpense={state.updateExpense}
+                removeExpense={state.removeExpense}
+              />
             ) : activeTab === 'Deudas' ? (
               <DeudasyCobrosDashboard
                 transactions={state.transactions}
