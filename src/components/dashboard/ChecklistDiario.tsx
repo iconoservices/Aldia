@@ -211,18 +211,38 @@ interface ChecklistDiarioProps {
     addDailyBlock:    (label: string, period: Period, date: string, completed?: boolean, projectId?: number, repeatDays?: number[]) => void;
     toggleDailyBlock: (id: number) => void;
     removeDailyBlock: (id: number | number[]) => void;
+    updateDailyBlock: (id: number, updates: Partial<DailyBlock>) => void;
     projects:         any[];
+    addTransaction?:  (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string) => void;
+    accounts?:        { id: number; name: string; color: string }[];
 }
 
 const SORT_STORAGE_KEY = 'aldia-checklist-custom-order';
 
 export const ChecklistDiario = ({
-    dailyBlocks, addDailyBlock, toggleDailyBlock, removeDailyBlock, projects,
+    dailyBlocks, addDailyBlock, toggleDailyBlock, removeDailyBlock, updateDailyBlock, projects,
+    addTransaction, accounts = [],
 }: ChecklistDiarioProps) => {
-    const todayStr   = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
-    const todayIndex = useMemo(() => (new Date().getDay() + 6) % 7, []);
+    /* La fecha se recalcula sola: si la app queda abierta y pasa medianoche,
+       el checklist salta al día nuevo sin necesidad de recargar. */
+    const [todayStr, setTodayStr] = useState(() => new Date().toLocaleDateString('en-CA'));
+
+    useEffect(() => {
+        const tick = () => {
+            const now = new Date().toLocaleDateString('en-CA');
+            setTodayStr(prev => (prev === now ? prev : now));
+        };
+        const timer = setInterval(tick, 60_000);
+        document.addEventListener('visibilitychange', tick);
+        return () => {
+            clearInterval(timer);
+            document.removeEventListener('visibilitychange', tick);
+        };
+    }, []);
+
+    const todayIndex = useMemo(() => (new Date(`${todayStr}T00:00:00`).getDay() + 6) % 7, [todayStr]);
     const todayLabel = useMemo(() =>
-        new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }), []);
+        new Date(`${todayStr}T00:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }), [todayStr]);
 
     const [activeCategory,  setActiveCategory]  = useState<CategoryKey>('Todas');
     const [searchQuery,     setSearchQuery]      = useState('');
@@ -299,8 +319,18 @@ export const ChecklistDiario = ({
     const sortedTasks = useMemo(() => {
         let list = [...todayTemplates];
 
-        // Base sort
-        if (sortMode === 'cronologico') {
+        // Orden base: el manual sustituye al automático, no se apila encima.
+        // Así "Pendientes primero" sigue funcionando después de arrastrar.
+        if (customOrder.length > 0) {
+            list.sort((a, b) => {
+                const ia = customOrder.indexOf(taskKey(a.label, a.period));
+                const ib = customOrder.indexOf(taskKey(b.label, b.period));
+                if (ia === -1 && ib === -1) return 0;
+                if (ia === -1) return 1;   // las tareas nuevas van al final
+                if (ib === -1) return -1;
+                return ia - ib;
+            });
+        } else if (sortMode === 'cronologico') {
             list.sort((a, b) => PERIOD_ORDER.indexOf(a.period) - PERIOD_ORDER.indexOf(b.period));
         } else if (sortMode === 'proyecto') {
             list.sort((a, b) => {
@@ -310,24 +340,13 @@ export const ChecklistDiario = ({
             });
         }
 
-        // Secondary: pendientes primero (stable, preserves base order within each group)
+        // Secundario: pendientes primero. Array.sort es estable, así que
+        // dentro de cada grupo se respeta el orden base de arriba.
         if (pendientesFirst) {
             list.sort((a, b) => {
                 const doneA = dailyBlocks.find(bl => bl.label.toLowerCase() === a.label.toLowerCase() && bl.period === a.period && bl.date === todayStr)?.completed ? 1 : 0;
                 const doneB = dailyBlocks.find(bl => bl.label.toLowerCase() === b.label.toLowerCase() && bl.period === b.period && bl.date === todayStr)?.completed ? 1 : 0;
                 return doneA - doneB;
-            });
-        }
-
-        // Apply custom order on top (manual drag takes priority)
-        if (customOrder.length > 0) {
-            list.sort((a, b) => {
-                const ia = customOrder.indexOf(taskKey(a.label, a.period));
-                const ib = customOrder.indexOf(taskKey(b.label, b.period));
-                if (ia === -1 && ib === -1) return 0;
-                if (ia === -1) return 1;
-                if (ib === -1) return -1;
-                return ia - ib;
             });
         }
 
@@ -352,6 +371,14 @@ export const ChecklistDiario = ({
     }, [todayTemplates]);
 
     /* ── Toggle / create ── */
+    const celebrateIfLast = useCallback(() => {
+        // Se cuenta contra las tareas de HOY, no contra los bloques ya materializados:
+        // las tareas que nunca se han tocado aún no tienen bloque creado.
+        if (totalToday > 0 && completedToday + 1 === totalToday) {
+            confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 }, colors: ['#ff9f66', '#FFD700', '#A8DADC'] });
+        }
+    }, [completedToday, totalToday]);
+
     const handleToggle = useCallback((label: string, period: Period) => {
         const existing = dailyBlocks.find(b =>
             b.label.toLowerCase() === label.toLowerCase() && b.period === period && b.date === todayStr
@@ -359,25 +386,34 @@ export const ChecklistDiario = ({
         if (existing) {
             const willComplete = !existing.completed;
             toggleDailyBlock(existing.id);
-            if (willComplete && dailyBlocks.filter(b => b.date === todayStr && !b.completed).length === 1) {
-                confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 }, colors: ['#ff9f66', '#FFD700', '#A8DADC'] });
-            }
+            if (willComplete) celebrateIfLast();
         } else {
             const tmpl = dailyBlocks.find(b => b.label.toLowerCase() === label.toLowerCase() && b.period === period);
             addDailyBlock(label, period, todayStr, true, tmpl?.projectId, tmpl?.repeatDays);
+            celebrateIfLast();
         }
-    }, [dailyBlocks, todayStr, toggleDailyBlock, addDailyBlock]);
+    }, [dailyBlocks, todayStr, toggleDailyBlock, addDailyBlock, celebrateIfLast]);
 
     const handleSaveEdit = useCallback(() => {
         if (!editingTask || !editText.trim()) return;
-        const ids = dailyBlocks.filter(b => b.label.toLowerCase() === editingTask.label.toLowerCase() && b.period === editingTask.period).map(b => b.id);
-        ids.forEach(id => {
-            removeDailyBlock(id);
-            addDailyBlock(editText.trim(), editingTask.period, todayStr, false, undefined, [0,1,2,3,4,5,6]);
-        });
+        const newLabel = editText.trim();
+
+        // Renombrar es renombrar: se edita cada bloque en sitio. Antes se borraban
+        // y se recreaban, lo que duplicaba registros y perdía projectId/repeatDays.
+        dailyBlocks
+            .filter(b => b.label.toLowerCase() === editingTask.label.toLowerCase() && b.period === editingTask.period)
+            .forEach(b => updateDailyBlock(b.id, { label: newLabel }));
+
+        // El orden manual se indexa por nombre: hay que mover la clave con la tarea.
+        const oldKey = taskKey(editingTask.label, editingTask.period);
+        const newKey = taskKey(newLabel, editingTask.period);
+        if (oldKey !== newKey && customOrder.includes(oldKey)) {
+            saveOrder(customOrder.map(k => (k === oldKey ? newKey : k)));
+        }
+
         setEditingTask(null);
         setEditText('');
-    }, [editingTask, editText, dailyBlocks, removeDailyBlock, addDailyBlock, todayStr]);
+    }, [editingTask, editText, dailyBlocks, updateDailyBlock, customOrder, saveOrder]);
 
     const executeRemove = useCallback(() => {
         if (!confirmDelete) return;
@@ -423,13 +459,15 @@ export const ChecklistDiario = ({
 
     const handleSaveRepeat = useCallback((repeatDays: number[]) => {
         if (!editingRepeat) return;
-        const ids = dailyBlocks.filter(b => b.label.toLowerCase() === editingRepeat.label.toLowerCase() && b.period === editingRepeat.period).map(b => b.id);
-        ids.forEach(id => {
-            removeDailyBlock(id);
-            addDailyBlock(editingRepeat.label, editingRepeat.period, todayStr, false, undefined, repeatDays);
-        });
+
+        // Igual que al renombrar: se actualiza en sitio, conservando
+        // el historial de completadas y el proyecto asignado.
+        dailyBlocks
+            .filter(b => b.label.toLowerCase() === editingRepeat.label.toLowerCase() && b.period === editingRepeat.period)
+            .forEach(b => updateDailyBlock(b.id, { repeatDays }));
+
         setEditingRepeat(null);
-    }, [editingRepeat, dailyBlocks, removeDailyBlock, addDailyBlock, todayStr]);
+    }, [editingRepeat, dailyBlocks, updateDailyBlock]);
 
     const handleQuickAdd = (e: React.FormEvent) => {
         e.preventDefault();
@@ -486,7 +524,14 @@ export const ChecklistDiario = ({
     if (isMobile) {
         return (
             <div style={{ padding: '12px 12px 6rem', minHeight: '100%' }}>
-                
+
+                {/* Registrar dinero sin salir del día */}
+                {addTransaction && (
+                    <div style={{ marginBottom: '1rem' }}>
+                        <RegistroRapido addTransaction={addTransaction} accounts={accounts} compacto />
+                    </div>
+                )}
+
                 {/* Search / Filter toolbar */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem', width: '100%' }}>
                     {/* Search */}
@@ -1040,6 +1085,11 @@ export const ChecklistDiario = ({
                     </p>
                 </div>
 
+                {/* Registrar dinero sin salir del día */}
+                {addTransaction && (
+                    <RegistroRapido addTransaction={addTransaction} accounts={accounts} />
+                )}
+
                 {/* Search */}
                 <div style={{
                     display: 'flex', alignItems: 'center', gap: '8px',
@@ -1505,6 +1555,171 @@ export const ChecklistDiario = ({
                     </div>
                 </div>
             )}
+        </div>
+    );
+};
+
+/* ══════════════════════════════════════════════════════════════
+   RegistroRapido — dos botones para apuntar dinero sin salir del día
+   Los gastos sueltos son los que más se olvidan, así que el sitio
+   donde se entra a diario es el sitio donde hay que poder apuntarlos.
+══════════════════════════════════════════════════════════════ */
+interface RegistroRapidoProps {
+    addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string) => void;
+    accounts: { id: number; name: string; color: string }[];
+    compacto?: boolean;
+}
+
+const RegistroRapido = ({ addTransaction, accounts, compacto = false }: RegistroRapidoProps) => {
+    const [tipo, setTipo] = useState<'gasto' | 'ingreso' | null>(null);
+    const [texto, setTexto] = useState('');
+    const [monto, setMonto] = useState('');
+    const [cuentaId, setCuentaId] = useState('');
+    const [guardado, setGuardado] = useState<string | null>(null);
+
+    const cerrar = () => { setTipo(null); setTexto(''); setMonto(''); };
+
+    const guardar = (e: React.FormEvent) => {
+        e.preventDefault();
+        const valor = parseFloat(monto);
+        if (!tipo || !valor || valor <= 0) return;
+        addTransaction(
+            texto.trim() || (tipo === 'gasto' ? 'Gasto' : 'Ingreso'),
+            valor, tipo, false, undefined,
+            cuentaId ? Number(cuentaId) : undefined,
+            false, undefined, undefined
+        );
+        setGuardado(`${tipo === 'gasto' ? '−' : '+'} S/ ${valor}`);
+        setTimeout(() => setGuardado(null), 2200);
+        cerrar();
+    };
+
+    const colorTipo = tipo === 'gasto' ? '#EF4444' : '#10B981';
+
+    return (
+        <div style={{ width: compacto ? '100%' : 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                    onClick={() => setTipo(t => t === 'gasto' ? null : 'gasto')}
+                    style={{
+                        display: 'flex', alignItems: 'center', gap: '6px', flex: compacto ? 1 : undefined,
+                        justifyContent: 'center',
+                        background: tipo === 'gasto' ? '#EF4444' : 'rgba(239,68,68,0.1)',
+                        color: tipo === 'gasto' ? '#fff' : '#EF4444',
+                        border: 'none', borderRadius: '999px', padding: '8px 16px',
+                        fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
+                        fontFamily: 'inherit', transition: 'all 0.15s',
+                    }}
+                >
+                    <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>trending_down</span>
+                    Gasto
+                </button>
+                <button
+                    onClick={() => setTipo(t => t === 'ingreso' ? null : 'ingreso')}
+                    style={{
+                        display: 'flex', alignItems: 'center', gap: '6px', flex: compacto ? 1 : undefined,
+                        justifyContent: 'center',
+                        background: tipo === 'ingreso' ? '#10B981' : 'rgba(16,185,129,0.1)',
+                        color: tipo === 'ingreso' ? '#fff' : '#10B981',
+                        border: 'none', borderRadius: '999px', padding: '8px 16px',
+                        fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
+                        fontFamily: 'inherit', transition: 'all 0.15s',
+                    }}
+                >
+                    <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>trending_up</span>
+                    Ingreso
+                </button>
+
+                <AnimatePresence>
+                    {guardado && (
+                        <motion.span
+                            initial={{ opacity: 0, x: -6 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0 }}
+                            style={{ fontSize: '0.78rem', fontWeight: 700, color: C.primary, whiteSpace: 'nowrap' }}
+                        >
+                            ✓ {guardado}
+                        </motion.span>
+                    )}
+                </AnimatePresence>
+            </div>
+
+            <AnimatePresence>
+                {tipo && (
+                    <motion.form
+                        onSubmit={guardar}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        style={{
+                            overflow: 'hidden', display: 'flex', gap: '8px', flexWrap: 'wrap',
+                            alignItems: 'center', marginTop: '10px',
+                        }}
+                    >
+                        <input
+                            autoFocus
+                            value={texto}
+                            onChange={e => setTexto(e.target.value)}
+                            placeholder={tipo === 'gasto' ? '¿En qué gastaste?' : '¿De qué fue el ingreso?'}
+                            style={{
+                                flex: '1 1 160px', minWidth: 0, background: C.surfaceLowest,
+                                border: `1px solid ${C.outlineVariant}`, borderRadius: '10px',
+                                padding: '8px 12px', outline: 'none', fontSize: '0.85rem',
+                                color: C.onSurface, fontFamily: 'inherit',
+                            }}
+                        />
+                        <input
+                            value={monto}
+                            onChange={e => setMonto(e.target.value)}
+                            placeholder="S/"
+                            type="number" min="0" step="0.01"
+                            style={{
+                                width: '100px', background: C.surfaceLowest,
+                                border: `1px solid ${C.outlineVariant}`, borderRadius: '10px',
+                                padding: '8px 12px', outline: 'none', fontSize: '0.85rem',
+                                fontWeight: 700, color: C.onSurface, fontFamily: 'inherit',
+                            }}
+                        />
+                        {accounts.length > 0 && (
+                            <select
+                                value={cuentaId}
+                                onChange={e => setCuentaId(e.target.value)}
+                                style={{
+                                    background: C.surfaceContainerLow, border: `1px solid ${C.outlineVariant}`,
+                                    borderRadius: '10px', padding: '8px 10px', fontSize: '0.8rem',
+                                    color: C.onSurfaceVariant, cursor: 'pointer', fontFamily: 'inherit',
+                                }}
+                            >
+                                <option value="">Cuenta…</option>
+                                {accounts.map(a => <option key={a.id} value={String(a.id)}>{a.name}</option>)}
+                            </select>
+                        )}
+                        <button
+                            type="submit"
+                            disabled={!parseFloat(monto)}
+                            style={{
+                                background: parseFloat(monto) ? colorTipo : C.surfaceContainerHigh,
+                                color: parseFloat(monto) ? '#fff' : C.onSurfaceVariant,
+                                border: 'none', borderRadius: '10px', padding: '8px 18px',
+                                fontSize: '0.82rem', fontWeight: 700, fontFamily: 'inherit',
+                                cursor: parseFloat(monto) ? 'pointer' : 'default',
+                            }}
+                        >
+                            Guardar
+                        </button>
+                        <button
+                            type="button"
+                            onClick={cerrar}
+                            style={{
+                                background: 'transparent', border: 'none', color: C.outline,
+                                cursor: 'pointer', padding: '8px', display: 'flex', fontFamily: 'inherit',
+                            }}
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+                        </button>
+                    </motion.form>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

@@ -127,6 +127,20 @@ export interface TrashItem {
     deletedAt: number;
 }
 
+// Cosas por comprar: un gasto que todavía no ha ocurrido.
+// Vive aparte de Transaction porque aún no es dinero movido, solo previsto;
+// al marcarlo como comprado se convierte en una transacción real.
+export interface ShoppingItem {
+    id: number;
+    text: string;
+    estimatedAmount: number;
+    priority: 'necesito' | 'quiero';
+    createdAt: string;          // YYYY-MM-DD
+    purchasedAt?: string;       // YYYY-MM-DD, presente solo si ya se compró
+    projectId?: number;
+    note?: string;
+}
+
 export interface UserPreferences {
     isBudgetFixed: boolean;
     fixedIncomes: string; // JSON: { id: number, name: string, amount: number, active: boolean }[]
@@ -190,6 +204,17 @@ export interface Note {
     date: string;
 }
 
+// Generador de IDs para bloques diarios.
+// Date.now() a secas colisionaba: al crear varios bloques en un mismo bucle
+// todos caían en el mismo milisegundo y compartían id, de modo que marcar uno
+// marcaba todos los que tuviesen ese id.
+let lastIssuedBlockId = 0;
+const nextBlockId = () => {
+    const now = Date.now();
+    lastIssuedBlockId = now > lastIssuedBlockId ? now : lastIssuedBlockId + 1;
+    return lastIssuedBlockId;
+};
+
 export const useAlDiaState = () => {
     const [user, setUser] = useState<User | null>(null);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -249,6 +274,7 @@ export const useAlDiaState = () => {
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
     const [dailyBlocks, setDailyBlocks] = useState<DailyBlock[]>([]);
+    const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
     const [trash, setTrash] = useState<TrashItem[]>([]);
     const [hasLoadedFromCloud, setHasLoadedFromCloud] = useState(false);
     // Timestamp del último cambio local del usuario. Los snapshots de Firestore con lastSync
@@ -278,6 +304,7 @@ export const useAlDiaState = () => {
                 accounts: JSON.parse(localStorage.getItem('aldia_accounts') || '[]'),
                 preferences: JSON.parse(localStorage.getItem('aldia_preferences') || JSON.stringify(DEFAULT_PREFERENCES)),
                 dailyblocks: JSON.parse(localStorage.getItem('aldia_dailyblocks') || '[]'),
+                shoppingList: JSON.parse(localStorage.getItem('aldia_shopping_list') || '[]'),
                 ritaEntries: JSON.parse(localStorage.getItem('aldia_rita_entries') || '[]'),
                 trash: JSON.parse(localStorage.getItem('aldia_trash') || '[]'),
                 negocioProjects: JSON.parse(localStorage.getItem('aldia_negocio_projects') || '[]')
@@ -295,6 +322,7 @@ export const useAlDiaState = () => {
             setAccounts(data.accounts);
             setPreferences(data.preferences);
             setDailyBlocks(data.dailyblocks);
+            setShoppingList(data.shoppingList);
             setRitaEntries(data.ritaEntries);
             setNegocioProjects(data.negocioProjects);
             setTrash(data.trash.filter((t: TrashItem) => Date.now() - t.deletedAt < 60 * 24 * 60 * 60 * 1000));
@@ -314,7 +342,12 @@ export const useAlDiaState = () => {
     // 2. Lógica de Sincronización Real-Time
     useEffect(() => {
         if (!user) {
-            setHasLoadedFromCloud(false);
+            // Sin sesión trabajamos en modo local: no hay nube que esperar, así que
+            // habilitamos el guardado igualmente. Antes esto quedaba en false y el
+            // efecto de persistencia salía por el return, de modo que sin login NADA
+            // se escribía en localStorage y el trabajo se perdía al recargar.
+            // El guardado a Firestore sigue protegido por su propio `if (user)`.
+            setHasLoadedFromCloud(true);
             return;
         }
 
@@ -359,6 +392,7 @@ export const useAlDiaState = () => {
                 sync(cloud.accounts, setAccounts);
                 sync(cloud.preferences, setPreferences);
                 sync(cloud.dailyBlocks, setDailyBlocks);
+                sync(cloud.shoppingList, setShoppingList);
                 sync(cloud.ritaEntries, setRitaEntries);
                 sync(cloud.negocioProjects, setNegocioProjects);
                 sync(cloud.trash, setTrash);
@@ -386,10 +420,10 @@ export const useAlDiaState = () => {
     // Esto previene "stale closures" en el setTimeout del debounced save,
     // donde un array viejo de transactions podía enviarse a Firestore y causar un rollback visual.
     const latestStateRef = useRef({
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks, ritaEntries, negocioProjects, trash
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks, shoppingList, ritaEntries, negocioProjects, trash
     });
     latestStateRef.current = {
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks, ritaEntries, negocioProjects, trash
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks, shoppingList, ritaEntries, negocioProjects, trash
     };
 
     // 3. Persistencia Cloud (Debounced) y Local (Immediate)
@@ -411,6 +445,7 @@ export const useAlDiaState = () => {
         localStorage.setItem('aldia_accounts', JSON.stringify(accounts));
         localStorage.setItem('aldia_preferences', JSON.stringify(preferences));
         localStorage.setItem('aldia_dailyblocks', JSON.stringify(dailyBlocks));
+        localStorage.setItem('aldia_shopping_list', JSON.stringify(shoppingList));
         localStorage.setItem('aldia_rita_entries', JSON.stringify(ritaEntries));
         localStorage.setItem('aldia_negocio_projects', JSON.stringify(negocioProjects));
         localStorage.setItem('aldia_trash', JSON.stringify(trash));
@@ -438,7 +473,7 @@ export const useAlDiaState = () => {
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, preferences, dailyBlocks, ritaEntries, negocioProjects, trash]);
+    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, preferences, dailyBlocks, shoppingList, ritaEntries, negocioProjects, trash]);
 
     // 4. Migraciones y Lógica Derivada
     useEffect(() => {
@@ -477,27 +512,33 @@ export const useAlDiaState = () => {
                 { id: 7, name: '👤 Juanma', color: '#FF8E53' }
             ];
 
-            let projectsChanged = false;
-            const updatedProjects = [...projects];
+            // El sembrado es de una sola vez. Antes se ejecutaba en cada render y
+            // recreaba por nombre cualquier proyecto borrado: era imposible eliminar
+            // ninguno de los 7 por defecto, resucitaban solos.
+            if (!localStorage.getItem('has_seeded_projects')) {
+                const updatedProjects = [...projects];
+                let projectsChanged = false;
 
-            requiredProjects.forEach(rp => {
-                const searchName = rp.name.split(' ').slice(1).join(' ').toLowerCase();
-                const exists = projects.some(p => p.name.toLowerCase().includes(searchName));
-                if (!exists) {
-                    updatedProjects.push({
-                        id: rp.id,
-                        name: rp.name,
-                        color: rp.color,
-                        status: 'activo',
-                        checklist: [],
-                        inventoryItems: []
-                    } as any);
-                    projectsChanged = true;
+                requiredProjects.forEach(rp => {
+                    const searchName = rp.name.split(' ').slice(1).join(' ').toLowerCase();
+                    const exists = projects.some(p => p.name.toLowerCase().includes(searchName));
+                    if (!exists) {
+                        updatedProjects.push({
+                            id: rp.id,
+                            name: rp.name,
+                            color: rp.color,
+                            status: 'activo',
+                            checklist: [],
+                            inventoryItems: []
+                        } as any);
+                        projectsChanged = true;
+                    }
+                });
+
+                if (projectsChanged) {
+                    setProjects(updatedProjects);
                 }
-            });
-
-            if (projectsChanged) {
-                setProjects(updatedProjects);
+                localStorage.setItem('has_seeded_projects', 'true');
             }
 
             // Sembrar bloques si dailyBlocks está vacío
@@ -529,7 +570,7 @@ export const useAlDiaState = () => {
                     taskTemplates.forEach(t => {
                         if (t.repeatDays.includes(dayOfWeek)) {
                             seededBlocks.push({
-                                id: Date.now() + Math.random(),
+                                id: nextBlockId(),
                                 label: t.label,
                                 completed: false,
                                 period: t.period,
@@ -548,6 +589,78 @@ export const useAlDiaState = () => {
             }
         }
     }, [isInitialLoad, transactions.length, misionesState.length, accounts.length, projects.length, hasLoadedFromCloud, dailyBlocks.length]);
+
+    // Migración de una sola vez: IDs duplicados en dailyBlocks.
+    // addDailyBlock usaba Date.now() a secas, así que los bloques creados dentro de
+    // un mismo bucle (una semana entera, p.ej.) compartían id. Como toggleDailyBlock
+    // busca por id, marcar una tarea marcaba a todos sus gemelos, incluso de otros
+    // días y de otras tareas. Reasignamos ids únicos conservando todo lo demás.
+    useEffect(() => {
+        if (isInitialLoad || !hasLoadedFromCloud || dailyBlocks.length === 0) return;
+
+        const vistos = new Set<number>();
+        const hayDuplicados = dailyBlocks.some(b => {
+            if (vistos.has(b.id)) return true;
+            vistos.add(b.id);
+            return false;
+        });
+        if (!hayDuplicados) return;
+
+        // El contador arranca por encima de cualquier id existente para no chocar
+        // con los que se conservan.
+        let siguienteId = Math.max(Date.now(), ...dailyBlocks.map(b => Number(b.id) || 0));
+        const usados = new Set<number>();
+        let reasignados = 0;
+
+        const reparados = dailyBlocks.map(b => {
+            if (!usados.has(b.id)) {
+                usados.add(b.id);
+                return b;
+            }
+            siguienteId += 1;
+            usados.add(siguienteId);
+            reasignados += 1;
+            return { ...b, id: siguienteId };
+        });
+
+        localWriteTimestampRef.current = Date.now();
+        setDailyBlocks(reparados);
+        console.info(`[AlDía] Migración de IDs: ${reasignados} de ${dailyBlocks.length} bloques reasignados.`);
+    }, [isInitialLoad, hasLoadedFromCloud, dailyBlocks]);
+
+    // Limpieza de una sola vez: proyectos sembrados por defecto que nunca se usaron.
+    // El sembrado antiguo los recreaba en cada render, así que se acumularon duplicados
+    // (p. ej. "📸 ICONO Agency" junto al "Icono Growth" real del usuario).
+    // Triple condición para no borrar nada de valor: tiene que ser un id del sembrado,
+    // estar vacío, y no estar referenciado por ningún otro dato.
+    useEffect(() => {
+        if (isInitialLoad || !hasLoadedFromCloud || projects.length === 0) return;
+        if (localStorage.getItem('has_cleaned_seeded_projects')) return;
+
+        const IDS_SEMBRADOS = [1, 2, 3, 4, 5, 6, 7];
+
+        const estaEnUso = (id: number) =>
+            transactions.some(t => t.projectId === id) ||
+            dailyBlocks.some(b => b.projectId === id) ||
+            fixedExpenses.some(f => f.projectId === id) ||
+            misionesState.some(m => m.projectId === id) ||
+            accounts.some(a => (a.projectIds || []).includes(id)) ||
+            timeBlocks.some(t => t.projectId === id);
+
+        const estaVacio = (p: Project) =>
+            !p.checklist?.length && !p.objectives?.length && !p.inventoryItems?.length;
+
+        const aBorrar = projects.filter(p =>
+            IDS_SEMBRADOS.includes(p.id) && estaVacio(p) && !estaEnUso(p.id)
+        );
+
+        if (aBorrar.length) {
+            localWriteTimestampRef.current = Date.now();
+            setProjects(prev => prev.filter(p => !aBorrar.some(b => b.id === p.id)));
+            console.info(`[AlDía] Limpieza: ${aBorrar.length} proyectos sembrados sin usar eliminados (${aBorrar.map(p => p.name).join(', ')}).`);
+        }
+        localStorage.setItem('has_cleaned_seeded_projects', 'true');
+    }, [isInitialLoad, hasLoadedFromCloud, projects, transactions, dailyBlocks, fixedExpenses, misionesState, accounts, timeBlocks]);
 
     const todayStr = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
     const todayIndex = useMemo(() => (new Date().getDay() + 6) % 7, []); // 0=Mon
@@ -601,7 +714,7 @@ export const useAlDiaState = () => {
 
     const addDailyBlock = (label: string, period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro', date: string, completed: boolean = false, projectId?: number, repeatDays?: number[]) => {
         const newBlock: DailyBlock = {
-            id: Date.now(),
+            id: nextBlockId(),
             label,
             completed,
             period,
@@ -653,6 +766,58 @@ export const useAlDiaState = () => {
 
     const updateDailyBlock = (id: number, updates: Partial<DailyBlock>) => {
         setDailyBlocks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+    };
+
+    /* ── Lista de compras ─────────────────────────────────────────── */
+
+    const addShoppingItem = (
+        text: string,
+        estimatedAmount: number,
+        priority: 'necesito' | 'quiero' = 'necesito',
+        projectId?: number,
+        note?: string
+    ) => {
+        const item: ShoppingItem = {
+            id: nextBlockId(),
+            text,
+            estimatedAmount: Math.abs(estimatedAmount) || 0,
+            priority,
+            createdAt: new Date().toLocaleDateString('en-CA'),
+            projectId,
+            note
+        };
+        setShoppingList(prev => [item, ...prev]);
+    };
+
+    const updateShoppingItem = (id: number, updates: Partial<ShoppingItem>) => {
+        setShoppingList(prev => prev.map(i => i.id === id ? { ...i, ...updates } : i));
+    };
+
+    const removeShoppingItem = (id: number) => {
+        setShoppingList(prev => prev.filter(i => i.id !== id));
+    };
+
+    // Marcar como comprado registra el gasto real de una vez, para no tener que
+    // teclear la misma compra dos veces. El importe final puede diferir del estimado.
+    const markShoppingItemPurchased = (id: number, finalAmount?: number, accountId?: number) => {
+        const item = shoppingList.find(i => i.id === id);
+        if (!item || item.purchasedAt) return;
+
+        const amount = finalAmount !== undefined ? Math.abs(finalAmount) : item.estimatedAmount;
+        addTransaction(item.text, amount, 'gasto', false, item.projectId, accountId, false, 'Compras', undefined);
+        setShoppingList(prev => prev.map(i =>
+            i.id === id
+                ? { ...i, purchasedAt: new Date().toLocaleDateString('en-CA'), estimatedAmount: amount }
+                : i
+        ));
+    };
+
+    const unmarkShoppingItemPurchased = (id: number) => {
+        setShoppingList(prev => prev.map(i => {
+            if (i.id !== id) return i;
+            const { purchasedAt, ...rest } = i;
+            return rest as ShoppingItem;
+        }));
     };
 
     // Helper: marca escritura local antes de cualquier mutación.
@@ -713,6 +878,12 @@ export const useAlDiaState = () => {
         preferences, updatePreference: lw((key: keyof UserPreferences, value: any) => setPreferences(prev => ({ ...prev, [key]: value }))),
         // Bloques Diarios
         dailyBlocks, addDailyBlock: lw(addDailyBlock), toggleDailyBlock: lw(toggleDailyBlock), removeDailyBlock: lw(removeDailyBlock), updateDailyBlock: lw(updateDailyBlock),
+        // Lista de compras
+        shoppingList,
+        addShoppingItem: lw(addShoppingItem), updateShoppingItem: lw(updateShoppingItem),
+        removeShoppingItem: lw(removeShoppingItem),
+        markShoppingItemPurchased: lw(markShoppingItemPurchased),
+        unmarkShoppingItemPurchased: lw(unmarkShoppingItemPurchased),
         trash, restoreFromTrash: lw(restoreFromTrash), clearTrash: lw(clearTrash),
         // Hoja de Rita
         ritaEntries,

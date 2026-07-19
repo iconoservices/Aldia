@@ -74,6 +74,31 @@ const LABEL: React.CSSProperties = {
     letterSpacing: "0.06em",
 };
 
+/* ─── Tokens compartidos con PlanDashboard ──────────────────────── */
+const C = {
+    primary:            "#944a18",
+    surfaceLowest:      "#ffffff",
+    surfaceContainerLow:"#f3f4f5",
+    onSurface:          "#191c1d",
+    onSurfaceVariant:   "#54433a",
+    outline:            "#877369",
+    outlineVariant:     "#dac2b6",
+    verde:              "#10B981",
+    rojo:               "#EF4444",
+};
+
+// Las tres lecturas de las mismas finanzas. No son lo mismo:
+//   real       → lo que ya pasó
+//   proyeccion → lo que debería pasar si todo va como siempre
+//   simulador  → "¿y si...?", con los toggles de incluir/excluir
+type VistaFinanzas = "real" | "proyeccion" | "simulador";
+
+const VISTAS: { id: VistaFinanzas; label: string; sub: string }[] = [
+    { id: "real",       label: "Real",       sub: "Lo que ya pasó" },
+    { id: "proyeccion", label: "Proyección", sub: "Lo que debería pasar" },
+    { id: "simulador",  label: "Simulador",  sub: "¿Qué pasaría si...?" },
+];
+
 const CircleCheckbox = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
     <div
         onClick={(e) => { e.stopPropagation(); onChange(); }}
@@ -374,6 +399,12 @@ export const FinanzasDashboard = ({
     }, [topPeriod]);
 
     // ── UI state ──────────────────────────────────────────────────────────
+    // La vista activa decide cuál de las tres lecturas se muestra.
+    // "Ver todo" las abre las tres juntas para poder compararlas.
+    const [vista, setVista] = useState<VistaFinanzas>("real");
+    const [verTodo, setVerTodo] = useState(false);
+    // El alta de movimiento se dispara desde el botón de la cabecera.
+    const [showTxForm, setShowTxForm] = useState(false);
     const [isAccountsVisible, setIsAccountsVisible] = useState(false);
     const [selectedProject, setSelectedProject] = useState<any>(null);
     const [showAnalytics, setShowAnalytics] = useState(false);
@@ -435,204 +466,367 @@ export const FinanzasDashboard = ({
     }, [transactions, chartPeriod]);
 
     // ─────────────────────────────────────────────────────────────────────
+    /* ── Las tres lecturas, como variables para poder reutilizarlas ── */
+    const bloqueReal = (
+                <div style={{ ...CARD, borderLeft: "4px solid #059669" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", flexWrap: "wrap", gap: "8px" }}>
+                        <span style={LABEL}>Situación Financiera Real</span>
+                        <TrendingUp size={16} color="#059669" />
+                    </div>
+                    <span style={{ fontSize: "0.65rem", color: "#94A3B8", marginBottom: "0.8rem", display: "block" }}>Ingresos y gastos reales + deudas y patrimonio — lo que ya pasó</span>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
+                        {[
+                            { label: topPeriodDetails.label, val: topIncome, color: "#10B981", sub: topPeriodDetails.sub },
+                            { label: "Fijo", val: fixedIncomeActual, color: "#10B981", sub: "Activos recibidos" },
+                            { label: "Variable", val: variableIncomeActual, color: "#10B981", sub: "Ingresos directos" },
+                            { label: topPeriodDetails.labelExp, val: topExpense, color: "#EF4444", sub: topPeriodDetails.subExp },
+                            { label: "Fijo", val: fixedExpenseActual, color: "#EF4444", sub: "Gastos activos" },
+                            { label: "Variable", val: variableExpenseActual, color: "#EF4444", sub: "Gastos directos" },
+                            { label: "Balance Neto", val: topIncome - topExpense, color: (topIncome - topExpense) >= 0 ? "#10B981" : "#EF4444", sub: "Ingresos - Gastos" },
+                            { label: "Debo", val: realOwe, color: "#EF4444", sub: realOwe > 0 ? "Deudas pendientes" : "Sin deudas" },
+                            { label: "Me Deben", val: realOwed, color: "#10B981", sub: realOwed > 0 ? "Por cobrar" : "Sin cobros" },
+                            { label: "Deuda Neta", val: realOwed - realOwe, color: (realOwed - realOwe) >= 0 ? "#10B981" : "#EF4444", sub: "Me deben - Debo" },
+                            { label: "Patrimonio Neto", val: periodBalance - realOwe + realOwed, color: (periodBalance - realOwe + realOwed) >= 0 ? "var(--domain-blue)" : "#EF4444", sub: "Balance Neto + Deuda Neta" },
+                        ].map((item, i) => (
+                            <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? "1px solid #E2E8F0" : "none" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
+                                    <span style={{ ...LABEL }}>{item.label}</span>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "baseline", gap: "1px", color: item.color }}>
+                                    <span style={{ fontSize: "0.8rem", fontWeight: 800 }}>S/ </span>
+                                    <span style={{ fontSize: "1.25rem", fontWeight: 900, lineHeight: 1 }}>{item.val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                </div>
+                                <span style={{ fontSize: "0.58rem", color: "#94A3B8", marginTop: "2px" }}>{item.sub}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+    );
+
+    const bloqueProyeccion = (
+                <div style={{ ...CARD, borderLeft: "4px solid #F59E0B", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", flexWrap: "wrap", gap: "8px" }}>
+                        <span style={LABEL}>Proyección Financiera</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <PillToggle
+                                options={["day", "week", "month", "year", "all"]}
+                                labels={["Día", "Sem.", "Mes", "Año", "Todo"]}
+                                value={topPeriod}
+                                onChange={v => setTopPeriod(v as any)}
+                            />
+                            <TrendingUp size={16} color="#10B981" style={{ marginLeft: "4px" }} />
+                        </div>
+                    </div>
+                    <span style={{ fontSize: "0.65rem", color: "#94A3B8", marginBottom: "0.8rem", display: "block" }}>Ingresos/gastos fijos proyectados + variables reales — lo que debería pasar</span>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
+                        {[
+                            { label: "Ingresos Proy.", val: projectedIncomeTotal, color: "#10B981", sub: "Fijos + Variables" },
+                            { label: "Fijo", val: fixedIncomeTotal * periodMultiplier, color: "#10B981", sub: "Activos proyectados" },
+                            { label: "Variable", val: variableIncomeActual, color: "#10B981", sub: "Ingresos directos" },
+                            { label: "Gastos Proy.", val: projectedExpenseTotal, color: "#EF4444", sub: "Fijos + Variables" },
+                            { label: "Fijo", val: fixedExpenseProyectado, color: "#EF4444", sub: "Gastos activos" },
+                            { label: "Variable", val: variableExpenseActual, color: "#EF4444", sub: "Gastos directos" },
+                            { 
+                                label: "Debo", 
+                                val: activeOweTotal, 
+                                color: includeDebts ? "#EF4444" : "#94A3B8", 
+                                sub: includeDebts ? "Debo (incluido)" : "Debo (excluido)", 
+                                checked: includeDebts,
+                                onToggle: () => setIncludeDebts(v => !v),
+                                opacity: includeDebts ? 1 : 0.65 
+                            },
+                            { 
+                                label: "Me Deben", 
+                                val: activeOwedTotal, 
+                                color: includeOwed ? "#10B981" : "#94A3B8", 
+                                sub: includeOwed ? "Cobros incluidos" : "Cobros excluidos",
+                                checked: includeOwed,
+                                onToggle: () => setIncludeOwed(v => !v),
+                                opacity: includeOwed ? 1 : 0.65
+                            },
+                            { 
+                                label: "Balance Neto Proyectado", 
+                                val: projectedSavings, 
+                                color: projectedSavings >= 0 ? "var(--domain-blue)" : "#EF4444", 
+                                sub: projectedPeriodLabel 
+                            },
+                        ].map((item, i) => (
+                            <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? "1px solid #E2E8F0" : "none", opacity: item.opacity ?? 1, transition: "opacity 0.2s" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
+                                    {item.onToggle && (
+                                        <CircleCheckbox checked={item.checked ?? false} onChange={item.onToggle} />
+                                    )}
+                                    <span style={{ ...LABEL }}>{item.label}</span>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "baseline", gap: "1px", color: item.color }}>
+                                    <span style={{ fontSize: "0.8rem", fontWeight: 800 }}>S/ </span>
+                                    <span style={{ fontSize: "1.25rem", fontWeight: 900, lineHeight: 1 }}>{item.val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                </div>
+                                <span style={{ fontSize: "0.58rem", color: "#94A3B8", marginTop: "2px" }}>{item.sub}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+    );
+
+    const bloqueSimulador = (
+                <div style={{ ...CARD, borderLeft: "4px solid #8B5CF6", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", flexWrap: "wrap", gap: "8px" }}>
+                        <span style={LABEL}>Ejecución y Proyección Ajustada</span>
+                        <TrendingUp size={16} color="#8B5CF6" style={{ marginLeft: "4px" }} />
+                    </div>
+                    <span style={{ fontSize: "0.65rem", color: "#94A3B8", marginBottom: "0.8rem", display: "block" }}>Mix ajustable con toggles — incluí/excluí fijos, deudas y cobros</span>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
+                        {[
+                            { label: topPeriodDetails.label, val: topIncome, color: "#10B981", sub: topPeriodDetails.sub },
+                            { label: topPeriodDetails.labelExp, val: topExpense, color: "#EF4444", sub: topPeriodDetails.subExp },
+                            {
+                                label: "Saldo Actual",
+                                val: periodBalance,
+                                color: includeBalance ? "#10B981" : "#94A3B8",
+                                sub: includeBalance ? "Disponible" : "Excluido",
+                                checked: includeBalance,
+                                onToggle: () => setIncludeBalance(v => !v),
+                                opacity: includeBalance ? 1 : 0.65
+                            },
+                            {
+                                label: "Ingreso Fijo",
+                                val: projectedIncomeVal,
+                                color: (fixedIncomeTotal > 0) ? (includeSalary ? "#10B981" : "#94A3B8") : "#94A3B8",
+                                sub: fixedIncomeTotal > 0 
+                                    ? (includeSalary 
+                                        ? (topPeriod === "month" || topPeriod === "all"
+                                            ? `Pendiente: S/ ${projectedIncomeVal.toFixed(0)} / Total: S/ ${fixedIncomeTotal.toFixed(0)}`
+                                            : "Fijos proyectados")
+                                        : "Fijos excluidos") 
+                                    : "Sin ingresos fijos",
+                                checked: fixedIncomeTotal > 0 ? includeSalary : false,
+                                onToggle: fixedIncomeTotal > 0 ? (() => setIncludeSalary(v => !v)) : undefined,
+                                opacity: fixedIncomeTotal === 0 ? 0.5 : (includeSalary ? 1 : 0.65)
+                            },
+                            {
+                                label: "Ingresos Proy.",
+                                val: periodBalance + (includeSalary ? projectedIncomeVal : 0),
+                                color: (periodBalance + (includeSalary ? projectedIncomeVal : 0)) >= 0 ? "#10B981" : "#EF4444",
+                                sub: "Neto + proyectado"
+                            },
+                            { 
+                                label: "Gastos Fijos", 
+                                val: projectedFixedVal, 
+                                color: includeFixed ? "#EF4444" : "#94A3B8", 
+                                sub: includeFixed 
+                                    ? (topPeriod === "month" || topPeriod === "all" 
+                                        ? `Pendiente: S/ ${projectedFixedVal.toFixed(0)} / Total: S/ ${monthlyFixedTotal.toFixed(0)}`
+                                        : "Fijos proyectados")
+                                    : "Fijos excluidos",
+                                checked: includeFixed,
+                                onToggle: () => setIncludeFixed(v => !v),
+                                opacity: includeFixed ? 1 : 0.65
+                            },
+                            { 
+                                label: "Debo", 
+                                val: activeOweTotal, 
+                                color: includeDebts ? "#EF4444" : "#94A3B8", 
+                                sub: includeDebts ? "Debo (incluido)" : "Debo (excluido)", 
+                                checked: includeDebts,
+                                onToggle: () => setIncludeDebts(v => !v),
+                                opacity: includeDebts ? 1 : 0.65 
+                            },
+                            { 
+                                label: "Me Deben", 
+                                val: activeOwedTotal, 
+                                color: includeOwed ? "#10B981" : "#94A3B8", 
+                                sub: includeOwed ? "Cobros incluidos" : "Cobros excluidos",
+                                checked: includeOwed,
+                                onToggle: () => setIncludeOwed(v => !v),
+                                opacity: includeOwed ? 1 : 0.65
+                            },
+                            { 
+                                label: "Balance Neto Proyectado", 
+                                val: adjustedSavings, 
+                                color: adjustedSavings >= 0 ? "var(--domain-blue)" : "#EF4444", 
+                                sub: projectedPeriodLabel 
+                            },
+                        ].map((item, i) => (
+                            <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? "1px solid #E2E8F0" : "none", opacity: item.opacity ?? 1, transition: "opacity 0.2s" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
+                                    {item.onToggle && (
+                                        <CircleCheckbox checked={item.checked ?? false} onChange={item.onToggle} />
+                                    )}
+                                    <span style={{ ...LABEL }}>{item.label}</span>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "baseline", gap: "1px", color: item.color }}>
+                                    <span style={{ fontSize: "0.8rem", fontWeight: 800 }}>S/ </span>
+                                    <span style={{ fontSize: "1.25rem", fontWeight: 900, lineHeight: 1 }}>{item.val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                </div>
+                                <span style={{ fontSize: "0.58rem", color: "#94A3B8", marginTop: "2px" }}>{item.sub}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+    );
+
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", paddingBottom: "5rem", color: "var(--text-carbon)" }}>
 
-            {/* ── Row 1: Situación Financiera Real ─── */}
-            <div style={{ ...CARD, borderLeft: "4px solid #059669" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", flexWrap: "wrap", gap: "8px" }}>
-                    <span style={LABEL}>Situación Financiera Real</span>
-                    <TrendingUp size={16} color="#059669" />
+            {/* ── Cabecera: título, vista, periodo y acción ─── */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem" }}>
+                <div>
+                    <h2 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700, color: C.onSurface, letterSpacing: "-0.01em" }}>
+                        Finanzas
+                    </h2>
+                    <p style={{ margin: "2px 0 0", fontSize: "0.85rem", color: C.onSurfaceVariant, textTransform: "capitalize" }}>
+                        {VISTAS.find(v => v.id === vista)?.sub} · {periodLabel(topPeriod, new Date())}
+                    </p>
                 </div>
-                <span style={{ fontSize: "0.65rem", color: "#94A3B8", marginBottom: "0.8rem", display: "block" }}>Ingresos y gastos reales + deudas y patrimonio — lo que ya pasó</span>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
-                    {[
-                        { label: topPeriodDetails.label, val: topIncome, color: "#10B981", sub: topPeriodDetails.sub },
-                        { label: "Fijo", val: fixedIncomeActual, color: "#10B981", sub: "Activos recibidos" },
-                        { label: "Variable", val: variableIncomeActual, color: "#10B981", sub: "Ingresos directos" },
-                        { label: topPeriodDetails.labelExp, val: topExpense, color: "#EF4444", sub: topPeriodDetails.subExp },
-                        { label: "Fijo", val: fixedExpenseActual, color: "#EF4444", sub: "Gastos activos" },
-                        { label: "Variable", val: variableExpenseActual, color: "#EF4444", sub: "Gastos directos" },
-                        { label: "Balance Neto", val: topIncome - topExpense, color: (topIncome - topExpense) >= 0 ? "#10B981" : "#EF4444", sub: "Ingresos - Gastos" },
-                        { label: "Debo", val: realOwe, color: "#EF4444", sub: realOwe > 0 ? "Deudas pendientes" : "Sin deudas" },
-                        { label: "Me Deben", val: realOwed, color: "#10B981", sub: realOwed > 0 ? "Por cobrar" : "Sin cobros" },
-                        { label: "Deuda Neta", val: realOwed - realOwe, color: (realOwed - realOwe) >= 0 ? "#10B981" : "#EF4444", sub: "Me deben - Debo" },
-                        { label: "Patrimonio Neto", val: periodBalance - realOwe + realOwed, color: (periodBalance - realOwe + realOwed) >= 0 ? "var(--domain-blue)" : "#EF4444", sub: "Balance Neto + Deuda Neta" },
-                    ].map((item, i) => (
-                        <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? "1px solid #E2E8F0" : "none" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
-                                <span style={{ ...LABEL }}>{item.label}</span>
-                            </div>
-                            <div style={{ display: "flex", alignItems: "baseline", gap: "1px", color: item.color }}>
-                                <span style={{ fontSize: "0.8rem", fontWeight: 800 }}>S/ </span>
-                                <span style={{ fontSize: "1.25rem", fontWeight: 900, lineHeight: 1 }}>{item.val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                            </div>
-                            <span style={{ fontSize: "0.58rem", color: "#94A3B8", marginTop: "2px" }}>{item.sub}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
 
-            {/* ── Row 2: Proyección Financiera ─── */}
-            <div style={{ ...CARD, borderLeft: "4px solid #F59E0B", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", flexWrap: "wrap", gap: "8px" }}>
-                    <span style={LABEL}>Proyección Financiera</span>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <PillToggle
-                            options={["day", "week", "month", "year", "all"]}
-                            labels={["Día", "Sem.", "Mes", "Año", "Todo"]}
-                            value={topPeriod}
-                            onChange={v => setTopPeriod(v as any)}
-                        />
-                        <TrendingUp size={16} color="#10B981" style={{ marginLeft: "4px" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", background: C.surfaceContainerLow, borderRadius: "999px", padding: "3px", border: `1px solid ${C.outlineVariant}` }}>
+                        {(["day", "week", "month", "year", "all"] as PeriodMode[]).map(mode => {
+                            const etiquetas: Record<PeriodMode, string> = { day: "Día", week: "Sem", month: "Mes", year: "Año", all: "Todo" };
+                            const activo = topPeriod === mode;
+                            return (
+                                <button
+                                    key={mode}
+                                    onClick={() => setTopPeriod(mode)}
+                                    style={{
+                                        border: "none", borderRadius: "999px", cursor: "pointer",
+                                        padding: "5px 13px", fontSize: "0.75rem", fontWeight: 700,
+                                        fontFamily: "inherit", transition: "all 0.15s",
+                                        background: activo ? C.primary : "transparent",
+                                        color: activo ? "#fff" : C.onSurfaceVariant,
+                                    }}
+                                >
+                                    {etiquetas[mode]}
+                                </button>
+                            );
+                        })}
                     </div>
-                </div>
-                <span style={{ fontSize: "0.65rem", color: "#94A3B8", marginBottom: "0.8rem", display: "block" }}>Ingresos/gastos fijos proyectados + variables reales — lo que debería pasar</span>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
-                    {[
-                        { label: "Ingresos Proy.", val: projectedIncomeTotal, color: "#10B981", sub: "Fijos + Variables" },
-                        { label: "Fijo", val: fixedIncomeTotal * periodMultiplier, color: "#10B981", sub: "Activos proyectados" },
-                        { label: "Variable", val: variableIncomeActual, color: "#10B981", sub: "Ingresos directos" },
-                        { label: "Gastos Proy.", val: projectedExpenseTotal, color: "#EF4444", sub: "Fijos + Variables" },
-                        { label: "Fijo", val: fixedExpenseProyectado, color: "#EF4444", sub: "Gastos activos" },
-                        { label: "Variable", val: variableExpenseActual, color: "#EF4444", sub: "Gastos directos" },
-                        { 
-                            label: "Debo", 
-                            val: activeOweTotal, 
-                            color: includeDebts ? "#EF4444" : "#94A3B8", 
-                            sub: includeDebts ? "Debo (incluido)" : "Debo (excluido)", 
-                            checked: includeDebts,
-                            onToggle: () => setIncludeDebts(v => !v),
-                            opacity: includeDebts ? 1 : 0.65 
-                        },
-                        { 
-                            label: "Me Deben", 
-                            val: activeOwedTotal, 
-                            color: includeOwed ? "#10B981" : "#94A3B8", 
-                            sub: includeOwed ? "Cobros incluidos" : "Cobros excluidos",
-                            checked: includeOwed,
-                            onToggle: () => setIncludeOwed(v => !v),
-                            opacity: includeOwed ? 1 : 0.65
-                        },
-                        { 
-                            label: "Balance Neto Proyectado", 
-                            val: projectedSavings, 
-                            color: projectedSavings >= 0 ? "var(--domain-blue)" : "#EF4444", 
-                            sub: projectedPeriodLabel 
-                        },
-                    ].map((item, i) => (
-                        <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? "1px solid #E2E8F0" : "none", opacity: item.opacity ?? 1, transition: "opacity 0.2s" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
-                                {item.onToggle && (
-                                    <CircleCheckbox checked={item.checked ?? false} onChange={item.onToggle} />
-                                )}
-                                <span style={{ ...LABEL }}>{item.label}</span>
-                            </div>
-                            <div style={{ display: "flex", alignItems: "baseline", gap: "1px", color: item.color }}>
-                                <span style={{ fontSize: "0.8rem", fontWeight: 800 }}>S/ </span>
-                                <span style={{ fontSize: "1.25rem", fontWeight: 900, lineHeight: 1 }}>{item.val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                            </div>
-                            <span style={{ fontSize: "0.58rem", color: "#94A3B8", marginTop: "2px" }}>{item.sub}</span>
-                        </div>
-                    ))}
+
+                    <button
+                        onClick={() => setShowTxForm(v => !v)}
+                        style={{
+                            display: "flex", alignItems: "center", gap: "7px",
+                            background: C.primary, color: "#fff", border: "none",
+                            borderRadius: "999px", padding: "9px 18px", cursor: "pointer",
+                            fontWeight: 700, fontSize: "0.85rem", fontFamily: "inherit",
+                            boxShadow: "0 4px 14px rgba(148,74,24,0.25)",
+                        }}
+                    >
+                        <Plus size={16} /> Registrar
+                    </button>
                 </div>
             </div>
 
-            {/* ── Row 3: Ejecución y Proyección Ajustada ─── */}
-            <div style={{ ...CARD, borderLeft: "4px solid #8B5CF6", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", flexWrap: "wrap", gap: "8px" }}>
-                    <span style={LABEL}>Ejecución y Proyección Ajustada</span>
-                    <TrendingUp size={16} color="#8B5CF6" style={{ marginLeft: "4px" }} />
+            {/* Formulario de alta, desplegado desde el botón de arriba */}
+            <AnimatePresence>
+                {showTxForm && (
+                    <QuickTransactionForm
+                        addTransaction={addTransaction}
+                        accounts={accounts}
+                        open={showTxForm}
+                        setOpen={setShowTxForm}
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* ── Selector de vista + Ver todo ─── */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                    {VISTAS.map(v => {
+                        const activo = vista === v.id;
+                        return (
+                            <button
+                                key={v.id}
+                                onClick={() => setVista(v.id)}
+                                title={v.sub}
+                                style={{
+                                    border: activo ? "none" : `1px solid ${C.outlineVariant}`,
+                                    borderRadius: "10px", cursor: "pointer",
+                                    padding: "8px 16px", fontSize: "0.82rem", fontWeight: 700,
+                                    fontFamily: "inherit", transition: "all 0.15s",
+                                    background: activo ? C.primary : C.surfaceLowest,
+                                    color: activo ? "#fff" : C.onSurfaceVariant,
+                                }}
+                            >
+                                {v.label}
+                            </button>
+                        );
+                    })}
                 </div>
-                <span style={{ fontSize: "0.65rem", color: "#94A3B8", marginBottom: "0.8rem", display: "block" }}>Mix ajustable con toggles — incluí/excluí fijos, deudas y cobros</span>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
-                    {[
-                        { label: topPeriodDetails.label, val: topIncome, color: "#10B981", sub: topPeriodDetails.sub },
-                        { label: topPeriodDetails.labelExp, val: topExpense, color: "#EF4444", sub: topPeriodDetails.subExp },
-                        {
-                            label: "Saldo Actual",
-                            val: periodBalance,
-                            color: includeBalance ? "#10B981" : "#94A3B8",
-                            sub: includeBalance ? "Disponible" : "Excluido",
-                            checked: includeBalance,
-                            onToggle: () => setIncludeBalance(v => !v),
-                            opacity: includeBalance ? 1 : 0.65
-                        },
-                        {
-                            label: "Ingreso Fijo",
-                            val: projectedIncomeVal,
-                            color: (fixedIncomeTotal > 0) ? (includeSalary ? "#10B981" : "#94A3B8") : "#94A3B8",
-                            sub: fixedIncomeTotal > 0 
-                                ? (includeSalary 
-                                    ? (topPeriod === "month" || topPeriod === "all"
-                                        ? `Pendiente: S/ ${projectedIncomeVal.toFixed(0)} / Total: S/ ${fixedIncomeTotal.toFixed(0)}`
-                                        : "Fijos proyectados")
-                                    : "Fijos excluidos") 
-                                : "Sin ingresos fijos",
-                            checked: fixedIncomeTotal > 0 ? includeSalary : false,
-                            onToggle: fixedIncomeTotal > 0 ? (() => setIncludeSalary(v => !v)) : undefined,
-                            opacity: fixedIncomeTotal === 0 ? 0.5 : (includeSalary ? 1 : 0.65)
-                        },
-                        {
-                            label: "Ingresos Proy.",
-                            val: periodBalance + (includeSalary ? projectedIncomeVal : 0),
-                            color: (periodBalance + (includeSalary ? projectedIncomeVal : 0)) >= 0 ? "#10B981" : "#EF4444",
-                            sub: "Neto + proyectado"
-                        },
-                        { 
-                            label: "Gastos Fijos", 
-                            val: projectedFixedVal, 
-                            color: includeFixed ? "#EF4444" : "#94A3B8", 
-                            sub: includeFixed 
-                                ? (topPeriod === "month" || topPeriod === "all" 
-                                    ? `Pendiente: S/ ${projectedFixedVal.toFixed(0)} / Total: S/ ${monthlyFixedTotal.toFixed(0)}`
-                                    : "Fijos proyectados")
-                                : "Fijos excluidos",
-                            checked: includeFixed,
-                            onToggle: () => setIncludeFixed(v => !v),
-                            opacity: includeFixed ? 1 : 0.65
-                        },
-                        { 
-                            label: "Debo", 
-                            val: activeOweTotal, 
-                            color: includeDebts ? "#EF4444" : "#94A3B8", 
-                            sub: includeDebts ? "Debo (incluido)" : "Debo (excluido)", 
-                            checked: includeDebts,
-                            onToggle: () => setIncludeDebts(v => !v),
-                            opacity: includeDebts ? 1 : 0.65 
-                        },
-                        { 
-                            label: "Me Deben", 
-                            val: activeOwedTotal, 
-                            color: includeOwed ? "#10B981" : "#94A3B8", 
-                            sub: includeOwed ? "Cobros incluidos" : "Cobros excluidos",
-                            checked: includeOwed,
-                            onToggle: () => setIncludeOwed(v => !v),
-                            opacity: includeOwed ? 1 : 0.65
-                        },
-                        { 
-                            label: "Balance Neto Proyectado", 
-                            val: adjustedSavings, 
-                            color: adjustedSavings >= 0 ? "var(--domain-blue)" : "#EF4444", 
-                            sub: projectedPeriodLabel 
-                        },
-                    ].map((item, i) => (
-                        <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? "1px solid #E2E8F0" : "none", opacity: item.opacity ?? 1, transition: "opacity 0.2s" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
-                                {item.onToggle && (
-                                    <CircleCheckbox checked={item.checked ?? false} onChange={item.onToggle} />
-                                )}
-                                <span style={{ ...LABEL }}>{item.label}</span>
-                            </div>
-                            <div style={{ display: "flex", alignItems: "baseline", gap: "1px", color: item.color }}>
-                                <span style={{ fontSize: "0.8rem", fontWeight: 800 }}>S/ </span>
-                                <span style={{ fontSize: "1.25rem", fontWeight: 900, lineHeight: 1 }}>{item.val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                            </div>
-                            <span style={{ fontSize: "0.58rem", color: "#94A3B8", marginTop: "2px" }}>{item.sub}</span>
-                        </div>
-                    ))}
-                </div>
+
+                <button
+                    onClick={() => setVerTodo(true)}
+                    style={{
+                        display: "flex", alignItems: "center", gap: "6px",
+                        background: "transparent", border: `1px solid ${C.outlineVariant}`,
+                        borderRadius: "10px", padding: "8px 14px", cursor: "pointer",
+                        fontSize: "0.78rem", fontWeight: 700, color: C.primary, fontFamily: "inherit",
+                    }}
+                >
+                    <BarChart3 size={14} /> Ver todo junto
+                </button>
             </div>
+
+            {/* ── La vista activa ─── */}
+            {vista === "real" && bloqueReal}
+            {vista === "proyeccion" && bloqueProyeccion}
+            {vista === "simulador" && bloqueSimulador}
+
+            {/* ── Ver todo: las tres a pantalla completa ─── */}
+            <AnimatePresence>
+                {verTodo && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setVerTodo(false)}
+                        style={{
+                            position: "fixed", inset: 0, zIndex: 9998,
+                            background: "rgba(0,0,0,0.45)", backdropFilter: "blur(3px)",
+                            overflowY: "auto", padding: "2rem 1rem",
+                        }}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 12 }}
+                            onClick={e => e.stopPropagation()}
+                            style={{
+                                maxWidth: "1100px", margin: "0 auto",
+                                background: "#F8F9FA", borderRadius: "20px", padding: "1.5rem",
+                                display: "flex", flexDirection: "column", gap: "1.25rem",
+                            }}
+                        >
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: C.onSurface }}>
+                                        Las tres vistas
+                                    </h3>
+                                    <p style={{ margin: "2px 0 0", fontSize: "0.8rem", color: C.onSurfaceVariant, textTransform: "capitalize" }}>
+                                        {periodLabel(topPeriod, new Date())}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setVerTodo(false)}
+                                    style={{
+                                        background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`,
+                                        borderRadius: "10px", padding: "8px 12px", cursor: "pointer",
+                                        display: "flex", alignItems: "center", gap: "6px",
+                                        fontSize: "0.8rem", fontWeight: 700, color: C.onSurfaceVariant, fontFamily: "inherit",
+                                    }}
+                                >
+                                    <X size={15} /> Cerrar
+                                </button>
+                            </div>
+
+                            {bloqueReal}
+                            {bloqueProyeccion}
+                            {bloqueSimulador}
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* ── Row 4: Ingresos Fijos + Gastos Fijos ─── */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem" }}>
@@ -1133,8 +1327,13 @@ const NewFixedExpenseForm = ({ addFixedExpense, projects }: any) => {
 };
 
 // ─── Quick transaction form ───────────────────────────────────────────────────
-const QuickTransactionForm = ({ addTransaction, accounts }: any) => {
-    const [open, setOpen] = useState(false);
+// Acepta control externo (open/setOpen) para abrirse desde la cabecera;
+// sin esas props se gestiona solo y muestra su propio botón.
+const QuickTransactionForm = ({ addTransaction, accounts, open: openProp, setOpen: setOpenProp }: any) => {
+    const [openLocal, setOpenLocal] = useState(false);
+    const controlado = openProp !== undefined;
+    const open = controlado ? openProp : openLocal;
+    const setOpen = controlado ? setOpenProp : setOpenLocal;
     const [text, setText] = useState("");
     const [amount, setAmount] = useState("");
     const [type, setType] = useState<"ingreso" | "gasto">("gasto");
@@ -1149,7 +1348,8 @@ const QuickTransactionForm = ({ addTransaction, accounts }: any) => {
         }
     };
 
-    if (!open) return (
+    // En modo controlado el botón vive en la cabecera, así que aquí no se pinta.
+    if (!open) return controlado ? null : (
         <button onClick={() => setOpen(true)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "var(--domain-blue)", border: "none", borderRadius: "14px", padding: "13px", cursor: "pointer", color: "white", fontWeight: 800, fontSize: "0.88rem", boxShadow: "0 4px 14px rgba(0,85,255,0.22)" }}>
             <Plus size={17} /> Registrar Movimiento
         </button>

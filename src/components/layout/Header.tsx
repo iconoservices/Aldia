@@ -36,14 +36,16 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     // ── Primary sidebar items ─────────────────────────────────────────
     const PRIMARY_ITEMS = [
         { label: 'Checklist', tab: 'Checklist', icon: 'task_alt' },
-        { label: 'Bloques', tab: 'Bloques',   icon: 'history_edu'    },
         { label: 'Finanzas',  tab: 'Finanzas',  icon: 'payments'      },
+        { label: 'Plan',      tab: 'Plan',      icon: 'savings'       },
+        { label: 'Bloques', tab: 'Bloques',   icon: 'history_edu'    },
         { label: 'Deudas',     tab: 'Deudas',     icon: 'receipt_long'  },
         { label: 'Ajustes',  tab: '__profile', icon: 'settings'       },
     ];
 
     // ── Secondary / all other tools ────────────────────────────────────
     const SECONDARY_ITEMS = [
+        { label: 'Buscador',   tab: 'Buscador',   icon: 'travel_explore' },
         { label: 'Acción',     tab: 'Acción',     icon: 'bolt'          },
         { label: 'Base de Datos', tab: 'Base de Datos', icon: 'database' },
         { label: 'Proyección',   tab: 'Proyección',  icon: 'trending_up' },
@@ -122,6 +124,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     const getViewTitle = (tab: string) => {
         switch (tab) {
             case 'Checklist': return 'Checklist Diario';
+            case 'Plan': return 'Plan del Mes';
             case 'Bloques': return 'Registro Semanal';
             case 'Finanzas': return 'Finanzas';
             case 'Deudas': return 'Deudas y Cobros';
@@ -138,6 +141,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             case 'Lienzo Ops': return 'Lienzo de Operaciones';
             case 'Bienestar': return 'Bienestar';
             case 'Negocio': return 'Simulador de Negocio';
+            case 'Buscador': return 'Super Buscador Web';
             default: return tab;
         }
     };
@@ -274,20 +278,20 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     <span>Checklist</span>
                 </button>
 
-                <button 
-                    onClick={() => setActiveTab('Bloques')}
-                    className={`mobile-nav-btn ${activeTab === 'Bloques' ? 'active' : ''}`}
-                >
-                    <span className="material-symbols-outlined">calendar_view_week</span>
-                    <span>Bloques</span>
-                </button>
-
-                <button 
+                <button
                     onClick={() => setActiveTab('Finanzas')}
                     className={`mobile-nav-btn ${activeTab === 'Finanzas' ? 'active' : ''}`}
                 >
                     <span className="material-symbols-outlined">payments</span>
                     <span>Finanzas</span>
+                </button>
+
+                <button
+                    onClick={() => setActiveTab('Bloques')}
+                    className={`mobile-nav-btn ${activeTab === 'Bloques' ? 'active' : ''}`}
+                >
+                    <span className="material-symbols-outlined">calendar_view_week</span>
+                    <span>Bloques</span>
                 </button>
 
                 <button 

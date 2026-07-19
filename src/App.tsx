@@ -25,6 +25,7 @@ import type { Mission, Note } from './hooks/useAlDiaState';
 import { ProfileOverlay } from './components/layout/ProfileOverlay';
 import { BloquesDashboard } from './components/dashboard/BloquesDashboard';
 import { ChecklistDiario } from './components/dashboard/ChecklistDiario';
+import { PlanDashboard } from './components/dashboard/PlanDashboard';
 import { BaseDatosDashboard } from './components/dashboard/BaseDatosDashboard';
 import { ProyeccionOriginalDashboard } from './components/dashboard/ProyeccionOriginalDashboard';
 import { RitaDashboard } from './components/dashboard/RitaDashboard';
@@ -33,6 +34,7 @@ import { BienestarDashboard } from './components/dashboard/BienestarDashboard';
 import { DeudasyCobrosDashboard } from './components/dashboard/DeudasyCobrosDashboard';
 import { NegocioDashboard } from './components/dashboard/NegocioDashboard';
 import { NegocioLienzo } from './components/dashboard/NegocioLienzo';
+import { BuscadorDashboard } from './components/dashboard/BuscadorDashboard';
 
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -57,6 +59,7 @@ function App() {
     if (path.includes('/bienestar')) return 'Bienestar';
     if (path.includes('/negocio')) return 'Negocio';
     if (path.includes('/lienzo-ops')) return 'Lienzo Ops';
+    if (path.includes('/buscador')) return 'Buscador';
     return 'Checklist';
   });
 
@@ -76,6 +79,8 @@ function App() {
       path = '/negocio';
     } else if (activeTab === 'Lienzo Ops') {
       path = '/lienzo-ops';
+    } else if (activeTab === 'Buscador') {
+      path = '/buscador';
     }
     if (window.location.pathname !== path) {
       window.history.pushState(null, '', path);
@@ -105,6 +110,7 @@ function App() {
     else if (path.includes('/negocio')) setActiveTab('Negocio');
     else if (path.includes('/lienzo-ops')) setActiveTab('Lienzo Ops');
     else if (path.includes('/deudas')) setActiveTab('Deudas');
+    else if (path.includes('/buscador')) setActiveTab('Buscador');
       else setActiveTab('Checklist');
     };
     window.addEventListener('popstate', handlePopState);
@@ -258,7 +264,27 @@ function App() {
                 addDailyBlock={state.addDailyBlock}
                 toggleDailyBlock={state.toggleDailyBlock}
                 removeDailyBlock={state.removeDailyBlock}
+                updateDailyBlock={state.updateDailyBlock}
                 projects={state.projects}
+                addTransaction={state.addTransaction}
+                accounts={state.accounts}
+              />
+            ) : activeTab === 'Plan' ? (
+              <PlanDashboard
+                transactions={state.transactions}
+                fixedExpenses={state.fixedExpenses}
+                preferences={state.preferences}
+                projects={state.projects}
+                accounts={state.accounts}
+                shoppingList={state.shoppingList}
+                addShoppingItem={state.addShoppingItem}
+                removeShoppingItem={state.removeShoppingItem}
+                markShoppingItemPurchased={state.markShoppingItemPurchased}
+                unmarkShoppingItemPurchased={state.unmarkShoppingItemPurchased}
+                updateFixedExpense={state.updateFixedExpense}
+                markFixedExpensePaid={state.markFixedExpensePaid}
+                unmarkFixedExpensePaid={state.unmarkFixedExpensePaid}
+                addTransaction={state.addTransaction}
               />
             ) : activeTab === 'Ruta' ? (
               <RitaDashboard
@@ -375,6 +401,8 @@ function App() {
                 missionFocusScore={state.missionFocusScore}
                 completedMissionsCount={state.completedMissionsCount}
               />
+            ) : activeTab === 'Buscador' ? (
+              <BuscadorDashboard />
             ) : (
               <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>
                 <h2>Modo {activeTab} 🚧</h2>
