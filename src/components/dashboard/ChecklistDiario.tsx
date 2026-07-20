@@ -22,34 +22,12 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import type { DailyBlock } from '../../hooks/useAlDiaState';
 
-/* ─── Design Tokens ─────────────────────────────────────────── */
-const C = {
-    primary:            '#944a18',
-    primaryContainer:   '#ff9f66',
-    onPrimaryContainer: '#773401',
-    secondary:          '#4858ab',
-    surface:            '#f8f9fa',
-    surfaceContainer:   '#edeeef',
-    surfaceContainerLow:'#f3f4f5',
-    surfaceContainerHigh:'#e7e8e9',
-    surfaceContainerHighest:'#e1e3e4',
-    surfaceLowest:      '#ffffff',
-    onSurface:          '#191c1d',
-    onSurfaceVariant:   '#54433a',
-    outline:            '#877369',
-    outlineVariant:     '#dac2b6',
-};
+import { C, bento as bentoCard, PERIODOS as PERIOD_CFG, useIsMobile, TOQUE_MINIMO } from '../../theme';
+import { RegistroMovimiento } from '../features/RegistroMovimiento';
 
 /* ─── Period config ─────────────────────────────────────────── */
 type Period = 'Mañana' | 'Tarde' | 'Noche' | 'Otro';
 const PERIOD_ORDER: Period[] = ['Mañana', 'Tarde', 'Noche', 'Otro'];
-
-const PERIOD_CFG: Record<Period, { icon: string; label: string; color: string; bg: string }> = {
-    'Mañana': { icon: 'wb_sunny',   label: 'MAÑANA', color: '#E6A817', bg: 'rgba(230,168,23,0.12)'   },
-    'Tarde':  { icon: 'light_mode', label: 'TARDE',  color: '#E07040', bg: 'rgba(224,112,64,0.12)'   },
-    'Noche':  { icon: 'dark_mode',  label: 'NOCHE',  color: '#5C6BC0', bg: 'rgba(92,107,192,0.12)'   },
-    'Otro':   { icon: 'more_time',  label: 'OTRO',   color: '#877369', bg: 'rgba(135,115,105,0.1)'   },
-};
 
 type CategoryKey = 'Todas' | Period;
 const CATEGORIES: { key: CategoryKey; label: string; icon: string; color: string }[] = [
@@ -62,14 +40,8 @@ const CATEGORIES: { key: CategoryKey; label: string; icon: string; color: string
 
 type SortMode = 'cronologico' | 'proyecto';
 
-/* ─── bento card base style ─────────────────────────────────── */
-const bentoCard: React.CSSProperties = {
-    background: C.surfaceLowest,
-    borderRadius: '1rem',
-    border: `1px solid ${C.outlineVariant}`,
-    boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
-    transition: 'box-shadow 0.2s',
-};
+/* Igual que el bento compartido, con la transición que usan las tarjetas de tarea */
+const bentoTarea: React.CSSProperties = { ...bentoCard, transition: 'box-shadow 0.2s' };
 
 /* ─── Task key helper ───────────────────────────────────────── */
 const taskKey = (label: string, period: string) => `${label.toLowerCase()}||${period}`;
@@ -115,7 +87,7 @@ const TaskCard = ({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 style={{
-                    ...bentoCard,
+                    ...bentoTarea,
                     padding: '14px 16px',
                     display: 'flex', alignItems: 'center', gap: '10px',
                     background: isDone ? '#f3f4f5' : C.surfaceLowest,
@@ -252,20 +224,13 @@ export const ChecklistDiario = ({
     const [activeId,       setActiveId]        = useState<string | null>(null);
     const [quickAddText,   setQuickAddText]    = useState('');
     const [quickAddPeriod, setQuickAddPeriod]  = useState<Period>('Mañana');
-    const [isMobile, setIsMobile] = useState(false);
+    const isMobile = useIsMobile();
     const [showMobileAddForm, setShowMobileAddForm] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState<{ label: string; period: Period } | null>(null);
     const [editingTask, setEditingTask] = useState<{ label: string; period: Period } | null>(null);
     const [editText, setEditText] = useState('');
     const [openMenu, setOpenMenu] = useState<{ label: string; period: Period; anchor: HTMLElement | null } | null>(null);
     const [editingRepeat, setEditingRepeat] = useState<{ label: string; period: Period; repeatDays: number[] } | null>(null);
-
-    useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth <= 768);
-        handleResize();
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
 
     /* ── Load saved order from localStorage ── */
     useEffect(() => {
@@ -537,9 +502,9 @@ export const ChecklistDiario = ({
                     {/* Search */}
                     <div style={{
                         display: 'flex', alignItems: 'center', gap: '8px',
-                        background: C.surfaceContainerLow, padding: '6px 12px',
+                        background: C.surfaceContainerLow, padding: '0 14px',
                         borderRadius: '999px', border: `1px solid ${C.outlineVariant}`,
-                        flex: 1,
+                        flex: 1, minHeight: `${TOQUE_MINIMO}px`, boxSizing: 'border-box',
                     }}>
                         <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.onSurfaceVariant }}>search</span>
                         <input
@@ -547,7 +512,7 @@ export const ChecklistDiario = ({
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                             placeholder="Buscar tarea..."
-                            style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: '0.85rem', color: C.onSurface, width: '100%', fontFamily: 'inherit' }}
+                            style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: '1rem', color: C.onSurface, width: '100%', fontFamily: 'inherit' }}
                         />
                     </div>
 
@@ -559,8 +524,9 @@ export const ChecklistDiario = ({
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             background: pendientesFirst ? 'rgba(148,74,24,0.10)' : C.surfaceContainerHigh,
                             border: `1.5px solid ${pendientesFirst ? C.primary : C.outlineVariant}`,
-                            borderRadius: '999px', padding: '6px 10px',
-                            cursor: 'pointer',
+                            borderRadius: '999px', padding: '0 12px',
+                            minWidth: `${TOQUE_MINIMO}px`, minHeight: `${TOQUE_MINIMO}px`,
+                            cursor: 'pointer', flexShrink: 0,
                         }}
                     >
                         <span className="material-symbols-outlined" style={{ fontSize: '18px', color: pendientesFirst ? C.primary : C.onSurfaceVariant }}>
@@ -575,8 +541,9 @@ export const ChecklistDiario = ({
                         style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             background: C.surfaceContainerHigh, border: 'none',
-                            borderRadius: '999px', padding: '6px 10px',
-                            cursor: 'pointer',
+                            borderRadius: '999px', padding: '0 12px',
+                            minWidth: `${TOQUE_MINIMO}px`, minHeight: `${TOQUE_MINIMO}px`,
+                            cursor: 'pointer', flexShrink: 0,
                         }}
                     >
                         <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.onSurfaceVariant }}>sort</span>
@@ -590,8 +557,9 @@ export const ChecklistDiario = ({
                             style={{
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 background: 'rgba(148,74,24,0.08)', border: 'none',
-                                borderRadius: '999px', padding: '6px 10px',
-                                cursor: 'pointer',
+                                borderRadius: '999px', padding: '0 12px',
+                                minWidth: `${TOQUE_MINIMO}px`, minHeight: `${TOQUE_MINIMO}px`,
+                                cursor: 'pointer', flexShrink: 0,
                             }}
                         >
                             <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.primary }}>restart_alt</span>
@@ -825,7 +793,7 @@ export const ChecklistDiario = ({
                                         key="empty"
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
-                                        style={{ ...bentoCard, padding: '3rem 2rem', textAlign: 'center', color: C.onSurfaceVariant }}
+                                        style={{ ...bentoTarea, padding: '3rem 2rem', textAlign: 'center', color: C.onSurfaceVariant }}
                                     >
                                         <span className="material-symbols-outlined" style={{ fontSize: '48px', color: C.outlineVariant, display: 'block', marginBottom: '12px' }}>
                                             checklist
@@ -844,7 +812,7 @@ export const ChecklistDiario = ({
                         <DragOverlay>
                             {activeDragTask ? (
                                 <div style={{
-                                    ...bentoCard,
+                                    ...bentoTarea,
                                     padding: '14px 16px',
                                     display: 'flex', alignItems: 'center', gap: '10px',
                                     boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
@@ -1116,7 +1084,7 @@ export const ChecklistDiario = ({
 
                     {/* Progress Bento */}
                     <section style={{
-                        ...bentoCard, border: 'none',
+                        ...bentoTarea, border: 'none',
                         background: 'rgba(148,74,24,0.06)',
                         padding: '1.5rem', position: 'relative', overflow: 'hidden',
                     }}>
@@ -1358,7 +1326,7 @@ export const ChecklistDiario = ({
                                         key="empty"
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
-                                        style={{ ...bentoCard, padding: '3rem 2rem', textAlign: 'center', color: C.onSurfaceVariant }}
+                                        style={{ ...bentoTarea, padding: '3rem 2rem', textAlign: 'center', color: C.onSurfaceVariant }}
                                     >
                                         <span className="material-symbols-outlined" style={{ fontSize: '48px', color: C.outlineVariant, display: 'block', marginBottom: '12px' }}>
                                             checklist
@@ -1378,7 +1346,7 @@ export const ChecklistDiario = ({
                         <DragOverlay>
                             {activeDragTask ? (
                                 <div style={{
-                                    ...bentoCard,
+                                    ...bentoTarea,
                                     padding: '14px 16px',
                                     display: 'flex', alignItems: 'center', gap: '10px',
                                     boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
@@ -1560,9 +1528,14 @@ export const ChecklistDiario = ({
 };
 
 /* ══════════════════════════════════════════════════════════════
-   RegistroRapido — dos botones para apuntar dinero sin salir del día
+   RegistroRapido — dos botones para apuntar dinero sin salir del día.
    Los gastos sueltos son los que más se olvidan, así que el sitio
    donde se entra a diario es el sitio donde hay que poder apuntarlos.
+
+   Los propios botones abren el modal compartido RegistroMovimiento
+   (el mismo que usa Finanzas): mismos campos, mismo aspecto, misma
+   lógica de guardado en los dos sitios, en vez de cada uno con su
+   propio formulario.
 ══════════════════════════════════════════════════════════════ */
 interface RegistroRapidoProps {
     addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string) => void;
@@ -1572,40 +1545,16 @@ interface RegistroRapidoProps {
 
 const RegistroRapido = ({ addTransaction, accounts, compacto = false }: RegistroRapidoProps) => {
     const [tipo, setTipo] = useState<'gasto' | 'ingreso' | null>(null);
-    const [texto, setTexto] = useState('');
-    const [monto, setMonto] = useState('');
-    const [cuentaId, setCuentaId] = useState('');
-    const [guardado, setGuardado] = useState<string | null>(null);
-
-    const cerrar = () => { setTipo(null); setTexto(''); setMonto(''); };
-
-    const guardar = (e: React.FormEvent) => {
-        e.preventDefault();
-        const valor = parseFloat(monto);
-        if (!tipo || !valor || valor <= 0) return;
-        addTransaction(
-            texto.trim() || (tipo === 'gasto' ? 'Gasto' : 'Ingreso'),
-            valor, tipo, false, undefined,
-            cuentaId ? Number(cuentaId) : undefined,
-            false, undefined, undefined
-        );
-        setGuardado(`${tipo === 'gasto' ? '−' : '+'} S/ ${valor}`);
-        setTimeout(() => setGuardado(null), 2200);
-        cerrar();
-    };
-
-    const colorTipo = tipo === 'gasto' ? '#EF4444' : '#10B981';
 
     return (
         <div style={{ width: compacto ? '100%' : 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
-                    onClick={() => setTipo(t => t === 'gasto' ? null : 'gasto')}
+                    onClick={() => setTipo('gasto')}
                     style={{
                         display: 'flex', alignItems: 'center', gap: '6px', flex: compacto ? 1 : undefined,
                         justifyContent: 'center',
-                        background: tipo === 'gasto' ? '#EF4444' : 'rgba(239,68,68,0.1)',
-                        color: tipo === 'gasto' ? '#fff' : '#EF4444',
+                        background: 'rgba(239,68,68,0.1)', color: '#EF4444',
                         border: 'none', borderRadius: '999px', padding: '8px 16px',
                         fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
                         fontFamily: 'inherit', transition: 'all 0.15s',
@@ -1615,12 +1564,11 @@ const RegistroRapido = ({ addTransaction, accounts, compacto = false }: Registro
                     Gasto
                 </button>
                 <button
-                    onClick={() => setTipo(t => t === 'ingreso' ? null : 'ingreso')}
+                    onClick={() => setTipo('ingreso')}
                     style={{
                         display: 'flex', alignItems: 'center', gap: '6px', flex: compacto ? 1 : undefined,
                         justifyContent: 'center',
-                        background: tipo === 'ingreso' ? '#10B981' : 'rgba(16,185,129,0.1)',
-                        color: tipo === 'ingreso' ? '#fff' : '#10B981',
+                        background: 'rgba(16,185,129,0.1)', color: '#10B981',
                         border: 'none', borderRadius: '999px', padding: '8px 16px',
                         fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
                         fontFamily: 'inherit', transition: 'all 0.15s',
@@ -1629,97 +1577,15 @@ const RegistroRapido = ({ addTransaction, accounts, compacto = false }: Registro
                     <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>trending_up</span>
                     Ingreso
                 </button>
-
-                <AnimatePresence>
-                    {guardado && (
-                        <motion.span
-                            initial={{ opacity: 0, x: -6 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0 }}
-                            style={{ fontSize: '0.78rem', fontWeight: 700, color: C.primary, whiteSpace: 'nowrap' }}
-                        >
-                            ✓ {guardado}
-                        </motion.span>
-                    )}
-                </AnimatePresence>
             </div>
 
-            <AnimatePresence>
-                {tipo && (
-                    <motion.form
-                        onSubmit={guardar}
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        style={{
-                            overflow: 'hidden', display: 'flex', gap: '8px', flexWrap: 'wrap',
-                            alignItems: 'center', marginTop: '10px',
-                        }}
-                    >
-                        <input
-                            autoFocus
-                            value={texto}
-                            onChange={e => setTexto(e.target.value)}
-                            placeholder={tipo === 'gasto' ? '¿En qué gastaste?' : '¿De qué fue el ingreso?'}
-                            style={{
-                                flex: '1 1 160px', minWidth: 0, background: C.surfaceLowest,
-                                border: `1px solid ${C.outlineVariant}`, borderRadius: '10px',
-                                padding: '8px 12px', outline: 'none', fontSize: '0.85rem',
-                                color: C.onSurface, fontFamily: 'inherit',
-                            }}
-                        />
-                        <input
-                            value={monto}
-                            onChange={e => setMonto(e.target.value)}
-                            placeholder="S/"
-                            type="number" min="0" step="0.01"
-                            style={{
-                                width: '100px', background: C.surfaceLowest,
-                                border: `1px solid ${C.outlineVariant}`, borderRadius: '10px',
-                                padding: '8px 12px', outline: 'none', fontSize: '0.85rem',
-                                fontWeight: 700, color: C.onSurface, fontFamily: 'inherit',
-                            }}
-                        />
-                        {accounts.length > 0 && (
-                            <select
-                                value={cuentaId}
-                                onChange={e => setCuentaId(e.target.value)}
-                                style={{
-                                    background: C.surfaceContainerLow, border: `1px solid ${C.outlineVariant}`,
-                                    borderRadius: '10px', padding: '8px 10px', fontSize: '0.8rem',
-                                    color: C.onSurfaceVariant, cursor: 'pointer', fontFamily: 'inherit',
-                                }}
-                            >
-                                <option value="">Cuenta…</option>
-                                {accounts.map(a => <option key={a.id} value={String(a.id)}>{a.name}</option>)}
-                            </select>
-                        )}
-                        <button
-                            type="submit"
-                            disabled={!parseFloat(monto)}
-                            style={{
-                                background: parseFloat(monto) ? colorTipo : C.surfaceContainerHigh,
-                                color: parseFloat(monto) ? '#fff' : C.onSurfaceVariant,
-                                border: 'none', borderRadius: '10px', padding: '8px 18px',
-                                fontSize: '0.82rem', fontWeight: 700, fontFamily: 'inherit',
-                                cursor: parseFloat(monto) ? 'pointer' : 'default',
-                            }}
-                        >
-                            Guardar
-                        </button>
-                        <button
-                            type="button"
-                            onClick={cerrar}
-                            style={{
-                                background: 'transparent', border: 'none', color: C.outline,
-                                cursor: 'pointer', padding: '8px', display: 'flex', fontFamily: 'inherit',
-                            }}
-                        >
-                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
-                        </button>
-                    </motion.form>
-                )}
-            </AnimatePresence>
+            <RegistroMovimiento
+                open={!!tipo}
+                onClose={() => setTipo(null)}
+                addTransaction={addTransaction}
+                accounts={accounts}
+                tipoInicial={tipo || 'gasto'}
+            />
         </div>
     );
 };

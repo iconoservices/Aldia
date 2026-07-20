@@ -1,36 +1,10 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Transaction, FixedExpense, ShoppingItem, Project, Account } from '../../hooks/useAlDiaState';
-
-/* ─── Design tokens (alineados con ChecklistDiario) ─────────────── */
-const C = {
-    primary:            '#944a18',
-    primaryContainer:   '#ff9f66',
-    onPrimaryContainer: '#773401',
-    surface:            '#f8f9fa',
-    surfaceContainer:   '#edeeef',
-    surfaceContainerLow:'#f3f4f5',
-    surfaceContainerHigh:'#e7e8e9',
-    surfaceLowest:      '#ffffff',
-    onSurface:          '#191c1d',
-    onSurfaceVariant:   '#54433a',
-    outline:            '#877369',
-    outlineVariant:     '#dac2b6',
-    verde:              '#10B981',
-    rojo:               '#EF4444',
-    ambar:              '#E6A817',
-};
-
-const bento: React.CSSProperties = {
-    background: C.surfaceLowest,
-    borderRadius: '1rem',
-    border: `1px solid ${C.outlineVariant}`,
-    boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
-};
-
-const MONEDA = 'S/';
-const money = (n: number) =>
-    `${MONEDA} ${Math.abs(n).toLocaleString('es-PE', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+import {
+    C, bento, money, useIsMobile,
+    paddingPagina, cabecera, tituloPagina, subtituloPagina, campo, botonPrimario, TOQUE_MINIMO,
+} from '../../theme';
 
 interface FixedIncome {
     id: number;
@@ -61,6 +35,8 @@ export const PlanDashboard = ({
     addShoppingItem, removeShoppingItem, markShoppingItemPurchased, unmarkShoppingItemPurchased,
     updateFixedExpense, markFixedExpensePaid, unmarkFixedExpensePaid, addTransaction,
 }: PlanDashboardProps) => {
+
+    const movil = useIsMobile();
 
     const hoy = new Date();
     const mesActual = hoy.toLocaleDateString('en-CA').slice(0, 7);       // YYYY-MM
@@ -162,16 +138,16 @@ export const PlanDashboard = ({
     }), [shoppingList]);
 
     return (
-        <div style={{ padding: '1.5rem 2rem 4rem', minHeight: '100%' }}>
+        <div style={paddingPagina(movil)}>
 
             {/* ── Header ── */}
-            <div style={{ marginBottom: '1.5rem' }}>
-                <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: C.onSurface, letterSpacing: '-0.01em' }}>
-                    Plan
-                </h2>
-                <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: C.onSurfaceVariant, textTransform: 'capitalize' }}>
-                    {nombreMes} · quedan {diasRestantes} {diasRestantes === 1 ? 'día' : 'días'}
-                </p>
+            <div style={cabecera(movil)}>
+                <div>
+                    <h2 style={tituloPagina}>Plan</h2>
+                    <p style={subtituloPagina}>
+                        {nombreMes} · quedan {diasRestantes} {diasRestantes === 1 ? 'día' : 'días'}
+                    </p>
+                </div>
             </div>
 
             {/* ── 1. Cuánto me queda ── */}
@@ -186,7 +162,13 @@ export const PlanDashboard = ({
                             Te queda este mes
                         </h3>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '6px' }}>
-                            <span style={{ fontSize: '3.2rem', fontWeight: 800, lineHeight: 1, color: n.queda < 0 ? C.rojo : C.primary }}>
+                            <span style={{
+                                // En móvil el importe se corta si no baja de tamaño
+                                fontSize: movil ? '2.3rem' : '3.2rem',
+                                fontWeight: 800, lineHeight: 1,
+                                color: n.queda < 0 ? C.rojo : C.primary,
+                                wordBreak: 'break-word',
+                            }}>
                                 {n.queda < 0 ? '−' : ''}{money(n.queda)}
                             </span>
                         </div>
@@ -200,7 +182,8 @@ export const PlanDashboard = ({
                     {/* El desglose: de dónde sale ese número */}
                     <div style={{
                         background: C.surfaceLowest, borderRadius: '12px', padding: '14px 18px',
-                        minWidth: '260px', border: `1px solid ${C.outlineVariant}`,
+                        minWidth: movil ? '100%' : '260px', border: `1px solid ${C.outlineVariant}`,
+                        boxSizing: 'border-box',
                     }}>
                         <Linea label="Ingresos previstos" valor={n.ingresoPrevisto} signo="+" />
                         <Linea label="Gastos fijos" valor={n.fijosTotal} signo="−" />
@@ -231,7 +214,11 @@ export const PlanDashboard = ({
                 )}
             </section>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.25rem', alignItems: 'start' }}>
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: movil ? '1fr' : 'repeat(auto-fit, minmax(360px, 1fr))',
+                gap: '1.25rem', alignItems: 'start',
+            }}>
 
                 {/* ── 2. Calendario de pagos ── */}
                 <section style={{ ...bento, padding: '1.25rem' }}>
@@ -298,7 +285,8 @@ export const PlanDashboard = ({
                     </p>
 
                     <form onSubmit={submitCompra} style={{
-                        display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap',
+                        display: 'flex', gap: '8px', marginBottom: '14px',
+                        flexWrap: 'wrap', flexDirection: movil ? 'column' : 'row',
                         padding: '10px', background: C.surfaceContainerLow,
                         border: `1.5px dashed ${C.outlineVariant}`, borderRadius: '12px',
                     }}>
@@ -306,39 +294,39 @@ export const PlanDashboard = ({
                             value={nuevaCompra.text}
                             onChange={e => setNuevaCompra(v => ({ ...v, text: e.target.value }))}
                             placeholder="¿Qué necesitas?"
-                            style={{
-                                flex: '1 1 140px', minWidth: 0, background: 'transparent', border: 'none',
-                                outline: 'none', fontSize: '0.85rem', color: C.onSurface, fontFamily: 'inherit',
-                            }}
+                            style={{ ...campo(movil), flex: movil ? undefined : '1 1 140px', width: movil ? '100%' : undefined, border: movil ? `1px solid ${C.outlineVariant}` : 'none', background: movil ? C.surfaceLowest : 'transparent' }}
                         />
-                        <input
-                            value={nuevaCompra.amount}
-                            onChange={e => setNuevaCompra(v => ({ ...v, amount: e.target.value }))}
-                            placeholder="S/"
-                            type="number" min="0" step="0.01"
-                            style={{
-                                width: '80px', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`,
-                                borderRadius: '8px', padding: '4px 8px', outline: 'none',
-                                fontSize: '0.8rem', color: C.onSurface, fontFamily: 'inherit',
-                            }}
-                        />
-                        <select
-                            value={nuevaCompra.priority}
-                            onChange={e => setNuevaCompra(v => ({ ...v, priority: e.target.value as 'necesito' | 'quiero' }))}
-                            style={{
-                                background: C.surfaceContainerHigh, border: 'none', borderRadius: '8px',
-                                padding: '4px 8px', fontSize: '0.75rem', fontWeight: 700,
-                                color: C.onSurfaceVariant, cursor: 'pointer', fontFamily: 'inherit',
-                            }}
-                        >
-                            <option value="necesito">Necesito</option>
-                            <option value="quiero">Quiero</option>
-                        </select>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <input
+                                value={nuevaCompra.amount}
+                                onChange={e => setNuevaCompra(v => ({ ...v, amount: e.target.value }))}
+                                placeholder="S/"
+                                type="number" min="0" step="0.01"
+                                inputMode="decimal"
+                                style={{ ...campo(movil), width: movil ? '100%' : '80px', flex: movil ? 1 : undefined }}
+                            />
+                            <select
+                                value={nuevaCompra.priority}
+                                onChange={e => setNuevaCompra(v => ({ ...v, priority: e.target.value as 'necesito' | 'quiero' }))}
+                                style={{
+                                    background: C.surfaceContainerHigh, border: 'none', borderRadius: '8px',
+                                    padding: movil ? '10px 12px' : '4px 8px',
+                                    minHeight: movil ? `${TOQUE_MINIMO}px` : undefined,
+                                    fontSize: movil ? '0.85rem' : '0.75rem', fontWeight: 700,
+                                    color: C.onSurfaceVariant, cursor: 'pointer', fontFamily: 'inherit',
+                                }}
+                            >
+                                <option value="necesito">Necesito</option>
+                                <option value="quiero">Quiero</option>
+                            </select>
+                        </div>
                         <button type="submit" disabled={!nuevaCompra.text.trim()} style={{
                             background: nuevaCompra.text.trim() ? C.primary : C.surfaceContainerHigh,
                             color: nuevaCompra.text.trim() ? '#fff' : C.onSurfaceVariant,
-                            border: 'none', borderRadius: '8px', padding: '5px 14px',
-                            fontSize: '0.8rem', fontWeight: 700, fontFamily: 'inherit',
+                            border: 'none', borderRadius: '8px',
+                            padding: movil ? '12px 14px' : '5px 14px',
+                            minHeight: movil ? `${TOQUE_MINIMO}px` : undefined,
+                            fontSize: movil ? '0.9rem' : '0.8rem', fontWeight: 700, fontFamily: 'inherit',
                             cursor: nuevaCompra.text.trim() ? 'pointer' : 'default',
                         }}>Añadir</button>
                     </form>
@@ -430,15 +418,14 @@ export const PlanDashboard = ({
                     apuntas el total del periodo y de dónde vino. El detalle lo sigues teniendo donde ya lo llevas.
                 </p>
 
-                <form onSubmit={submitLote} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <form onSubmit={submitLote} style={{
+                    display: 'flex', gap: '10px', alignItems: movil ? 'stretch' : 'center',
+                    flexWrap: 'wrap', flexDirection: movil ? 'column' : 'row',
+                }}>
                     <select
                         value={lote.projectId}
                         onChange={e => setLote(v => ({ ...v, projectId: e.target.value }))}
-                        style={{
-                            background: C.surfaceContainerLow, border: `1px solid ${C.outlineVariant}`,
-                            borderRadius: '10px', padding: '9px 12px', fontSize: '0.85rem',
-                            color: C.onSurface, cursor: 'pointer', fontFamily: 'inherit', minWidth: '160px',
-                        }}
+                        style={{ ...campo(movil), background: C.surfaceContainerLow, cursor: 'pointer', minWidth: movil ? '100%' : '160px' }}
                     >
                         <option value="">¿De dónde vino?</option>
                         {projects.map(p => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
@@ -447,48 +434,37 @@ export const PlanDashboard = ({
                     <input
                         value={lote.concepto}
                         onChange={e => setLote(v => ({ ...v, concepto: e.target.value }))}
-                        placeholder="Concepto (ej: 5 sesiones del 1 al 15)"
-                        style={{
-                            flex: '1 1 240px', minWidth: 0, background: C.surfaceContainerLow,
-                            border: `1px solid ${C.outlineVariant}`, borderRadius: '10px',
-                            padding: '9px 12px', outline: 'none', fontSize: '0.85rem',
-                            color: C.onSurface, fontFamily: 'inherit',
-                        }}
+                        placeholder={movil ? 'Concepto' : 'Concepto (ej: 5 sesiones del 1 al 15)'}
+                        style={{ ...campo(movil), background: C.surfaceContainerLow, flex: movil ? undefined : '1 1 240px', width: movil ? '100%' : undefined }}
                     />
 
-                    {accounts.length > 0 && (
-                        <select
-                            value={lote.accountId}
-                            onChange={e => setLote(v => ({ ...v, accountId: e.target.value }))}
-                            style={{
-                                background: C.surfaceContainerLow, border: `1px solid ${C.outlineVariant}`,
-                                borderRadius: '10px', padding: '9px 12px', fontSize: '0.85rem',
-                                color: C.onSurface, cursor: 'pointer', fontFamily: 'inherit',
-                            }}
-                        >
-                            <option value="">Cuenta…</option>
-                            {accounts.map(a => <option key={a.id} value={String(a.id)}>{a.name}</option>)}
-                        </select>
-                    )}
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        {accounts.length > 0 && (
+                            <select
+                                value={lote.accountId}
+                                onChange={e => setLote(v => ({ ...v, accountId: e.target.value }))}
+                                style={{ ...campo(movil), background: C.surfaceContainerLow, cursor: 'pointer', flex: movil ? 1 : undefined }}
+                            >
+                                <option value="">Cuenta…</option>
+                                {accounts.map(a => <option key={a.id} value={String(a.id)}>{a.name}</option>)}
+                            </select>
+                        )}
 
-                    <input
-                        value={lote.amount}
-                        onChange={e => setLote(v => ({ ...v, amount: e.target.value }))}
-                        placeholder="Total S/"
-                        type="number" min="0" step="0.01"
-                        style={{
-                            width: '120px', background: C.surfaceContainerLow,
-                            border: `1px solid ${C.outlineVariant}`, borderRadius: '10px',
-                            padding: '9px 12px', outline: 'none', fontSize: '0.85rem',
-                            fontWeight: 700, color: C.onSurface, fontFamily: 'inherit',
-                        }}
-                    />
+                        <input
+                            value={lote.amount}
+                            onChange={e => setLote(v => ({ ...v, amount: e.target.value }))}
+                            placeholder="Total S/"
+                            type="number" min="0" step="0.01"
+                            inputMode="decimal"
+                            style={{ ...campo(movil), background: C.surfaceContainerLow, fontWeight: 700, width: movil ? undefined : '120px', flex: movil ? 1 : undefined }}
+                        />
+                    </div>
 
                     <button type="submit" disabled={!parseFloat(lote.amount)} style={{
+                        ...botonPrimario(movil),
                         background: parseFloat(lote.amount) ? C.verde : C.surfaceContainerHigh,
                         color: parseFloat(lote.amount) ? '#fff' : C.onSurfaceVariant,
-                        border: 'none', borderRadius: '10px', padding: '9px 20px',
-                        fontSize: '0.85rem', fontWeight: 700, fontFamily: 'inherit',
+                        boxShadow: parseFloat(lote.amount) ? '0 4px 14px rgba(16,185,129,0.25)' : 'none',
                         cursor: parseFloat(lote.amount) ? 'pointer' : 'default',
                     }}>
                         Registrar

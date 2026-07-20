@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, X, Receipt, TrendingUp, Target, Lightbulb, Calendar } from 'lucide-react';
 import { QuickActionPanel } from './QuickActionPanel';
+import { useIsMobile } from '../../theme';
 
 interface SuperFabProps {
     addMission: (text: string, q?: string, repeat?: 'none' | 'daily' | 'weekly' | 'monthly', noteId?: number, labels?: string[], dueDate?: string, dueTime?: string, habitId?: number, projectId?: number) => void;
@@ -22,6 +23,10 @@ interface SuperFabProps {
 export const SuperFab = ({ addMission, addTransaction, addHabit, addRoutineItem, addCalendarEvent, addNote, addTimeBlock, addProject, projects = [], accounts = [], rutinas = [], forceOpenType = null, onForceOpenClose }: SuperFabProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const [actionType, setActionType] = useState<string | null>(null);
+    const movil = useIsMobile();
+    // La barra de navegación inferior mide 68px en móvil (Header.tsx). Sin este
+    // hueco extra el FAB queda pintado encima de la barra en vez de flotar sobre ella.
+    const separacionInferior = movil ? '84px' : '2rem';
 
     // Efecto para abrir forzado desde afuera (ej: botón NUEVO en proyectos)
     useEffect(() => {
@@ -38,7 +43,7 @@ export const SuperFab = ({ addMission, addTransaction, addHabit, addRoutineItem,
     ];
 
     return (
-        <div style={{ position: 'fixed', bottom: '2rem', right: '2rem', zIndex: 1000 }}>
+        <div style={{ position: 'fixed', bottom: separacionInferior, right: '2rem', zIndex: 1000 }}>
             {/* OVERLAY DARK SEMI-TRANSPARENTE */}
             <AnimatePresence>
                 {isOpen && (

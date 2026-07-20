@@ -9,6 +9,8 @@ import { AnalyticsView } from "./AnalyticsView";
 import { motion, AnimatePresence } from "framer-motion";
 import { ProjectDetailView } from "./ProjectDetailView";
 import type { Transaction, FixedExpense, Project, Routine, UserPreferences } from "../../hooks/useAlDiaState";
+import { C, bento, etiqueta, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina, botonPrimario, TOQUE_MINIMO } from "../../theme";
+import { RegistroMovimiento } from "../features/RegistroMovimiento";
 
 interface FinanzasProps {
     balance: number;
@@ -59,33 +61,25 @@ interface FinanzasProps {
 type PeriodMode = "day" | "week" | "month" | "year" | "all";
 type TxFilter = "all" | "ingreso" | "gasto";
 
-const CARD: React.CSSProperties = {
-    background: "#FFFFFF",
-    borderRadius: "16px",
-    padding: "1.5rem",
-    border: "1px solid #E2E8F0",
-    boxShadow: "0px 4px 12px rgba(15,23,42,0.04)",
-};
-const LABEL: React.CSSProperties = {
-    fontSize: "0.68rem",
-    fontWeight: 800,
-    color: "#64748B",
-    textTransform: "uppercase" as const,
-    letterSpacing: "0.06em",
-};
+// Misma tarjeta que Plan/Checklist (bento), con el padding que ya usaban
+// estos bloques. El borde de color que cada sección añade encima
+// se mantiene: es el mismo lenguaje de acento que usa Checklist en sus categorías.
+const CARD: React.CSSProperties = { ...bento, padding: "1.5rem" };
 
-/* ─── Tokens compartidos con PlanDashboard ──────────────────────── */
-const C = {
-    primary:            "#944a18",
-    surfaceLowest:      "#ffffff",
-    surfaceContainerLow:"#f3f4f5",
-    onSurface:          "#191c1d",
-    onSurfaceVariant:   "#54433a",
-    outline:            "#877369",
-    outlineVariant:     "#dac2b6",
-    verde:              "#10B981",
-    rojo:               "#EF4444",
-};
+// Tarjeta con un acento de color en el borde izquierdo. Fija los otros tres
+// lados con el mismo valor que bento.border en vez de dejar un `border`
+// shorthand y un `borderLeft` sueltos compitiendo: mezclarlos hace que React
+// avise de conflicto de estilos en cada rerender.
+const cardConAcento = (color: string): React.CSSProperties => ({
+    ...CARD,
+    border: undefined,
+    borderTop: bento.border,
+    borderRight: bento.border,
+    borderBottom: bento.border,
+    borderLeft: `4px solid ${color}`,
+});
+// Mismo estilo de etiqueta que usan Plan y Checklist para encabezar secciones.
+const LABEL: React.CSSProperties = etiqueta;
 
 // Las tres lecturas de las mismas finanzas. No son lo mismo:
 //   real       → lo que ya pasó
@@ -106,8 +100,8 @@ const CircleCheckbox = ({ checked, onChange }: { checked: boolean; onChange: () 
             width: "12px",
             height: "12px",
             borderRadius: "50%",
-            border: `1.5px solid ${checked ? "var(--domain-blue)" : "#94A3B8"}`,
-            background: checked ? "var(--domain-blue)" : "transparent",
+            border: `1.5px solid ${checked ? C.primary : "#94A3B8"}`,
+            background: checked ? C.primary : "transparent",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -401,6 +395,7 @@ export const FinanzasDashboard = ({
     // ── UI state ──────────────────────────────────────────────────────────
     // La vista activa decide cuál de las tres lecturas se muestra.
     // "Ver todo" las abre las tres juntas para poder compararlas.
+    const movil = useIsMobile();
     const [vista, setVista] = useState<VistaFinanzas>("real");
     const [verTodo, setVerTodo] = useState(false);
     // El alta de movimiento se dispara desde el botón de la cabecera.
@@ -468,7 +463,7 @@ export const FinanzasDashboard = ({
     // ─────────────────────────────────────────────────────────────────────
     /* ── Las tres lecturas, como variables para poder reutilizarlas ── */
     const bloqueReal = (
-                <div style={{ ...CARD, borderLeft: "4px solid #059669" }}>
+                <div style={{ ...cardConAcento("#059669") }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", flexWrap: "wrap", gap: "8px" }}>
                         <span style={LABEL}>Situación Financiera Real</span>
                         <TrendingUp size={16} color="#059669" />
@@ -486,7 +481,7 @@ export const FinanzasDashboard = ({
                             { label: "Debo", val: realOwe, color: "#EF4444", sub: realOwe > 0 ? "Deudas pendientes" : "Sin deudas" },
                             { label: "Me Deben", val: realOwed, color: "#10B981", sub: realOwed > 0 ? "Por cobrar" : "Sin cobros" },
                             { label: "Deuda Neta", val: realOwed - realOwe, color: (realOwed - realOwe) >= 0 ? "#10B981" : "#EF4444", sub: "Me deben - Debo" },
-                            { label: "Patrimonio Neto", val: periodBalance - realOwe + realOwed, color: (periodBalance - realOwe + realOwed) >= 0 ? "var(--domain-blue)" : "#EF4444", sub: "Balance Neto + Deuda Neta" },
+                            { label: "Patrimonio Neto", val: periodBalance - realOwe + realOwed, color: (periodBalance - realOwe + realOwed) >= 0 ? C.primary : "#EF4444", sub: "Balance Neto + Deuda Neta" },
                         ].map((item, i) => (
                             <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? "1px solid #E2E8F0" : "none" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
@@ -504,7 +499,7 @@ export const FinanzasDashboard = ({
     );
 
     const bloqueProyeccion = (
-                <div style={{ ...CARD, borderLeft: "4px solid #F59E0B", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <div style={{ ...cardConAcento("#F59E0B"), display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", flexWrap: "wrap", gap: "8px" }}>
                         <span style={LABEL}>Proyección Financiera</span>
                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -547,7 +542,7 @@ export const FinanzasDashboard = ({
                             { 
                                 label: "Balance Neto Proyectado", 
                                 val: projectedSavings, 
-                                color: projectedSavings >= 0 ? "var(--domain-blue)" : "#EF4444", 
+                                color: projectedSavings >= 0 ? C.primary : "#EF4444", 
                                 sub: projectedPeriodLabel 
                             },
                         ].map((item, i) => (
@@ -570,7 +565,7 @@ export const FinanzasDashboard = ({
     );
 
     const bloqueSimulador = (
-                <div style={{ ...CARD, borderLeft: "4px solid #8B5CF6", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <div style={{ ...cardConAcento("#8B5CF6"), display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", flexWrap: "wrap", gap: "8px" }}>
                         <span style={LABEL}>Ejecución y Proyección Ajustada</span>
                         <TrendingUp size={16} color="#8B5CF6" style={{ marginLeft: "4px" }} />
@@ -644,7 +639,7 @@ export const FinanzasDashboard = ({
                             { 
                                 label: "Balance Neto Proyectado", 
                                 val: adjustedSavings, 
-                                color: adjustedSavings >= 0 ? "var(--domain-blue)" : "#EF4444", 
+                                color: adjustedSavings >= 0 ? C.primary : "#EF4444", 
                                 sub: projectedPeriodLabel 
                             },
                         ].map((item, i) => (
@@ -667,20 +662,26 @@ export const FinanzasDashboard = ({
     );
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", paddingBottom: "5rem", color: "var(--text-carbon)" }}>
+        <div style={{
+            display: "flex", flexDirection: "column",
+            gap: movil ? "1rem" : "1.5rem",
+            ...paddingPagina(movil),
+            color: "var(--text-carbon)",
+        }}>
 
             {/* ── Cabecera: título, vista, periodo y acción ─── */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem" }}>
+            <div style={cabecera(movil)}>
                 <div>
-                    <h2 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700, color: C.onSurface, letterSpacing: "-0.01em" }}>
-                        Finanzas
-                    </h2>
-                    <p style={{ margin: "2px 0 0", fontSize: "0.85rem", color: C.onSurfaceVariant, textTransform: "capitalize" }}>
+                    <h2 style={tituloPagina}>Finanzas</h2>
+                    <p style={subtituloPagina}>
                         {VISTAS.find(v => v.id === vista)?.sub} · {periodLabel(topPeriod, new Date())}
                     </p>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                <div style={{
+                    display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap",
+                    justifyContent: movil ? "space-between" : undefined,
+                }}>
                     <div style={{ display: "flex", background: C.surfaceContainerLow, borderRadius: "999px", padding: "3px", border: `1px solid ${C.outlineVariant}` }}>
                         {(["day", "week", "month", "year", "all"] as PeriodMode[]).map(mode => {
                             const etiquetas: Record<PeriodMode, string> = { day: "Día", week: "Sem", month: "Mes", year: "Año", all: "Todo" };
@@ -703,36 +704,23 @@ export const FinanzasDashboard = ({
                         })}
                     </div>
 
-                    <button
-                        onClick={() => setShowTxForm(v => !v)}
-                        style={{
-                            display: "flex", alignItems: "center", gap: "7px",
-                            background: C.primary, color: "#fff", border: "none",
-                            borderRadius: "999px", padding: "9px 18px", cursor: "pointer",
-                            fontWeight: 700, fontSize: "0.85rem", fontFamily: "inherit",
-                            boxShadow: "0 4px 14px rgba(148,74,24,0.25)",
-                        }}
-                    >
+                    <button onClick={() => setShowTxForm(v => !v)} style={botonPrimario(movil)}>
                         <Plus size={16} /> Registrar
                     </button>
                 </div>
             </div>
 
-            {/* Formulario de alta, desplegado desde el botón de arriba */}
-            <AnimatePresence>
-                {showTxForm && (
-                    <QuickTransactionForm
-                        addTransaction={addTransaction}
-                        accounts={accounts}
-                        open={showTxForm}
-                        setOpen={setShowTxForm}
-                    />
-                )}
-            </AnimatePresence>
+            {/* Modal de alta, el mismo que usa Checklist: mismos campos, mismo aspecto */}
+            <RegistroMovimiento
+                open={showTxForm}
+                onClose={() => setShowTxForm(false)}
+                addTransaction={addTransaction}
+                accounts={accounts}
+            />
 
             {/* ── Selector de vista + Ver todo ─── */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", flex: movil ? 1 : undefined }}>
                     {VISTAS.map(v => {
                         const activo = vista === v.id;
                         return (
@@ -743,7 +731,10 @@ export const FinanzasDashboard = ({
                                 style={{
                                     border: activo ? "none" : `1px solid ${C.outlineVariant}`,
                                     borderRadius: "10px", cursor: "pointer",
-                                    padding: "8px 16px", fontSize: "0.82rem", fontWeight: 700,
+                                    padding: movil ? "10px 12px" : "8px 16px",
+                                    minHeight: movil ? `${TOQUE_MINIMO}px` : undefined,
+                                    flex: movil ? 1 : undefined,
+                                    fontSize: movil ? "0.78rem" : "0.82rem", fontWeight: 700,
                                     fontFamily: "inherit", transition: "all 0.15s",
                                     background: activo ? C.primary : C.surfaceLowest,
                                     color: activo ? "#fff" : C.onSurfaceVariant,
@@ -758,9 +749,13 @@ export const FinanzasDashboard = ({
                 <button
                     onClick={() => setVerTodo(true)}
                     style={{
-                        display: "flex", alignItems: "center", gap: "6px",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
                         background: "transparent", border: `1px solid ${C.outlineVariant}`,
-                        borderRadius: "10px", padding: "8px 14px", cursor: "pointer",
+                        borderRadius: "10px",
+                        padding: movil ? "10px 14px" : "8px 14px",
+                        minHeight: movil ? `${TOQUE_MINIMO}px` : undefined,
+                        width: movil ? "100%" : undefined,
+                        cursor: "pointer",
                         fontSize: "0.78rem", fontWeight: 700, color: C.primary, fontFamily: "inherit",
                     }}
                 >
@@ -832,12 +827,12 @@ export const FinanzasDashboard = ({
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem" }}>
 
                 {/* Fixed incomes card */}
-                <div style={{ ...CARD, borderLeft: "4px solid var(--domain-blue)", display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
+                <div style={{ ...cardConAcento(C.primary), display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span style={LABEL}>Ingresos Fijos</span>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--domain-blue)" }}>S/ {fixedIncomeTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                            <Wallet size={14} color="var(--domain-blue)" />
+                            <span style={{ fontSize: "0.72rem", fontWeight: 700, color: C.primary }}>S/ {fixedIncomeTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                            <Wallet size={14} color={C.primary} />
                         </div>
                     </div>
 
@@ -852,7 +847,7 @@ export const FinanzasDashboard = ({
                             return (
                                 <div key={item.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 0", borderBottom: "1px solid #F1F5F9", opacity: item.active ? 1 : 0.45, transition: "opacity 0.15s" }}>
                                     {/* mini toggle */}
-                                    <div onClick={() => toggleFixedIncome(item.id)} style={{ width: "28px", height: "16px", borderRadius: "8px", background: item.active ? "var(--domain-blue)" : "#CBD5E1", position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
+                                    <div onClick={() => toggleFixedIncome(item.id)} style={{ width: "28px", height: "16px", borderRadius: "8px", background: item.active ? C.primary : "#CBD5E1", position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
                                         <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: item.active ? "14px" : "2px", transition: "left 0.15s" }} />
                                     </div>
                                     {/* ok button to mark as received */}
@@ -870,7 +865,7 @@ export const FinanzasDashboard = ({
                                                     onKeyDown={e => { if (e.key === "Enter") { updateFixedIncome(item.id, editIncomeName.trim(), parseFloat(editIncomeAmount) || 0); setEditingIncomeId(null); } if (e.key === "Escape") setEditingIncomeId(null); }}
                                                     style={{ width: "100%", padding: "3px 3px 3px 18px", borderRadius: "5px", border: "1px solid #E2E8F0", fontSize: "0.78rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
                                             </div>
-                                            <button onClick={() => { updateFixedIncome(item.id, editIncomeName.trim(), parseFloat(editIncomeAmount) || 0); setEditingIncomeId(null); }} style={{ background: "var(--domain-blue)", color: "white", border: "none", borderRadius: "4px", padding: "3px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>OK</button>
+                                            <button onClick={() => { updateFixedIncome(item.id, editIncomeName.trim(), parseFloat(editIncomeAmount) || 0); setEditingIncomeId(null); }} style={{ background: C.primary, color: "white", border: "none", borderRadius: "4px", padding: "3px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>OK</button>
                                             <button onClick={() => setEditingIncomeId(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "2px", display: "flex" }}><X size={11} /></button>
                                         </>
                                     ) : (
@@ -878,7 +873,7 @@ export const FinanzasDashboard = ({
                                             <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isReceived ? "line-through" : "none", color: isReceived ? "#94A3B8" : "var(--text-carbon)" }}>
                                                 {item.name}
                                             </span>
-                                            <span style={{ fontSize: "0.8rem", fontWeight: 800, color: isReceived ? "#10B981" : (item.active ? "var(--domain-blue)" : "#94A3B8") }}>
+                                            <span style={{ fontSize: "0.8rem", fontWeight: 800, color: isReceived ? "#10B981" : (item.active ? C.primary : "#94A3B8") }}>
                                                 S/ {item.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                                             </span>
                                             <button onClick={() => { setEditingIncomeId(item.id); setEditIncomeName(item.name); setEditIncomeAmount(String(item.amount)); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "2px", display: "flex" }}><Edit2 size={11} /></button>
@@ -902,7 +897,7 @@ export const FinanzasDashboard = ({
                                     onKeyDown={e => e.key === "Enter" && submitNewIncome()}
                                     style={{ width: "100%", padding: "5px 5px 5px 22px", borderRadius: "7px", border: "1px solid #E2E8F0", fontSize: "0.78rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
                             </div>
-                            <button onClick={submitNewIncome} style={{ background: "var(--domain-blue)", color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.65rem", cursor: "pointer" }}>OK</button>
+                            <button onClick={submitNewIncome} style={{ background: C.primary, color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.65rem", cursor: "pointer" }}>OK</button>
                             <button onClick={() => setIsAddingIncome(false)} style={{ background: "#E2E8F0", border: "none", borderRadius: "6px", padding: "5px 7px", fontWeight: 800, fontSize: "0.65rem", cursor: "pointer" }}>X</button>
                         </motion.div>
                     ) : (
@@ -913,7 +908,7 @@ export const FinanzasDashboard = ({
                 </div>
 
                 {/* Fixed expenses card */}
-                <div style={{ ...CARD, borderLeft: "4px solid #EF4444", display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
+                <div style={{ ...cardConAcento("#EF4444"), display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span style={LABEL}>Gastos Fijos</span>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -939,7 +934,7 @@ export const FinanzasDashboard = ({
                 </div>
 
                 {/* Debts card */}
-                <div style={{ ...CARD, borderLeft: "4px solid #8B5CF6", display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
+                <div style={{ ...cardConAcento("#8B5CF6"), display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span style={LABEL}>Deudas</span>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -1026,7 +1021,7 @@ export const FinanzasDashboard = ({
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
                         <span style={{ fontSize: "0.9rem", fontWeight: 800 }}>Flujo de Caja</span>
                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <button onClick={() => setShowAnalytics(true)} style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: "8px", padding: "3px 8px", display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", fontSize: "0.62rem", fontWeight: 700, color: "var(--domain-blue)" }}><PieChart size={11} /> Analizar</button>
+                            <button onClick={() => setShowAnalytics(true)} style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: "8px", padding: "3px 8px", display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", fontSize: "0.62rem", fontWeight: 700, color: C.primary }}><PieChart size={11} /> Analizar</button>
                             <PillToggle options={["7d", "30d"]} value={chartPeriod} onChange={v => setChartPeriod(v as any)} />
                         </div>
                     </div>
@@ -1098,7 +1093,7 @@ export const FinanzasDashboard = ({
             <div style={{ ...CARD, padding: 0, overflow: "hidden" }}>
                 <button onClick={() => setIsAccountsVisible(v => !v)} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F8FAFC", border: "none", padding: "15px 20px", cursor: "pointer" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <PiggyBank size={17} color="var(--domain-blue)" />
+                        <PiggyBank size={17} color={C.primary} />
                         <span style={{ fontSize: "0.9rem", fontWeight: 800 }}>Mis Cuentas ({accounts.length})</span>
                     </div>
                     <motion.div animate={{ rotate: isAccountsVisible ? 180 : 0 }}><ArrowDownCircle size={15} /></motion.div>
@@ -1109,7 +1104,11 @@ export const FinanzasDashboard = ({
                             <div style={{ padding: "16px 20px" }}>
                                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px,1fr))", gap: "10px" }}>
                                     {accountsWithBalance.map(acc => (
-                                        <div key={acc.id} style={{ background: "white", borderTop: `4px solid ${acc.color}`, borderRadius: "12px", padding: "10px", border: "1px solid #E2E8F0", position: "relative" }}>
+                                        <div key={acc.id} style={{
+                                            background: C.surfaceLowest, borderRadius: "12px", padding: "10px", position: "relative",
+                                            borderTop: `4px solid ${acc.color}`,
+                                            borderLeft: `1px solid ${C.outlineVariant}`, borderRight: `1px solid ${C.outlineVariant}`, borderBottom: `1px solid ${C.outlineVariant}`,
+                                        }}>
                                             <button onClick={() => window.confirm("¿Eliminar esta cuenta?") && setAccounts(p => p.filter(a => a.id !== acc.id))} style={{ position: "absolute", top: "5px", right: "5px", background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "1px" }}><Trash2 size={10} /></button>
                                             <div style={{ fontSize: "0.62rem", color: "#64748B", fontWeight: 600 }}>{acc.name}</div>
                                             <div style={{ fontSize: "0.95rem", fontWeight: 900, marginTop: "3px" }}>S/ {acc.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
@@ -1120,11 +1119,11 @@ export const FinanzasDashboard = ({
                                             <Plus size={16} /><span style={{ fontSize: "0.6rem", fontWeight: 700 }}>Nueva</span>
                                         </button>
                                     ) : (
-                                        <div style={{ borderRadius: "12px", padding: "10px", border: "1px solid var(--domain-blue)", background: "#F8FAFF", display: "flex", flexDirection: "column", gap: "5px" }}>
+                                        <div style={{ borderRadius: "12px", padding: "10px", border: "1px solid C.primary", background: "#F8FAFF", display: "flex", flexDirection: "column", gap: "5px" }}>
                                             <input autoFocus placeholder="Nombre" value={newAccountName} onChange={e => setNewAccountName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddAccount()} style={{ padding: "4px 7px", borderRadius: "6px", border: "1px solid #E2E8F0", fontSize: "0.72rem", outline: "none" }} />
                                             <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
                                                 <input type="color" value={newAccountColor} onChange={e => setNewAccountColor(e.target.value)} style={{ width: "26px", height: "26px", borderRadius: "5px", border: "1px solid #E2E8F0", padding: "1px", cursor: "pointer" }} />
-                                                <button onClick={handleAddAccount} style={{ flex: 1, background: "var(--domain-blue)", color: "white", border: "none", borderRadius: "5px", padding: "3px", fontSize: "0.65rem", fontWeight: 800, cursor: "pointer" }}>OK</button>
+                                                <button onClick={handleAddAccount} style={{ flex: 1, background: C.primary, color: "white", border: "none", borderRadius: "5px", padding: "3px", fontSize: "0.65rem", fontWeight: 800, cursor: "pointer" }}>OK</button>
                                                 <button onClick={() => setIsAddingAccount(false)} style={{ background: "#E2E8F0", color: "#475569", border: "none", borderRadius: "5px", padding: "3px 6px", fontSize: "0.65rem", fontWeight: 800, cursor: "pointer" }}>X</button>
                                             </div>
                                         </div>
@@ -1136,9 +1135,6 @@ export const FinanzasDashboard = ({
                 </AnimatePresence>
             </div>
 
-            {/* ── Quick log ─── */}
-            <QuickTransactionForm addTransaction={addTransaction} accounts={accounts} />
-
             {/* ══════════════════════════════════════════════════════════════
                 HISTORIAL DE FLUJO — navigable by period
             ══════════════════════════════════════════════════════════════ */}
@@ -1146,7 +1142,7 @@ export const FinanzasDashboard = ({
                 {/* Header */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", marginBottom: "1.2rem" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <BarChart3 size={18} color="var(--domain-blue)" />
+                        <BarChart3 size={18} color={C.primary} />
                         <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 800 }}>Historial de Flujo</h3>
                     </div>
                     <PillToggle
@@ -1174,7 +1170,7 @@ export const FinanzasDashboard = ({
                     {[
                         { label: "Ingresos", val: periodStats.income, color: "#10B981", bg: "rgba(16,185,129,0.06)" },
                         { label: "Gastos", val: periodStats.expense, color: "#EF4444", bg: "rgba(239,68,68,0.06)" },
-                        { label: "Neto", val: periodStats.net, color: periodStats.net >= 0 ? "var(--domain-blue)" : "#EF4444", bg: "rgba(0,85,255,0.04)" },
+                        { label: "Neto", val: periodStats.net, color: periodStats.net >= 0 ? C.primary : "#EF4444", bg: "rgba(148,74,24,0.06)" },
                     ].map((k, i) => (
                         <div key={i} style={{ background: k.bg, borderRadius: "12px", padding: "10px 12px", textAlign: "center" }}>
                             <div style={{ ...LABEL, color: k.color, marginBottom: "3px" }}>{k.label}</div>
@@ -1186,7 +1182,7 @@ export const FinanzasDashboard = ({
                 {/* Type filter */}
                 <div style={{ display: "flex", gap: "6px", marginBottom: "1rem", flexWrap: "wrap" }}>
                     {(["all", "ingreso", "gasto"] as TxFilter[]).map(f => (
-                        <button key={f} onClick={() => setTxFilter(f)} style={{ padding: "4px 14px", borderRadius: "20px", border: `1px solid ${txFilter === f ? "var(--domain-blue)" : "#E2E8F0"}`, background: txFilter === f ? "var(--domain-blue)" : "transparent", color: txFilter === f ? "white" : "#64748B", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", transition: "all 0.15s" }}>
+                        <button key={f} onClick={() => setTxFilter(f)} style={{ padding: "4px 14px", borderRadius: "20px", border: `1px solid ${txFilter === f ? C.primary : "#E2E8F0"}`, background: txFilter === f ? C.primary : "transparent", color: txFilter === f ? "white" : "#64748B", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", transition: "all 0.15s" }}>
                             {f === "all" ? "Todos" : f === "ingreso" ? "Ingresos" : "Gastos"}
                         </button>
                     ))}
@@ -1247,7 +1243,7 @@ const LegendDot = ({ color, label }: { color: string; label: string }) => (
 const PillToggle = ({ options, labels, value, onChange }: { options: string[]; labels?: string[]; value: string; onChange: (v: string) => void }) => (
     <div style={{ display: "flex", background: "#F1F5F9", padding: "2px", borderRadius: "10px", gap: "2px" }}>
         {options.map((o, i) => (
-            <button key={o} onClick={() => onChange(o)} style={{ padding: "3px 8px", borderRadius: "8px", border: "none", background: value === o ? "white" : "transparent", color: value === o ? "var(--domain-blue)" : "#64748B", fontSize: "0.62rem", fontWeight: 800, cursor: "pointer", boxShadow: value === o ? "0 1px 4px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s" }}>
+            <button key={o} onClick={() => onChange(o)} style={{ padding: "3px 8px", borderRadius: "8px", border: "none", background: value === o ? "white" : "transparent", color: value === o ? C.primary : "#64748B", fontSize: "0.62rem", fontWeight: 800, cursor: "pointer", boxShadow: value === o ? "0 1px 4px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s" }}>
                 {labels ? labels[i] : o.toUpperCase()}
             </button>
         ))}
@@ -1265,14 +1261,14 @@ const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, upda
         <div style={{ display: "flex", gap: "7px", marginBottom: "7px", alignItems: "center", padding: "8px", background: "#F8FAFC", borderRadius: "10px", border: "1px solid #E2E8F0" }}>
             <input autoFocus value={editName} onChange={e => setEditName(e.target.value)} style={{ flex: 2, padding: "5px 8px", borderRadius: "7px", border: "1px solid #E2E8F0", fontSize: "0.82rem", outline: "none" }} />
             <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} style={{ flex: 1, padding: "5px 8px", borderRadius: "7px", border: "1px solid #E2E8F0", fontSize: "0.82rem", outline: "none" }} />
-            <button onClick={() => { updateFixedExpense(expense.id, { text: editName, amount: Number(editAmount) }); setIsEditing(false); }} style={{ background: "var(--domain-blue)", color: "white", border: "none", borderRadius: "7px", padding: "5px 10px", fontWeight: 800, cursor: "pointer" }}>OK</button>
+            <button onClick={() => { updateFixedExpense(expense.id, { text: editName, amount: Number(editAmount) }); setIsEditing(false); }} style={{ background: C.primary, color: "white", border: "none", borderRadius: "7px", padding: "5px 10px", fontWeight: 800, cursor: "pointer" }}>OK</button>
             <button onClick={() => setIsEditing(false)} style={{ background: "#E2E8F0", border: "none", borderRadius: "7px", padding: "5px 8px", fontWeight: 800, cursor: "pointer" }}>X</button>
         </div>
     );
 
     return (
         <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 0", borderBottom: "1px solid #F1F5F9" }}>
-            <div onClick={() => toggleFixedExpense(expense.id)} style={{ width: "30px", height: "17px", borderRadius: "9px", background: expense.active ? "var(--domain-blue)" : "#CBD5E1", position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
+            <div onClick={() => toggleFixedExpense(expense.id)} style={{ width: "30px", height: "17px", borderRadius: "9px", background: expense.active ? C.primary : "#CBD5E1", position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
                 <div style={{ width: "13px", height: "13px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: expense.active ? "15px" : "2px", transition: "left 0.15s" }} />
             </div>
             <button onClick={() => isPaid ? unmarkFixedExpensePaid(expense.id, monthStr) : markFixedExpensePaid(expense.id, monthStr)} style={{ background: isPaid ? "#10B981" : "#F1F5F9", border: "none", borderRadius: "50%", width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
@@ -1320,70 +1316,7 @@ const NewFixedExpenseForm = ({ addFixedExpense, projects }: any) => {
                 {projects.length > 0 && <select value={projectId || ""} onChange={e => setProjectId(e.target.value ? Number(e.target.value) : undefined)} style={{ flex: 1, padding: "4px", borderRadius: "6px", border: "1px solid #CBD5E1", fontSize: "0.7rem", fontWeight: 700, background: "white", outline: "none" }}><option value="">Proyecto?</option>{projects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>}
                 <input type="number" placeholder="Dia" value={dueDay || ""} onChange={e => setDueDay(e.target.value ? Number(e.target.value) : undefined)} min="1" max="31" style={{ width: "44px", padding: "4px", borderRadius: "6px", border: "1px solid #DDD", fontSize: "0.7rem", fontWeight: 800, background: "#FFFDF0", textAlign: "center", outline: "none" }} />
                 <button onClick={() => setOpen(false)} style={{ padding: "4px 8px", borderRadius: "6px", border: "none", background: "#E2E8F0", color: "#475569", fontSize: "0.65rem", fontWeight: 800, cursor: "pointer" }}>X</button>
-                <button onClick={submit} style={{ padding: "4px 10px", borderRadius: "6px", border: "none", background: "var(--domain-blue)", color: "white", fontSize: "0.65rem", fontWeight: 800, cursor: "pointer" }}>OK</button>
-            </div>
-        </motion.div>
-    );
-};
-
-// ─── Quick transaction form ───────────────────────────────────────────────────
-// Acepta control externo (open/setOpen) para abrirse desde la cabecera;
-// sin esas props se gestiona solo y muestra su propio botón.
-const QuickTransactionForm = ({ addTransaction, accounts, open: openProp, setOpen: setOpenProp }: any) => {
-    const [openLocal, setOpenLocal] = useState(false);
-    const controlado = openProp !== undefined;
-    const open = controlado ? openProp : openLocal;
-    const setOpen = controlado ? setOpenProp : setOpenLocal;
-    const [text, setText] = useState("");
-    const [amount, setAmount] = useState("");
-    const [type, setType] = useState<"ingreso" | "gasto">("gasto");
-    const [accountId, setAccountId] = useState<number | undefined>(undefined);
-    const [isCashless, setIsCashless] = useState(false);
-    const [category, setCategory] = useState("");
-
-    const submit = () => {
-        if (text && amount) {
-            addTransaction(text, parseFloat(amount), type, false, undefined, accountId, isCashless, category || undefined);
-            setText(""); setAmount(""); setCategory(""); setOpen(false);
-        }
-    };
-
-    // En modo controlado el botón vive en la cabecera, así que aquí no se pinta.
-    if (!open) return controlado ? null : (
-        <button onClick={() => setOpen(true)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "var(--domain-blue)", border: "none", borderRadius: "14px", padding: "13px", cursor: "pointer", color: "white", fontWeight: 800, fontSize: "0.88rem", boxShadow: "0 4px 14px rgba(0,85,255,0.22)" }}>
-            <Plus size={17} /> Registrar Movimiento
-        </button>
-    );
-
-    return (
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} style={{ background: "#FFFFFF", borderRadius: "16px", padding: "1.2rem", border: "1px solid #E2E8F0", boxShadow: "0 4px 12px rgba(15,23,42,0.06)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.9rem" }}>
-                <span style={{ fontWeight: 800, fontSize: "0.9rem" }}>Nuevo Movimiento</span>
-                <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", fontSize: "1.1rem" }}>X</button>
-            </div>
-            <div style={{ display: "flex", background: "#F1F5F9", padding: "3px", borderRadius: "10px", gap: "3px", marginBottom: "10px" }}>
-                <button onClick={() => setType("gasto")} style={{ flex: 1, padding: "7px", borderRadius: "8px", border: "none", background: type === "gasto" ? "#EF4444" : "transparent", color: type === "gasto" ? "white" : "#64748B", fontWeight: 800, fontSize: "0.78rem", cursor: "pointer" }}>Gasto</button>
-                <button onClick={() => setType("ingreso")} style={{ flex: 1, padding: "7px", borderRadius: "8px", border: "none", background: type === "ingreso" ? "#10B981" : "transparent", color: type === "ingreso" ? "white" : "#64748B", fontWeight: 800, fontSize: "0.78rem", cursor: "pointer" }}>Ingreso</button>
-            </div>
-            <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
-                <input autoFocus placeholder="Descripcion" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} style={{ flex: 2, padding: "8px 10px", borderRadius: "10px", border: "1px solid #E2E8F0", fontSize: "0.83rem", outline: "none" }} />
-                <div style={{ position: "relative", flex: 1 }}>
-                    <span style={{ position: "absolute", left: "9px", top: "50%", transform: "translateY(-50%)", fontWeight: 700, color: "#64748B", fontSize: "0.88rem" }}>S/ </span>
-                    <input type="number" placeholder="0" value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} style={{ width: "100%", padding: "8px 8px 8px 30px", borderRadius: "10px", border: "1px solid #E2E8F0", fontSize: "0.83rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
-                </div>
-            </div>
-            <div style={{ display: "flex", gap: "7px", marginBottom: "10px", flexWrap: "wrap" }}>
-                <input placeholder="Categoria (opcional)" value={category} onChange={e => setCategory(e.target.value)} style={{ flex: 2, padding: "6px 10px", borderRadius: "8px", border: "1px solid #E2E8F0", fontSize: "0.75rem", outline: "none", minWidth: "100px" }} />
-                {accounts.length > 0 && <select value={accountId || ""} onChange={e => setAccountId(e.target.value ? Number(e.target.value) : undefined)} style={{ flex: 2, padding: "6px 8px", borderRadius: "8px", border: "1px solid #E2E8F0", fontSize: "0.73rem", fontWeight: 600, background: "white", outline: "none", minWidth: "90px" }}><option value="">Cuenta (opc.)</option>{accounts.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}</select>}
-                <label style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "0.73rem", fontWeight: 600, color: "#64748B", cursor: "pointer" }}>
-                    <input type="checkbox" checked={isCashless} onChange={e => setIsCashless(e.target.checked)} style={{ accentColor: "var(--domain-blue)" }} /> Sin efectivo
-                </label>
-            </div>
-            <div style={{ display: "flex", gap: "8px" }}>
-                <button onClick={() => setOpen(false)} style={{ flex: 1, padding: "9px", borderRadius: "10px", border: "1px solid #E2E8F0", background: "transparent", color: "#64748B", fontWeight: 700, cursor: "pointer" }}>Cancelar</button>
-                <button onClick={submit} style={{ flex: 2, padding: "9px", borderRadius: "10px", border: "none", background: type === "gasto" ? "#EF4444" : "#10B981", color: "white", fontWeight: 800, cursor: "pointer", fontSize: "0.83rem" }}>
-                    {type === "gasto" ? "Registrar Gasto" : "Registrar Ingreso"}
-                </button>
+                <button onClick={submit} style={{ padding: "4px 10px", borderRadius: "6px", border: "none", background: C.primary, color: "white", fontSize: "0.65rem", fontWeight: 800, cursor: "pointer" }}>OK</button>
             </div>
         </motion.div>
     );
