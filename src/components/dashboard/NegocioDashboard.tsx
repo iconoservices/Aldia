@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Users, UserCheck, DollarSign, TrendingUp, TrendingDown, Briefcase, ChevronDown, ChevronUp, Edit3, X, Check } from 'lucide-react';
+import { Plus, Trash2, UserCheck, DollarSign, TrendingUp, TrendingDown, Briefcase, ChevronDown, ChevronUp, Edit3, X, Check } from 'lucide-react';
 import type { NegocioProject, NegocioClient, NegocioWorker, NegocioExpense } from '../../hooks/state/useNegocioState';
 
 interface Props {
@@ -24,7 +24,7 @@ const COLORS = ['#FF8C42', '#4D96FF', '#06D6A0', '#F72585', '#7209B7', '#3A0CA3'
 const fmt = (n: number) => n.toLocaleString('es-PE', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 export const NegocioDashboard = ({
-    negocioProjects, addNegocioProject, removeNegocioProject, updateNegocioProject,
+    negocioProjects, addNegocioProject, removeNegocioProject,
     addClient, updateClient, removeClient,
     addWorker, updateWorker, removeWorker,
     addExpense, updateExpense, removeExpense
@@ -94,7 +94,7 @@ export const NegocioDashboard = ({
         setEditValue({});
     };
 
-    const selectedProject = negocioProjects.find(p => p.id === expandedProject);
+    // const selectedProject = negocioProjects.find(p => p.id === expandedProject);
 
     const calcProject = (p: NegocioProject) => {
         const totalIncome = p.clients.reduce((s, c) => s + c.monthlyPayment, 0);
