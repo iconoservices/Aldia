@@ -268,47 +268,24 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                 </div>
             </div>
 
-            {/* ── Mobile Bottom Navigation Bar ── */}
+            {/* ── Mobile Bottom Navigation Bar ──
+                 Generada desde PRIMARY_ITEMS (la misma lista que arma el sidebar
+                 de escritorio), para que el orden y los iconos nunca se
+                 desincronicen entre las dos versiones. */}
             <div className="mobile-bottom-nav">
-                <button 
-                    onClick={() => setActiveTab('Checklist')}
-                    className={`mobile-nav-btn ${activeTab === 'Checklist' ? 'active' : ''}`}
-                >
-                    <span className="material-symbols-outlined">task_alt</span>
-                    <span>Checklist</span>
-                </button>
-
-                <button
-                    onClick={() => setActiveTab('Finanzas')}
-                    className={`mobile-nav-btn ${activeTab === 'Finanzas' ? 'active' : ''}`}
-                >
-                    <span className="material-symbols-outlined">payments</span>
-                    <span>Finanzas</span>
-                </button>
-
-                <button
-                    onClick={() => setActiveTab('Bloques')}
-                    className={`mobile-nav-btn ${activeTab === 'Bloques' ? 'active' : ''}`}
-                >
-                    <span className="material-symbols-outlined">calendar_view_week</span>
-                    <span>Bloques</span>
-                </button>
-
-                <button 
-                    onClick={() => setActiveTab('Deudas')}
-                    className={`mobile-nav-btn ${activeTab === 'Deudas' ? 'active' : ''}`}
-                >
-                    <span className="material-symbols-outlined">receipt_long</span>
-                    <span>Deudas</span>
-                </button>
-
-                <button 
-                    onClick={onProfileClick}
-                    className="mobile-nav-btn"
-                >
-                    <span className="material-symbols-outlined">settings</span>
-                    <span>Ajustes</span>
-                </button>
+                {PRIMARY_ITEMS.map(item => {
+                    const isActive = item.tab === '__profile' ? false : activeTab === item.tab;
+                    return (
+                        <button
+                            key={item.label}
+                            onClick={() => item.tab === '__profile' ? onProfileClick() : setActiveTab(item.tab)}
+                            className={`mobile-nav-btn ${isActive ? 'active' : ''}`}
+                        >
+                            <span className="material-symbols-outlined">{item.icon}</span>
+                            <span>{item.label}</span>
+                        </button>
+                    );
+                })}
             </div>
 
             {/* ── Responsive Mobile Navigation CSS ── */}
@@ -417,11 +394,13 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         gap: 2px;
                         color: #54433a;
                         font-family: 'Plus Jakarta Sans', sans-serif;
-                        font-size: 0.72rem;
+                        /* 6 pestañas ahora (antes 5, ancho pensado para esas) */
+                        font-size: 0.62rem;
                         font-weight: 600;
-                        padding: 6px 12px;
+                        padding: 6px 4px;
                         border-radius: 16px;
-                        min-width: 68px;
+                        min-width: 52px;
+                        flex: 1;
                         transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
                     }
 
