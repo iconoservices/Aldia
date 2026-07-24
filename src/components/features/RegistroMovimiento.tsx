@@ -26,6 +26,30 @@ interface Cuenta {
     color: string;
 }
 
+// En iOS Safari, `position: fixed` no se reacomoda cuando aparece el teclado:
+// se queda anclado al alto de pantalla COMPLETO (sin teclado), así que una hoja
+// alineada con `align-items: flex-end` termina "abajo" de una altura que ya no
+// es visible — literalmente detrás del teclado. `visualViewport` sí reporta el
+// alto real visible, y se actualiza en vivo mientras el teclado se despliega.
+const useAlturaVisible = () => {
+    const [altura, setAltura] = useState(() => (typeof window !== 'undefined' ? window.innerHeight : 0));
+
+    useEffect(() => {
+        const vv = window.visualViewport;
+        if (!vv) return;
+        const actualizar = () => setAltura(vv.height);
+        actualizar();
+        vv.addEventListener('resize', actualizar);
+        vv.addEventListener('scroll', actualizar);
+        return () => {
+            vv.removeEventListener('resize', actualizar);
+            vv.removeEventListener('scroll', actualizar);
+        };
+    }, []);
+
+    return altura;
+};
+
 interface RegistroMovimientoProps {
     open: boolean;
     onClose: () => void;
@@ -41,6 +65,7 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
     const [categoria, setCategoria] = useState('');
     const [cuentaId, setCuentaId] = useState('');
     const [sinEfectivo, setSinEfectivo] = useState(false);
+    const alturaVisible = useAlturaVisible();
 
     // Cada vez que se abre, arranca limpio en el tipo que el usuario pidió
     // (el botón Gasto o Ingreso que tocó para llegar aquí).
@@ -86,13 +111,17 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
                         dispara el teclado en cuanto se monta (en iOS eso solo pasa si el
                         foco es síncrono con el toque). Si además animamos un `y`/`scale`,
                         el cambio de viewport que trae el teclado compite con esa animación
-                        y deja la hoja mal posicionada a mitad de camino. */}
+                        y deja la hoja mal posicionada a mitad de camino.
+                        La altura es la de `alturaVisible` (visualViewport), no `inset:0`/vh:
+                        así la hoja se reacomoda por encima del teclado en vez de quedar
+                        anclada a un alto de pantalla que el teclado ya tapó. */}
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         style={{
-                            position: 'fixed', inset: 0, zIndex: 9998,
+                            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9998,
+                            height: alturaVisible ? `${alturaVisible}px` : '100vh',
                             display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
                             padding: 0,
                         }}
@@ -106,7 +135,7 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
                                 padding: '24px', width: '100%', maxWidth: '420px',
                                 boxSizing: 'border-box',
                                 boxShadow: '0 -8px 40px rgba(0,0,0,0.2)',
-                                maxHeight: '90vh', overflowY: 'auto',
+                                maxHeight: '90%', overflowY: 'auto',
                             }}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
