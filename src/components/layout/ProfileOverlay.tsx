@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, LogOut, Download, Share, Camera, User, RefreshCw, Settings, Grid, Shield, ChevronLeft } from 'lucide-react';
 import { usePWA } from '../../hooks/usePWA';
 import { useAuth } from '../../hooks/useAuth';
+import { ReiniciarFinanzas, type OpcionesReinicioFinanzas } from '../features/ReiniciarFinanzas';
 
 import type { UserPreferences } from '../../hooks/useAlDiaState';
 
@@ -10,16 +11,18 @@ interface ProfileOverlayProps {
     isOpen: boolean;
     onClose: () => void;
     clearAllData?: () => Promise<void>;
+    clearFinanzasSelectivo?: (opciones: OpcionesReinicioFinanzas) => void;
     preferences: UserPreferences;
     updatePreference: (key: keyof UserPreferences, value: any) => void;
 }
 
-export const ProfileOverlay = ({ isOpen, onClose, clearAllData, preferences, updatePreference }: ProfileOverlayProps) => {
+export const ProfileOverlay = ({ isOpen, onClose, clearAllData, clearFinanzasSelectivo, preferences, updatePreference }: ProfileOverlayProps) => {
     const { user, loginWithGoogle, logout, updateProfile, loading: authLoading } = useAuth();
     const { isInstalled, install, canInstall } = usePWA();
     const [showIOSGuide, setShowIOSGuide] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
     const [view, setView] = useState<'main' | 'prefs' | 'glossary'>('main');
+    const [showReiniciarFinanzas, setShowReiniciarFinanzas] = useState(false);
 
     // Syncing local identity for guest users (simplified)
     const [guestName, setGuestName] = useState(() => localStorage.getItem('aldia_user_name') || 'Usuario AlDía');
@@ -164,6 +167,13 @@ export const ProfileOverlay = ({ isOpen, onClose, clearAllData, preferences, upd
                                         </button>
 
                                         <div style={{ marginTop: '1rem', borderTop: '1px solid #EEE', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            {clearFinanzasSelectivo && (
+                                                <button onClick={() => setShowReiniciarFinanzas(true)} style={{ ...settingButtonStyle, color: '#f87171' }}>
+                                                    <div style={{ ...settingIconWrapper(), background: '#FEF2F2', color: '#f87171' }}><RefreshCw size={18} /></div>
+                                                    <span style={{ flex: 1, textAlign: 'left' }}>Reiniciar Finanzas</span>
+                                                </button>
+                                            )}
+
                                             {user && (
                                                 <button onClick={async () => {
                                                     if (confirm("🚨 ¿BORRAR TODO? Esto eliminará permanentemente tus datos de la nube y del dispositivo. No hay marcha atrás.")) {
@@ -299,6 +309,14 @@ export const ProfileOverlay = ({ isOpen, onClose, clearAllData, preferences, upd
                     </div>
                 )}
             </AnimatePresence>
+
+            {clearFinanzasSelectivo && (
+                <ReiniciarFinanzas
+                    open={showReiniciarFinanzas}
+                    onClose={() => setShowReiniciarFinanzas(false)}
+                    clearFinanzasSelectivo={clearFinanzasSelectivo}
+                />
+            )}
         </AnimatePresence>
     );
 };

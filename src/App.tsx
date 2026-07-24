@@ -507,6 +507,7 @@ function App() {
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         clearAllData={state.clearAllData}
+        clearFinanzasSelectivo={state.clearFinanzasSelectivo}
         preferences={state.preferences}
         updatePreference={state.updatePreference}
       />

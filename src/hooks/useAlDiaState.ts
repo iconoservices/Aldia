@@ -712,6 +712,26 @@ export const useAlDiaState = () => {
         }
     };
 
+    // Reinicio selectivo del pilar Finanzas: a diferencia de clearAllData, deja
+    // Checklist, Negocio y el resto intactos. Las deudas viven dentro del mismo
+    // array de transacciones (flag isDebt), así que se filtran aparte para que
+    // se puedan borrar transacciones normales sin tocar deudas, o al revés.
+    const clearFinanzasSelectivo = (opciones: {
+        transacciones?: boolean; deudas?: boolean; cuentas?: boolean;
+        presupuesto?: boolean; gastosFijos?: boolean;
+    }) => {
+        if (opciones.transacciones || opciones.deudas) {
+            setTransactions(prev => prev.filter(t => {
+                if (opciones.transacciones && !t.isDebt) return false;
+                if (opciones.deudas && t.isDebt) return false;
+                return true;
+            }));
+        }
+        if (opciones.cuentas) setAccounts([]);
+        if (opciones.presupuesto) setMonthlyBudget(0);
+        if (opciones.gastosFijos) setFixedExpenses([]);
+    };
+
     const addDailyBlock = (label: string, period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro', date: string, completed: boolean = false, projectId?: number, repeatDays?: number[]) => {
         const newBlock: DailyBlock = {
             id: nextBlockId(),
@@ -895,6 +915,6 @@ export const useAlDiaState = () => {
         addClient: lw(addClient), updateClient: lw(updateClient), removeClient: lw(removeClient),
         addWorker: lw(addWorker), updateWorker: lw(updateWorker), removeWorker: lw(removeWorker),
         addExpense: lw(addExpense), updateExpense: lw(updateExpense), removeExpense: lw(removeExpense),
-        user, isInitialLoad, clearAllData
+        user, isInitialLoad, clearAllData, clearFinanzasSelectivo: lw(clearFinanzasSelectivo)
     };
 };
