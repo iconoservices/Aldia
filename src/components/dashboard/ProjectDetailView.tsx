@@ -943,27 +943,45 @@ export const ProjectDetailView = ({
                     <div style={{ padding: '1rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #F1F5F9', paddingBottom: '8px', marginBottom: '1rem' }}>
                             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 900 }}>💳 Contenedores de Dinero</h3>
-                            <button 
-                                onClick={() => {
-                                    const allAccounts = accounts || [];
-                                    if (allAccounts.length === 0) { alert('No hay cuentas creadas aún.'); return; }
-                                    const list = allAccounts.map((a, i) => `${i+1}. ${a.name}`).join('\n');
-                                    const idxStr = prompt(`Selecciona cuenta para VINCULAR a este proyecto:\n${list}`);
-                                    const idx = parseInt(idxStr || '0') - 1;
-                                    if (allAccounts[idx]) {
-                                        const target = allAccounts[idx];
-                                        const currentIds = target.projectIds || [];
-                                        if (currentIds.includes(project.id)) { alert('Esta cuenta ya está vinculada.'); return; }
-                                        const newAccounts = allAccounts.map(a => 
-                                            a.id === target.id ? { ...a, projectIds: [...currentIds, project.id] } : a
-                                        );
-                                        setAccounts(newAccounts);
-                                    }
-                                }}
-                                style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '4px 8px', fontSize: '0.6rem', fontWeight: 900, color: '#16a34a', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                            >
-                                <Plus size={10} /> VINCULAR
-                            </button>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                                <button
+                                    onClick={() => {
+                                        const nombre = prompt(`Nombre de la nueva cuenta para "${project.name}":`);
+                                        if (!nombre || !nombre.trim()) return;
+                                        const nuevaCuenta = {
+                                            id: Date.now(),
+                                            name: nombre.trim(),
+                                            color: project.color,
+                                            projectIds: [project.id],
+                                        };
+                                        setAccounts([...(accounts || []), nuevaCuenta]);
+                                    }}
+                                    style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '4px 8px', fontSize: '0.6rem', fontWeight: 900, color: 'var(--domain-orange)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                >
+                                    <Plus size={10} /> CREAR
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const allAccounts = accounts || [];
+                                        if (allAccounts.length === 0) { alert('No hay cuentas creadas aún.'); return; }
+                                        const list = allAccounts.map((a, i) => `${i+1}. ${a.name}`).join('\n');
+                                        const idxStr = prompt(`Selecciona cuenta para VINCULAR a este proyecto:\n${list}`);
+                                        const idx = parseInt(idxStr || '0') - 1;
+                                        if (allAccounts[idx]) {
+                                            const target = allAccounts[idx];
+                                            const currentIds = target.projectIds || [];
+                                            if (currentIds.includes(project.id)) { alert('Esta cuenta ya está vinculada.'); return; }
+                                            const newAccounts = allAccounts.map(a =>
+                                                a.id === target.id ? { ...a, projectIds: [...currentIds, project.id] } : a
+                                            );
+                                            setAccounts(newAccounts);
+                                        }
+                                    }}
+                                    style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '4px 8px', fontSize: '0.6rem', fontWeight: 900, color: '#16a34a', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                >
+                                    <Plus size={10} /> VINCULAR
+                                </button>
+                            </div>
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
