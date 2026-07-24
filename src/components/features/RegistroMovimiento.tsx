@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { C, campo, TOQUE_MINIMO, RADIO } from '../../theme';
 
@@ -41,6 +41,7 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
     const [categoria, setCategoria] = useState('');
     const [cuentaId, setCuentaId] = useState('');
     const [sinEfectivo, setSinEfectivo] = useState(false);
+    const textoRef = useRef<HTMLInputElement>(null);
 
     // Cada vez que se abre, arranca limpio en el tipo que el usuario pidió
     // (el botón Gasto o Ingreso que tocó para llegar aquí).
@@ -52,6 +53,12 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
             setCategoria('');
             setCuentaId('');
             setSinEfectivo(false);
+            // El foco se retrasa hasta que termina la animación de entrada:
+            // si el teclado se dispara mientras el modal todavía se está
+            // deslizando (framer-motion), el cambio de viewport en iOS lo
+            // deja mal posicionado.
+            const t = setTimeout(() => textoRef.current?.focus(), 350);
+            return () => clearTimeout(t);
         }
     }, [open, tipoInicial]);
 
@@ -151,7 +158,7 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
 
                             <form onSubmit={guardar} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 <input
-                                    autoFocus
+                                    ref={textoRef}
                                     value={texto}
                                     onChange={e => setTexto(e.target.value)}
                                     placeholder={tipo === 'gasto' ? '¿En qué gastaste?' : '¿De qué fue el ingreso?'}
