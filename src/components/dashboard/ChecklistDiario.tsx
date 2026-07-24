@@ -1540,7 +1540,7 @@ export const ChecklistDiario = ({
 interface RegistroRapidoProps {
     addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string) => void;
     accounts: { id: number; name: string; color: string }[];
-    projects?: { id: number; name: string; color: string; incomeCategories?: string[]; expenseCategories?: string[] }[];
+    projects?: { id: number; name: string; color: string; status?: 'activo' | 'pausado' | 'completado'; incomeCategories?: string[]; expenseCategories?: string[] }[];
     compacto?: boolean;
 }
 

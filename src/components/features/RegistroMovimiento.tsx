@@ -31,6 +31,7 @@ interface Proyecto {
     id: number;
     name: string;
     color: string;
+    status?: 'activo' | 'pausado' | 'completado';
     incomeCategories?: string[];
     expenseCategories?: string[];
 }
@@ -122,6 +123,10 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, pr
     const categoriasDefault = tipo === 'ingreso' ? DEFAULT_INCOME_CATEGORIES : DEFAULT_EXPENSE_CATEGORIES;
     const categoriasProyecto = proyecto ? (tipo === 'ingreso' ? proyecto.incomeCategories : proyecto.expenseCategories) : undefined;
     const categorias = categoriasProyecto && categoriasProyecto.length > 0 ? categoriasProyecto : categoriasDefault;
+    // Proyectos pausados/completados no aparecen en el selector rápido: con
+    // varios proyectos activos ya es una fila larga, y los archivados solo
+    // estorban en un registro que se usa varias veces al día.
+    const proyectosSeleccionables = projects.filter(p => !p.status || p.status === 'activo');
 
     // Las categorías de un proyecto no tienen por qué existir en la lista
     // general (ni al revés), así que al cambiar de proyecto se limpia la
@@ -244,7 +249,7 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, pr
                                     />
                                 </div>
 
-                                {projects.length > 0 && (
+                                {proyectosSeleccionables.length > 0 && (
                                     <div>
                                         <p style={{
                                             margin: '0 0 8px 2px', fontSize: '0.72rem', fontWeight: 700,
@@ -253,7 +258,7 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, pr
                                             Proyecto (opcional)
                                         </p>
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                            {projects.map(p => {
+                                            {proyectosSeleccionables.map(p => {
                                                 const seleccionado = proyectoId === String(p.id);
                                                 return (
                                                     <button
