@@ -152,9 +152,9 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             <header className="aldia-header desktop-header-only">
                 {/* Logo */}
                 <div className="sidebar-logo desktop-only" style={{ padding: '0 4px', flexShrink: 0 }}>
-                    <div className="logo-placeholder">A</div>
+                    <img src="/favicon.svg" alt="AlDía" className="logo-placeholder" style={{ padding: 0 }} />
                     <div>
-                        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: '#944a18', letterSpacing: '-0.01em', lineHeight: 1 }}>AIDía</h1>
+                        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: '#944a18', letterSpacing: '-0.01em', lineHeight: 1 }}>AlDía</h1>
                         <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#54433a', opacity: 0.7, fontWeight: 600, letterSpacing: '0.04em' }}>Productivity Focus</p>
                     </div>
                 </div>
@@ -226,7 +226,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     <span className="material-symbols-outlined">menu</span>
                 </button>
                 <div className="mobile-title-container">
-                    <span className="mobile-logo-text">AIDía</span>
+                    <span className="mobile-logo-text">AlDía</span>
                     <span className="mobile-view-title">{getViewTitle(activeTab)}</span>
                 </div>
                 <div 
@@ -248,7 +248,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             <div className={`mobile-drawer ${isDrawerOpen ? 'open' : ''}`}>
                 <div className="mobile-drawer-header">
                     <div>
-                        <span className="mobile-logo-text" style={{ fontSize: '1.4rem' }}>AIDía</span>
+                        <span className="mobile-logo-text" style={{ fontSize: '1.4rem' }}>AlDía</span>
                         <p style={{ margin: 0, fontSize: '0.75rem', color: '#877369', fontWeight: 600 }}>Productivity Focus</p>
                     </div>
                     <button className="mobile-drawer-close" onClick={() => setIsDrawerOpen(false)}>
