@@ -40,6 +40,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Plan',      tab: 'Plan',      icon: 'savings'       },
         { label: 'Bloques', tab: 'Bloques',   icon: 'history_edu'    },
         { label: 'Deudas',     tab: 'Deudas',     icon: 'receipt_long'  },
+        { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
         { label: 'Ajustes',  tab: '__profile', icon: 'settings'       },
     ];
 
@@ -54,7 +55,6 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Cerebro',    tab: 'Cerebro',     icon: 'psychology'    },
         { label: 'Ruta',       tab: 'Ruta',        icon: 'route'         },
         { label: 'Mapa',       tab: 'Mapa',        icon: 'map'           },
-        { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
         { label: 'Tablero',    tab: 'Tablero',     icon: 'view_kanban'   },
         { label: 'Lienzo',     tab: 'Lienzo',      icon: 'palette'       },
         { label: 'Lienzo Ops', tab: 'Lienzo Ops',  icon: 'dashboard'     },

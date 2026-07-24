@@ -27,6 +27,14 @@ interface Cuenta {
     color: string;
 }
 
+interface Proyecto {
+    id: number;
+    name: string;
+    color: string;
+    incomeCategories?: string[];
+    expenseCategories?: string[];
+}
+
 // En iOS Safari, `position: fixed` no se reacomoda cuando aparece el teclado:
 // se queda anclado al alto de pantalla COMPLETO (sin teclado), así que una hoja
 // alineada con `align-items: flex-end` termina "abajo" de una altura que ya no
@@ -67,15 +75,17 @@ interface RegistroMovimientoProps {
     onClose: () => void;
     addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string) => void;
     accounts: Cuenta[];
+    projects?: Proyecto[];
     tipoInicial?: 'gasto' | 'ingreso';
 }
 
-export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, tipoInicial = 'gasto' }: RegistroMovimientoProps) => {
+export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, projects = [], tipoInicial = 'gasto' }: RegistroMovimientoProps) => {
     const [tipo, setTipo] = useState<'gasto' | 'ingreso'>(tipoInicial);
     const [texto, setTexto] = useState('');
     const [monto, setMonto] = useState('');
     const [categoria, setCategoria] = useState('');
     const [cuentaId, setCuentaId] = useState('');
+    const [proyectoId, setProyectoId] = useState('');
     const [sinEfectivo, setSinEfectivo] = useState(false);
     const visualViewport = useVisualViewport();
 
@@ -88,6 +98,7 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
             setMonto('');
             setCategoria('');
             setCuentaId('');
+            setProyectoId('');
             setSinEfectivo(false);
         }
     }, [open, tipoInicial]);
@@ -98,7 +109,8 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
         if (!valor || valor <= 0) return;
         addTransaction(
             texto.trim() || (tipo === 'gasto' ? 'Gasto' : 'Ingreso'),
-            valor, tipo, false, undefined,
+            valor, tipo, false,
+            proyectoId ? Number(proyectoId) : undefined,
             cuentaId ? Number(cuentaId) : undefined,
             sinEfectivo, categoria.trim() || undefined, undefined
         );
@@ -106,7 +118,17 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
     };
 
     const colorTipo = tipo === 'gasto' ? C.rojo : C.verde;
-    const categorias = tipo === 'ingreso' ? DEFAULT_INCOME_CATEGORIES : DEFAULT_EXPENSE_CATEGORIES;
+    const proyecto = proyectoId ? projects.find(p => String(p.id) === proyectoId) : undefined;
+    const categoriasDefault = tipo === 'ingreso' ? DEFAULT_INCOME_CATEGORIES : DEFAULT_EXPENSE_CATEGORIES;
+    const categoriasProyecto = proyecto ? (tipo === 'ingreso' ? proyecto.incomeCategories : proyecto.expenseCategories) : undefined;
+    const categorias = categoriasProyecto && categoriasProyecto.length > 0 ? categoriasProyecto : categoriasDefault;
+
+    // Las categorías de un proyecto no tienen por qué existir en la lista
+    // general (ni al revés), así que al cambiar de proyecto se limpia la
+    // categoría elegida para no arrastrar una que ya no aplica.
+    useEffect(() => {
+        setCategoria('');
+    }, [proyectoId]);
 
     return (
         <AnimatePresence>
@@ -221,6 +243,39 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
                                         style={{ ...campo(true), width: '100%', paddingLeft: '34px', fontWeight: 700, fontSize: '1.1rem' }}
                                     />
                                 </div>
+
+                                {projects.length > 0 && (
+                                    <div>
+                                        <p style={{
+                                            margin: '0 0 8px 2px', fontSize: '0.72rem', fontWeight: 700,
+                                            color: C.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: '0.02em',
+                                        }}>
+                                            Proyecto (opcional)
+                                        </p>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                            {projects.map(p => {
+                                                const seleccionado = proyectoId === String(p.id);
+                                                return (
+                                                    <button
+                                                        key={p.id}
+                                                        type="button"
+                                                        onClick={() => setProyectoId(prev => prev === String(p.id) ? '' : String(p.id))}
+                                                        style={{
+                                                            padding: '8px 14px', borderRadius: '999px',
+                                                            border: `1px solid ${seleccionado ? p.color : C.outlineVariant}`,
+                                                            background: seleccionado ? p.color : 'transparent',
+                                                            color: seleccionado ? '#fff' : C.onSurfaceVariant,
+                                                            fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer',
+                                                            fontFamily: 'inherit', whiteSpace: 'nowrap',
+                                                        }}
+                                                    >
+                                                        {p.name}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div>
                                     <p style={{
