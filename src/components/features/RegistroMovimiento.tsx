@@ -31,13 +31,24 @@ interface Cuenta {
 // alineada con `align-items: flex-end` termina "abajo" de una altura que ya no
 // es visible — literalmente detrás del teclado. `visualViewport` sí reporta el
 // alto real visible, y se actualiza en vivo mientras el teclado se despliega.
-const useAlturaVisible = () => {
-    const [altura, setAltura] = useState(() => (typeof window !== 'undefined' ? window.innerHeight : 0));
+//
+// `offsetTop` hace falta además de `height`: al reenfocar un campo (por ej.
+// tocar "Listo" y volver a tocar otro input), iOS hace scroll automático de
+// la página para "acercar" el campo al teclado. Ese scroll mueve el visual
+// viewport hacia abajo dentro del layout viewport (offsetTop > 0), pero un
+// `position: fixed` con `top: 0` no lo sigue — se queda anclado arriba de
+// donde ahora está lo visible, dejando un hueco abajo (se ve el fondo real
+// de la página detrás de la hoja) antes de llegar al teclado.
+const useVisualViewport = () => {
+    const [vp, setVp] = useState(() => ({
+        height: typeof window !== 'undefined' ? window.innerHeight : 0,
+        offsetTop: 0,
+    }));
 
     useEffect(() => {
         const vv = window.visualViewport;
         if (!vv) return;
-        const actualizar = () => setAltura(vv.height);
+        const actualizar = () => setVp({ height: vv.height, offsetTop: vv.offsetTop });
         actualizar();
         vv.addEventListener('resize', actualizar);
         vv.addEventListener('scroll', actualizar);
@@ -47,7 +58,7 @@ const useAlturaVisible = () => {
         };
     }, []);
 
-    return altura;
+    return vp;
 };
 
 interface RegistroMovimientoProps {
@@ -65,7 +76,7 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
     const [categoria, setCategoria] = useState('');
     const [cuentaId, setCuentaId] = useState('');
     const [sinEfectivo, setSinEfectivo] = useState(false);
-    const alturaVisible = useAlturaVisible();
+    const visualViewport = useVisualViewport();
 
     // Cada vez que se abre, arranca limpio en el tipo que el usuario pidió
     // (el botón Gasto o Ingreso que tocó para llegar aquí).
@@ -112,16 +123,19 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
                         foco es síncrono con el toque). Si además animamos un `y`/`scale`,
                         el cambio de viewport que trae el teclado compite con esa animación
                         y deja la hoja mal posicionada a mitad de camino.
-                        La altura es la de `alturaVisible` (visualViewport), no `inset:0`/vh:
-                        así la hoja se reacomoda por encima del teclado en vez de quedar
-                        anclada a un alto de pantalla que el teclado ya tapó. */}
+                        top/height siguen a `visualViewport` en vez de `inset:0`/vh: así la
+                        hoja se reacomoda por encima del teclado, y también seg el scroll
+                        que iOS hace solo cuando se reenfoca un campo (ese scroll mueve el
+                        visual viewport dentro del layout viewport — offsetTop > 0 —, y sin
+                        seguirlo la hoja se queda "arriba" dejando un hueco con el fondo real
+                        de la página antes de llegar al teclado). */}
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         style={{
-                            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9998,
-                            height: alturaVisible ? `${alturaVisible}px` : '100vh',
+                            position: 'fixed', top: `${visualViewport.offsetTop}px`, left: 0, right: 0, zIndex: 9998,
+                            height: `${visualViewport.height}px`,
                             display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
                             padding: 0,
                         }}
