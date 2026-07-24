@@ -493,7 +493,7 @@ export const ChecklistDiario = ({
                 {/* Registrar dinero sin salir del día */}
                 {addTransaction && (
                     <div style={{ marginBottom: '1rem' }}>
-                        <RegistroRapido addTransaction={addTransaction} accounts={accounts} projects={projects} compacto />
+                        <RegistroRapido addTransaction={addTransaction} accounts={accounts} compacto />
                     </div>
                 )}
 
@@ -1055,7 +1055,7 @@ export const ChecklistDiario = ({
 
                 {/* Registrar dinero sin salir del día */}
                 {addTransaction && (
-                    <RegistroRapido addTransaction={addTransaction} accounts={accounts} projects={projects} />
+                    <RegistroRapido addTransaction={addTransaction} accounts={accounts} />
                 )}
 
                 {/* Search */}
@@ -1540,11 +1540,10 @@ export const ChecklistDiario = ({
 interface RegistroRapidoProps {
     addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string) => void;
     accounts: { id: number; name: string; color: string }[];
-    projects?: { id: number; name: string; color: string; status?: 'activo' | 'pausado' | 'completado'; incomeCategories?: string[]; expenseCategories?: string[] }[];
     compacto?: boolean;
 }
 
-const RegistroRapido = ({ addTransaction, accounts, projects, compacto = false }: RegistroRapidoProps) => {
+const RegistroRapido = ({ addTransaction, accounts, compacto = false }: RegistroRapidoProps) => {
     const [tipo, setTipo] = useState<'gasto' | 'ingreso' | null>(null);
 
     return (
@@ -1585,7 +1584,6 @@ const RegistroRapido = ({ addTransaction, accounts, projects, compacto = false }
                 onClose={() => setTipo(null)}
                 addTransaction={addTransaction}
                 accounts={accounts}
-                projects={projects}
                 tipoInicial={tipo || 'gasto'}
             />
         </div>

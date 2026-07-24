@@ -716,7 +716,6 @@ export const FinanzasDashboard = ({
                 onClose={() => setShowTxForm(false)}
                 addTransaction={addTransaction}
                 accounts={accounts}
-                projects={projects}
             />
 
             {/* ── Selector de vista + Ver todo ─── */}

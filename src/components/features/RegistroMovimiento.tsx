@@ -27,15 +27,6 @@ interface Cuenta {
     color: string;
 }
 
-interface Proyecto {
-    id: number;
-    name: string;
-    color: string;
-    status?: 'activo' | 'pausado' | 'completado';
-    incomeCategories?: string[];
-    expenseCategories?: string[];
-}
-
 // En iOS Safari, `position: fixed` no se reacomoda cuando aparece el teclado:
 // se queda anclado al alto de pantalla COMPLETO (sin teclado), así que una hoja
 // alineada con `align-items: flex-end` termina "abajo" de una altura que ya no
@@ -76,18 +67,15 @@ interface RegistroMovimientoProps {
     onClose: () => void;
     addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string) => void;
     accounts: Cuenta[];
-    projects?: Proyecto[];
     tipoInicial?: 'gasto' | 'ingreso';
 }
 
-export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, projects = [], tipoInicial = 'gasto' }: RegistroMovimientoProps) => {
+export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, tipoInicial = 'gasto' }: RegistroMovimientoProps) => {
     const [tipo, setTipo] = useState<'gasto' | 'ingreso'>(tipoInicial);
     const [texto, setTexto] = useState('');
     const [monto, setMonto] = useState('');
     const [categoria, setCategoria] = useState('');
     const [cuentaId, setCuentaId] = useState('');
-    const [proyectoId, setProyectoId] = useState('');
-    const [sinEfectivo, setSinEfectivo] = useState(false);
     const visualViewport = useVisualViewport();
 
     // Cada vez que se abre, arranca limpio en el tipo que el usuario pidió
@@ -99,41 +87,29 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, pr
             setMonto('');
             setCategoria('');
             setCuentaId('');
-            setProyectoId('');
-            setSinEfectivo(false);
         }
     }, [open, tipoInicial]);
+
+    // La cuenta es obligatoria si hay alguna creada (si no hay ninguna, no
+    // se le puede pedir al usuario que elija una que no existe).
+    const cuentaValida = accounts.length === 0 || !!cuentaId;
 
     const guardar = (e: React.FormEvent) => {
         e.preventDefault();
         const valor = parseFloat(monto);
-        if (!valor || valor <= 0) return;
+        if (!valor || valor <= 0 || !cuentaValida || !categoria) return;
         addTransaction(
             texto.trim() || (tipo === 'gasto' ? 'Gasto' : 'Ingreso'),
-            valor, tipo, false,
-            proyectoId ? Number(proyectoId) : undefined,
+            valor, tipo, false, undefined,
             cuentaId ? Number(cuentaId) : undefined,
-            sinEfectivo, categoria.trim() || undefined, undefined
+            false, categoria.trim() || undefined, undefined
         );
         onClose();
     };
 
     const colorTipo = tipo === 'gasto' ? C.rojo : C.verde;
-    const proyecto = proyectoId ? projects.find(p => String(p.id) === proyectoId) : undefined;
-    const categoriasDefault = tipo === 'ingreso' ? DEFAULT_INCOME_CATEGORIES : DEFAULT_EXPENSE_CATEGORIES;
-    const categoriasProyecto = proyecto ? (tipo === 'ingreso' ? proyecto.incomeCategories : proyecto.expenseCategories) : undefined;
-    const categorias = categoriasProyecto && categoriasProyecto.length > 0 ? categoriasProyecto : categoriasDefault;
-    // Proyectos pausados/completados no aparecen en el selector rápido: con
-    // varios proyectos activos ya es una fila larga, y los archivados solo
-    // estorban en un registro que se usa varias veces al día.
-    const proyectosSeleccionables = projects.filter(p => !p.status || p.status === 'activo');
-
-    // Las categorías de un proyecto no tienen por qué existir en la lista
-    // general (ni al revés), así que al cambiar de proyecto se limpia la
-    // categoría elegida para no arrastrar una que ya no aplica.
-    useEffect(() => {
-        setCategoria('');
-    }, [proyectoId]);
+    const categorias = tipo === 'ingreso' ? DEFAULT_INCOME_CATEGORIES : DEFAULT_EXPENSE_CATEGORIES;
+    const puedeGuardar = !!parseFloat(monto) && cuentaValida && !!categoria;
 
     return (
         <AnimatePresence>
@@ -249,45 +225,12 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, pr
                                     />
                                 </div>
 
-                                {proyectosSeleccionables.length > 0 && (
-                                    <div>
-                                        <p style={{
-                                            margin: '0 0 8px 2px', fontSize: '0.72rem', fontWeight: 700,
-                                            color: C.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: '0.02em',
-                                        }}>
-                                            Proyecto (opcional)
-                                        </p>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                            {proyectosSeleccionables.map(p => {
-                                                const seleccionado = proyectoId === String(p.id);
-                                                return (
-                                                    <button
-                                                        key={p.id}
-                                                        type="button"
-                                                        onClick={() => setProyectoId(prev => prev === String(p.id) ? '' : String(p.id))}
-                                                        style={{
-                                                            padding: '8px 14px', borderRadius: '999px',
-                                                            border: `1px solid ${seleccionado ? p.color : C.outlineVariant}`,
-                                                            background: seleccionado ? p.color : 'transparent',
-                                                            color: seleccionado ? '#fff' : C.onSurfaceVariant,
-                                                            fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer',
-                                                            fontFamily: 'inherit', whiteSpace: 'nowrap',
-                                                        }}
-                                                    >
-                                                        {p.name}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-
                                 <div>
                                     <p style={{
                                         margin: '0 0 8px 2px', fontSize: '0.72rem', fontWeight: 700,
                                         color: C.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: '0.02em',
                                     }}>
-                                        Categoría (opcional)
+                                        Categoría *
                                     </p>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                         {categorias.map(cat => (
@@ -316,35 +259,21 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, pr
                                         onChange={e => setCuentaId(e.target.value)}
                                         style={{ ...campo(true), background: C.surfaceContainerLow, cursor: 'pointer', width: '100%' }}
                                     >
-                                        <option value="">Cuenta…</option>
+                                        <option value="">Cuenta *</option>
                                         {accounts.map(a => <option key={a.id} value={String(a.id)}>{a.name}</option>)}
                                     </select>
                                 )}
 
-                                <label style={{
-                                    display: 'flex', alignItems: 'center', gap: '8px',
-                                    fontSize: '0.85rem', color: C.onSurfaceVariant, cursor: 'pointer',
-                                    padding: '4px 0',
-                                }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={sinEfectivo}
-                                        onChange={e => setSinEfectivo(e.target.checked)}
-                                        style={{ accentColor: C.primary, width: '18px', height: '18px' }}
-                                    />
-                                    Sin efectivo (no afecta el saldo disponible)
-                                </label>
-
                                 <button
                                     type="submit"
-                                    disabled={!parseFloat(monto)}
+                                    disabled={!puedeGuardar}
                                     style={{
-                                        background: parseFloat(monto) ? colorTipo : C.surfaceContainerHigh,
-                                        color: parseFloat(monto) ? '#fff' : C.onSurfaceVariant,
+                                        background: puedeGuardar ? colorTipo : C.surfaceContainerHigh,
+                                        color: puedeGuardar ? '#fff' : C.onSurfaceVariant,
                                         border: 'none', borderRadius: '14px', padding: '14px',
                                         minHeight: `${TOQUE_MINIMO}px`,
                                         fontSize: '1rem', fontWeight: 800, fontFamily: 'inherit',
-                                        cursor: parseFloat(monto) ? 'pointer' : 'default',
+                                        cursor: puedeGuardar ? 'pointer' : 'default',
                                         marginTop: '4px',
                                     }}
                                 >
