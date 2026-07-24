@@ -40,6 +40,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Plan',      tab: 'Plan',      icon: 'savings'       },
         { label: 'Bloques', tab: 'Bloques',   icon: 'history_edu'    },
         { label: 'Deudas',     tab: 'Deudas',     icon: 'receipt_long'  },
+        { label: 'Movimientos', tab: 'Movimientos', icon: 'list_alt'    },
         { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
         { label: 'Ajustes',  tab: '__profile', icon: 'settings'       },
     ];
@@ -381,6 +382,16 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         z-index: 999;
                         box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
                         padding: 0 8px;
+                        /* Con más de 7 tabs ya no entran todas en 375px de ancho.
+                           Antes se cortaban en silencio (overflow visible, sin
+                           forma de llegar a las últimas) — con scroll al menos
+                           quedan alcanzables deslizando. */
+                        overflow-x: auto;
+                        -webkit-overflow-scrolling: touch;
+                        scrollbar-width: none;
+                    }
+                    .mobile-bottom-nav::-webkit-scrollbar {
+                        display: none;
                     }
 
                     .mobile-nav-btn {

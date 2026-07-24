@@ -35,6 +35,7 @@ import { DeudasyCobrosDashboard } from './components/dashboard/DeudasyCobrosDash
 import { NegocioDashboard } from './components/dashboard/NegocioDashboard';
 import { NegocioLienzo } from './components/dashboard/NegocioLienzo';
 import { BuscadorDashboard } from './components/dashboard/BuscadorDashboard';
+import { MovimientosDashboard } from './components/dashboard/MovimientosDashboard';
 
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -43,6 +44,7 @@ function App() {
     if (path.includes('/stats')) return 'Stats';
     if (path.includes('/finanzas')) return 'Finanzas';
     if (path.includes('/proyectos')) return 'Proyectos';
+    if (path.includes('/movimientos')) return 'Movimientos';
     if (path.includes('/tablero')) return 'Tablero';
     if (path.includes('/vida')) return 'Vida';
     if (path.includes('/cerebro')) return 'Cerebro';
@@ -94,6 +96,7 @@ function App() {
       else if (path.includes('/stats')) setActiveTab('Stats');
       else if (path.includes('/finanzas')) setActiveTab('Finanzas');
       else if (path.includes('/proyectos')) setActiveTab('Proyectos');
+      else if (path.includes('/movimientos')) setActiveTab('Movimientos');
       else if (path.includes('/tablero')) setActiveTab('Tablero');
       else if (path.includes('/vida')) setActiveTab('Vida');
       else if (path.includes('/cerebro')) setActiveTab('Cerebro');
@@ -374,6 +377,11 @@ function App() {
                 updateProject={state.updateProject}
                 setSelectedProjectDetailId={setSelectedProjectDetailId}
                 onNavigate={setActiveTab}
+              />
+            ) : activeTab === 'Movimientos' ? (
+              <MovimientosDashboard
+                transactions={state.transactions}
+                removeTransaction={state.removeTransaction}
               />
             ) : activeTab === 'Proyectos' ? (
               <ProyectosDashboard
