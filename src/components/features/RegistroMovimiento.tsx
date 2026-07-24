@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { C, campo, TOQUE_MINIMO, RADIO } from '../../theme';
+import { DEFAULT_INCOME_CATEGORIES, DEFAULT_EXPENSE_CATEGORIES } from '../../hooks/useAlDiaState';
 
 /* ══════════════════════════════════════════════════════════════════
    RegistroMovimiento — modal único para anotar un gasto o un ingreso.
@@ -105,6 +106,7 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
     };
 
     const colorTipo = tipo === 'gasto' ? C.rojo : C.verde;
+    const categorias = tipo === 'ingreso' ? DEFAULT_INCOME_CATEGORIES : DEFAULT_EXPENSE_CATEGORIES;
 
     return (
         <AnimatePresence>
@@ -171,7 +173,7 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
                             }}>
                                 <button
                                     type="button"
-                                    onClick={() => setTipo('gasto')}
+                                    onClick={() => { setTipo('gasto'); setCategoria(''); }}
                                     style={{
                                         flex: 1, padding: '12px', borderRadius: '999px', border: 'none',
                                         background: tipo === 'gasto' ? C.rojo : 'transparent',
@@ -184,7 +186,7 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setTipo('ingreso')}
+                                    onClick={() => { setTipo('ingreso'); setCategoria(''); }}
                                     style={{
                                         flex: 1, padding: '12px', borderRadius: '999px', border: 'none',
                                         background: tipo === 'ingreso' ? C.verde : 'transparent',
@@ -220,24 +222,44 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
                                     />
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '10px' }}>
-                                    <input
-                                        value={categoria}
-                                        onChange={e => setCategoria(e.target.value)}
-                                        placeholder="Categoría (opcional)"
-                                        style={{ ...campo(true), flex: 1, minWidth: 0 }}
-                                    />
-                                    {accounts.length > 0 && (
-                                        <select
-                                            value={cuentaId}
-                                            onChange={e => setCuentaId(e.target.value)}
-                                            style={{ ...campo(true), background: C.surfaceContainerLow, cursor: 'pointer', flex: 1, minWidth: 0 }}
-                                        >
-                                            <option value="">Cuenta…</option>
-                                            {accounts.map(a => <option key={a.id} value={String(a.id)}>{a.name}</option>)}
-                                        </select>
-                                    )}
+                                <div>
+                                    <p style={{
+                                        margin: '0 0 8px 2px', fontSize: '0.72rem', fontWeight: 700,
+                                        color: C.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: '0.02em',
+                                    }}>
+                                        Categoría (opcional)
+                                    </p>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                        {categorias.map(cat => (
+                                            <button
+                                                key={cat}
+                                                type="button"
+                                                onClick={() => setCategoria(prev => prev === cat ? '' : cat)}
+                                                style={{
+                                                    padding: '8px 14px', borderRadius: '999px',
+                                                    border: `1px solid ${categoria === cat ? colorTipo : C.outlineVariant}`,
+                                                    background: categoria === cat ? colorTipo : 'transparent',
+                                                    color: categoria === cat ? '#fff' : C.onSurfaceVariant,
+                                                    fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer',
+                                                    fontFamily: 'inherit', whiteSpace: 'nowrap',
+                                                }}
+                                            >
+                                                {cat}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
+
+                                {accounts.length > 0 && (
+                                    <select
+                                        value={cuentaId}
+                                        onChange={e => setCuentaId(e.target.value)}
+                                        style={{ ...campo(true), background: C.surfaceContainerLow, cursor: 'pointer', width: '100%' }}
+                                    >
+                                        <option value="">Cuenta…</option>
+                                        {accounts.map(a => <option key={a.id} value={String(a.id)}>{a.name}</option>)}
+                                    </select>
+                                )}
 
                                 <label style={{
                                     display: 'flex', alignItems: 'center', gap: '8px',
