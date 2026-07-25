@@ -273,8 +273,6 @@ function App() {
                 accounts={state.accounts}
                 incomeCategories={state.incomeCategories}
                 expenseCategories={state.expenseCategories}
-                addCategory={state.addCategory}
-                removeCategory={state.removeCategory}
               />
             ) : activeTab === 'Plan' ? (
               <PlanDashboard

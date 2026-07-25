@@ -189,8 +189,6 @@ interface ChecklistDiarioProps {
     accounts?:        { id: number; name: string; color: string }[];
     incomeCategories?:  string[];
     expenseCategories?: string[];
-    addCategory?:       (type: 'ingreso' | 'gasto', name: string) => void;
-    removeCategory?:    (type: 'ingreso' | 'gasto', name: string) => void;
 }
 
 const SORT_STORAGE_KEY = 'aldia-checklist-custom-order';
@@ -198,7 +196,7 @@ const SORT_STORAGE_KEY = 'aldia-checklist-custom-order';
 export const ChecklistDiario = ({
     dailyBlocks, addDailyBlock, toggleDailyBlock, removeDailyBlock, updateDailyBlock, projects,
     addTransaction, accounts = [],
-    incomeCategories, expenseCategories, addCategory, removeCategory,
+    incomeCategories, expenseCategories,
 }: ChecklistDiarioProps) => {
     /* La fecha se recalcula sola: si la app queda abierta y pasa medianoche,
        el checklist salta al día nuevo sin necesidad de recargar. */
@@ -230,7 +228,6 @@ export const ChecklistDiario = ({
     const [quickAddText,   setQuickAddText]    = useState('');
     const [quickAddPeriod, setQuickAddPeriod]  = useState<Period>('Mañana');
     const isMobile = useIsMobile();
-    const [showMobileAddForm, setShowMobileAddForm] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState<{ label: string; period: Period } | null>(null);
     const [editingTask, setEditingTask] = useState<{ label: string; period: Period } | null>(null);
     const [editText, setEditText] = useState('');
@@ -666,89 +663,63 @@ export const ChecklistDiario = ({
                     })}
                 </div>
 
-                {/* Mobile Quick Add Form slide-down */}
-                <AnimatePresence>
-                    {showMobileAddForm && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            style={{ overflow: 'hidden', marginBottom: '12px' }}
+                {/* Quick Add Form: siempre visible (antes se abría con el FAB naranja,
+                    que se quitó — así no se pierde la forma de añadir tareas). */}
+                <form
+                    onSubmit={handleQuickAdd}
+                    style={{
+                        display: 'flex', flexDirection: 'column', gap: '10px',
+                        padding: '16px', marginBottom: '12px',
+                        background: '#ffffff',
+                        border: `1.5px dashed ${C.outlineVariant}`,
+                        borderRadius: '1.25rem',
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '20px', color: C.primary }}>add_circle</span>
+                        <input
+                            type="text"
+                            value={quickAddText}
+                            onChange={e => setQuickAddText(e.target.value)}
+                            placeholder="Añadir una nueva tarea para hoy..."
+                            style={{
+                                flex: 1, background: 'transparent', border: 'none',
+                                outline: 'none', fontSize: '0.9rem', color: C.onSurface,
+                                fontFamily: 'inherit',
+                            }}
+                        />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                        <select
+                            value={quickAddPeriod}
+                            onChange={e => setQuickAddPeriod(e.target.value as Period)}
+                            style={{
+                                background: C.surfaceContainer, border: 'none', outline: 'none',
+                                borderRadius: '8px', padding: '6px 12px',
+                                fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant,
+                                cursor: 'pointer', fontFamily: 'inherit',
+                            }}
                         >
-                            <form
-                                onSubmit={(e) => {
-                                    handleQuickAdd(e);
-                                    setShowMobileAddForm(false);
-                                }}
-                                style={{
-                                    display: 'flex', flexDirection: 'column', gap: '10px',
-                                    padding: '16px',
-                                    background: '#ffffff',
-                                    border: `1.5px dashed ${C.outlineVariant}`,
-                                    borderRadius: '1.25rem',
-                                }}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span className="material-symbols-outlined" style={{ fontSize: '20px', color: C.primary }}>add_circle</span>
-                                    <input
-                                        type="text"
-                                        value={quickAddText}
-                                        onChange={e => setQuickAddText(e.target.value)}
-                                        placeholder="Añadir una nueva tarea para hoy..."
-                                        style={{
-                                            flex: 1, background: 'transparent', border: 'none',
-                                            outline: 'none', fontSize: '0.9rem', color: C.onSurface,
-                                            fontFamily: 'inherit',
-                                        }}
-                                        autoFocus
-                                    />
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                                    <select
-                                        value={quickAddPeriod}
-                                        onChange={e => setQuickAddPeriod(e.target.value as Period)}
-                                        style={{
-                                            background: C.surfaceContainer, border: 'none', outline: 'none',
-                                            borderRadius: '8px', padding: '6px 12px',
-                                            fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant,
-                                            cursor: 'pointer', fontFamily: 'inherit',
-                                        }}
-                                    >
-                                        <option value="Mañana">☀️ Mañana</option>
-                                        <option value="Tarde">🌤 Tarde</option>
-                                        <option value="Noche">🌙 Noche</option>
-                                        <option value="Otro">⏱ Otro</option>
-                                    </select>
-                                    <div style={{ display: 'flex', gap: '8px' }}>
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowMobileAddForm(false)}
-                                            style={{
-                                                background: 'transparent', border: 'none', color: C.onSurfaceVariant,
-                                                padding: '6px 12px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
-                                            }}
-                                        >
-                                            Cancelar
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            disabled={!quickAddText.trim()}
-                                            style={{
-                                                background: quickAddText.trim() ? C.primary : C.surfaceContainer,
-                                                color: quickAddText.trim() ? '#fff' : C.onSurfaceVariant,
-                                                border: 'none', borderRadius: '8px',
-                                                padding: '6px 16px', fontSize: '0.8rem', fontWeight: 700,
-                                                cursor: quickAddText.trim() ? 'pointer' : 'default',
-                                            }}
-                                        >
-                                            Añadir
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                            <option value="Mañana">☀️ Mañana</option>
+                            <option value="Tarde">🌤 Tarde</option>
+                            <option value="Noche">🌙 Noche</option>
+                            <option value="Otro">⏱ Otro</option>
+                        </select>
+                        <button
+                            type="submit"
+                            disabled={!quickAddText.trim()}
+                            style={{
+                                background: quickAddText.trim() ? C.primary : C.surfaceContainer,
+                                color: quickAddText.trim() ? '#fff' : C.onSurfaceVariant,
+                                border: 'none', borderRadius: '8px',
+                                padding: '6px 16px', fontSize: '0.8rem', fontWeight: 700,
+                                cursor: quickAddText.trim() ? 'pointer' : 'default',
+                            }}
+                        >
+                            Añadir
+                        </button>
+                    </div>
+                </form>
 
                 {/* DnD Tasks List */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -870,36 +841,10 @@ export const ChecklistDiario = ({
                         <RegistroRapido
                             addTransaction={addTransaction} accounts={accounts}
                             incomeCategories={incomeCategories} expenseCategories={expenseCategories}
-                            addCategory={addCategory} removeCategory={removeCategory}
                             compacto
                         />
                     </div>
                 )}
-
-                {/* Mobile FAB */}
-                <button
-                    onClick={() => setShowMobileAddForm(v => !v)}
-                    style={{
-                        position: 'fixed',
-                        bottom: '148px',
-                        right: '20px',
-                        width: '56px',
-                        height: '56px',
-                        borderRadius: '50%',
-                        background: '#ff9f66',
-                        color: '#ffffff',
-                        border: 'none',
-                        boxShadow: '0 4px 16px rgba(255, 159, 102, 0.4)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        zIndex: 999,
-                    }}
-                    title="Añadir tarea"
-                >
-                    <span className="material-symbols-outlined" style={{ fontSize: '28px', fontVariationSettings: "'wght' 600" }}>add</span>
-                </button>
 
                 {/* CSS styles for mobile category scroll hide */}
                 <style>{`
@@ -1059,7 +1004,6 @@ export const ChecklistDiario = ({
                     <RegistroRapido
                         addTransaction={addTransaction} accounts={accounts}
                         incomeCategories={incomeCategories} expenseCategories={expenseCategories}
-                        addCategory={addCategory} removeCategory={removeCategory}
                     />
                 )}
 
@@ -1548,13 +1492,11 @@ interface RegistroRapidoProps {
     compacto?: boolean;
     incomeCategories?: string[];
     expenseCategories?: string[];
-    addCategory?: (type: 'ingreso' | 'gasto', name: string) => void;
-    removeCategory?: (type: 'ingreso' | 'gasto', name: string) => void;
 }
 
 const RegistroRapido = ({
     addTransaction, accounts, compacto = false,
-    incomeCategories, expenseCategories, addCategory, removeCategory,
+    incomeCategories, expenseCategories,
 }: RegistroRapidoProps) => {
     const [tipo, setTipo] = useState<'gasto' | 'ingreso' | null>(null);
 
@@ -1599,8 +1541,6 @@ const RegistroRapido = ({
                 tipoInicial={tipo || 'gasto'}
                 incomeCategories={incomeCategories}
                 expenseCategories={expenseCategories}
-                onAddCategory={addCategory}
-                onRemoveCategory={removeCategory}
             />
         </div>
     );

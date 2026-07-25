@@ -3,7 +3,7 @@ import {
     Wallet, Plus, TrendingUp, TrendingDown,
     Trash2, Edit2, PieChart, X,
     UserMinus, UserPlus, Check, PiggyBank, ArrowDownCircle,
-    BarChart3
+    BarChart3, Tag
 } from "lucide-react";
 import { AnalyticsView } from "./AnalyticsView";
 import { motion, AnimatePresence } from "framer-motion";
@@ -56,6 +56,10 @@ interface FinanzasProps {
     preferences: UserPreferences;
     updatePreference: (key: keyof UserPreferences, value: any) => void;
     onNavigate?: (tab: string) => void;
+    incomeCategories?: string[];
+    expenseCategories?: string[];
+    addCategory?: (type: "ingreso" | "gasto", name: string) => void;
+    removeCategory?: (type: "ingreso" | "gasto", name: string) => void;
 }
 
 export type PeriodMode = "day" | "week" | "month" | "year" | "all";
@@ -100,8 +104,8 @@ const CircleCheckbox = ({ checked, onChange }: { checked: boolean; onChange: () 
             width: "12px",
             height: "12px",
             borderRadius: "50%",
-            border: `1.5px solid ${checked ? C.primary : "#94A3B8"}`,
-            background: checked ? C.primary : "transparent",
+            border: `1.5px solid ${checked ? C.secondary : C.outline}`,
+            background: checked ? C.secondary : "transparent",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -167,7 +171,8 @@ export const FinanzasDashboard = ({
     addInventoryItem, updateInventoryItemQuantity, removeInventoryItem,
     updateProject,
     preferences, updatePreference,
-    onNavigate
+    onNavigate,
+    incomeCategories, expenseCategories, addCategory, removeCategory,
 }: FinanzasProps) => {
     const currentMonthStr = useMemo(() => new Date().toLocaleDateString("en-CA").substring(0, 7), []);
 
@@ -416,6 +421,17 @@ export const FinanzasDashboard = ({
     const [newAccountName, setNewAccountName] = useState("");
     const [newAccountColor, setNewAccountColor] = useState("#0055FF");
 
+    // ── Categorías ────────────────────────────────────────────────────────
+    const [isCategoriesVisible, setIsCategoriesVisible] = useState(false);
+    const [categoryTab, setCategoryTab] = useState<"gasto" | "ingreso">("gasto");
+    const [newCategoryName, setNewCategoryName] = useState("");
+
+    const handleAddCategory = () => {
+        if (!newCategoryName.trim() || !addCategory) return;
+        addCategory(categoryTab, newCategoryName.trim());
+        setNewCategoryName("");
+    };
+
     const handleAddAccount = () => {
         if (!newAccountName.trim()) return;
         setAccounts(prev => [...prev, { id: Date.now(), name: newAccountName, color: newAccountColor, projectIds: [] }]);
@@ -442,27 +458,27 @@ export const FinanzasDashboard = ({
     // ─────────────────────────────────────────────────────────────────────
     /* ── Las tres lecturas, como variables para poder reutilizarlas ── */
     const bloqueReal = (
-                <div style={{ ...cardConAcento("#059669") }}>
+                <div style={{ ...cardConAcento(C.verde) }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", flexWrap: "wrap", gap: "8px" }}>
                         <span style={LABEL}>Situación Financiera Real</span>
-                        <TrendingUp size={16} color="#059669" />
+                        <TrendingUp size={16} color={C.verde} />
                     </div>
-                    <span style={{ fontSize: "0.65rem", color: "#94A3B8", marginBottom: "0.8rem", display: "block" }}>Ingresos y gastos reales + deudas y patrimonio — lo que ya pasó</span>
+                    <span style={{ fontSize: "0.65rem", color: C.outline, marginBottom: "0.8rem", display: "block" }}>Ingresos y gastos reales + deudas y patrimonio — lo que ya pasó</span>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
                         {[
-                            { label: topPeriodDetails.label, val: topIncome, color: "#10B981", sub: topPeriodDetails.sub },
-                            { label: "Fijo", val: fixedIncomeActual, color: "#10B981", sub: "Activos recibidos" },
-                            { label: "Variable", val: variableIncomeActual, color: "#10B981", sub: "Ingresos directos" },
-                            { label: topPeriodDetails.labelExp, val: topExpense, color: "#EF4444", sub: topPeriodDetails.subExp },
-                            { label: "Fijo", val: fixedExpenseActual, color: "#EF4444", sub: "Gastos activos" },
-                            { label: "Variable", val: variableExpenseActual, color: "#EF4444", sub: "Gastos directos" },
-                            { label: "Balance Neto", val: topIncome - topExpense, color: (topIncome - topExpense) >= 0 ? "#10B981" : "#EF4444", sub: "Ingresos - Gastos" },
-                            { label: "Debo", val: realOwe, color: "#EF4444", sub: realOwe > 0 ? "Deudas pendientes" : "Sin deudas" },
-                            { label: "Me Deben", val: realOwed, color: "#10B981", sub: realOwed > 0 ? "Por cobrar" : "Sin cobros" },
-                            { label: "Deuda Neta", val: realOwed - realOwe, color: (realOwed - realOwe) >= 0 ? "#10B981" : "#EF4444", sub: "Me deben - Debo" },
-                            { label: "Patrimonio Neto", val: periodBalance - realOwe + realOwed, color: (periodBalance - realOwe + realOwed) >= 0 ? C.primary : "#EF4444", sub: "Balance Neto + Deuda Neta" },
+                            { label: topPeriodDetails.label, val: topIncome, color: C.verde, sub: topPeriodDetails.sub },
+                            { label: "Fijo", val: fixedIncomeActual, color: C.verde, sub: "Activos recibidos" },
+                            { label: "Variable", val: variableIncomeActual, color: C.verde, sub: "Ingresos directos" },
+                            { label: topPeriodDetails.labelExp, val: topExpense, color: C.rojo, sub: topPeriodDetails.subExp },
+                            { label: "Fijo", val: fixedExpenseActual, color: C.rojo, sub: "Gastos activos" },
+                            { label: "Variable", val: variableExpenseActual, color: C.rojo, sub: "Gastos directos" },
+                            { label: "Balance Neto", val: topIncome - topExpense, color: (topIncome - topExpense) >= 0 ? C.verde : C.rojo, sub: "Ingresos - Gastos" },
+                            { label: "Debo", val: realOwe, color: C.rojo, sub: realOwe > 0 ? "Deudas pendientes" : "Sin deudas" },
+                            { label: "Me Deben", val: realOwed, color: C.verde, sub: realOwed > 0 ? "Por cobrar" : "Sin cobros" },
+                            { label: "Deuda Neta", val: realOwed - realOwe, color: (realOwed - realOwe) >= 0 ? C.verde : C.rojo, sub: "Me deben - Debo" },
+                            { label: "Patrimonio Neto", val: periodBalance - realOwe + realOwed, color: (periodBalance - realOwe + realOwed) >= 0 ? C.verde : C.rojo, sub: "Balance Neto + Deuda Neta" },
                         ].map((item, i) => (
-                            <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? "1px solid #E2E8F0" : "none" }}>
+                            <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? `1px solid ${C.outlineVariant}` : "none" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
                                     <span style={{ ...LABEL }}>{item.label}</span>
                                 </div>
@@ -470,7 +486,7 @@ export const FinanzasDashboard = ({
                                     <span style={{ fontSize: "0.8rem", fontWeight: 800 }}>S/ </span>
                                     <span style={{ fontSize: "1.25rem", fontWeight: 900, lineHeight: 1 }}>{item.val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
                                 </div>
-                                <span style={{ fontSize: "0.58rem", color: "#94A3B8", marginTop: "2px" }}>{item.sub}</span>
+                                <span style={{ fontSize: "0.58rem", color: C.outline, marginTop: "2px" }}>{item.sub}</span>
                             </div>
                         ))}
                     </div>
@@ -478,7 +494,7 @@ export const FinanzasDashboard = ({
     );
 
     const bloqueProyeccion = (
-                <div style={{ ...cardConAcento("#F59E0B"), display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <div style={{ ...cardConAcento(C.ambar), display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", flexWrap: "wrap", gap: "8px" }}>
                         <span style={LABEL}>Proyección Financiera</span>
                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -488,22 +504,22 @@ export const FinanzasDashboard = ({
                                 value={topPeriod}
                                 onChange={v => setTopPeriod(v as any)}
                             />
-                            <TrendingUp size={16} color="#10B981" style={{ marginLeft: "4px" }} />
+                            <TrendingUp size={16} color={C.verde} style={{ marginLeft: "4px" }} />
                         </div>
                     </div>
-                    <span style={{ fontSize: "0.65rem", color: "#94A3B8", marginBottom: "0.8rem", display: "block" }}>Ingresos/gastos fijos proyectados + variables reales — lo que debería pasar</span>
+                    <span style={{ fontSize: "0.65rem", color: C.outline, marginBottom: "0.8rem", display: "block" }}>Ingresos/gastos fijos proyectados + variables reales — lo que debería pasar</span>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
                         {[
-                            { label: "Ingresos Proy.", val: projectedIncomeTotal, color: "#10B981", sub: "Fijos + Variables" },
-                            { label: "Fijo", val: fixedIncomeTotal * periodMultiplier, color: "#10B981", sub: "Activos proyectados" },
-                            { label: "Variable", val: variableIncomeActual, color: "#10B981", sub: "Ingresos directos" },
-                            { label: "Gastos Proy.", val: projectedExpenseTotal, color: "#EF4444", sub: "Fijos + Variables" },
-                            { label: "Fijo", val: fixedExpenseProyectado, color: "#EF4444", sub: "Gastos activos" },
-                            { label: "Variable", val: variableExpenseActual, color: "#EF4444", sub: "Gastos directos" },
+                            { label: "Ingresos Proy.", val: projectedIncomeTotal, color: C.verde, sub: "Fijos + Variables" },
+                            { label: "Fijo", val: fixedIncomeTotal * periodMultiplier, color: C.verde, sub: "Activos proyectados" },
+                            { label: "Variable", val: variableIncomeActual, color: C.verde, sub: "Ingresos directos" },
+                            { label: "Gastos Proy.", val: projectedExpenseTotal, color: C.rojo, sub: "Fijos + Variables" },
+                            { label: "Fijo", val: fixedExpenseProyectado, color: C.rojo, sub: "Gastos activos" },
+                            { label: "Variable", val: variableExpenseActual, color: C.rojo, sub: "Gastos directos" },
                             { 
                                 label: "Debo", 
                                 val: activeOweTotal, 
-                                color: includeDebts ? "#EF4444" : "#94A3B8", 
+                                color: includeDebts ? C.rojo : C.outline, 
                                 sub: includeDebts ? "Debo (incluido)" : "Debo (excluido)", 
                                 checked: includeDebts,
                                 onToggle: () => setIncludeDebts(v => !v),
@@ -512,7 +528,7 @@ export const FinanzasDashboard = ({
                             { 
                                 label: "Me Deben", 
                                 val: activeOwedTotal, 
-                                color: includeOwed ? "#10B981" : "#94A3B8", 
+                                color: includeOwed ? C.verde : C.outline, 
                                 sub: includeOwed ? "Cobros incluidos" : "Cobros excluidos",
                                 checked: includeOwed,
                                 onToggle: () => setIncludeOwed(v => !v),
@@ -520,12 +536,12 @@ export const FinanzasDashboard = ({
                             },
                             { 
                                 label: "Balance Neto Proyectado", 
-                                val: projectedSavings, 
-                                color: projectedSavings >= 0 ? C.primary : "#EF4444", 
+                                val: projectedSavings,
+                                color: projectedSavings >= 0 ? C.verde : C.rojo,
                                 sub: projectedPeriodLabel 
                             },
                         ].map((item, i) => (
-                            <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? "1px solid #E2E8F0" : "none", opacity: item.opacity ?? 1, transition: "opacity 0.2s" }}>
+                            <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? `1px solid ${C.outlineVariant}` : "none", opacity: item.opacity ?? 1, transition: "opacity 0.2s" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
                                     {item.onToggle && (
                                         <CircleCheckbox checked={item.checked ?? false} onChange={item.onToggle} />
@@ -536,7 +552,7 @@ export const FinanzasDashboard = ({
                                     <span style={{ fontSize: "0.8rem", fontWeight: 800 }}>S/ </span>
                                     <span style={{ fontSize: "1.25rem", fontWeight: 900, lineHeight: 1 }}>{item.val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
                                 </div>
-                                <span style={{ fontSize: "0.58rem", color: "#94A3B8", marginTop: "2px" }}>{item.sub}</span>
+                                <span style={{ fontSize: "0.58rem", color: C.outline, marginTop: "2px" }}>{item.sub}</span>
                             </div>
                         ))}
                     </div>
@@ -544,20 +560,20 @@ export const FinanzasDashboard = ({
     );
 
     const bloqueSimulador = (
-                <div style={{ ...cardConAcento("#8B5CF6"), display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <div style={{ ...cardConAcento(C.secondary), display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", flexWrap: "wrap", gap: "8px" }}>
                         <span style={LABEL}>Ejecución y Proyección Ajustada</span>
-                        <TrendingUp size={16} color="#8B5CF6" style={{ marginLeft: "4px" }} />
+                        <TrendingUp size={16} color={C.secondary} style={{ marginLeft: "4px" }} />
                     </div>
-                    <span style={{ fontSize: "0.65rem", color: "#94A3B8", marginBottom: "0.8rem", display: "block" }}>Mix ajustable con toggles — incluí/excluí fijos, deudas y cobros</span>
+                    <span style={{ fontSize: "0.65rem", color: C.outline, marginBottom: "0.8rem", display: "block" }}>Mix ajustable con toggles — incluí/excluí fijos, deudas y cobros</span>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
                         {[
-                            { label: topPeriodDetails.label, val: topIncome, color: "#10B981", sub: topPeriodDetails.sub },
-                            { label: topPeriodDetails.labelExp, val: topExpense, color: "#EF4444", sub: topPeriodDetails.subExp },
+                            { label: topPeriodDetails.label, val: topIncome, color: C.verde, sub: topPeriodDetails.sub },
+                            { label: topPeriodDetails.labelExp, val: topExpense, color: C.rojo, sub: topPeriodDetails.subExp },
                             {
                                 label: "Saldo Actual",
                                 val: periodBalance,
-                                color: includeBalance ? "#10B981" : "#94A3B8",
+                                color: includeBalance ? C.verde : C.outline,
                                 sub: includeBalance ? "Disponible" : "Excluido",
                                 checked: includeBalance,
                                 onToggle: () => setIncludeBalance(v => !v),
@@ -566,7 +582,7 @@ export const FinanzasDashboard = ({
                             {
                                 label: "Ingreso Fijo",
                                 val: projectedIncomeVal,
-                                color: (fixedIncomeTotal > 0) ? (includeSalary ? "#10B981" : "#94A3B8") : "#94A3B8",
+                                color: (fixedIncomeTotal > 0) ? (includeSalary ? C.verde : C.outline) : C.outline,
                                 sub: fixedIncomeTotal > 0 
                                     ? (includeSalary 
                                         ? (topPeriod === "month" || topPeriod === "all"
@@ -581,13 +597,13 @@ export const FinanzasDashboard = ({
                             {
                                 label: "Ingresos Proy.",
                                 val: periodBalance + (includeSalary ? projectedIncomeVal : 0),
-                                color: (periodBalance + (includeSalary ? projectedIncomeVal : 0)) >= 0 ? "#10B981" : "#EF4444",
+                                color: (periodBalance + (includeSalary ? projectedIncomeVal : 0)) >= 0 ? C.verde : C.rojo,
                                 sub: "Neto + proyectado"
                             },
                             { 
                                 label: "Gastos Fijos", 
                                 val: projectedFixedVal, 
-                                color: includeFixed ? "#EF4444" : "#94A3B8", 
+                                color: includeFixed ? C.rojo : C.outline, 
                                 sub: includeFixed 
                                     ? (topPeriod === "month" || topPeriod === "all" 
                                         ? `Pendiente: S/ ${projectedFixedVal.toFixed(0)} / Total: S/ ${monthlyFixedTotal.toFixed(0)}`
@@ -600,7 +616,7 @@ export const FinanzasDashboard = ({
                             { 
                                 label: "Debo", 
                                 val: activeOweTotal, 
-                                color: includeDebts ? "#EF4444" : "#94A3B8", 
+                                color: includeDebts ? C.rojo : C.outline, 
                                 sub: includeDebts ? "Debo (incluido)" : "Debo (excluido)", 
                                 checked: includeDebts,
                                 onToggle: () => setIncludeDebts(v => !v),
@@ -609,7 +625,7 @@ export const FinanzasDashboard = ({
                             { 
                                 label: "Me Deben", 
                                 val: activeOwedTotal, 
-                                color: includeOwed ? "#10B981" : "#94A3B8", 
+                                color: includeOwed ? C.verde : C.outline, 
                                 sub: includeOwed ? "Cobros incluidos" : "Cobros excluidos",
                                 checked: includeOwed,
                                 onToggle: () => setIncludeOwed(v => !v),
@@ -617,12 +633,12 @@ export const FinanzasDashboard = ({
                             },
                             { 
                                 label: "Balance Neto Proyectado", 
-                                val: adjustedSavings, 
-                                color: adjustedSavings >= 0 ? C.primary : "#EF4444", 
+                                val: adjustedSavings,
+                                color: adjustedSavings >= 0 ? C.verde : C.rojo,
                                 sub: projectedPeriodLabel 
                             },
                         ].map((item, i) => (
-                            <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? "1px solid #E2E8F0" : "none", opacity: item.opacity ?? 1, transition: "opacity 0.2s" }}>
+                            <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? `1px solid ${C.outlineVariant}` : "none", opacity: item.opacity ?? 1, transition: "opacity 0.2s" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
                                     {item.onToggle && (
                                         <CircleCheckbox checked={item.checked ?? false} onChange={item.onToggle} />
@@ -633,7 +649,7 @@ export const FinanzasDashboard = ({
                                     <span style={{ fontSize: "0.8rem", fontWeight: 800 }}>S/ </span>
                                     <span style={{ fontSize: "1.25rem", fontWeight: 900, lineHeight: 1 }}>{item.val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
                                 </div>
-                                <span style={{ fontSize: "0.58rem", color: "#94A3B8", marginTop: "2px" }}>{item.sub}</span>
+                                <span style={{ fontSize: "0.58rem", color: C.outline, marginTop: "2px" }}>{item.sub}</span>
                             </div>
                         ))}
                     </div>
@@ -673,7 +689,7 @@ export const FinanzasDashboard = ({
                                         border: "none", borderRadius: "999px", cursor: "pointer",
                                         padding: "5px 13px", fontSize: "0.75rem", fontWeight: 700,
                                         fontFamily: "inherit", transition: "all 0.15s",
-                                        background: activo ? C.primary : "transparent",
+                                        background: activo ? C.secondary : "transparent",
                                         color: activo ? "#fff" : C.onSurfaceVariant,
                                     }}
                                 >
@@ -695,6 +711,8 @@ export const FinanzasDashboard = ({
                 onClose={() => setShowTxForm(false)}
                 addTransaction={addTransaction}
                 accounts={accounts}
+                incomeCategories={incomeCategories}
+                expenseCategories={expenseCategories}
             />
 
             {/* ── Selector de vista + Ver todo ─── */}
@@ -715,7 +733,7 @@ export const FinanzasDashboard = ({
                                     flex: movil ? 1 : undefined,
                                     fontSize: movil ? "0.78rem" : "0.82rem", fontWeight: 700,
                                     fontFamily: "inherit", transition: "all 0.15s",
-                                    background: activo ? C.primary : C.surfaceLowest,
+                                    background: activo ? C.secondary : C.surfaceLowest,
                                     color: activo ? "#fff" : C.onSurfaceVariant,
                                 }}
                             >
@@ -735,7 +753,7 @@ export const FinanzasDashboard = ({
                         minHeight: movil ? `${TOQUE_MINIMO}px` : undefined,
                         width: movil ? "100%" : undefined,
                         cursor: "pointer",
-                        fontSize: "0.78rem", fontWeight: 700, color: C.primary, fontFamily: "inherit",
+                        fontSize: "0.78rem", fontWeight: 700, color: C.secondary, fontFamily: "inherit",
                     }}
                 >
                     <BarChart3 size={14} /> Ver todo junto
@@ -768,7 +786,7 @@ export const FinanzasDashboard = ({
                             onClick={e => e.stopPropagation()}
                             style={{
                                 maxWidth: "1100px", margin: "0 auto",
-                                background: "#F8F9FA", borderRadius: "20px", padding: "1.5rem",
+                                background: C.surface, borderRadius: "20px", padding: "1.5rem",
                                 display: "flex", flexDirection: "column", gap: "1.25rem",
                             }}
                         >
@@ -806,57 +824,57 @@ export const FinanzasDashboard = ({
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem" }}>
 
                 {/* Fixed incomes card */}
-                <div style={{ ...cardConAcento(C.primary), display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
+                <div style={{ ...cardConAcento(C.secondary), display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span style={LABEL}>Ingresos Fijos</span>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <span style={{ fontSize: "0.72rem", fontWeight: 700, color: C.primary }}>S/ {fixedIncomeTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                            <Wallet size={14} color={C.primary} />
+                            <span style={{ fontSize: "0.72rem", fontWeight: 700, color: C.secondary }}>S/ {fixedIncomeTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                            <Wallet size={14} color={C.secondary} />
                         </div>
                     </div>
 
                     {/* List of fixed incomes */}
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", flex: 1, overflowY: "auto", maxHeight: "160px" }}>
                         {fixedIncomeItems.length === 0 && (
-                            <p style={{ fontSize: "0.75rem", color: "#94A3B8", margin: 0 }}>Sin ingresos fijos. Agrega uno abajo.</p>
+                            <p style={{ fontSize: "0.75rem", color: C.outline, margin: 0 }}>Sin ingresos fijos. Agrega uno abajo.</p>
                         )}
                         {fixedIncomeItems.map(item => {
                             const isReceived = item.lastReceivedMonth === currentMonthStr;
                             const isEditing = editingIncomeId === item.id;
                             return (
-                                <div key={item.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 0", borderBottom: "1px solid #F1F5F9", opacity: item.active ? 1 : 0.45, transition: "opacity 0.15s" }}>
+                                <div key={item.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 0", borderBottom: `1px solid ${C.surfaceContainerLow}`, opacity: item.active ? 1 : 0.45, transition: "opacity 0.15s" }}>
                                     {/* mini toggle */}
-                                    <div onClick={() => toggleFixedIncome(item.id)} style={{ width: "28px", height: "16px", borderRadius: "8px", background: item.active ? C.primary : "#CBD5E1", position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
+                                    <div onClick={() => toggleFixedIncome(item.id)} style={{ width: "28px", height: "16px", borderRadius: "8px", background: item.active ? C.secondary : C.outlineVariant, position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
                                         <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: item.active ? "14px" : "2px", transition: "left 0.15s" }} />
                                     </div>
                                     {/* ok button to mark as received */}
-                                    <button onClick={() => isReceived ? unmarkFixedIncomeReceived(item.id, currentMonthStr) : markFixedIncomeReceived(item.id, currentMonthStr)} style={{ background: isReceived ? "#10B981" : "#F1F5F9", border: "none", borderRadius: "50%", width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
-                                        <span style={{ color: isReceived ? "white" : "#94A3B8", fontSize: "0.62rem", fontWeight: 900 }}>ok</span>
+                                    <button onClick={() => isReceived ? unmarkFixedIncomeReceived(item.id, currentMonthStr) : markFixedIncomeReceived(item.id, currentMonthStr)} style={{ background: isReceived ? C.verde : C.surfaceContainerLow, border: "none", borderRadius: "50%", width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+                                        <span style={{ color: isReceived ? "white" : C.outline, fontSize: "0.62rem", fontWeight: 900 }}>ok</span>
                                     </button>
                                     {isEditing ? (
                                         <>
                                             <input autoFocus value={editIncomeName} onChange={e => setEditIncomeName(e.target.value)}
                                                 onKeyDown={e => { if (e.key === "Enter") { updateFixedIncome(item.id, editIncomeName.trim(), parseFloat(editIncomeAmount) || 0); setEditingIncomeId(null); } if (e.key === "Escape") setEditingIncomeId(null); }}
-                                                style={{ flex: 1, padding: "3px 6px", borderRadius: "5px", border: "1px solid #E2E8F0", fontSize: "0.78rem", outline: "none" }} />
+                                                style={{ flex: 1, padding: "3px 6px", borderRadius: "5px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", outline: "none" }} />
                                             <div style={{ position: "relative", width: "70px" }}>
-                                                <span style={{ position: "absolute", left: "4px", top: "50%", transform: "translateY(-50%)", fontSize: "0.62rem", fontWeight: 700, color: "#64748B" }}>S/</span>
+                                                <span style={{ position: "absolute", left: "4px", top: "50%", transform: "translateY(-50%)", fontSize: "0.62rem", fontWeight: 700, color: C.onSurfaceVariant }}>S/</span>
                                                 <input type="number" value={editIncomeAmount} onChange={e => setEditIncomeAmount(e.target.value)}
                                                     onKeyDown={e => { if (e.key === "Enter") { updateFixedIncome(item.id, editIncomeName.trim(), parseFloat(editIncomeAmount) || 0); setEditingIncomeId(null); } if (e.key === "Escape") setEditingIncomeId(null); }}
-                                                    style={{ width: "100%", padding: "3px 3px 3px 18px", borderRadius: "5px", border: "1px solid #E2E8F0", fontSize: "0.78rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
+                                                    style={{ width: "100%", padding: "3px 3px 3px 18px", borderRadius: "5px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
                                             </div>
-                                            <button onClick={() => { updateFixedIncome(item.id, editIncomeName.trim(), parseFloat(editIncomeAmount) || 0); setEditingIncomeId(null); }} style={{ background: C.primary, color: "white", border: "none", borderRadius: "4px", padding: "3px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>OK</button>
-                                            <button onClick={() => setEditingIncomeId(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "2px", display: "flex" }}><X size={11} /></button>
+                                            <button onClick={() => { updateFixedIncome(item.id, editIncomeName.trim(), parseFloat(editIncomeAmount) || 0); setEditingIncomeId(null); }} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "4px", padding: "3px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>OK</button>
+                                            <button onClick={() => setEditingIncomeId(null)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "2px", display: "flex" }}><X size={11} /></button>
                                         </>
                                     ) : (
                                         <>
-                                            <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isReceived ? "line-through" : "none", color: isReceived ? "#94A3B8" : "var(--text-carbon)" }}>
+                                            <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isReceived ? "line-through" : "none", color: isReceived ? C.outline : "var(--text-carbon)" }}>
                                                 {item.name}
                                             </span>
-                                            <span style={{ fontSize: "0.8rem", fontWeight: 800, color: isReceived ? "#10B981" : (item.active ? C.primary : "#94A3B8") }}>
+                                            <span style={{ fontSize: "0.8rem", fontWeight: 800, color: isReceived ? C.verde : (item.active ? C.secondary : C.outline) }}>
                                                 S/ {item.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                                             </span>
-                                            <button onClick={() => { setEditingIncomeId(item.id); setEditIncomeName(item.name); setEditIncomeAmount(String(item.amount)); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "2px", display: "flex" }}><Edit2 size={11} /></button>
-                                            <button onClick={() => removeFixedIncome(item.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "2px", display: "flex" }}><Trash2 size={11} /></button>
+                                            <button onClick={() => { setEditingIncomeId(item.id); setEditIncomeName(item.name); setEditIncomeAmount(String(item.amount)); }} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "2px", display: "flex" }}><Edit2 size={11} /></button>
+                                            <button onClick={() => removeFixedIncome(item.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "2px", display: "flex" }}><Trash2 size={11} /></button>
                                         </>
                                     )}
                                 </div>
@@ -869,37 +887,37 @@ export const FinanzasDashboard = ({
                         <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                             <input autoFocus placeholder="Nombre" value={newIncomeName} onChange={e => setNewIncomeName(e.target.value)}
                                 onKeyDown={e => e.key === "Enter" && submitNewIncome()}
-                                style={{ flex: 2, padding: "5px 8px", borderRadius: "7px", border: "1px solid #E2E8F0", fontSize: "0.78rem", outline: "none" }} />
+                                style={{ flex: 2, padding: "5px 8px", borderRadius: "7px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", outline: "none" }} />
                             <div style={{ position: "relative", flex: 1 }}>
-                                <span style={{ position: "absolute", left: "6px", top: "50%", transform: "translateY(-50%)", fontSize: "0.72rem", fontWeight: 700, color: "#64748B" }}>S/</span>
+                                <span style={{ position: "absolute", left: "6px", top: "50%", transform: "translateY(-50%)", fontSize: "0.72rem", fontWeight: 700, color: C.onSurfaceVariant }}>S/</span>
                                 <input type="number" placeholder="0" value={newIncomeAmount} onChange={e => setNewIncomeAmount(e.target.value)}
                                     onKeyDown={e => e.key === "Enter" && submitNewIncome()}
-                                    style={{ width: "100%", padding: "5px 5px 5px 22px", borderRadius: "7px", border: "1px solid #E2E8F0", fontSize: "0.78rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
+                                    style={{ width: "100%", padding: "5px 5px 5px 22px", borderRadius: "7px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
                             </div>
-                            <button onClick={submitNewIncome} style={{ background: C.primary, color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.65rem", cursor: "pointer" }}>OK</button>
-                            <button onClick={() => setIsAddingIncome(false)} style={{ background: "#E2E8F0", border: "none", borderRadius: "6px", padding: "5px 7px", fontWeight: 800, fontSize: "0.65rem", cursor: "pointer" }}>X</button>
+                            <button onClick={submitNewIncome} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.65rem", cursor: "pointer" }}>OK</button>
+                            <button onClick={() => setIsAddingIncome(false)} style={{ background: C.outlineVariant, border: "none", borderRadius: "6px", padding: "5px 7px", fontWeight: 800, fontSize: "0.65rem", cursor: "pointer" }}>X</button>
                         </motion.div>
                     ) : (
                         <button onClick={() => setIsAddingIncome(true)} style={{ display: "flex", alignItems: "center", gap: "6px", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}>
-                            <Plus size={13} color="#CCC" /><span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#AAA" }}>Nuevo ingreso fijo...</span>
+                            <Plus size={13} color={C.outline} /><span style={{ fontSize: "0.75rem", fontWeight: 600, color: C.outline }}>Nuevo ingreso fijo...</span>
                         </button>
                     )}
                 </div>
 
                 {/* Fixed expenses card */}
-                <div style={{ ...cardConAcento("#EF4444"), display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
+                <div style={{ ...cardConAcento(C.rojo), display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span style={LABEL}>Gastos Fijos</span>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#EF4444" }}>Pendiente: S/ {totalFixedPending.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                            <TrendingDown size={14} color="#EF4444" />
+                            <span style={{ fontSize: "0.72rem", fontWeight: 700, color: C.rojo }}>Pendiente: S/ {totalFixedPending.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                            <TrendingDown size={14} color={C.rojo} />
                         </div>
                     </div>
 
                     {/* List of fixed expenses */}
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", flex: 1, overflowY: "auto", maxHeight: "160px" }}>
                         {fixedExpenses.length === 0 && (
-                            <p style={{ fontSize: "0.75rem", color: "#94A3B8", margin: 0 }}>Sin gastos fijos. Agrega uno abajo.</p>
+                            <p style={{ fontSize: "0.75rem", color: C.outline, margin: 0 }}>Sin gastos fijos. Agrega uno abajo.</p>
                         )}
                         {fixedExpenses.map(exp => (
                             <FixedExpenseRow key={exp.id} expense={exp} toggleFixedExpense={toggleFixedExpense} removeFixedExpense={removeFixedExpense} updateFixedExpense={updateFixedExpense} markFixedExpensePaid={markFixedExpensePaid} unmarkFixedExpensePaid={unmarkFixedExpensePaid} isPaid={exp.lastPaidMonth === currentMonthStr} projects={projects} />
@@ -913,76 +931,76 @@ export const FinanzasDashboard = ({
                 </div>
 
                 {/* Debts card */}
-                <div style={{ ...cardConAcento("#8B5CF6"), display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
+                <div style={{ ...cardConAcento(C.secondary), display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span style={LABEL}>Deudas</span>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#EF4444" }}>Debo: S/ {realOwe.toFixed(2)}</span>
-                            <TrendingDown size={14} color="#EF4444" />
+                            <span style={{ fontSize: "0.72rem", fontWeight: 700, color: C.rojo }}>Debo: S/ {realOwe.toFixed(2)}</span>
+                            <TrendingDown size={14} color={C.rojo} />
                         </div>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", flex: 1, overflowY: "auto", maxHeight: "160px" }}>
                         {activeDebtsAndCollections.filter(d => d.isOwe).length === 0 ? (
-                            <p style={{ fontSize: "0.75rem", color: "#94A3B8", margin: 0 }}>Sin deudas pendientes.</p>
+                            <p style={{ fontSize: "0.75rem", color: C.outline, margin: 0 }}>Sin deudas pendientes.</p>
                         ) : activeDebtsAndCollections.filter(d => d.isOwe).map(d => {
                             const dk = d.name + "::" + (d.contact || "");
                             const isActive = debtActiveMap[dk] ?? true;
                             const isPaying = payOpen[dk] ?? false;
                             return (
-                            <div key={dk} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 0", borderBottom: "1px solid #F1F5F9", opacity: isActive ? 1 : 0.45 }}>
-                                <div onClick={() => toggleDebtActive(dk)} style={{ width: "28px", height: "16px", borderRadius: "8px", background: isActive ? "#8B5CF6" : "#CBD5E1", position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
+                            <div key={dk} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 0", borderBottom: `1px solid ${C.surfaceContainerLow}`, opacity: isActive ? 1 : 0.45 }}>
+                                <div onClick={() => toggleDebtActive(dk)} style={{ width: "28px", height: "16px", borderRadius: "8px", background: isActive ? C.secondary : C.outlineVariant, position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
                                     <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: isActive ? "14px" : "2px", transition: "left 0.15s" }} />
                                 </div>
                                 <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-carbon)" }}>
                                     {d.name}{d.contact ? ` (${d.contact})` : ""}
                                 </span>
-                                <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "#EF4444" }}>
+                                <span style={{ fontSize: "0.8rem", fontWeight: 800, color: C.rojo }}>
                                     S/ {d.amount.toFixed(2)}
                                 </span>
                                 {isPaying ? (
                                     <div style={{ display: "flex", gap: "3px", alignItems: "center" }}>
                                         <input type="number" value={payInputs[dk] ?? d.amount.toFixed(2)} onChange={e => setPayInputs(m => ({ ...m, [dk]: e.target.value }))}
-                                            style={{ width: "55px", padding: "2px 4px", borderRadius: "4px", border: "1px solid #E2E8F0", fontSize: "0.65rem", fontWeight: 700, outline: "none" }} />
-                                        <button onClick={() => handlePay(dk, parseFloat(payInputs[dk]) || 0, d)} style={{ background: "#10B981", color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Abonar</button>
-                                        <button onClick={() => { setPayInputs(m => ({ ...m, [dk]: String(d.amount) })); handlePay(dk, d.amount, d); }} style={{ background: "#059669", color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Todo</button>
-                                        <button onClick={() => setPayOpen(m => ({ ...m, [dk]: false }))} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "2px", fontSize: "0.7rem", fontWeight: 800 }}>X</button>
+                                            style={{ width: "55px", padding: "2px 4px", borderRadius: "4px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.65rem", fontWeight: 700, outline: "none" }} />
+                                        <button onClick={() => handlePay(dk, parseFloat(payInputs[dk]) || 0, d)} style={{ background: C.verde, color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Abonar</button>
+                                        <button onClick={() => { setPayInputs(m => ({ ...m, [dk]: String(d.amount) })); handlePay(dk, d.amount, d); }} style={{ background: C.verde, color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Todo</button>
+                                        <button onClick={() => setPayOpen(m => ({ ...m, [dk]: false }))} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "2px", fontSize: "0.7rem", fontWeight: 800 }}>X</button>
                                     </div>
                                 ) : (
-                                    <button onClick={() => { setPayInputs(m => ({ ...m, [dk]: String(d.amount) })); setPayOpen(m => ({ ...m, [dk]: true })); }} style={{ background: "#E2E8F0", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#475569", flexShrink: 0 }}>Abonar</button>
+                                    <button onClick={() => { setPayInputs(m => ({ ...m, [dk]: String(d.amount) })); setPayOpen(m => ({ ...m, [dk]: true })); }} style={{ background: C.outlineVariant, border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: C.onSurfaceVariant, flexShrink: 0 }}>Abonar</button>
                                 )}
                             </div>
                             );
                         })}
                     </div>
-                    <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: "0.35rem", marginTop: "0.2rem" }}>
-                        <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#10B981" }}>Me deben: S/ {realOwed.toFixed(2)}</span>
+                    <div style={{ borderTop: `1px solid ${C.outlineVariant}`, paddingTop: "0.35rem", marginTop: "0.2rem" }}>
+                        <span style={{ fontSize: "0.72rem", fontWeight: 700, color: C.verde }}>Me deben: S/ {realOwed.toFixed(2)}</span>
                         {activeDebtsAndCollections.filter(d => !d.isOwe).length === 0 ? (
-                            <p style={{ fontSize: "0.72rem", color: "#94A3B8", margin: "4px 0 0 0" }}>Sin cobros pendientes.</p>
+                            <p style={{ fontSize: "0.72rem", color: C.outline, margin: "4px 0 0 0" }}>Sin cobros pendientes.</p>
                         ) : activeDebtsAndCollections.filter(d => !d.isOwe).map(d => {
                             const dk = d.name + "::" + (d.contact || "");
                             const isActive = debtActiveMap[dk] ?? true;
                             const isPaying = payOpen[dk] ?? false;
                             return (
                                 <div key={dk} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 0", opacity: isActive ? 1 : 0.45 }}>
-                                    <div onClick={() => toggleDebtActive(dk)} style={{ width: "28px", height: "16px", borderRadius: "8px", background: isActive ? "#10B981" : "#CBD5E1", position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
+                                    <div onClick={() => toggleDebtActive(dk)} style={{ width: "28px", height: "16px", borderRadius: "8px", background: isActive ? C.verde : C.outlineVariant, position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
                                         <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: isActive ? "14px" : "2px", transition: "left 0.15s" }} />
                                     </div>
                                     <span style={{ flex: 1, fontSize: "0.78rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-carbon)" }}>
                                         {d.name}{d.contact ? ` (${d.contact})` : ""}
                                     </span>
-                                    <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#10B981" }}>
+                                    <span style={{ fontSize: "0.78rem", fontWeight: 800, color: C.verde }}>
                                         S/ {d.amount.toFixed(2)}
                                     </span>
                                     {isPaying ? (
                                         <div style={{ display: "flex", gap: "3px", alignItems: "center" }}>
                                             <input type="number" value={payInputs[dk] ?? d.amount.toFixed(2)} onChange={e => setPayInputs(m => ({ ...m, [dk]: e.target.value }))}
-                                                style={{ width: "55px", padding: "2px 4px", borderRadius: "4px", border: "1px solid #E2E8F0", fontSize: "0.65rem", fontWeight: 700, outline: "none" }} />
-                                            <button onClick={() => handlePay(dk, parseFloat(payInputs[dk]) || 0, d)} style={{ background: "#10B981", color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Abonar</button>
-                                            <button onClick={() => { setPayInputs(m => ({ ...m, [dk]: String(d.amount) })); handlePay(dk, d.amount, d); }} style={{ background: "#059669", color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Todo</button>
-                                            <button onClick={() => setPayOpen(m => ({ ...m, [dk]: false }))} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "2px", fontSize: "0.7rem", fontWeight: 800 }}>X</button>
+                                                style={{ width: "55px", padding: "2px 4px", borderRadius: "4px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.65rem", fontWeight: 700, outline: "none" }} />
+                                            <button onClick={() => handlePay(dk, parseFloat(payInputs[dk]) || 0, d)} style={{ background: C.verde, color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Abonar</button>
+                                            <button onClick={() => { setPayInputs(m => ({ ...m, [dk]: String(d.amount) })); handlePay(dk, d.amount, d); }} style={{ background: C.verde, color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Todo</button>
+                                            <button onClick={() => setPayOpen(m => ({ ...m, [dk]: false }))} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "2px", fontSize: "0.7rem", fontWeight: 800 }}>X</button>
                                         </div>
                                     ) : (
-                                        <button onClick={() => { setPayInputs(m => ({ ...m, [dk]: String(d.amount) })); setPayOpen(m => ({ ...m, [dk]: true })); }} style={{ background: "#E2E8F0", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#475569", flexShrink: 0 }}>Abonar</button>
+                                        <button onClick={() => { setPayInputs(m => ({ ...m, [dk]: String(d.amount) })); setPayOpen(m => ({ ...m, [dk]: true })); }} style={{ background: C.outlineVariant, border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: C.onSurfaceVariant, flexShrink: 0 }}>Abonar</button>
                                     )}
                                 </div>
                             );
@@ -1000,13 +1018,13 @@ export const FinanzasDashboard = ({
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
                         <span style={{ fontSize: "0.9rem", fontWeight: 800 }}>Flujo de Caja</span>
                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <button onClick={() => setShowAnalytics(true)} style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: "8px", padding: "3px 8px", display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", fontSize: "0.62rem", fontWeight: 700, color: C.primary }}><PieChart size={11} /> Analizar</button>
+                            <button onClick={() => setShowAnalytics(true)} style={{ background: C.surface, border: `1px solid ${C.outlineVariant}`, borderRadius: "8px", padding: "3px 8px", display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", fontSize: "0.62rem", fontWeight: 700, color: C.secondary }}><PieChart size={11} /> Analizar</button>
                             <PillToggle options={["7d", "30d"]} value={chartPeriod} onChange={v => setChartPeriod(v as any)} />
                         </div>
                     </div>
                     <div style={{ display: "flex", gap: "10px", marginBottom: "6px" }}>
-                        <LegendDot color="#10B981" label="Ingresos" />
-                        <LegendDot color="#EF4444" label="Gastos" />
+                        <LegendDot color={C.verde} label="Ingresos" />
+                        <LegendDot color={C.rojo} label="Gastos" />
                     </div>
                     <div style={{ display: "flex", flex: 1, alignItems: "flex-end", gap: chartPeriod === "7d" ? "8px" : "3px", padding: "4px 0" }}>
                         {historyData.map((data, i) => {
@@ -1015,10 +1033,10 @@ export const FinanzasDashboard = ({
                             return (
                                 <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", height: "100%", justifyContent: "flex-end" }}>
                                     <div style={{ display: "flex", gap: "1px", alignItems: "flex-end", height: "100%", width: "100%", justifyContent: "center" }}>
-                                        <motion.div initial={{ height: 0 }} animate={{ height: `${(data.inc / maxVal) * 100}%` }} transition={{ duration: 0.4 }} style={{ width: w, background: "#10B981", borderRadius: "2px 2px 0 0", opacity: 0.85 }} />
-                                        <motion.div initial={{ height: 0 }} animate={{ height: `${(data.exp / maxVal) * 100}%` }} transition={{ duration: 0.4 }} style={{ width: w, background: "#EF4444", borderRadius: "2px 2px 0 0", opacity: 0.85 }} />
+                                        <motion.div initial={{ height: 0 }} animate={{ height: `${(data.inc / maxVal) * 100}%` }} transition={{ duration: 0.4 }} style={{ width: w, background: C.verde, borderRadius: "2px 2px 0 0", opacity: 0.85 }} />
+                                        <motion.div initial={{ height: 0 }} animate={{ height: `${(data.exp / maxVal) * 100}%` }} transition={{ duration: 0.4 }} style={{ width: w, background: C.rojo, borderRadius: "2px 2px 0 0", opacity: 0.85 }} />
                                     </div>
-                                    <span style={{ fontSize: "0.42rem", color: "#94A3B8" }}>{data.day}</span>
+                                    <span style={{ fontSize: "0.42rem", color: C.outline }}>{data.day}</span>
                                 </div>
                             );
                         })}
@@ -1033,36 +1051,36 @@ export const FinanzasDashboard = ({
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
                         <span style={{ fontSize: "0.9rem", fontWeight: 800 }}>Deudas y Cobros</span>
                         <div style={{ display: "flex", gap: "6px" }}>
-                            <button onClick={(e) => { e.stopPropagation(); onNavigate?.('Deudas'); }} style={{ background: "rgba(239,68,68,0.08)", border: "none", color: "#EF4444", fontSize: "0.7rem", fontWeight: 800, cursor: "pointer", padding: "3px 10px", borderRadius: "8px" }}>Debo</button>
-                            <button onClick={(e) => { e.stopPropagation(); onNavigate?.('Deudas'); }} style={{ background: "rgba(16,185,129,0.08)", border: "none", color: "#10B981", fontSize: "0.7rem", fontWeight: 800, cursor: "pointer", padding: "3px 10px", borderRadius: "8px" }}>Me Deben</button>
+                            <button onClick={(e) => { e.stopPropagation(); onNavigate?.('Deudas'); }} style={{ background: "rgba(239,68,68,0.08)", border: "none", color: C.rojo, fontSize: "0.7rem", fontWeight: 800, cursor: "pointer", padding: "3px 10px", borderRadius: "8px" }}>Debo</button>
+                            <button onClick={(e) => { e.stopPropagation(); onNavigate?.('Deudas'); }} style={{ background: "rgba(16,185,129,0.08)", border: "none", color: C.verde, fontSize: "0.7rem", fontWeight: 800, cursor: "pointer", padding: "3px 10px", borderRadius: "8px" }}>Me Deben</button>
                         </div>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", flex: 1, overflowY: "auto" }}>
                         {activeDebtsAndCollections.length === 0 ? (
-                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: "6px", color: "#CBD5E1" }}>
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: "6px", color: C.outlineVariant }}>
                                 <Check size={26} strokeWidth={1.5} />
                                 <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>Sin deudas activas</span>
                             </div>
                         ) : activeDebtsAndCollections.map((debt, i) => (
                             <div key={i} onClick={(e) => { e.stopPropagation(); onNavigate?.('Deudas'); }}
-                                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px", borderRadius: "12px", background: "#F8FAFC", border: "1px solid #F1F5F9", cursor: "pointer" }}>
+                                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px", borderRadius: "12px", background: C.surface, border: `1px solid ${C.surfaceContainerLow}`, cursor: "pointer" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                                    <div style={{ width: "30px", height: "30px", borderRadius: "50%", background: debt.isOwe ? "rgba(239,68,68,0.1)" : "rgba(16,185,129,0.1)", color: debt.isOwe ? "#EF4444" : "#10B981", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                    <div style={{ width: "30px", height: "30px", borderRadius: "50%", background: debt.isOwe ? "rgba(239,68,68,0.1)" : "rgba(16,185,129,0.1)", color: debt.isOwe ? C.rojo : C.verde, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                         {debt.isOwe ? <UserMinus size={14} /> : <UserPlus size={14} />}
                                     </div>
                                     <div>
                                         <div style={{ fontSize: "0.82rem", fontWeight: 700 }}>{debt.name}</div>
-                                        {debt.contact && <div style={{ fontSize: "0.62rem", color: "#94A3B8" }}>{debt.contact}</div>}
+                                        {debt.contact && <div style={{ fontSize: "0.62rem", color: C.outline }}>{debt.contact}</div>}
                                     </div>
                                 </div>
-                                <span style={{ fontWeight: 800, fontSize: "0.88rem", color: debt.isOwe ? "#EF4444" : "#10B981" }}>{debt.isOwe ? "-" : "+"}S/ {debt.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                <span style={{ fontWeight: 800, fontSize: "0.88rem", color: debt.isOwe ? C.rojo : C.verde }}>{debt.isOwe ? "-" : "+"}S/ {debt.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
                             </div>
                         ))}
                     </div>
                     {/* Footer with CORRECTED totals */}
-                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid #F1F5F9" }}>
-                        <span style={{ fontSize: "0.72rem", color: "#EF4444", fontWeight: 700 }}>Debo: S/ {realOwe.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                        <span style={{ fontSize: "0.72rem", color: "#10B981", fontWeight: 700 }}>Me deben: S/ {realOwed.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: `1px solid ${C.surfaceContainerLow}` }}>
+                        <span style={{ fontSize: "0.72rem", color: C.rojo, fontWeight: 700 }}>Debo: S/ {realOwe.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                        <span style={{ fontSize: "0.72rem", color: C.verde, fontWeight: 700 }}>Me deben: S/ {realOwed.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
                     </div>
                 </div>
 
@@ -1070,9 +1088,9 @@ export const FinanzasDashboard = ({
 
             {/* ── Accounts accordion ─── */}
             <div style={{ ...CARD, padding: 0, overflow: "hidden" }}>
-                <button onClick={() => setIsAccountsVisible(v => !v)} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F8FAFC", border: "none", padding: "15px 20px", cursor: "pointer" }}>
+                <button onClick={() => setIsAccountsVisible(v => !v)} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", background: C.surface, border: "none", padding: "15px 20px", cursor: "pointer" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <PiggyBank size={17} color={C.primary} />
+                        <PiggyBank size={17} color={C.secondary} />
                         <span style={{ fontSize: "0.9rem", fontWeight: 800 }}>Mis Cuentas ({accounts.length})</span>
                     </div>
                     <motion.div animate={{ rotate: isAccountsVisible ? 180 : 0 }}><ArrowDownCircle size={15} /></motion.div>
@@ -1088,26 +1106,91 @@ export const FinanzasDashboard = ({
                                             borderTop: `4px solid ${acc.color}`,
                                             borderLeft: `1px solid ${C.outlineVariant}`, borderRight: `1px solid ${C.outlineVariant}`, borderBottom: `1px solid ${C.outlineVariant}`,
                                         }}>
-                                            <button onClick={() => window.confirm("¿Eliminar esta cuenta?") && setAccounts(p => p.filter(a => a.id !== acc.id))} style={{ position: "absolute", top: "5px", right: "5px", background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "1px" }}><Trash2 size={10} /></button>
-                                            <div style={{ fontSize: "0.62rem", color: "#64748B", fontWeight: 600 }}>{acc.name}</div>
+                                            <button onClick={() => window.confirm("¿Eliminar esta cuenta?") && setAccounts(p => p.filter(a => a.id !== acc.id))} style={{ position: "absolute", top: "5px", right: "5px", background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "1px" }}><Trash2 size={10} /></button>
+                                            <div style={{ fontSize: "0.62rem", color: C.onSurfaceVariant, fontWeight: 600 }}>{acc.name}</div>
                                             <div style={{ fontSize: "0.95rem", fontWeight: 900, marginTop: "3px" }}>S/ {acc.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
                                         </div>
                                     ))}
                                     {!isAddingAccount ? (
-                                        <button onClick={() => setIsAddingAccount(true)} style={{ borderRadius: "12px", padding: "10px", border: "2px dashed #E2E8F0", background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "3px", color: "#94A3B8", minHeight: "62px" }}>
+                                        <button onClick={() => setIsAddingAccount(true)} style={{ borderRadius: "12px", padding: "10px", border: `2px dashed ${C.outlineVariant}`, background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "3px", color: C.outline, minHeight: "62px" }}>
                                             <Plus size={16} /><span style={{ fontSize: "0.6rem", fontWeight: 700 }}>Nueva</span>
                                         </button>
                                     ) : (
-                                        <div style={{ borderRadius: "12px", padding: "10px", border: "1px solid C.primary", background: "#F8FAFF", display: "flex", flexDirection: "column", gap: "5px" }}>
-                                            <input autoFocus placeholder="Nombre" value={newAccountName} onChange={e => setNewAccountName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddAccount()} style={{ padding: "4px 7px", borderRadius: "6px", border: "1px solid #E2E8F0", fontSize: "0.72rem", outline: "none" }} />
+                                        <div style={{ borderRadius: "12px", padding: "10px", border: `1px solid ${C.secondary}`, background: C.surface, display: "flex", flexDirection: "column", gap: "5px" }}>
+                                            <input autoFocus placeholder="Nombre" value={newAccountName} onChange={e => setNewAccountName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddAccount()} style={{ padding: "4px 7px", borderRadius: "6px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.72rem", outline: "none" }} />
                                             <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-                                                <input type="color" value={newAccountColor} onChange={e => setNewAccountColor(e.target.value)} style={{ width: "26px", height: "26px", borderRadius: "5px", border: "1px solid #E2E8F0", padding: "1px", cursor: "pointer" }} />
-                                                <button onClick={handleAddAccount} style={{ flex: 1, background: C.primary, color: "white", border: "none", borderRadius: "5px", padding: "3px", fontSize: "0.65rem", fontWeight: 800, cursor: "pointer" }}>OK</button>
-                                                <button onClick={() => setIsAddingAccount(false)} style={{ background: "#E2E8F0", color: "#475569", border: "none", borderRadius: "5px", padding: "3px 6px", fontSize: "0.65rem", fontWeight: 800, cursor: "pointer" }}>X</button>
+                                                <input type="color" value={newAccountColor} onChange={e => setNewAccountColor(e.target.value)} style={{ width: "26px", height: "26px", borderRadius: "5px", border: `1px solid ${C.outlineVariant}`, padding: "1px", cursor: "pointer" }} />
+                                                <button onClick={handleAddAccount} style={{ flex: 1, background: C.secondary, color: "white", border: "none", borderRadius: "5px", padding: "3px", fontSize: "0.65rem", fontWeight: 800, cursor: "pointer" }}>OK</button>
+                                                <button onClick={() => setIsAddingAccount(false)} style={{ background: C.outlineVariant, color: C.onSurfaceVariant, border: "none", borderRadius: "5px", padding: "3px 6px", fontSize: "0.65rem", fontWeight: 800, cursor: "pointer" }}>X</button>
                                             </div>
                                         </div>
                                     )}
                                 </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+
+            {/* ── Categories accordion ─── */}
+            <div style={{ ...CARD, padding: 0, overflow: "hidden" }}>
+                <button onClick={() => setIsCategoriesVisible(v => !v)} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", background: C.surface, border: "none", padding: "15px 20px", cursor: "pointer" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <Tag size={17} color={C.secondary} />
+                        <span style={{ fontSize: "0.9rem", fontWeight: 800 }}>Categorías</span>
+                    </div>
+                    <motion.div animate={{ rotate: isCategoriesVisible ? 180 : 0 }}><ArrowDownCircle size={15} /></motion.div>
+                </button>
+                <AnimatePresence>
+                    {isCategoriesVisible && (
+                        <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} style={{ overflow: "hidden" }}>
+                            <div style={{ padding: "16px 20px" }}>
+                                <div style={{ marginBottom: "14px" }}>
+                                    <PillToggle
+                                        options={["gasto", "ingreso"]}
+                                        labels={["Gasto", "Ingreso"]}
+                                        value={categoryTab}
+                                        onChange={(v) => setCategoryTab(v as "gasto" | "ingreso")}
+                                    />
+                                </div>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "14px" }}>
+                                    {(categoryTab === "gasto" ? expenseCategories : incomeCategories)?.map(cat => (
+                                        <div key={cat} style={{
+                                            display: "flex", alignItems: "center", gap: "6px",
+                                            background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`,
+                                            borderRadius: "999px", padding: "6px 6px 6px 12px",
+                                        }}>
+                                            <span style={{ fontSize: "0.78rem", fontWeight: 700, color: C.onSurfaceVariant }}>{cat}</span>
+                                            {removeCategory && (
+                                                <button
+                                                    onClick={() => window.confirm(`¿Eliminar la categoría "${cat}"?`) && removeCategory(categoryTab, cat)}
+                                                    style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, display: "flex", padding: "2px" }}
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                    {(categoryTab === "gasto" ? expenseCategories : incomeCategories)?.length === 0 && (
+                                        <p style={{ fontSize: "0.78rem", color: C.outline, fontStyle: "italic", margin: 0 }}>
+                                            Sin categorías de {categoryTab}.
+                                        </p>
+                                    )}
+                                </div>
+                                {addCategory && (
+                                    <div style={{ display: "flex", gap: "6px" }}>
+                                        <input
+                                            placeholder="Nueva categoría..."
+                                            value={newCategoryName}
+                                            onChange={e => setNewCategoryName(e.target.value)}
+                                            onKeyDown={e => e.key === "Enter" && handleAddCategory()}
+                                            style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.82rem", outline: "none" }}
+                                        />
+                                        <button onClick={handleAddCategory} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "8px", padding: "0 16px", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center" }}>
+                                            <Plus size={16} />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </motion.div>
                     )}
@@ -1129,14 +1212,14 @@ export const FinanzasDashboard = ({
 const LegendDot = ({ color, label }: { color: string; label: string }) => (
     <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
         <div style={{ width: "8px", height: "8px", borderRadius: "2px", background: color }} />
-        <span style={{ fontSize: "0.58rem", color: "#64748B" }}>{label}</span>
+        <span style={{ fontSize: "0.58rem", color: C.onSurfaceVariant }}>{label}</span>
     </div>
 );
 
 export const PillToggle = ({ options, labels, value, onChange }: { options: string[]; labels?: string[]; value: string; onChange: (v: string) => void }) => (
-    <div style={{ display: "flex", background: "#F1F5F9", padding: "2px", borderRadius: "10px", gap: "2px" }}>
+    <div style={{ display: "flex", background: C.surfaceContainerLow, padding: "2px", borderRadius: "10px", gap: "2px" }}>
         {options.map((o, i) => (
-            <button key={o} onClick={() => onChange(o)} style={{ padding: "3px 8px", borderRadius: "8px", border: "none", background: value === o ? "white" : "transparent", color: value === o ? C.primary : "#64748B", fontSize: "0.62rem", fontWeight: 800, cursor: "pointer", boxShadow: value === o ? "0 1px 4px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s" }}>
+            <button key={o} onClick={() => onChange(o)} style={{ padding: "3px 8px", borderRadius: "8px", border: "none", background: value === o ? "white" : "transparent", color: value === o ? C.secondary : C.onSurfaceVariant, fontSize: "0.62rem", fontWeight: 800, cursor: "pointer", boxShadow: value === o ? "0 1px 4px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s" }}>
                 {labels ? labels[i] : o.toUpperCase()}
             </button>
         ))}
@@ -1151,29 +1234,29 @@ const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, upda
     const monthStr = new Date().toLocaleDateString("en-CA").substring(0, 7);
 
     if (isEditing) return (
-        <div style={{ display: "flex", gap: "7px", marginBottom: "7px", alignItems: "center", padding: "8px", background: "#F8FAFC", borderRadius: "10px", border: "1px solid #E2E8F0" }}>
-            <input autoFocus value={editName} onChange={e => setEditName(e.target.value)} style={{ flex: 2, padding: "5px 8px", borderRadius: "7px", border: "1px solid #E2E8F0", fontSize: "0.82rem", outline: "none" }} />
-            <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} style={{ flex: 1, padding: "5px 8px", borderRadius: "7px", border: "1px solid #E2E8F0", fontSize: "0.82rem", outline: "none" }} />
-            <button onClick={() => { updateFixedExpense(expense.id, { text: editName, amount: Number(editAmount) }); setIsEditing(false); }} style={{ background: C.primary, color: "white", border: "none", borderRadius: "7px", padding: "5px 10px", fontWeight: 800, cursor: "pointer" }}>OK</button>
-            <button onClick={() => setIsEditing(false)} style={{ background: "#E2E8F0", border: "none", borderRadius: "7px", padding: "5px 8px", fontWeight: 800, cursor: "pointer" }}>X</button>
+        <div style={{ display: "flex", gap: "7px", marginBottom: "7px", alignItems: "center", padding: "8px", background: C.surface, borderRadius: "10px", border: `1px solid ${C.outlineVariant}` }}>
+            <input autoFocus value={editName} onChange={e => setEditName(e.target.value)} style={{ flex: 2, padding: "5px 8px", borderRadius: "7px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.82rem", outline: "none" }} />
+            <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} style={{ flex: 1, padding: "5px 8px", borderRadius: "7px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.82rem", outline: "none" }} />
+            <button onClick={() => { updateFixedExpense(expense.id, { text: editName, amount: Number(editAmount) }); setIsEditing(false); }} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "7px", padding: "5px 10px", fontWeight: 800, cursor: "pointer" }}>OK</button>
+            <button onClick={() => setIsEditing(false)} style={{ background: C.outlineVariant, border: "none", borderRadius: "7px", padding: "5px 8px", fontWeight: 800, cursor: "pointer" }}>X</button>
         </div>
     );
 
     return (
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 0", borderBottom: "1px solid #F1F5F9" }}>
-            <div onClick={() => toggleFixedExpense(expense.id)} style={{ width: "30px", height: "17px", borderRadius: "9px", background: expense.active ? C.primary : "#CBD5E1", position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 0", borderBottom: `1px solid ${C.surfaceContainerLow}` }}>
+            <div onClick={() => toggleFixedExpense(expense.id)} style={{ width: "30px", height: "17px", borderRadius: "9px", background: expense.active ? C.secondary : C.outlineVariant, position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
                 <div style={{ width: "13px", height: "13px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: expense.active ? "15px" : "2px", transition: "left 0.15s" }} />
             </div>
-            <button onClick={() => isPaid ? unmarkFixedExpensePaid(expense.id, monthStr) : markFixedExpensePaid(expense.id, monthStr)} style={{ background: isPaid ? "#10B981" : "#F1F5F9", border: "none", borderRadius: "50%", width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
-                <span style={{ color: isPaid ? "white" : "#94A3B8", fontSize: "0.62rem", fontWeight: 900 }}>ok</span>
+            <button onClick={() => isPaid ? unmarkFixedExpensePaid(expense.id, monthStr) : markFixedExpensePaid(expense.id, monthStr)} style={{ background: isPaid ? C.verde : C.surfaceContainerLow, border: "none", borderRadius: "50%", width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+                <span style={{ color: isPaid ? "white" : C.outline, fontSize: "0.62rem", fontWeight: 900 }}>ok</span>
             </button>
-            <span style={{ textDecoration: isPaid ? "line-through" : "none", fontWeight: 600, flex: 1, fontSize: "0.83rem", color: isPaid ? "#94A3B8" : "var(--text-carbon)", opacity: expense.active ? 1 : 0.45 }}>
+            <span style={{ textDecoration: isPaid ? "line-through" : "none", fontWeight: 600, flex: 1, fontSize: "0.83rem", color: isPaid ? C.outline : "var(--text-carbon)", opacity: expense.active ? 1 : 0.45 }}>
                 {expense.text}
-                {expense.dueDay && <span style={{ fontSize: "0.6rem", color: "#94A3B8", marginLeft: "5px" }}>dia {expense.dueDay}</span>}
+                {expense.dueDay && <span style={{ fontSize: "0.6rem", color: C.outline, marginLeft: "5px" }}>dia {expense.dueDay}</span>}
             </span>
-            <span style={{ fontWeight: 800, fontSize: "0.88rem", opacity: expense.active ? 1 : 0.45, color: isPaid ? "#10B981" : "var(--text-carbon)" }}>S/ {expense.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-            <button onClick={() => setIsEditing(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "3px", display: "flex" }}><Edit2 size={12} /></button>
-            <button onClick={() => removeFixedExpense(expense.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "3px", display: "flex" }}><Trash2 size={12} /></button>
+            <span style={{ fontWeight: 800, fontSize: "0.88rem", opacity: expense.active ? 1 : 0.45, color: isPaid ? C.verde : "var(--text-carbon)" }}>S/ {expense.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+            <button onClick={() => setIsEditing(true)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "3px", display: "flex" }}><Edit2 size={12} /></button>
+            <button onClick={() => removeFixedExpense(expense.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "3px", display: "flex" }}><Trash2 size={12} /></button>
         </div>
     );
 };
@@ -1195,21 +1278,21 @@ const NewFixedExpenseForm = ({ addFixedExpense, projects }: any) => {
 
     if (!open) return (
         <button onClick={() => setOpen(true)} style={{ display: "flex", alignItems: "center", gap: "7px", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}>
-            <Plus size={13} color="#CCC" /><span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#AAA" }}>Nuevo gasto fijo...</span>
+            <Plus size={13} color={C.outline} /><span style={{ fontSize: "0.78rem", fontWeight: 600, color: C.outline }}>Nuevo gasto fijo...</span>
         </button>
     );
 
     return (
-        <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} style={{ display: "flex", flexDirection: "column", gap: "6px", background: "#F8FAFC", padding: "10px", borderRadius: "12px", border: "1px solid #E2E8F0" }}>
+        <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} style={{ display: "flex", flexDirection: "column", gap: "6px", background: C.surface, padding: "10px", borderRadius: "12px", border: `1px solid ${C.outlineVariant}` }}>
             <div style={{ display: "flex", gap: "6px" }}>
-                <input autoFocus placeholder="Nombre" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} style={{ flex: 2, padding: "6px", borderRadius: "8px", border: "1px solid #DDD", fontSize: "0.8rem", outline: "none" }} />
-                <input type="number" placeholder="S/ " value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} style={{ flex: 1, padding: "6px", borderRadius: "8px", border: "1px solid #DDD", fontSize: "0.8rem", outline: "none" }} />
+                <input autoFocus placeholder="Nombre" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} style={{ flex: 2, padding: "6px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.8rem", outline: "none" }} />
+                <input type="number" placeholder="S/ " value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} style={{ flex: 1, padding: "6px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.8rem", outline: "none" }} />
             </div>
             <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                {projects.length > 0 && <select value={projectId || ""} onChange={e => setProjectId(e.target.value ? Number(e.target.value) : undefined)} style={{ flex: 1, padding: "4px", borderRadius: "6px", border: "1px solid #CBD5E1", fontSize: "0.7rem", fontWeight: 700, background: "white", outline: "none" }}><option value="">Proyecto?</option>{projects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>}
-                <input type="number" placeholder="Dia" value={dueDay || ""} onChange={e => setDueDay(e.target.value ? Number(e.target.value) : undefined)} min="1" max="31" style={{ width: "44px", padding: "4px", borderRadius: "6px", border: "1px solid #DDD", fontSize: "0.7rem", fontWeight: 800, background: "#FFFDF0", textAlign: "center", outline: "none" }} />
-                <button onClick={() => setOpen(false)} style={{ padding: "4px 8px", borderRadius: "6px", border: "none", background: "#E2E8F0", color: "#475569", fontSize: "0.65rem", fontWeight: 800, cursor: "pointer" }}>X</button>
-                <button onClick={submit} style={{ padding: "4px 10px", borderRadius: "6px", border: "none", background: C.primary, color: "white", fontSize: "0.65rem", fontWeight: 800, cursor: "pointer" }}>OK</button>
+                {projects.length > 0 && <select value={projectId || ""} onChange={e => setProjectId(e.target.value ? Number(e.target.value) : undefined)} style={{ flex: 1, padding: "4px", borderRadius: "6px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.7rem", fontWeight: 700, background: "white", outline: "none" }}><option value="">Proyecto?</option>{projects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>}
+                <input type="number" placeholder="Dia" value={dueDay || ""} onChange={e => setDueDay(e.target.value ? Number(e.target.value) : undefined)} min="1" max="31" style={{ width: "44px", padding: "4px", borderRadius: "6px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.7rem", fontWeight: 800, background: C.surfaceContainerLow, textAlign: "center", outline: "none" }} />
+                <button onClick={() => setOpen(false)} style={{ padding: "4px 8px", borderRadius: "6px", border: "none", background: C.outlineVariant, color: C.onSurfaceVariant, fontSize: "0.65rem", fontWeight: 800, cursor: "pointer" }}>X</button>
+                <button onClick={submit} style={{ padding: "4px 10px", borderRadius: "6px", border: "none", background: C.secondary, color: "white", fontSize: "0.65rem", fontWeight: 800, cursor: "pointer" }}>OK</button>
             </div>
         </motion.div>
     );
