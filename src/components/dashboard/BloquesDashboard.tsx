@@ -518,39 +518,116 @@ export const BloquesDashboard = ({
                     padding: '14px 20px 14px',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div>
-                            <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#191c1d', letterSpacing: '-0.01em' }}>
-                                Registro Semanal
-                            </h2>
-                            <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#54433a', fontWeight: '500', opacity: 0.7 }}>
-                                {getWeekRangeLabel()}
-                            </p>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <button
-                                onClick={() => adjustWeek(-1)}
-                                style={{ background: '#f3f4f5', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#54433a' }}
-                            >
-                                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chevron_left</span>
-                            </button>
-                            <button
-                                onClick={() => setReferenceDate(new Date())}
-                                style={{ background: '#ff9f66', border: 'none', borderRadius: '10px', padding: '6px 12px', cursor: 'pointer', color: '#773401', fontSize: '12px', fontWeight: '700' }}
-                            >
-                                Hoy
-                            </button>
-                            <button
-                                onClick={() => adjustWeek(1)}
-                                style={{ background: '#f3f4f5', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#54433a' }}
-                            >
-                                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chevron_right</span>
-                            </button>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', gap: '8px' }}>
+                        <h2 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: '#191c1d', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>
+                            Registro {semanalSubView === 'semana' ? 'Semanal' : semanalSubView === 'mes' ? 'Mensual' : 'Anual'}
+                        </h2>
+                        {/* Semana/Mes/Año switcher */}
+                        <div style={{ display: 'flex', background: '#f3f4f5', padding: '3px', borderRadius: '10px', gap: '2px' }}>
+                            {([['semana', 'Sem'], ['mes', 'Mes'], ['anual', 'Año']] as const).map(([v, lbl]) => (
+                                <button
+                                    key={v}
+                                    onClick={() => setSemanalSubView(v)}
+                                    style={{
+                                        border: 'none',
+                                        background: semanalSubView === v ? 'white' : 'transparent',
+                                        color: semanalSubView === v ? '#944a18' : '#54433a',
+                                        padding: '5px 10px',
+                                        borderRadius: '7px',
+                                        fontSize: '11px',
+                                        fontWeight: '700',
+                                        cursor: 'pointer',
+                                        boxShadow: semanalSubView === v ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                    }}
+                                >{lbl}</button>
+                            ))}
                         </div>
                     </div>
+
+                    {/* Navegador contextual: semana / mes / año según la sub-vista activa */}
+                    {semanalSubView === 'semana' && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <p style={{ margin: 0, fontSize: '13px', color: '#54433a', fontWeight: '500', opacity: 0.7 }}>
+                                {getWeekRangeLabel()}
+                            </p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <button
+                                    onClick={() => adjustWeek(-1)}
+                                    style={{ background: '#f3f4f5', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#54433a' }}
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chevron_left</span>
+                                </button>
+                                <button
+                                    onClick={() => setReferenceDate(new Date())}
+                                    style={{ background: '#ff9f66', border: 'none', borderRadius: '10px', padding: '6px 12px', cursor: 'pointer', color: '#773401', fontSize: '12px', fontWeight: '700' }}
+                                >
+                                    Hoy
+                                </button>
+                                <button
+                                    onClick={() => adjustWeek(1)}
+                                    style={{ background: '#f3f4f5', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#54433a' }}
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chevron_right</span>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    {semanalSubView === 'mes' && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: '13px', color: '#54433a', fontWeight: '700', textTransform: 'capitalize' }}>
+                                {refMonthDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <button
+                                    onClick={() => { const d = new Date(refMonthDate); d.setMonth(d.getMonth() - 1); setRefMonthDate(d); setReferenceDate(new Date(d.getFullYear(), d.getMonth(), 1)); }}
+                                    style={{ background: '#f3f4f5', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#54433a' }}
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chevron_left</span>
+                                </button>
+                                <button
+                                    onClick={() => { setRefMonthDate(new Date()); setReferenceDate(new Date()); }}
+                                    style={{ background: '#ff9f66', border: 'none', borderRadius: '10px', padding: '6px 12px', cursor: 'pointer', color: '#773401', fontSize: '12px', fontWeight: '700' }}
+                                >
+                                    Hoy
+                                </button>
+                                <button
+                                    onClick={() => { const d = new Date(refMonthDate); d.setMonth(d.getMonth() + 1); setRefMonthDate(d); setReferenceDate(new Date(d.getFullYear(), d.getMonth(), 1)); }}
+                                    style={{ background: '#f3f4f5', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#54433a' }}
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chevron_right</span>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    {semanalSubView === 'anual' && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: '13px', color: '#54433a', fontWeight: '700' }}>{viewYear}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <button
+                                    onClick={() => setViewYear(y => y - 1)}
+                                    style={{ background: '#f3f4f5', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#54433a' }}
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chevron_left</span>
+                                </button>
+                                <button
+                                    onClick={() => setViewYear(new Date().getFullYear())}
+                                    style={{ background: '#ff9f66', border: 'none', borderRadius: '10px', padding: '6px 12px', cursor: 'pointer', color: '#773401', fontSize: '12px', fontWeight: '700' }}
+                                >
+                                    Hoy
+                                </button>
+                                <button
+                                    onClick={() => setViewYear(y => y + 1)}
+                                    style={{ background: '#f3f4f5', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#54433a' }}
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chevron_right</span>
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                {/* ── Main Content (Weekly Routines View) ── */}
+                {/* ── Main Content: vista Semana (rutinas del día) ── */}
+                {semanalSubView === 'semana' && (
                 <div style={{ padding: '20px 20px 0' }}>
 
                     {dayBlocksByPeriod.length === 0 ? (
@@ -752,6 +829,202 @@ export const BloquesDashboard = ({
                         })
                     )}
                 </div>
+                )}
+
+                {/* ── Main Content: vista Mes (mapa de calor del mes) ── */}
+                {semanalSubView === 'mes' && (() => {
+                    const monthStart = new Date(refMonthDate.getFullYear(), refMonthDate.getMonth(), 1);
+                    const monthEnd = new Date(refMonthDate.getFullYear(), refMonthDate.getMonth() + 1, 0);
+                    const startDow = (monthStart.getDay() + 6) % 7;
+                    const daysInMonth = monthEnd.getDate();
+
+                    const statsByDate: Record<string, { total: number; done: number }> = {};
+                    dailyBlocks.forEach(b => {
+                        if (!statsByDate[b.date]) statsByDate[b.date] = { total: 0, done: 0 };
+                        statsByDate[b.date].total++;
+                        if (b.completed) statsByDate[b.date].done++;
+                    });
+
+                    const todayFull = new Date().toLocaleDateString('en-CA');
+
+                    return (
+                        <div style={{ padding: '16px' }}>
+                            <div style={{ background: 'white', borderRadius: '16px', padding: '14px 10px', border: '1px solid #ECEFF1' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px', marginBottom: '6px' }}>
+                                    {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(d => (
+                                        <div key={d} style={{ textAlign: 'center', fontSize: '10px', fontWeight: 900, color: '#90A4AE', padding: '2px 0' }}>{d}</div>
+                                    ))}
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px' }}>
+                                    {Array.from({ length: startDow }).map((_, i) => (<div key={`empty-${i}`} />))}
+                                    {Array.from({ length: daysInMonth }).map((_, i) => {
+                                        const dayNum = i + 1;
+                                        const dateStr = `${refMonthDate.getFullYear()}-${String(refMonthDate.getMonth() + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                                        const stats = statsByDate[dateStr];
+                                        const isToday = dateStr === todayFull;
+                                        const isFuture = dateStr > todayFull;
+                                        const pct = stats && stats.total > 0 ? stats.done / stats.total : null;
+
+                                        let bg = '#F8FAFC';
+                                        let textColor = '#B0BEC5';
+                                        if (!isFuture && stats) {
+                                            if (pct === 1) { bg = '#6BCB77'; textColor = 'white'; }
+                                            else if (pct! >= 0.5) { bg = '#FFD166'; textColor = '#5A4400'; }
+                                            else if (pct! > 0) { bg = '#FFA07A'; textColor = 'white'; }
+                                            else { bg = '#F1F5F9'; textColor = '#94A3B8'; }
+                                        }
+
+                                        return (
+                                            <div key={dayNum} style={{
+                                                background: bg, borderRadius: '8px', padding: '5px 2px',
+                                                textAlign: 'center', border: isToday ? '2px solid #944a18' : '2px solid transparent',
+                                                minHeight: '42px', display: 'flex', flexDirection: 'column',
+                                                alignItems: 'center', justifyContent: 'center', gap: '1px',
+                                            }}>
+                                                <span style={{ fontSize: '11px', fontWeight: 900, color: isToday ? '#944a18' : textColor }}>{dayNum}</span>
+                                                {stats && stats.total > 0 && (
+                                                    <span style={{ fontSize: '8px', fontWeight: 800, color: textColor, opacity: 0.9 }}>{stats.done}/{stats.total}</span>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <div style={{ display: 'flex', gap: '10px', marginTop: '12px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' }}>
+                                    {[['#6BCB77', '100%'], ['#FFD166', '≥50%'], ['#FFA07A', '<50%'], ['#F1F5F9', 'Sin datos']].map(([c, l]) => (
+                                        <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: c }} />
+                                            <span style={{ fontSize: '10px', fontWeight: 700, color: '#90A4AE' }}>{l}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                {/* ── Main Content: vista Año (mapa de calor estilo GitHub, scroll horizontal) ── */}
+                {semanalSubView === 'anual' && (() => {
+                    const statsByDate: Record<string, { total: number; done: number }> = {};
+                    dailyBlocks.forEach(b => {
+                        if (b.date.startsWith(String(viewYear))) {
+                            if (!statsByDate[b.date]) statsByDate[b.date] = { total: 0, done: 0 };
+                            statsByDate[b.date].total++;
+                            if (b.completed) statsByDate[b.date].done++;
+                        }
+                    });
+
+                    const yearStart = new Date(viewYear, 0, 1);
+                    const firstMonday = new Date(yearStart);
+                    const dowStart = (yearStart.getDay() + 6) % 7;
+                    firstMonday.setDate(yearStart.getDate() - dowStart);
+
+                    const weeks: { date: string; dayNum: number; month: number }[][] = [];
+                    const cursor = new Date(firstMonday);
+                    for (let w = 0; w < 53; w++) {
+                        const week = [];
+                        for (let d = 0; d < 7; d++) {
+                            week.push({ date: cursor.toLocaleDateString('en-CA'), dayNum: cursor.getDate(), month: cursor.getMonth() });
+                            cursor.setDate(cursor.getDate() + 1);
+                        }
+                        weeks.push(week);
+                    }
+
+                    const MONTHS_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                    const todayFull = new Date().toLocaleDateString('en-CA');
+
+                    const getColor = (dateStr: string) => {
+                        if (dateStr > todayFull) return '#F8FAFC';
+                        const s = statsByDate[dateStr];
+                        if (!s || s.total === 0) return '#EDF2F7';
+                        const pct = s.done / s.total;
+                        if (pct === 1) return '#22C55E';
+                        if (pct >= 0.75) return '#4ADE80';
+                        if (pct >= 0.5) return '#86EFAC';
+                        if (pct >= 0.25) return '#BBF7D0';
+                        return '#DCFCE7';
+                    };
+
+                    const yearDone = Object.values(statsByDate).reduce((a, s) => a + s.done, 0);
+                    const yearTotal = Object.values(statsByDate).reduce((a, s) => a + s.total, 0);
+                    const streak = (() => {
+                        let s = 0;
+                        const d = new Date();
+                        while (true) {
+                            const ds = d.toLocaleDateString('en-CA');
+                            const st = statsByDate[ds];
+                            if (!st || st.done === 0) break;
+                            s++;
+                            d.setDate(d.getDate() - 1);
+                        }
+                        return s;
+                    })();
+
+                    return (
+                        <div style={{ padding: '16px' }}>
+                            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                                <div style={{ flex: 1, background: 'white', borderRadius: '12px', padding: '8px 6px', border: '1px solid #ECEFF1', textAlign: 'center' }}>
+                                    <div style={{ fontSize: '1rem', fontWeight: 900, color: '#22C55E' }}>{yearDone}</div>
+                                    <div style={{ fontSize: '9px', fontWeight: 800, color: '#90A4AE' }}>completadas</div>
+                                </div>
+                                <div style={{ flex: 1, background: 'white', borderRadius: '12px', padding: '8px 6px', border: '1px solid #ECEFF1', textAlign: 'center' }}>
+                                    <div style={{ fontSize: '1rem', fontWeight: 900, color: '#944a18' }}>{yearTotal > 0 ? Math.round((yearDone / yearTotal) * 100) : 0}%</div>
+                                    <div style={{ fontSize: '9px', fontWeight: 800, color: '#90A4AE' }}>efectividad</div>
+                                </div>
+                                <div style={{ flex: 1, background: 'white', borderRadius: '12px', padding: '8px 6px', border: '1px solid #ECEFF1', textAlign: 'center' }}>
+                                    <div style={{ fontSize: '1rem', fontWeight: 900, color: '#FF6B6B' }}>🔥 {streak}</div>
+                                    <div style={{ fontSize: '9px', fontWeight: 800, color: '#90A4AE' }}>racha</div>
+                                </div>
+                            </div>
+
+                            <div style={{ background: 'white', borderRadius: '16px', padding: '14px 10px', border: '1px solid #ECEFF1', overflowX: 'auto' }}>
+                                <div style={{ display: 'flex', gap: '0', minWidth: '620px' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginRight: '4px', paddingTop: '18px' }}>
+                                        {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(d => (
+                                            <div key={d} style={{ height: '10px', fontSize: '9px', fontWeight: 800, color: '#B0BEC5', display: 'flex', alignItems: 'center' }}>{d}</div>
+                                        ))}
+                                    </div>
+                                    <div style={{ flex: 1, overflow: 'hidden' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${weeks.length}, 1fr)`, gap: '2px', marginBottom: '2px' }}>
+                                            {weeks.map((week, wi) => {
+                                                const firstOfMonth = week.find(d => d.dayNum === 1 || (wi === 0 && d.month === (new Date(viewYear, 0, 1)).getMonth()));
+                                                return (
+                                                    <div key={wi} style={{ fontSize: '8px', fontWeight: 900, color: '#90A4AE', textAlign: 'left', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                                        {firstOfMonth && week[0].dayNum <= 7 ? MONTHS_ES[firstOfMonth.month] : ''}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${weeks.length}, 1fr)`, gap: '2px' }}>
+                                            {weeks.map((week, wi) =>
+                                                week.map((day, di) => {
+                                                    const inYear = day.date.startsWith(String(viewYear));
+                                                    const color = inYear ? getColor(day.date) : 'transparent';
+                                                    const isToday = day.date === todayFull;
+                                                    return (
+                                                        <div
+                                                            key={`${wi}-${di}`}
+                                                            style={{
+                                                                width: '100%', aspectRatio: '1', background: color, borderRadius: '2px',
+                                                                border: isToday ? '1px solid #944a18' : '1px solid transparent',
+                                                            }}
+                                                        />
+                                                    );
+                                                })
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '5px', marginTop: '10px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                    <span style={{ fontSize: '9px', fontWeight: 800, color: '#90A4AE' }}>Menos</span>
+                                    {['#EDF2F7', '#DCFCE7', '#BBF7D0', '#86EFAC', '#4ADE80', '#22C55E'].map(c => (
+                                        <div key={c} style={{ width: '10px', height: '10px', borderRadius: '2px', background: c }} />
+                                    ))}
+                                    <span style={{ fontSize: '9px', fontWeight: 800, color: '#90A4AE' }}>Más</span>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
 
                 {/* ── FAB ── */}
                 <button
