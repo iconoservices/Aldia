@@ -488,14 +488,7 @@ export const ChecklistDiario = ({
     /* ────────────────────────────────────────────────────────── */
     if (isMobile) {
         return (
-            <div style={{ padding: '12px 12px 6rem', minHeight: '100%' }}>
-
-                {/* Registrar dinero sin salir del día */}
-                {addTransaction && (
-                    <div style={{ marginBottom: '1rem' }}>
-                        <RegistroRapido addTransaction={addTransaction} accounts={accounts} compacto />
-                    </div>
-                )}
+            <div style={{ padding: '12px 12px 150px', minHeight: '100%' }}>
 
                 {/* Search / Filter toolbar */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem', width: '100%' }}>
@@ -850,37 +843,32 @@ export const ChecklistDiario = ({
                     />
                 )}
 
-                {/* Motivational Banner at the bottom */}
-                <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '10px',
-                    textAlign: 'center',
-                    marginTop: '24px',
-                    padding: '24px 16px 40px',
-                    color: '#877369',
-                }}>
+                {/* Registrar dinero: barra flotante fija justo encima del nav inferior */}
+                {addTransaction && (
                     <div style={{
-                        width: '48px', height: '48px', borderRadius: '50%',
-                        background: '#ffffff', border: `1px solid ${C.outlineVariant}`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                        position: 'fixed',
+                        bottom: '78px',
+                        left: '12px',
+                        right: '12px',
+                        zIndex: 998,
+                        background: 'rgba(255,255,255,0.72)',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        borderRadius: '999px',
+                        padding: '6px',
+                        boxShadow: '0 6px 22px rgba(0,0,0,0.12)',
+                        border: '1px solid rgba(0,0,0,0.05)',
                     }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: '24px', color: C.primary, fontVariationSettings: "'FILL' 1" }}>verified</span>
+                        <RegistroRapido addTransaction={addTransaction} accounts={accounts} compacto />
                     </div>
-                    <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: 600, maxWidth: '240px', lineHeight: 1.4 }}>
-                        Vas por buen camino. Completa tus tareas para alcanzar tu meta diaria.
-                    </p>
-                </div>
+                )}
 
                 {/* Mobile FAB */}
                 <button
                     onClick={() => setShowMobileAddForm(v => !v)}
                     style={{
                         position: 'fixed',
-                        bottom: '84px',
+                        bottom: '148px',
                         right: '20px',
                         width: '56px',
                         height: '56px',
