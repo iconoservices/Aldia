@@ -1037,7 +1037,7 @@ export const BloquesDashboard = ({
                         setShowMobileAddModal(true);
                     }}
                     style={{
-                        position: 'fixed', bottom: '84px', right: '20px',
+                        position: 'fixed', bottom: 'calc(84px + env(safe-area-inset-bottom, 0px))', right: '20px',
                         width: '56px', height: '56px', borderRadius: '50%',
                         background: '#944a18', color: '#ffffff', border: 'none',
                         boxShadow: '0 4px 16px rgba(148,74,24,0.35)',

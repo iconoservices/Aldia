@@ -761,7 +761,10 @@ export const ChecklistDiario = ({
                 {addTransaction && (
                     <div style={{
                         position: 'fixed',
-                        bottom: '78px',
+                        // + safe-area: en la PWA instalada el nav inferior creció ese alto
+                        // extra (gesto/home indicator) y esta barra se quedaba montada
+                        // encima suyo si el offset era un número fijo.
+                        bottom: 'calc(78px + env(safe-area-inset-bottom, 0px))',
                         left: '12px',
                         right: '12px',
                         zIndex: 998,
