@@ -843,7 +843,12 @@ export const ChecklistDiario = ({
                     />
                 )}
 
-                {/* Registrar dinero: barra flotante fija justo encima del nav inferior */}
+                {/* Registrar dinero: barra flotante fija justo encima del nav inferior.
+                    OJO: nada de backdrop-filter / transform / filter en el div de abajo.
+                    El modal RegistroMovimiento (position: fixed) se renderiza dentro de él;
+                    cualquiera de esas propiedades convertiría a ese contenedor en el bloque
+                    contenedor del modal y lo posicionaría respecto a esta barrita (fuera de
+                    pantalla) en vez de respecto al viewport. */}
                 {addTransaction && (
                     <div style={{
                         position: 'fixed',
@@ -851,13 +856,11 @@ export const ChecklistDiario = ({
                         left: '12px',
                         right: '12px',
                         zIndex: 998,
-                        background: 'rgba(255,255,255,0.72)',
-                        backdropFilter: 'blur(10px)',
-                        WebkitBackdropFilter: 'blur(10px)',
+                        background: '#ffffff',
                         borderRadius: '999px',
                         padding: '6px',
-                        boxShadow: '0 6px 22px rgba(0,0,0,0.12)',
-                        border: '1px solid rgba(0,0,0,0.05)',
+                        boxShadow: '0 6px 22px rgba(0,0,0,0.14)',
+                        border: '1px solid rgba(0,0,0,0.06)',
                     }}>
                         <RegistroRapido addTransaction={addTransaction} accounts={accounts} compacto />
                     </div>
