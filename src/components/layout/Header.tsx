@@ -37,10 +37,10 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     const PRIMARY_ITEMS = [
         { label: 'Checklist', tab: 'Checklist', icon: 'task_alt' },
         { label: 'Finanzas',  tab: 'Finanzas',  icon: 'payments'      },
-        { label: 'Plan',      tab: 'Plan',      icon: 'savings'       },
         { label: 'Deudas',     tab: 'Deudas',     icon: 'receipt_long'  },
         { label: 'Bloques', tab: 'Bloques',   icon: 'history_edu'    },
         { label: 'Movimientos', tab: 'Movimientos', icon: 'list_alt'    },
+        { label: 'Plan',      tab: 'Plan',      icon: 'savings'       },
         { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
         { label: 'Ajustes',  tab: '__profile', icon: 'settings'       },
     ];

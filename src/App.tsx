@@ -15,7 +15,6 @@ import { ProjectsKanbanView } from './components/dashboard/ProjectsKanbanView';
 import { LienzoDashboard } from './components/dashboard/LienzoDashboard';
 import { RecycleBinView } from './components/features/RecycleBinView';
 import { TimelineAgendaView } from './components/dashboard/TimelineAgendaView';
-import { SuperFab } from './components/features/SuperFab';
 import { NoteDetailView } from './components/dashboard/NoteDetailView';
 import { MissionEditOverlay } from './components/features/MissionEditOverlay';
 import { DayTimelineView } from './components/dashboard/DayTimelineView';
@@ -121,7 +120,6 @@ function App() {
   }, []);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [viewingNoteId, setViewingNoteId] = useState<number | null>(null);
-  const [isAddingProject, setIsAddingProject] = useState(false);
   const [editingMission, setEditingMission] = useState<Mission | null>(null);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
@@ -394,7 +392,7 @@ function App() {
             ) : activeTab === 'Proyectos' ? (
               <ProyectosDashboard
                 projects={state.projects}
-                onAddProject={() => setIsAddingProject(true)}
+                addProject={state.addProject}
                 deleteProject={state.deleteProject}
                 updateProject={state.updateProject}
                 onOpenDetail={(id: number) => setSelectedProjectDetailId(id)}
@@ -449,24 +447,6 @@ function App() {
         fixedExpenses={state.fixedExpenses}
         habits={state.habits}
       />
-
-      {activeTab !== 'Lienzo' && activeTab !== 'Checklist' && activeTab !== 'Bloques' && activeTab !== 'Stats' && activeTab !== 'Finanzas' && activeTab !== 'Deudas' && activeTab !== 'Plan' && (
-        <SuperFab
-          addMission={state.addMission}
-          addTransaction={state.addTransaction}
-          addHabit={state.addHabit}
-          addRoutineItem={state.addRoutineItem}
-          addCalendarEvent={state.addCalendarEvent}
-          addNote={state.addNote}
-          addTimeBlock={state.addTimeBlock}
-          addProject={state.addProject}
-          projects={state.projects}
-          accounts={state.accounts}
-          rutinas={state.rutinas}
-          forceOpenType={isAddingProject ? 'proyecto' : undefined}
-          onForceOpenClose={() => setIsAddingProject(false)}
-        />
-      )}
 
       <AnimatePresence>
         {selectedProjectDetailId && selectedProjectDetail && (

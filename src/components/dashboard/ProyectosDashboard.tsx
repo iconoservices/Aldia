@@ -7,19 +7,32 @@ import { ProjectEditOverlay } from '../features/ProjectEditOverlay';
 
 interface ProyectosProps {
     projects: Project[];
-    onAddProject: () => void;
+    addProject: (name: string, color: string, targetHoursPerWeek?: number) => void;
     deleteProject: (id: number) => void;
     updateProject: (id: number, updates: Partial<Project>) => void;
     onOpenDetail: (projectId: number) => void;
     reorderProjects: (newOrder: Project[]) => void;
 }
 
-export const ProyectosDashboard = ({ 
-    projects, onAddProject, deleteProject, updateProject, onOpenDetail, reorderProjects
+const PROJECT_COLORS = ['#0055FF', '#944a18', '#10B981', '#EF4444', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4'];
+
+export const ProyectosDashboard = ({
+    projects, addProject, deleteProject, updateProject, onOpenDetail, reorderProjects
 }: ProyectosProps) => {
     const [editingProject, setEditingProject] = useState<Project | null>(null);
     const [showArchived, setShowArchived] = useState(false);
     const [isDetailedView, setIsDetailedView] = useState(false);
+    const [isAddingProject, setIsAddingProject] = useState(false);
+    const [newProjectName, setNewProjectName] = useState('');
+    const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
+
+    const handleAddProject = () => {
+        if (!newProjectName.trim()) return;
+        addProject(newProjectName.trim(), newProjectColor);
+        setNewProjectName('');
+        setNewProjectColor(PROJECT_COLORS[0]);
+        setIsAddingProject(false);
+    };
     
     // Estado para el Drag & Drop nativo
     const [draggedProject, setDraggedProject] = useState<Project | null>(null);
@@ -87,8 +100,8 @@ export const ProyectosDashboard = ({
                         {showArchived ? <Play size={12} /> : <Archive size={12} />} 
                         {showArchived ? 'ACTIVOS' : 'ARCHIVOS'}
                     </button>
-                    <button 
-                        onClick={onAddProject}
+                    <button
+                        onClick={() => setIsAddingProject(true)}
                         style={{ 
                             background: 'linear-gradient(135deg, var(--domain-blue) 0%, #003399 100%)', 
                             color: 'white', border: 'none', borderRadius: '12px', padding: '6px 12px', 
@@ -180,6 +193,52 @@ export const ProyectosDashboard = ({
                 projects={projects}
                 updateProject={updateProject}
             />
+
+            <AnimatePresence>
+                {isAddingProject && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(3px)', zIndex: 998 }}
+                            onClick={() => setIsAddingProject(false)}
+                        />
+                        <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', pointerEvents: 'none' }}>
+                            <motion.div
+                                initial={{ opacity: 0, y: -10, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.96 }}
+                                style={{ background: 'white', borderRadius: '20px', padding: '24px', width: '100%', maxWidth: '380px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', pointerEvents: 'auto' }}
+                                onClick={e => e.stopPropagation()}
+                            >
+                                <h4 style={{ margin: '0 0 16px', fontSize: '1rem', fontWeight: 900, color: 'var(--text-carbon)' }}>Nuevo proyecto</h4>
+                                <input
+                                    autoFocus
+                                    value={newProjectName}
+                                    onChange={e => setNewProjectName(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') handleAddProject(); }}
+                                    placeholder="Nombre del proyecto"
+                                    style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', border: '2px solid #E5E7EB', fontSize: '0.9rem', fontWeight: 600, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                                />
+                                <div style={{ display: 'flex', gap: '6px', marginTop: '14px', flexWrap: 'wrap' }}>
+                                    {PROJECT_COLORS.map(c => (
+                                        <button
+                                            key={c}
+                                            onClick={() => setNewProjectColor(c)}
+                                            style={{
+                                                width: '28px', height: '28px', borderRadius: '50%', background: c, cursor: 'pointer',
+                                                border: newProjectColor === c ? '3px solid var(--text-carbon)' : '3px solid transparent',
+                                                padding: 0,
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                                <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                                    <button onClick={() => setIsAddingProject(false)} style={{ flex: 1, padding: '10px', borderRadius: '12px', border: '2px solid #E5E7EB', background: 'white', color: 'var(--text-carbon)', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
+                                    <button onClick={handleAddProject} disabled={!newProjectName.trim()} style={{ flex: 1, padding: '10px', borderRadius: '12px', border: 'none', background: newProjectName.trim() ? 'var(--domain-blue)' : '#E5E7EB', color: 'white', fontWeight: 800, fontSize: '0.8rem', cursor: newProjectName.trim() ? 'pointer' : 'default', fontFamily: 'inherit' }}>Crear</button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    </>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
