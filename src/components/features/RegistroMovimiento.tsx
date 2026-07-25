@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { C, campo, TOQUE_MINIMO, RADIO } from '../../theme';
 import { DEFAULT_INCOME_CATEGORIES, DEFAULT_EXPENSE_CATEGORIES } from '../../hooks/useAlDiaState';
@@ -111,7 +112,17 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
     const categorias = tipo === 'ingreso' ? DEFAULT_INCOME_CATEGORIES : DEFAULT_EXPENSE_CATEGORIES;
     const puedeGuardar = !!parseFloat(monto) && cuentaValida && !!categoria;
 
-    return (
+    // Portal a <body>: el modal usa position: fixed, y si se renderiza dentro de
+    // un ancestro que crea un contexto de apilamiento (p. ej. la barra flotante
+    // del Checklist con position: fixed + z-index), su z-index queda "atrapado"
+    // dentro de ese contexto y otros elementos (nav inferior, FAB) aparecen encima.
+    // Montándolo en el body escapa de cualquier contexto y su z-index alto manda.
+    //
+    // El createPortal va AFUERA de AnimatePresence, no adentro: AnimatePresence
+    // seguía el ciclo de vida de sus hijos como elementos React normales, y un
+    // Portal no es un elemento React normal — con el portal adentro no montaba
+    // nada. Envolviendo al revés, AnimatePresence anima motion.div de verdad.
+    return createPortal(
         <AnimatePresence>
             {open && (
                 <>
@@ -284,6 +295,7 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
                     </motion.div>
                 </>
             )}
-        </AnimatePresence>
+        </AnimatePresence>,
+        document.body
     );
 };
