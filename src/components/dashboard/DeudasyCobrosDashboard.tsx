@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from "react";
+﻿import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Transaction } from "../../hooks/useAlDiaState";
 import { useIsMobile } from "../../theme";
@@ -12,6 +12,7 @@ interface DeudasyCobrosDashboardProps {
     ) => void;
     removeTransaction: (id: number) => void;
     repayDebt: (originalTx: Transaction, amount: number, accountId: number) => void;
+    updateTransaction: (id: number, updates: Partial<Transaction>) => void;
     accounts: { id: number; name: string; color: string }[];
 }
 
@@ -131,9 +132,19 @@ export const DeudasyCobrosDashboard = ({
     transactions,
     addTransaction,
     removeTransaction,
+    updateTransaction,
     accounts,
 }: DeudasyCobrosDashboardProps) => {
     const movil = useIsMobile();
+
+    // Corrección retroactiva: las deudas creadas antes de este cambio restaban/sumaban
+    // el doble en Balance/Patrimonio Neto (isCashless quedaba en false). Se corrige una
+    // sola vez; una vez todas quedan en isCashless:true, el filtro ya no encuentra nada.
+    useEffect(() => {
+        const desactualizadas = transactions.filter(t => t.isDebt && !t.isCashless);
+        desactualizadas.forEach(t => updateTransaction(t.id, { isCashless: true }));
+    }, [transactions, updateTransaction]);
+
     const [filterType, setFilterType] = useState<FilterType>("todos");
     const [filterEstado, setFilterEstado] = useState<FilterEstado>("todos");
     const [viewMode, setViewMode] = useState<"list" | "grid">("list");
@@ -188,7 +199,9 @@ export const DeudasyCobrosDashboard = ({
             true,
             undefined,
             undefined,
-            false,
+            // isCashless: la deuda en sí no es un movimiento de caja real, así que no debe
+            // restar/sumar en Balance/Patrimonio Neto por su cuenta — solo cuenta "Debo/Me Deben".
+            true,
             "Deudas",
             newContact.trim() || undefined
         );
@@ -242,10 +255,11 @@ export const DeudasyCobrosDashboard = ({
             true,
             undefined,
             undefined,
-            // Si esta deuda va a mover efectivo de verdad (hay cuenta elegida), esta mitad
-            // pasa a isCashless: el movimiento de caja ya lo cuenta la transacción real de
-            // abajo, y contar los dos aquí duplicaba el impacto en Balance/Patrimonio Neto.
-            !!newAccountId,
+            // isCashless: la deuda en sí no es un movimiento de caja real (haya o no
+            // cuenta ligada) — si hay cuenta, el efectivo lo cuenta la transacción real
+            // de abajo; si no la hay, todavía no hay caja de por medio. Sin esto, cada
+            // deuda restaba/sumaba el doble en Balance/Patrimonio Neto.
+            true,
             undefined,
             newContact.trim() || undefined
         );

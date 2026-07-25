@@ -331,6 +331,7 @@ function App() {
                 addTransaction={state.addTransaction}
                 removeTransaction={state.removeTransaction}
                 repayDebt={state.repayDebt}
+                updateTransaction={state.updateTransaction}
                 accounts={state.accounts}
               />
             ) : activeTab === 'Finanzas' ? (
