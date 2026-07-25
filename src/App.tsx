@@ -388,6 +388,7 @@ function App() {
               <MovimientosDashboard
                 transactions={state.transactions}
                 removeTransaction={state.removeTransaction}
+                accounts={state.accounts}
               />
             ) : activeTab === 'Proyectos' ? (
               <ProyectosDashboard

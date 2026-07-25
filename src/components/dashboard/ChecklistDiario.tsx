@@ -225,8 +225,6 @@ export const ChecklistDiario = ({
     const [pendientesFirst, setPendientesFirst]  = useState(true);
     const [customOrder,     setCustomOrder]      = useState<string[]>([]);
     const [activeId,       setActiveId]        = useState<string | null>(null);
-    const [quickAddText,   setQuickAddText]    = useState('');
-    const [quickAddPeriod, setQuickAddPeriod]  = useState<Period>('Mañana');
     const isMobile = useIsMobile();
     const [confirmDelete, setConfirmDelete] = useState<{ label: string; period: Period } | null>(null);
     const [editingTask, setEditingTask] = useState<{ label: string; period: Period } | null>(null);
@@ -435,13 +433,6 @@ export const ChecklistDiario = ({
 
         setEditingRepeat(null);
     }, [editingRepeat, dailyBlocks, updateDailyBlock]);
-
-    const handleQuickAdd = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!quickAddText.trim()) return;
-        addDailyBlock(quickAddText.trim(), quickAddPeriod, todayStr, false, undefined, [0,1,2,3,4,5,6]);
-        setQuickAddText('');
-    };
 
     /* ── DnD sensors ── */
     const sensors = useSensors(
@@ -662,64 +653,6 @@ export const ChecklistDiario = ({
                         );
                     })}
                 </div>
-
-                {/* Quick Add Form: siempre visible (antes se abría con el FAB naranja,
-                    que se quitó — así no se pierde la forma de añadir tareas). */}
-                <form
-                    onSubmit={handleQuickAdd}
-                    style={{
-                        display: 'flex', flexDirection: 'column', gap: '10px',
-                        padding: '16px', marginBottom: '12px',
-                        background: '#ffffff',
-                        border: `1.5px dashed ${C.outlineVariant}`,
-                        borderRadius: '1.25rem',
-                    }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: '20px', color: C.primary }}>add_circle</span>
-                        <input
-                            type="text"
-                            value={quickAddText}
-                            onChange={e => setQuickAddText(e.target.value)}
-                            placeholder="Añadir una nueva tarea para hoy..."
-                            style={{
-                                flex: 1, background: 'transparent', border: 'none',
-                                outline: 'none', fontSize: '0.9rem', color: C.onSurface,
-                                fontFamily: 'inherit',
-                            }}
-                        />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                        <select
-                            value={quickAddPeriod}
-                            onChange={e => setQuickAddPeriod(e.target.value as Period)}
-                            style={{
-                                background: C.surfaceContainer, border: 'none', outline: 'none',
-                                borderRadius: '8px', padding: '6px 12px',
-                                fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant,
-                                cursor: 'pointer', fontFamily: 'inherit',
-                            }}
-                        >
-                            <option value="Mañana">☀️ Mañana</option>
-                            <option value="Tarde">🌤 Tarde</option>
-                            <option value="Noche">🌙 Noche</option>
-                            <option value="Otro">⏱ Otro</option>
-                        </select>
-                        <button
-                            type="submit"
-                            disabled={!quickAddText.trim()}
-                            style={{
-                                background: quickAddText.trim() ? C.primary : C.surfaceContainer,
-                                color: quickAddText.trim() ? '#fff' : C.onSurfaceVariant,
-                                border: 'none', borderRadius: '8px',
-                                padding: '6px 16px', fontSize: '0.8rem', fontWeight: 700,
-                                cursor: quickAddText.trim() ? 'pointer' : 'default',
-                            }}
-                        >
-                            Añadir
-                        </button>
-                    </div>
-                </form>
 
                 {/* DnD Tasks List */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1317,71 +1250,6 @@ export const ChecklistDiario = ({
                             ) : null}
                         </DragOverlay>
                     </DndContext>
-
-                    {/* ── Quick Add ── */}
-                    <form
-                        onSubmit={handleQuickAdd}
-                        style={{
-                            marginTop: '4px',
-                            display: 'flex', alignItems: 'center', gap: '10px',
-                            padding: '12px 16px',
-                            background: C.surfaceContainerLow,
-                            border: `1.5px dashed ${C.outlineVariant}`,
-                            borderRadius: '1rem',
-                            transition: 'border-color 0.15s',
-                        }}
-                        onFocus={e => (e.currentTarget as HTMLElement).style.borderColor = C.primary}
-                        onBlur={e => (e.currentTarget as HTMLElement).style.borderColor = C.outlineVariant}
-                    >
-                        <span className="material-symbols-outlined" style={{
-                            fontSize: '20px', color: C.primary,
-                            background: C.surfaceLowest, borderRadius: '999px', padding: '4px',
-                            boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-                        }}>add</span>
-
-                        <input
-                            type="text"
-                            value={quickAddText}
-                            onChange={e => setQuickAddText(e.target.value)}
-                            placeholder="Añadir una nueva tarea para hoy..."
-                            style={{
-                                flex: 1, background: 'transparent', border: 'none',
-                                outline: 'none', fontSize: '0.9rem', color: C.onSurface,
-                                fontFamily: 'inherit',
-                            }}
-                        />
-
-                        <select
-                            value={quickAddPeriod}
-                            onChange={e => setQuickAddPeriod(e.target.value as Period)}
-                            style={{
-                                background: C.surfaceContainerHigh, border: 'none', outline: 'none',
-                                borderRadius: '8px', padding: '4px 8px',
-                                fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant,
-                                cursor: 'pointer', fontFamily: 'inherit',
-                            }}
-                        >
-                            <option value="Mañana">☀️ Mañana</option>
-                            <option value="Tarde">🌤 Tarde</option>
-                            <option value="Noche">🌙 Noche</option>
-                            <option value="Otro">⏱ Otro</option>
-                        </select>
-
-                        <button
-                            type="submit"
-                            disabled={!quickAddText.trim()}
-                            style={{
-                                background: quickAddText.trim() ? C.primary : C.surfaceContainerHigh,
-                                color: quickAddText.trim() ? '#fff' : C.onSurfaceVariant,
-                                border: 'none', borderRadius: '10px',
-                                padding: '6px 16px', fontSize: '0.82rem', fontWeight: 700,
-                                cursor: quickAddText.trim() ? 'pointer' : 'default',
-                                transition: 'all 0.15s', fontFamily: 'inherit',
-                            }}
-                        >
-                            Añadir
-                        </button>
-                    </form>
                 </div>
             </div>
 

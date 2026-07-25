@@ -3,7 +3,7 @@ import {
     Wallet, Plus, TrendingUp, TrendingDown,
     Trash2, Edit2, PieChart, X,
     UserMinus, UserPlus, Check, PiggyBank, ArrowDownCircle,
-    BarChart3, Tag
+    BarChart3, Tag, MoreVertical
 } from "lucide-react";
 import { AnalyticsView } from "./AnalyticsView";
 import { motion, AnimatePresence } from "framer-motion";
@@ -117,6 +117,195 @@ const CircleCheckbox = ({ checked, onChange }: { checked: boolean; onChange: () 
         {checked && <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "white" }} />}
     </div>
 );
+
+// Número protagonista de cada bloque (Real/Proyección/Simulador): antes competía
+// en la misma grilla que los otros 10 datos y se perdía. Se saca aparte para que
+// se lea de un vistazo cuál es "el resultado" antes de entrar al detalle. Es el
+// único lugar del bloque donde el color todavía carga significado (positivo/negativo);
+// el detalle de abajo usa un solo color neutro para no competir con él.
+const HeroStat = ({ label, val, color, sub, bg }: { label: string; val: number; color: string; sub?: string; bg: string }) => (
+    <div style={{ flex: "1 1 0", minWidth: 0, background: bg, borderRadius: "14px", padding: "10px 12px" }}>
+        <div style={{ ...etiqueta, color, marginBottom: "3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: "2px", color }}>
+            <span style={{ fontSize: "clamp(0.65rem, 3vw, 0.8rem)", fontWeight: 800 }}>S/ </span>
+            <span style={{ fontSize: "clamp(1.05rem, 5.5vw, 1.45rem)", fontWeight: 900, lineHeight: 1 }}>{val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+        </div>
+        {sub && <span style={{ fontSize: "0.6rem", color: C.outline, marginTop: "2px", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</span>}
+    </div>
+);
+
+// dotColor es solo un indicador chico de categoría (ingreso/gasto/deuda);
+// el número en sí queda siempre en el mismo tono neutro — así no compite
+// por atención con los HeroStat de arriba, que son los que sí deben saltar a la vista.
+type StatCellData = { label: string; val: number; dotColor?: string; sub?: string; checked?: boolean; onToggle?: () => void; opacity?: number };
+
+const StatCell = ({ label, val, dotColor, sub, checked, onToggle, opacity, bordered }: StatCellData & { bordered?: boolean }) => (
+    <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", opacity: opacity ?? 1, transition: "opacity 0.2s", borderLeft: bordered ? `1px solid ${C.outlineVariant}` : "none", paddingLeft: bordered ? "0.6rem" : 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "0.15rem" }}>
+            {onToggle && <CircleCheckbox checked={checked ?? false} onChange={onToggle} />}
+            {dotColor && <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: dotColor, display: "inline-block", flexShrink: 0 }} />}
+            <span style={etiqueta}>{label}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: "1px", color: C.onSurface }}>
+            <span style={{ fontSize: "0.72rem", fontWeight: 700, color: C.onSurfaceVariant }}>S/ </span>
+            <span style={{ fontSize: "1.05rem", fontWeight: 800, lineHeight: 1 }}>{val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+        </div>
+        {sub && <span style={{ fontSize: "0.56rem", color: C.outline, marginTop: "1px" }}>{sub}</span>}
+    </div>
+);
+
+// Antes las 11 métricas vivían en una sola grilla plana, todas con el mismo peso
+// visual: no se distinguía "Ingresos" de "Deudas" de "Balance Neto" a simple vista.
+// Agruparlas por categoría (con su propio título) restaura esa jerarquía sin
+// perder ningún dato ni los toggles de incluir/excluir.
+const StatSection = ({ title, items }: { title: string; items: StatCellData[] }) => (
+    <div>
+        <div style={{ fontSize: "0.6rem", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: C.onSurfaceVariant, marginBottom: "6px" }}>{title}</div>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${items.length}, 1fr)`, gap: 0 }}>
+            {items.map((it, i) => <StatCell key={i} {...it} bordered={i > 0} />)}
+        </div>
+    </div>
+);
+
+// Antes el ícono de borrar vivía suelto en cada tarjeta de cuenta (un tap
+// accidental la eliminaba sin abrir nada más). Ahora la tarjeta abre este
+// detalle: el nombre y color se editan ahí, "Eliminar" queda un nivel más
+// adentro (menú de opciones), y de paso se ve el historial de esa cuenta.
+const AccountDetailModal = ({
+    account, transactions, projects, onClose, onRename, onChangeColor, onDelete,
+}: {
+    account: { id: number; name: string; color: string; balance: number; projectIds?: number[] };
+    transactions: Transaction[];
+    projects: Project[];
+    onClose: () => void;
+    onRename: (name: string) => void;
+    onChangeColor: (color: string) => void;
+    onDelete: () => void;
+}) => {
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [editingName, setEditingName] = useState(false);
+    const [nameDraft, setNameDraft] = useState(account.name);
+
+    const txs = useMemo(() =>
+        transactions.filter(t => t.accountId === account.id && !t.isCashless).sort((a, b) => b.fullDate.localeCompare(a.fullDate)),
+        [transactions, account.id]);
+
+    const linkedProjects = useMemo(() =>
+        projects.filter(p => account.projectIds?.includes(p.id)),
+        [projects, account.projectIds]);
+
+    const saveName = () => {
+        const trimmed = nameDraft.trim();
+        if (trimmed && trimmed !== account.name) onRename(trimmed);
+        setEditingName(false);
+    };
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(3px)", zIndex: 9997, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+            onClick={onClose}
+        >
+            <motion.div
+                initial={{ opacity: 0, y: -10, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.96 }}
+                style={{ background: "white", borderRadius: "20px", padding: "20px", width: "100%", maxWidth: "420px", maxHeight: "80vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", position: "relative" }}
+                onClick={e => e.stopPropagation()}
+            >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem", gap: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, minWidth: 0 }}>
+                        <span style={{ width: "14px", height: "14px", borderRadius: "50%", background: account.color, flexShrink: 0 }} />
+                        {editingName ? (
+                            <input
+                                autoFocus value={nameDraft} onChange={e => setNameDraft(e.target.value)}
+                                onKeyDown={e => { if (e.key === "Enter") saveName(); if (e.key === "Escape") { setNameDraft(account.name); setEditingName(false); } }}
+                                onBlur={saveName}
+                                style={{ fontSize: "1.1rem", fontWeight: 800, border: "none", borderBottom: `2px solid ${C.secondary}`, outline: "none", padding: "2px 0", flex: 1, minWidth: 0, fontFamily: "inherit" }}
+                            />
+                        ) : (
+                            <span style={{ fontSize: "1.1rem", fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{account.name}</span>
+                        )}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+                        <div style={{ position: "relative" }}>
+                            <button onClick={() => setMenuOpen(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: C.onSurfaceVariant, padding: "4px", display: "flex" }}>
+                                <MoreVertical size={18} />
+                            </button>
+                            <AnimatePresence>
+                                {menuOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                                        style={{ position: "absolute", top: "28px", right: 0, background: "white", borderRadius: "12px", boxShadow: "0 8px 24px rgba(0,0,0,0.15)", border: `1px solid ${C.outlineVariant}`, overflow: "hidden", zIndex: 10, minWidth: "180px" }}
+                                    >
+                                        <button onClick={() => { setEditingName(true); setMenuOpen(false); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", background: "none", border: "none", cursor: "pointer", fontSize: "0.82rem", fontWeight: 600, color: C.onSurface, textAlign: "left", fontFamily: "inherit" }}>
+                                            <Edit2 size={14} /> Renombrar
+                                        </button>
+                                        <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", fontSize: "0.82rem", fontWeight: 600, color: C.onSurface, cursor: "pointer" }}>
+                                            <input type="color" value={account.color} onChange={e => onChangeColor(e.target.value)} style={{ width: "14px", height: "14px", padding: 0, border: "none", cursor: "pointer" }} />
+                                            Cambiar color
+                                        </label>
+                                        <button onClick={() => { setMenuOpen(false); onDelete(); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", background: "none", border: "none", borderTop: `1px solid ${C.outlineVariant}`, cursor: "pointer", fontSize: "0.82rem", fontWeight: 600, color: C.rojo, textAlign: "left", fontFamily: "inherit" }}>
+                                            <Trash2 size={14} /> Eliminar cuenta
+                                        </button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                        <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: C.onSurfaceVariant, padding: "4px", display: "flex" }}>
+                            <X size={18} />
+                        </button>
+                    </div>
+                </div>
+
+                <div style={{ background: `${account.color}14`, borderRadius: "14px", padding: "16px", marginBottom: "1.2rem" }}>
+                    <div style={{ ...etiqueta, color: account.color, marginBottom: "4px" }}>Saldo</div>
+                    <div style={{ fontSize: "1.8rem", fontWeight: 900, color: C.onSurface }}>S/ {account.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
+                </div>
+
+                <div style={{ marginBottom: "1.2rem" }}>
+                    <div style={{ fontSize: "0.62rem", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: C.onSurfaceVariant, marginBottom: "8px" }}>
+                        Proyectos vinculados
+                    </div>
+                    {linkedProjects.length === 0 ? (
+                        <p style={{ fontSize: "0.78rem", color: C.outline, fontStyle: "italic", margin: 0 }}>Sin proyectos vinculados.</p>
+                    ) : (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                            {linkedProjects.map(p => (
+                                <span key={p.id} style={{ display: "flex", alignItems: "center", gap: "5px", background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: "999px", padding: "4px 10px 4px 8px", fontSize: "0.75rem", fontWeight: 700, color: C.onSurfaceVariant }}>
+                                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: p.color, display: "inline-block" }} />
+                                    {p.name}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                <div style={{ fontSize: "0.62rem", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: C.onSurfaceVariant, marginBottom: "8px" }}>
+                    Movimientos ({txs.length})
+                </div>
+                {txs.length === 0 ? (
+                    <p style={{ fontSize: "0.8rem", color: C.outline, fontStyle: "italic", textAlign: "center", padding: "1.5rem 0" }}>Sin movimientos en esta cuenta todavía.</p>
+                ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                        {txs.slice(0, 30).map(tx => (
+                            <div key={tx.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "10px", background: C.surface, border: `1px solid ${C.surfaceContainerLow}` }}>
+                                <div style={{ width: "26px", height: "26px", borderRadius: "8px", background: tx.type === "ingreso" ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)", color: tx.type === "ingreso" ? C.verde : C.rojo, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                    {tx.type === "ingreso" ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: "0.78rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tx.text}</div>
+                                    <div style={{ fontSize: "0.6rem", color: C.outline }}>{tx.fullDate}</div>
+                                </div>
+                                <span style={{ fontWeight: 800, fontSize: "0.8rem", color: tx.type === "ingreso" ? C.verde : C.rojo, flexShrink: 0 }}>
+                                    {tx.type === "ingreso" ? "+" : "-"}S/ {Math.abs(tx.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </motion.div>
+        </motion.div>
+    );
+};
 
 // ---------- helpers ----------
 export function getPeriodBounds(mode: PeriodMode, ref: Date): { start: string; end: string } {
@@ -405,7 +594,6 @@ export const FinanzasDashboard = ({
     const [verTodo, setVerTodo] = useState(false);
     // El alta de movimiento se dispara desde el botón de la cabecera.
     const [showTxForm, setShowTxForm] = useState(false);
-    const [isAccountsVisible, setIsAccountsVisible] = useState(false);
     const [selectedProject, setSelectedProject] = useState<any>(null);
     const [showAnalytics, setShowAnalytics] = useState(false);
     const [chartPeriod, setChartPeriod] = useState<"7d" | "30d">("7d");
@@ -420,6 +608,7 @@ export const FinanzasDashboard = ({
     const [isAddingAccount, setIsAddingAccount] = useState(false);
     const [newAccountName, setNewAccountName] = useState("");
     const [newAccountColor, setNewAccountColor] = useState("#0055FF");
+    const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
 
     // ── Categorías ────────────────────────────────────────────────────────
     const [isCategoriesVisible, setIsCategoriesVisible] = useState(false);
@@ -458,200 +647,200 @@ export const FinanzasDashboard = ({
     // ─────────────────────────────────────────────────────────────────────
     /* ── Las tres lecturas, como variables para poder reutilizarlas ── */
     const bloqueReal = (
-                <div style={{ ...cardConAcento(C.verde) }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", flexWrap: "wrap", gap: "8px" }}>
-                        <span style={LABEL}>Situación Financiera Real</span>
-                        <TrendingUp size={16} color={C.verde} />
+                <div style={{ ...cardConAcento(C.verde), display: "flex", flexDirection: "column", gap: "0.85rem", padding: movil ? "1rem" : cardConAcento(C.verde).padding }}>
+                    <div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.15rem", flexWrap: "wrap", gap: "8px" }}>
+                            <span style={LABEL}>Situación Financiera Real</span>
+                            <TrendingUp size={16} color={C.verde} />
+                        </div>
+                        <span style={{ fontSize: "0.65rem", color: C.outline, display: "block" }}>Ingresos y gastos reales + deudas y patrimonio — lo que ya pasó</span>
                     </div>
-                    <span style={{ fontSize: "0.65rem", color: C.outline, marginBottom: "0.8rem", display: "block" }}>Ingresos y gastos reales + deudas y patrimonio — lo que ya pasó</span>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
-                        {[
-                            { label: topPeriodDetails.label, val: topIncome, color: C.verde, sub: topPeriodDetails.sub },
-                            { label: "Fijo", val: fixedIncomeActual, color: C.verde, sub: "Activos recibidos" },
-                            { label: "Variable", val: variableIncomeActual, color: C.verde, sub: "Ingresos directos" },
-                            { label: topPeriodDetails.labelExp, val: topExpense, color: C.rojo, sub: topPeriodDetails.subExp },
-                            { label: "Fijo", val: fixedExpenseActual, color: C.rojo, sub: "Gastos activos" },
-                            { label: "Variable", val: variableExpenseActual, color: C.rojo, sub: "Gastos directos" },
-                            { label: "Balance Neto", val: topIncome - topExpense, color: (topIncome - topExpense) >= 0 ? C.verde : C.rojo, sub: "Ingresos - Gastos" },
-                            { label: "Debo", val: realOwe, color: C.rojo, sub: realOwe > 0 ? "Deudas pendientes" : "Sin deudas" },
-                            { label: "Me Deben", val: realOwed, color: C.verde, sub: realOwed > 0 ? "Por cobrar" : "Sin cobros" },
-                            { label: "Deuda Neta", val: realOwed - realOwe, color: (realOwed - realOwe) >= 0 ? C.verde : C.rojo, sub: "Me deben - Debo" },
-                            { label: "Patrimonio Neto", val: periodBalance - realOwe + realOwed, color: (periodBalance - realOwe + realOwed) >= 0 ? C.verde : C.rojo, sub: "Balance Neto + Deuda Neta" },
-                        ].map((item, i) => (
-                            <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? `1px solid ${C.outlineVariant}` : "none" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
-                                    <span style={{ ...LABEL }}>{item.label}</span>
-                                </div>
-                                <div style={{ display: "flex", alignItems: "baseline", gap: "1px", color: item.color }}>
-                                    <span style={{ fontSize: "0.8rem", fontWeight: 800 }}>S/ </span>
-                                    <span style={{ fontSize: "1.25rem", fontWeight: 900, lineHeight: 1 }}>{item.val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                                </div>
-                                <span style={{ fontSize: "0.58rem", color: C.outline, marginTop: "2px" }}>{item.sub}</span>
-                            </div>
-                        ))}
+
+                    <div style={{ display: "flex", gap: movil ? "0.5rem" : "0.6rem", flexWrap: "nowrap" }}>
+                        <HeroStat
+                            label="Balance Neto"
+                            val={topIncome - topExpense}
+                            color={(topIncome - topExpense) >= 0 ? C.verde : C.rojo}
+                            sub="Ingresos - Gastos"
+                            bg={(topIncome - topExpense) >= 0 ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)"}
+                        />
+                        <HeroStat
+                            label="Patrimonio Neto"
+                            val={periodBalance - realOwe + realOwed}
+                            color={(periodBalance - realOwe + realOwed) >= 0 ? C.verde : C.rojo}
+                            sub="Balance Neto + Deuda Neta"
+                            bg={(periodBalance - realOwe + realOwed) >= 0 ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)"}
+                        />
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: movil ? "1fr" : "repeat(auto-fit, minmax(170px, 1fr))", gap: movil ? "0.85rem" : "0.85rem", paddingTop: "0.7rem", borderTop: `1px solid ${C.outlineVariant}` }}>
+                        <StatSection title={topPeriodDetails.label} items={[
+                            { label: "Total", val: topIncome, dotColor: C.verde, sub: topPeriodDetails.sub },
+                            { label: "Fijo", val: fixedIncomeActual, dotColor: C.verde, sub: "Activos recibidos" },
+                            { label: "Variable", val: variableIncomeActual, dotColor: C.verde, sub: "Ingresos directos" },
+                        ]} />
+                        <StatSection title={topPeriodDetails.labelExp} items={[
+                            { label: "Total", val: topExpense, dotColor: C.rojo, sub: topPeriodDetails.subExp },
+                            { label: "Fijo", val: fixedExpenseActual, dotColor: C.rojo, sub: "Gastos activos" },
+                            { label: "Variable", val: variableExpenseActual, dotColor: C.rojo, sub: "Gastos directos" },
+                        ]} />
+                        <StatSection title="Deudas" items={[
+                            { label: "Debo", val: realOwe, dotColor: C.rojo, sub: realOwe > 0 ? "Deudas pendientes" : "Sin deudas" },
+                            { label: "Me Deben", val: realOwed, dotColor: C.verde, sub: realOwed > 0 ? "Por cobrar" : "Sin cobros" },
+                            { label: "Neta", val: realOwed - realOwe, sub: "Me deben - Debo" },
+                        ]} />
                     </div>
                 </div>
     );
 
     const bloqueProyeccion = (
-                <div style={{ ...cardConAcento(C.ambar), display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", flexWrap: "wrap", gap: "8px" }}>
-                        <span style={LABEL}>Proyección Financiera</span>
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <PillToggle
-                                options={["day", "week", "month", "year", "all"]}
-                                labels={["Día", "Sem.", "Mes", "Año", "Todo"]}
-                                value={topPeriod}
-                                onChange={v => setTopPeriod(v as any)}
-                            />
-                            <TrendingUp size={16} color={C.verde} style={{ marginLeft: "4px" }} />
+                <div style={{ ...cardConAcento(C.ambar), display: "flex", flexDirection: "column", gap: "0.85rem", padding: movil ? "1rem" : cardConAcento(C.ambar).padding }}>
+                    <div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.15rem", flexWrap: "wrap", gap: "8px" }}>
+                            <span style={LABEL}>Proyección Financiera</span>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <PillToggle
+                                    options={["day", "week", "month", "year", "all"]}
+                                    labels={["Día", "Sem.", "Mes", "Año", "Todo"]}
+                                    value={topPeriod}
+                                    onChange={v => setTopPeriod(v as any)}
+                                />
+                                <TrendingUp size={16} color={C.verde} style={{ marginLeft: "4px" }} />
+                            </div>
                         </div>
+                        <span style={{ fontSize: "0.65rem", color: C.outline, display: "block" }}>Ingresos/gastos fijos proyectados + variables reales — lo que debería pasar</span>
                     </div>
-                    <span style={{ fontSize: "0.65rem", color: C.outline, marginBottom: "0.8rem", display: "block" }}>Ingresos/gastos fijos proyectados + variables reales — lo que debería pasar</span>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
-                        {[
-                            { label: "Ingresos Proy.", val: projectedIncomeTotal, color: C.verde, sub: "Fijos + Variables" },
-                            { label: "Fijo", val: fixedIncomeTotal * periodMultiplier, color: C.verde, sub: "Activos proyectados" },
-                            { label: "Variable", val: variableIncomeActual, color: C.verde, sub: "Ingresos directos" },
-                            { label: "Gastos Proy.", val: projectedExpenseTotal, color: C.rojo, sub: "Fijos + Variables" },
-                            { label: "Fijo", val: fixedExpenseProyectado, color: C.rojo, sub: "Gastos activos" },
-                            { label: "Variable", val: variableExpenseActual, color: C.rojo, sub: "Gastos directos" },
-                            { 
-                                label: "Debo", 
-                                val: activeOweTotal, 
-                                color: includeDebts ? C.rojo : C.outline, 
-                                sub: includeDebts ? "Debo (incluido)" : "Debo (excluido)", 
+
+                    <HeroStat
+                        label="Balance Neto Proyectado"
+                        val={projectedSavings}
+                        color={projectedSavings >= 0 ? C.verde : C.rojo}
+                        sub={projectedPeriodLabel}
+                        bg={projectedSavings >= 0 ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)"}
+                    />
+
+                    <div style={{ display: "grid", gridTemplateColumns: movil ? "1fr" : "repeat(auto-fit, minmax(170px, 1fr))", gap: "0.85rem", paddingTop: "0.7rem", borderTop: `1px solid ${C.outlineVariant}` }}>
+                        <StatSection title="Ingresos Proyectados" items={[
+                            { label: "Total", val: projectedIncomeTotal, dotColor: C.verde, sub: "Fijos + Variables" },
+                            { label: "Fijo", val: fixedIncomeTotal * periodMultiplier, dotColor: C.verde, sub: "Activos proyectados" },
+                            { label: "Variable", val: variableIncomeActual, dotColor: C.verde, sub: "Ingresos directos" },
+                        ]} />
+                        <StatSection title="Gastos Proyectados" items={[
+                            { label: "Total", val: projectedExpenseTotal, dotColor: C.rojo, sub: "Fijos + Variables" },
+                            { label: "Fijo", val: fixedExpenseProyectado, dotColor: C.rojo, sub: "Gastos activos" },
+                            { label: "Variable", val: variableExpenseActual, dotColor: C.rojo, sub: "Gastos directos" },
+                        ]} />
+                        <StatSection title="Deudas (ajustable)" items={[
+                            {
+                                label: "Debo",
+                                val: activeOweTotal,
+                                dotColor: C.rojo,
+                                sub: includeDebts ? "Debo (incluido)" : "Debo (excluido)",
                                 checked: includeDebts,
                                 onToggle: () => setIncludeDebts(v => !v),
-                                opacity: includeDebts ? 1 : 0.65 
+                                opacity: includeDebts ? 1 : 0.55
                             },
-                            { 
-                                label: "Me Deben", 
-                                val: activeOwedTotal, 
-                                color: includeOwed ? C.verde : C.outline, 
+                            {
+                                label: "Me Deben",
+                                val: activeOwedTotal,
+                                dotColor: C.verde,
                                 sub: includeOwed ? "Cobros incluidos" : "Cobros excluidos",
                                 checked: includeOwed,
                                 onToggle: () => setIncludeOwed(v => !v),
-                                opacity: includeOwed ? 1 : 0.65
+                                opacity: includeOwed ? 1 : 0.55
                             },
-                            { 
-                                label: "Balance Neto Proyectado", 
-                                val: projectedSavings,
-                                color: projectedSavings >= 0 ? C.verde : C.rojo,
-                                sub: projectedPeriodLabel 
-                            },
-                        ].map((item, i) => (
-                            <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? `1px solid ${C.outlineVariant}` : "none", opacity: item.opacity ?? 1, transition: "opacity 0.2s" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
-                                    {item.onToggle && (
-                                        <CircleCheckbox checked={item.checked ?? false} onChange={item.onToggle} />
-                                    )}
-                                    <span style={{ ...LABEL }}>{item.label}</span>
-                                </div>
-                                <div style={{ display: "flex", alignItems: "baseline", gap: "1px", color: item.color }}>
-                                    <span style={{ fontSize: "0.8rem", fontWeight: 800 }}>S/ </span>
-                                    <span style={{ fontSize: "1.25rem", fontWeight: 900, lineHeight: 1 }}>{item.val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                                </div>
-                                <span style={{ fontSize: "0.58rem", color: C.outline, marginTop: "2px" }}>{item.sub}</span>
-                            </div>
-                        ))}
+                        ]} />
                     </div>
                 </div>
     );
 
     const bloqueSimulador = (
-                <div style={{ ...cardConAcento(C.secondary), display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", flexWrap: "wrap", gap: "8px" }}>
-                        <span style={LABEL}>Ejecución y Proyección Ajustada</span>
-                        <TrendingUp size={16} color={C.secondary} style={{ marginLeft: "4px" }} />
+                <div style={{ ...cardConAcento(C.secondary), display: "flex", flexDirection: "column", gap: "0.85rem", padding: movil ? "1rem" : cardConAcento(C.secondary).padding }}>
+                    <div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.15rem", flexWrap: "wrap", gap: "8px" }}>
+                            <span style={LABEL}>Ejecución y Proyección Ajustada</span>
+                            <TrendingUp size={16} color={C.secondary} style={{ marginLeft: "4px" }} />
+                        </div>
+                        <span style={{ fontSize: "0.65rem", color: C.outline, display: "block" }}>Mix ajustable con toggles — incluí/excluí fijos, deudas y cobros</span>
                     </div>
-                    <span style={{ fontSize: "0.65rem", color: C.outline, marginBottom: "0.8rem", display: "block" }}>Mix ajustable con toggles — incluí/excluí fijos, deudas y cobros</span>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: "0.75rem", flex: 1, alignItems: "center" }}>
-                        {[
-                            { label: topPeriodDetails.label, val: topIncome, color: C.verde, sub: topPeriodDetails.sub },
-                            { label: topPeriodDetails.labelExp, val: topExpense, color: C.rojo, sub: topPeriodDetails.subExp },
+
+                    <HeroStat
+                        label="Balance Neto Proyectado"
+                        val={adjustedSavings}
+                        color={adjustedSavings >= 0 ? C.verde : C.rojo}
+                        sub={projectedPeriodLabel}
+                        bg={adjustedSavings >= 0 ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)"}
+                    />
+
+                    <div style={{ display: "grid", gridTemplateColumns: movil ? "1fr" : "repeat(auto-fit, minmax(170px, 1fr))", gap: "0.85rem", paddingTop: "0.7rem", borderTop: `1px solid ${C.outlineVariant}` }}>
+                        <StatSection title="Movimiento del Período" items={[
+                            { label: topPeriodDetails.label, val: topIncome, dotColor: C.verde, sub: topPeriodDetails.sub },
+                            { label: topPeriodDetails.labelExp, val: topExpense, dotColor: C.rojo, sub: topPeriodDetails.subExp },
+                        ]} />
+                        <StatSection title="Recursos Ajustables" items={[
                             {
                                 label: "Saldo Actual",
                                 val: periodBalance,
-                                color: includeBalance ? C.verde : C.outline,
+                                dotColor: C.verde,
                                 sub: includeBalance ? "Disponible" : "Excluido",
                                 checked: includeBalance,
                                 onToggle: () => setIncludeBalance(v => !v),
-                                opacity: includeBalance ? 1 : 0.65
+                                opacity: includeBalance ? 1 : 0.55
                             },
                             {
                                 label: "Ingreso Fijo",
                                 val: projectedIncomeVal,
-                                color: (fixedIncomeTotal > 0) ? (includeSalary ? C.verde : C.outline) : C.outline,
-                                sub: fixedIncomeTotal > 0 
-                                    ? (includeSalary 
+                                dotColor: fixedIncomeTotal > 0 ? C.verde : undefined,
+                                sub: fixedIncomeTotal > 0
+                                    ? (includeSalary
                                         ? (topPeriod === "month" || topPeriod === "all"
                                             ? `Pendiente: S/ ${projectedIncomeVal.toFixed(0)} / Total: S/ ${fixedIncomeTotal.toFixed(0)}`
                                             : "Fijos proyectados")
-                                        : "Fijos excluidos") 
+                                        : "Fijos excluidos")
                                     : "Sin ingresos fijos",
                                 checked: fixedIncomeTotal > 0 ? includeSalary : false,
                                 onToggle: fixedIncomeTotal > 0 ? (() => setIncludeSalary(v => !v)) : undefined,
-                                opacity: fixedIncomeTotal === 0 ? 0.5 : (includeSalary ? 1 : 0.65)
+                                opacity: fixedIncomeTotal === 0 ? 0.5 : (includeSalary ? 1 : 0.55)
                             },
                             {
                                 label: "Ingresos Proy.",
                                 val: periodBalance + (includeSalary ? projectedIncomeVal : 0),
-                                color: (periodBalance + (includeSalary ? projectedIncomeVal : 0)) >= 0 ? C.verde : C.rojo,
                                 sub: "Neto + proyectado"
                             },
-                            { 
-                                label: "Gastos Fijos", 
-                                val: projectedFixedVal, 
-                                color: includeFixed ? C.rojo : C.outline, 
-                                sub: includeFixed 
-                                    ? (topPeriod === "month" || topPeriod === "all" 
+                        ]} />
+                        <StatSection title="Gastos y Deudas Ajustables" items={[
+                            {
+                                label: "Gastos Fijos",
+                                val: projectedFixedVal,
+                                dotColor: C.rojo,
+                                sub: includeFixed
+                                    ? (topPeriod === "month" || topPeriod === "all"
                                         ? `Pendiente: S/ ${projectedFixedVal.toFixed(0)} / Total: S/ ${monthlyFixedTotal.toFixed(0)}`
                                         : "Fijos proyectados")
                                     : "Fijos excluidos",
                                 checked: includeFixed,
                                 onToggle: () => setIncludeFixed(v => !v),
-                                opacity: includeFixed ? 1 : 0.65
+                                opacity: includeFixed ? 1 : 0.55
                             },
-                            { 
-                                label: "Debo", 
-                                val: activeOweTotal, 
-                                color: includeDebts ? C.rojo : C.outline, 
-                                sub: includeDebts ? "Debo (incluido)" : "Debo (excluido)", 
+                            {
+                                label: "Debo",
+                                val: activeOweTotal,
+                                dotColor: C.rojo,
+                                sub: includeDebts ? "Debo (incluido)" : "Debo (excluido)",
                                 checked: includeDebts,
                                 onToggle: () => setIncludeDebts(v => !v),
-                                opacity: includeDebts ? 1 : 0.65 
+                                opacity: includeDebts ? 1 : 0.55
                             },
-                            { 
-                                label: "Me Deben", 
-                                val: activeOwedTotal, 
-                                color: includeOwed ? C.verde : C.outline, 
+                            {
+                                label: "Me Deben",
+                                val: activeOwedTotal,
+                                dotColor: C.verde,
                                 sub: includeOwed ? "Cobros incluidos" : "Cobros excluidos",
                                 checked: includeOwed,
                                 onToggle: () => setIncludeOwed(v => !v),
-                                opacity: includeOwed ? 1 : 0.65
+                                opacity: includeOwed ? 1 : 0.55
                             },
-                            { 
-                                label: "Balance Neto Proyectado", 
-                                val: adjustedSavings,
-                                color: adjustedSavings >= 0 ? C.verde : C.rojo,
-                                sub: projectedPeriodLabel 
-                            },
-                        ].map((item, i) => (
-                            <div key={i} style={{ display: "flex", flexDirection: "column", justifyContent: "center", paddingLeft: i > 0 ? "0.75rem" : "0", borderLeft: i > 0 ? `1px solid ${C.outlineVariant}` : "none", opacity: item.opacity ?? 1, transition: "opacity 0.2s" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.3rem" }}>
-                                    {item.onToggle && (
-                                        <CircleCheckbox checked={item.checked ?? false} onChange={item.onToggle} />
-                                    )}
-                                    <span style={{ ...LABEL }}>{item.label}</span>
-                                </div>
-                                <div style={{ display: "flex", alignItems: "baseline", gap: "1px", color: item.color }}>
-                                    <span style={{ fontSize: "0.8rem", fontWeight: 800 }}>S/ </span>
-                                    <span style={{ fontSize: "1.25rem", fontWeight: 900, lineHeight: 1 }}>{item.val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                                </div>
-                                <span style={{ fontSize: "0.58rem", color: C.outline, marginTop: "2px" }}>{item.sub}</span>
-                            </div>
-                        ))}
+                        ]} />
                     </div>
                 </div>
     );
@@ -674,7 +863,7 @@ export const FinanzasDashboard = ({
                 </div>
 
                 <div style={{
-                    display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap",
+                    display: "flex", alignItems: "center", gap: movil ? "8px" : "10px", flexWrap: "nowrap",
                     justifyContent: movil ? "space-between" : undefined,
                 }}>
                     <div style={{ display: "flex", background: C.surfaceContainerLow, borderRadius: "999px", padding: "3px", border: `1px solid ${C.outlineVariant}` }}>
@@ -687,10 +876,11 @@ export const FinanzasDashboard = ({
                                     onClick={() => setTopPeriod(mode)}
                                     style={{
                                         border: "none", borderRadius: "999px", cursor: "pointer",
-                                        padding: "5px 13px", fontSize: "0.75rem", fontWeight: 700,
+                                        padding: movil ? "5px 9px" : "5px 13px", fontSize: movil ? "0.68rem" : "0.75rem", fontWeight: 700,
                                         fontFamily: "inherit", transition: "all 0.15s",
                                         background: activo ? C.secondary : "transparent",
                                         color: activo ? "#fff" : C.onSurfaceVariant,
+                                        whiteSpace: "nowrap",
                                     }}
                                 >
                                     {etiquetas[mode]}
@@ -699,7 +889,10 @@ export const FinanzasDashboard = ({
                         })}
                     </div>
 
-                    <button onClick={() => setShowTxForm(v => !v)} style={botonPrimario(movil)}>
+                    <button
+                        onClick={() => setShowTxForm(v => !v)}
+                        style={movil ? { ...botonPrimario(movil), padding: "8px 14px", fontSize: "0.8rem", minHeight: undefined, flexShrink: 0 } : botonPrimario(movil)}
+                    >
                         <Plus size={16} /> Registrar
                     </button>
                 </div>
@@ -714,6 +907,70 @@ export const FinanzasDashboard = ({
                 incomeCategories={incomeCategories}
                 expenseCategories={expenseCategories}
             />
+
+            {/* ── Mis Cuentas: vista directa y siempre visible de cuánto hay en cada
+                cuenta (antes vivía oculta en un acordeón al fondo de la página) ─── */}
+            <div style={{ ...CARD, padding: movil ? "1rem" : "1.5rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: movil ? "0.7rem" : "1rem", flexWrap: "wrap", gap: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <PiggyBank size={16} color={C.secondary} />
+                        <span style={{ fontSize: "0.85rem", fontWeight: 800 }}>Mis Cuentas</span>
+                        <button
+                            onClick={() => setIsAddingAccount(v => !v)}
+                            title="Nueva cuenta"
+                            style={{
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                width: "20px", height: "20px", borderRadius: "50%",
+                                border: `1.5px dashed ${C.outline}`, background: "transparent",
+                                color: C.outline, cursor: "pointer", padding: 0,
+                            }}
+                        >
+                            <Plus size={12} />
+                        </button>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "5px" }}>
+                        <span style={{ fontSize: "0.65rem", color: C.onSurfaceVariant, fontWeight: 700 }}>Total:</span>
+                        <span style={{ fontSize: "1rem", fontWeight: 900, color: C.secondary }}>
+                            S/ {accountsWithBalance.reduce((s, a) => s + a.balance, 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                        </span>
+                    </div>
+                </div>
+
+                {isAddingAccount && (
+                    <div style={{ borderRadius: movil ? "10px" : "14px", padding: movil ? "8px" : "12px", border: `1px solid ${C.secondary}`, background: C.surface, display: "flex", gap: "6px", alignItems: "center", marginBottom: movil ? "8px" : "12px" }}>
+                        <input autoFocus placeholder="Nombre de la cuenta" value={newAccountName} onChange={e => setNewAccountName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddAccount()} style={{ flex: 1, minWidth: 0, padding: "6px 8px", borderRadius: "6px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.75rem", outline: "none" }} />
+                        <input type="color" value={newAccountColor} onChange={e => setNewAccountColor(e.target.value)} style={{ width: "28px", height: "28px", borderRadius: "6px", border: `1px solid ${C.outlineVariant}`, padding: "1px", cursor: "pointer", flexShrink: 0 }} />
+                        <button onClick={handleAddAccount} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "6px", padding: "6px 10px", fontSize: "0.7rem", fontWeight: 800, cursor: "pointer", flexShrink: 0 }}>OK</button>
+                        <button onClick={() => setIsAddingAccount(false)} style={{ background: C.outlineVariant, color: C.onSurfaceVariant, border: "none", borderRadius: "6px", padding: "6px 8px", fontSize: "0.7rem", fontWeight: 800, cursor: "pointer", flexShrink: 0 }}>X</button>
+                    </div>
+                )}
+
+                {accountsWithBalance.length === 0 ? (
+                    <p style={{ fontSize: "0.8rem", color: C.outline, fontStyle: "italic", margin: 0 }}>Sin cuentas todavía. Toca el + para agregar una.</p>
+                ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: movil ? "repeat(3, 1fr)" : "repeat(auto-fill, minmax(150px,1fr))", gap: movil ? "8px" : "12px" }}>
+                        {accountsWithBalance.map(acc => (
+                            <button
+                                key={acc.id}
+                                onClick={() => setSelectedAccountId(acc.id)}
+                                style={{
+                                    background: C.surfaceLowest, borderRadius: movil ? "10px" : "14px", padding: movil ? "8px" : "14px", position: "relative",
+                                    borderTop: `3px solid ${acc.color}`, minWidth: 0, overflow: "hidden", textAlign: "left", cursor: "pointer",
+                                    borderLeft: `1px solid ${C.outlineVariant}`, borderRight: `1px solid ${C.outlineVariant}`, borderBottom: `1px solid ${C.outlineVariant}`,
+                                    fontFamily: "inherit",
+                                }}
+                            >
+                                <div style={{ fontSize: movil ? "0.62rem" : "0.7rem", color: C.onSurfaceVariant, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={acc.name}>
+                                    {acc.name}
+                                </div>
+                                <div style={{ fontSize: movil ? "0.8rem" : "1.2rem", fontWeight: 900, marginTop: movil ? "3px" : "6px", color: C.onSurface, whiteSpace: "nowrap" }}>
+                                    S/ {acc.balance.toLocaleString("en-US", { minimumFractionDigits: movil ? 0 : 2 })}
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
 
             {/* ── Selector de vista + Ver todo ─── */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
@@ -1086,52 +1343,6 @@ export const FinanzasDashboard = ({
 
             </div>
 
-            {/* ── Accounts accordion ─── */}
-            <div style={{ ...CARD, padding: 0, overflow: "hidden" }}>
-                <button onClick={() => setIsAccountsVisible(v => !v)} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", background: C.surface, border: "none", padding: "15px 20px", cursor: "pointer" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <PiggyBank size={17} color={C.secondary} />
-                        <span style={{ fontSize: "0.9rem", fontWeight: 800 }}>Mis Cuentas ({accounts.length})</span>
-                    </div>
-                    <motion.div animate={{ rotate: isAccountsVisible ? 180 : 0 }}><ArrowDownCircle size={15} /></motion.div>
-                </button>
-                <AnimatePresence>
-                    {isAccountsVisible && (
-                        <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} style={{ overflow: "hidden" }}>
-                            <div style={{ padding: "16px 20px" }}>
-                                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px,1fr))", gap: "10px" }}>
-                                    {accountsWithBalance.map(acc => (
-                                        <div key={acc.id} style={{
-                                            background: C.surfaceLowest, borderRadius: "12px", padding: "10px", position: "relative",
-                                            borderTop: `4px solid ${acc.color}`,
-                                            borderLeft: `1px solid ${C.outlineVariant}`, borderRight: `1px solid ${C.outlineVariant}`, borderBottom: `1px solid ${C.outlineVariant}`,
-                                        }}>
-                                            <button onClick={() => window.confirm("¿Eliminar esta cuenta?") && setAccounts(p => p.filter(a => a.id !== acc.id))} style={{ position: "absolute", top: "5px", right: "5px", background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "1px" }}><Trash2 size={10} /></button>
-                                            <div style={{ fontSize: "0.62rem", color: C.onSurfaceVariant, fontWeight: 600 }}>{acc.name}</div>
-                                            <div style={{ fontSize: "0.95rem", fontWeight: 900, marginTop: "3px" }}>S/ {acc.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
-                                        </div>
-                                    ))}
-                                    {!isAddingAccount ? (
-                                        <button onClick={() => setIsAddingAccount(true)} style={{ borderRadius: "12px", padding: "10px", border: `2px dashed ${C.outlineVariant}`, background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "3px", color: C.outline, minHeight: "62px" }}>
-                                            <Plus size={16} /><span style={{ fontSize: "0.6rem", fontWeight: 700 }}>Nueva</span>
-                                        </button>
-                                    ) : (
-                                        <div style={{ borderRadius: "12px", padding: "10px", border: `1px solid ${C.secondary}`, background: C.surface, display: "flex", flexDirection: "column", gap: "5px" }}>
-                                            <input autoFocus placeholder="Nombre" value={newAccountName} onChange={e => setNewAccountName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddAccount()} style={{ padding: "4px 7px", borderRadius: "6px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.72rem", outline: "none" }} />
-                                            <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-                                                <input type="color" value={newAccountColor} onChange={e => setNewAccountColor(e.target.value)} style={{ width: "26px", height: "26px", borderRadius: "5px", border: `1px solid ${C.outlineVariant}`, padding: "1px", cursor: "pointer" }} />
-                                                <button onClick={handleAddAccount} style={{ flex: 1, background: C.secondary, color: "white", border: "none", borderRadius: "5px", padding: "3px", fontSize: "0.65rem", fontWeight: 800, cursor: "pointer" }}>OK</button>
-                                                <button onClick={() => setIsAddingAccount(false)} style={{ background: C.outlineVariant, color: C.onSurfaceVariant, border: "none", borderRadius: "5px", padding: "3px 6px", fontSize: "0.65rem", fontWeight: 800, cursor: "pointer" }}>X</button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
-
             {/* ── Categories accordion ─── */}
             <div style={{ ...CARD, padding: 0, overflow: "hidden" }}>
                 <button onClick={() => setIsCategoriesVisible(v => !v)} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", background: C.surface, border: "none", padding: "15px 20px", cursor: "pointer" }}>
@@ -1203,6 +1414,24 @@ export const FinanzasDashboard = ({
             </AnimatePresence>
             <AnimatePresence>
                 {showAnalytics && <AnalyticsView transactions={transactions} onClose={() => setShowAnalytics(false)} />}
+            </AnimatePresence>
+            <AnimatePresence>
+                {selectedAccountId != null && accountsWithBalance.find(a => a.id === selectedAccountId) && (
+                    <AccountDetailModal
+                        account={accountsWithBalance.find(a => a.id === selectedAccountId)!}
+                        transactions={transactions}
+                        projects={projects}
+                        onClose={() => setSelectedAccountId(null)}
+                        onRename={(name) => setAccounts(prev => prev.map(a => a.id === selectedAccountId ? { ...a, name } : a))}
+                        onChangeColor={(color) => setAccounts(prev => prev.map(a => a.id === selectedAccountId ? { ...a, color } : a))}
+                        onDelete={() => {
+                            if (window.confirm("¿Eliminar esta cuenta?")) {
+                                setAccounts(prev => prev.filter(a => a.id !== selectedAccountId));
+                                setSelectedAccountId(null);
+                            }
+                        }}
+                    />
+                )}
             </AnimatePresence>
         </div>
     );
