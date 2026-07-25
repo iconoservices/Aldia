@@ -854,49 +854,81 @@ export const FinanzasDashboard = ({
         }}>
 
             {/* ── Cabecera: título, vista, periodo y acción ─── */}
-            <div style={cabecera(movil)}>
-                <div>
-                    <h2 style={tituloPagina}>Finanzas</h2>
-                    <p style={subtituloPagina}>
-                        {VISTAS.find(v => v.id === vista)?.sub} · {periodLabel(topPeriod, new Date())}
-                    </p>
-                </div>
+            {(() => {
+                const periodPillsAndRegistrar = (
+                    <div style={{
+                        display: "flex", alignItems: "center", gap: movil ? "8px" : "10px", flexWrap: "nowrap",
+                        justifyContent: movil ? "space-between" : undefined,
+                    }}>
+                        <div style={{ display: "flex", background: C.surfaceContainerLow, borderRadius: "999px", padding: "3px", border: `1px solid ${C.outlineVariant}` }}>
+                            {(["day", "week", "month", "year", "all"] as PeriodMode[]).map(mode => {
+                                const etiquetas: Record<PeriodMode, string> = { day: "Día", week: "Sem", month: "Mes", year: "Año", all: "Todo" };
+                                const activo = topPeriod === mode;
+                                return (
+                                    <button
+                                        key={mode}
+                                        onClick={() => setTopPeriod(mode)}
+                                        style={{
+                                            border: "none", borderRadius: "999px", cursor: "pointer",
+                                            padding: movil ? "5px 9px" : "5px 13px", fontSize: movil ? "0.68rem" : "0.75rem", fontWeight: 700,
+                                            fontFamily: "inherit", transition: "all 0.15s",
+                                            background: activo ? C.secondary : "transparent",
+                                            color: activo ? "#fff" : C.onSurfaceVariant,
+                                            whiteSpace: "nowrap",
+                                        }}
+                                    >
+                                        {etiquetas[mode]}
+                                    </button>
+                                );
+                            })}
+                        </div>
 
-                <div style={{
-                    display: "flex", alignItems: "center", gap: movil ? "8px" : "10px", flexWrap: "nowrap",
-                    justifyContent: movil ? "space-between" : undefined,
-                }}>
-                    <div style={{ display: "flex", background: C.surfaceContainerLow, borderRadius: "999px", padding: "3px", border: `1px solid ${C.outlineVariant}` }}>
-                        {(["day", "week", "month", "year", "all"] as PeriodMode[]).map(mode => {
-                            const etiquetas: Record<PeriodMode, string> = { day: "Día", week: "Sem", month: "Mes", year: "Año", all: "Todo" };
-                            const activo = topPeriod === mode;
-                            return (
-                                <button
-                                    key={mode}
-                                    onClick={() => setTopPeriod(mode)}
-                                    style={{
-                                        border: "none", borderRadius: "999px", cursor: "pointer",
-                                        padding: movil ? "5px 9px" : "5px 13px", fontSize: movil ? "0.68rem" : "0.75rem", fontWeight: 700,
-                                        fontFamily: "inherit", transition: "all 0.15s",
-                                        background: activo ? C.secondary : "transparent",
-                                        color: activo ? "#fff" : C.onSurfaceVariant,
-                                        whiteSpace: "nowrap",
-                                    }}
-                                >
-                                    {etiquetas[mode]}
-                                </button>
-                            );
-                        })}
+                        <button
+                            onClick={() => setShowTxForm(v => !v)}
+                            style={movil ? { ...botonPrimario(movil), padding: "8px 14px", fontSize: "0.8rem", minHeight: undefined, flexShrink: 0 } : botonPrimario(movil)}
+                        >
+                            <Plus size={16} /> Registrar
+                        </button>
                     </div>
+                );
 
-                    <button
-                        onClick={() => setShowTxForm(v => !v)}
-                        style={movil ? { ...botonPrimario(movil), padding: "8px 14px", fontSize: "0.8rem", minHeight: undefined, flexShrink: 0 } : botonPrimario(movil)}
-                    >
-                        <Plus size={16} /> Registrar
-                    </button>
-                </div>
-            </div>
+                const tituloYSub = (
+                    <div>
+                        <h2 style={tituloPagina}>Finanzas</h2>
+                        <p style={subtituloPagina}>
+                            {VISTAS.find(v => v.id === vista)?.sub} · {periodLabel(topPeriod, new Date())}
+                        </p>
+                    </div>
+                );
+
+                // En móvil, el filtro de período + Registrar se separan del título y
+                // quedan sticky por sí solos: adentro del `cabecera` (una caja de ~100px)
+                // el sticky solo podía flotar esos 100px de scroll y luego se iba con
+                // todo — como hijo directo del contenedor de la página (que sí mide
+                // el alto completo) se queda a mano durante todo el scroll.
+                if (movil) {
+                    return (
+                        <>
+                            {tituloYSub}
+                            <div style={{
+                                // top se corre debajo de la barra fija superior (~37px); pegado
+                                // en top:0 quedaba tapado por ella, que tiene mayor z-index.
+                                position: "sticky", top: "37px", zIndex: 30,
+                                background: C.surface, padding: "10px 0", margin: "-0.5rem 0 0",
+                            }}>
+                                {periodPillsAndRegistrar}
+                            </div>
+                        </>
+                    );
+                }
+
+                return (
+                    <div style={cabecera(movil)}>
+                        {tituloYSub}
+                        {periodPillsAndRegistrar}
+                    </div>
+                );
+            })()}
 
             {/* Modal de alta, el mismo que usa Checklist: mismos campos, mismo aspecto */}
             <RegistroMovimiento
