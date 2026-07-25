@@ -187,6 +187,10 @@ interface ChecklistDiarioProps {
     projects:         any[];
     addTransaction?:  (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string) => void;
     accounts?:        { id: number; name: string; color: string }[];
+    incomeCategories?:  string[];
+    expenseCategories?: string[];
+    addCategory?:       (type: 'ingreso' | 'gasto', name: string) => void;
+    removeCategory?:    (type: 'ingreso' | 'gasto', name: string) => void;
 }
 
 const SORT_STORAGE_KEY = 'aldia-checklist-custom-order';
@@ -194,6 +198,7 @@ const SORT_STORAGE_KEY = 'aldia-checklist-custom-order';
 export const ChecklistDiario = ({
     dailyBlocks, addDailyBlock, toggleDailyBlock, removeDailyBlock, updateDailyBlock, projects,
     addTransaction, accounts = [],
+    incomeCategories, expenseCategories, addCategory, removeCategory,
 }: ChecklistDiarioProps) => {
     /* La fecha se recalcula sola: si la app queda abierta y pasa medianoche,
        el checklist salta al día nuevo sin necesidad de recargar. */
@@ -862,7 +867,12 @@ export const ChecklistDiario = ({
                         boxShadow: '0 6px 22px rgba(0,0,0,0.14)',
                         border: '1px solid rgba(0,0,0,0.06)',
                     }}>
-                        <RegistroRapido addTransaction={addTransaction} accounts={accounts} compacto />
+                        <RegistroRapido
+                            addTransaction={addTransaction} accounts={accounts}
+                            incomeCategories={incomeCategories} expenseCategories={expenseCategories}
+                            addCategory={addCategory} removeCategory={removeCategory}
+                            compacto
+                        />
                     </div>
                 )}
 
@@ -1046,7 +1056,11 @@ export const ChecklistDiario = ({
 
                 {/* Registrar dinero sin salir del día */}
                 {addTransaction && (
-                    <RegistroRapido addTransaction={addTransaction} accounts={accounts} />
+                    <RegistroRapido
+                        addTransaction={addTransaction} accounts={accounts}
+                        incomeCategories={incomeCategories} expenseCategories={expenseCategories}
+                        addCategory={addCategory} removeCategory={removeCategory}
+                    />
                 )}
 
                 {/* Search */}
@@ -1532,9 +1546,16 @@ interface RegistroRapidoProps {
     addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string) => void;
     accounts: { id: number; name: string; color: string }[];
     compacto?: boolean;
+    incomeCategories?: string[];
+    expenseCategories?: string[];
+    addCategory?: (type: 'ingreso' | 'gasto', name: string) => void;
+    removeCategory?: (type: 'ingreso' | 'gasto', name: string) => void;
 }
 
-const RegistroRapido = ({ addTransaction, accounts, compacto = false }: RegistroRapidoProps) => {
+const RegistroRapido = ({
+    addTransaction, accounts, compacto = false,
+    incomeCategories, expenseCategories, addCategory, removeCategory,
+}: RegistroRapidoProps) => {
     const [tipo, setTipo] = useState<'gasto' | 'ingreso' | null>(null);
 
     return (
@@ -1576,6 +1597,10 @@ const RegistroRapido = ({ addTransaction, accounts, compacto = false }: Registro
                 addTransaction={addTransaction}
                 accounts={accounts}
                 tipoInicial={tipo || 'gasto'}
+                incomeCategories={incomeCategories}
+                expenseCategories={expenseCategories}
+                onAddCategory={addCategory}
+                onRemoveCategory={removeCategory}
             />
         </div>
     );

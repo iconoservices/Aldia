@@ -69,14 +69,24 @@ interface RegistroMovimientoProps {
     addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string) => void;
     accounts: Cuenta[];
     tipoInicial?: 'gasto' | 'ingreso';
+    incomeCategories?: string[];
+    expenseCategories?: string[];
+    onAddCategory?: (type: 'ingreso' | 'gasto', name: string) => void;
+    onRemoveCategory?: (type: 'ingreso' | 'gasto', name: string) => void;
 }
 
-export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, tipoInicial = 'gasto' }: RegistroMovimientoProps) => {
+export const RegistroMovimiento = ({
+    open, onClose, addTransaction, accounts, tipoInicial = 'gasto',
+    incomeCategories = DEFAULT_INCOME_CATEGORIES, expenseCategories = DEFAULT_EXPENSE_CATEGORIES,
+    onAddCategory, onRemoveCategory,
+}: RegistroMovimientoProps) => {
     const [tipo, setTipo] = useState<'gasto' | 'ingreso'>(tipoInicial);
     const [texto, setTexto] = useState('');
     const [monto, setMonto] = useState('');
     const [categoria, setCategoria] = useState('');
     const [cuentaId, setCuentaId] = useState('');
+    const [editandoCategorias, setEditandoCategorias] = useState(false);
+    const [nuevaCategoria, setNuevaCategoria] = useState('');
     const visualViewport = useVisualViewport();
 
     // Cada vez que se abre, arranca limpio en el tipo que el usuario pidió
@@ -88,6 +98,8 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
             setMonto('');
             setCategoria('');
             setCuentaId('');
+            setEditandoCategorias(false);
+            setNuevaCategoria('');
         }
     }, [open, tipoInicial]);
 
@@ -109,7 +121,7 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
     };
 
     const colorTipo = tipo === 'gasto' ? C.rojo : C.verde;
-    const categorias = tipo === 'ingreso' ? DEFAULT_INCOME_CATEGORIES : DEFAULT_EXPENSE_CATEGORIES;
+    const categorias = tipo === 'ingreso' ? incomeCategories : expenseCategories;
     const puedeGuardar = !!parseFloat(monto) && cuentaValida && !!categoria;
 
     // Portal a <body>: el modal usa position: fixed, y si se renderiza dentro de
@@ -237,31 +249,107 @@ export const RegistroMovimiento = ({ open, onClose, addTransaction, accounts, ti
                                 </div>
 
                                 <div>
-                                    <p style={{
-                                        margin: '0 0 8px 2px', fontSize: '0.72rem', fontWeight: 700,
-                                        color: C.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: '0.02em',
-                                    }}>
-                                        Categoría *
-                                    </p>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                        {categorias.map(cat => (
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                        <p style={{
+                                            margin: 0, fontSize: '0.72rem', fontWeight: 700,
+                                            color: C.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: '0.02em',
+                                        }}>
+                                            Categoría *
+                                        </p>
+                                        {(onAddCategory || onRemoveCategory) && (
                                             <button
-                                                key={cat}
                                                 type="button"
-                                                onClick={() => setCategoria(prev => prev === cat ? '' : cat)}
+                                                onClick={() => { setEditandoCategorias(v => !v); setNuevaCategoria(''); }}
                                                 style={{
-                                                    padding: '8px 14px', borderRadius: '999px',
-                                                    border: `1px solid ${categoria === cat ? colorTipo : C.outlineVariant}`,
-                                                    background: categoria === cat ? colorTipo : 'transparent',
-                                                    color: categoria === cat ? '#fff' : C.onSurfaceVariant,
-                                                    fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer',
-                                                    fontFamily: 'inherit', whiteSpace: 'nowrap',
+                                                    background: 'none', border: 'none', cursor: 'pointer',
+                                                    color: editandoCategorias ? colorTipo : C.outline,
+                                                    fontSize: '0.7rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '3px',
+                                                    padding: '2px 4px', fontFamily: 'inherit',
                                                 }}
                                             >
-                                                {cat}
+                                                <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>
+                                                    {editandoCategorias ? 'check' : 'edit'}
+                                                </span>
+                                                {editandoCategorias ? 'Listo' : 'Editar'}
                                             </button>
+                                        )}
+                                    </div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                        {categorias.map(cat => (
+                                            editandoCategorias ? (
+                                                <div
+                                                    key={cat}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: '4px',
+                                                        padding: '8px 8px 8px 14px', borderRadius: '999px',
+                                                        border: `1px solid ${C.outlineVariant}`,
+                                                        color: C.onSurfaceVariant, fontWeight: 700, fontSize: '0.82rem',
+                                                    }}
+                                                >
+                                                    {cat}
+                                                    {onRemoveCategory && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => { if (window.confirm(`¿Eliminar la categoría "${cat}"?`)) onRemoveCategory(tipo, cat); }}
+                                                            style={{
+                                                                background: C.surfaceContainerHigh, border: 'none', borderRadius: '50%',
+                                                                width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                cursor: 'pointer', color: C.rojo, padding: 0, flexShrink: 0,
+                                                            }}
+                                                        >
+                                                            <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>close</span>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    key={cat}
+                                                    type="button"
+                                                    onClick={() => setCategoria(prev => prev === cat ? '' : cat)}
+                                                    style={{
+                                                        padding: '8px 14px', borderRadius: '999px',
+                                                        border: `1px solid ${categoria === cat ? colorTipo : C.outlineVariant}`,
+                                                        background: categoria === cat ? colorTipo : 'transparent',
+                                                        color: categoria === cat ? '#fff' : C.onSurfaceVariant,
+                                                        fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer',
+                                                        fontFamily: 'inherit', whiteSpace: 'nowrap',
+                                                    }}
+                                                >
+                                                    {cat}
+                                                </button>
+                                            )
                                         ))}
                                     </div>
+                                    {editandoCategorias && onAddCategory && (
+                                        <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+                                            <input
+                                                value={nuevaCategoria}
+                                                onChange={e => setNuevaCategoria(e.target.value)}
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter' && nuevaCategoria.trim()) {
+                                                        onAddCategory(tipo, nuevaCategoria.trim());
+                                                        setNuevaCategoria('');
+                                                    }
+                                                }}
+                                                placeholder="Nueva categoría..."
+                                                style={{ ...campo(true), flex: 1, padding: '8px 12px', fontSize: '0.82rem' }}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (!nuevaCategoria.trim()) return;
+                                                    onAddCategory(tipo, nuevaCategoria.trim());
+                                                    setNuevaCategoria('');
+                                                }}
+                                                style={{
+                                                    background: colorTipo, color: '#fff', border: 'none', borderRadius: '12px',
+                                                    padding: '0 16px', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+                                                }}
+                                            >
+                                                +
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {accounts.length > 0 && (

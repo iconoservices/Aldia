@@ -273,6 +273,8 @@ export const useAlDiaState = () => {
 
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
+    const [incomeCategories, setIncomeCategories] = useState<string[]>(DEFAULT_INCOME_CATEGORIES);
+    const [expenseCategories, setExpenseCategories] = useState<string[]>(DEFAULT_EXPENSE_CATEGORIES);
     const [dailyBlocks, setDailyBlocks] = useState<DailyBlock[]>([]);
     const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
     const [trash, setTrash] = useState<TrashItem[]>([]);
@@ -303,6 +305,8 @@ export const useAlDiaState = () => {
                 fixed: JSON.parse(localStorage.getItem('aldia_fixed_expenses') || '[]'),
                 accounts: JSON.parse(localStorage.getItem('aldia_accounts') || '[]'),
                 preferences: JSON.parse(localStorage.getItem('aldia_preferences') || JSON.stringify(DEFAULT_PREFERENCES)),
+                incomeCategories: JSON.parse(localStorage.getItem('aldia_income_categories') || JSON.stringify(DEFAULT_INCOME_CATEGORIES)),
+                expenseCategories: JSON.parse(localStorage.getItem('aldia_expense_categories') || JSON.stringify(DEFAULT_EXPENSE_CATEGORIES)),
                 dailyblocks: JSON.parse(localStorage.getItem('aldia_dailyblocks') || '[]'),
                 shoppingList: JSON.parse(localStorage.getItem('aldia_shopping_list') || '[]'),
                 ritaEntries: JSON.parse(localStorage.getItem('aldia_rita_entries') || '[]'),
@@ -321,6 +325,8 @@ export const useAlDiaState = () => {
             setFixedExpenses(data.fixed);
             setAccounts(data.accounts);
             setPreferences(data.preferences);
+            setIncomeCategories(data.incomeCategories);
+            setExpenseCategories(data.expenseCategories);
             setDailyBlocks(data.dailyblocks);
             setShoppingList(data.shoppingList);
             setRitaEntries(data.ritaEntries);
@@ -391,6 +397,8 @@ export const useAlDiaState = () => {
                 sync(cloud.timeBlocks, setTimeBlocks);
                 sync(cloud.accounts, setAccounts);
                 sync(cloud.preferences, setPreferences);
+                sync(cloud.incomeCategories, setIncomeCategories);
+                sync(cloud.expenseCategories, setExpenseCategories);
                 sync(cloud.dailyBlocks, setDailyBlocks);
                 sync(cloud.shoppingList, setShoppingList);
                 sync(cloud.ritaEntries, setRitaEntries);
@@ -420,10 +428,10 @@ export const useAlDiaState = () => {
     // Esto previene "stale closures" en el setTimeout del debounced save,
     // donde un array viejo de transactions podía enviarse a Firestore y causar un rollback visual.
     const latestStateRef = useRef({
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks, shoppingList, ritaEntries, negocioProjects, trash
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, ritaEntries, negocioProjects, trash
     });
     latestStateRef.current = {
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, dailyBlocks, shoppingList, ritaEntries, negocioProjects, trash
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, ritaEntries, negocioProjects, trash
     };
 
     // 3. Persistencia Cloud (Debounced) y Local (Immediate)
@@ -444,6 +452,8 @@ export const useAlDiaState = () => {
         localStorage.setItem('aldia_fixed_expenses', JSON.stringify(fixedExpenses));
         localStorage.setItem('aldia_accounts', JSON.stringify(accounts));
         localStorage.setItem('aldia_preferences', JSON.stringify(preferences));
+        localStorage.setItem('aldia_income_categories', JSON.stringify(incomeCategories));
+        localStorage.setItem('aldia_expense_categories', JSON.stringify(expenseCategories));
         localStorage.setItem('aldia_dailyblocks', JSON.stringify(dailyBlocks));
         localStorage.setItem('aldia_shopping_list', JSON.stringify(shoppingList));
         localStorage.setItem('aldia_rita_entries', JSON.stringify(ritaEntries));
@@ -473,7 +483,7 @@ export const useAlDiaState = () => {
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, preferences, dailyBlocks, shoppingList, ritaEntries, negocioProjects, trash]);
+    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, ritaEntries, negocioProjects, trash]);
 
     // 4. Migraciones y Lógica Derivada
     useEffect(() => {
@@ -700,6 +710,21 @@ export const useAlDiaState = () => {
         });
     }, [misionesState, routineMissions, habitMissions, todayStr]);
 
+    // Categorías globales de Ingreso/Gasto (usadas en RegistroMovimiento, el modal
+    // compartido entre Checklist y Finanzas). Empiezan en los defaults pero el
+    // usuario puede agregar o quitar las que quiera desde Finanzas.
+    const addCategory = (type: 'ingreso' | 'gasto', name: string) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        const setter = type === 'ingreso' ? setIncomeCategories : setExpenseCategories;
+        setter(prev => prev.includes(trimmed) ? prev : [...prev, trimmed]);
+    };
+
+    const removeCategory = (type: 'ingreso' | 'gasto', name: string) => {
+        const setter = type === 'ingreso' ? setIncomeCategories : setExpenseCategories;
+        setter(prev => prev.filter(c => c !== name));
+    };
+
     const clearAllData = async () => {
         setMisionesDirect([]); setTransactions([]); setHabits([]); setAgenda([]);
         setNotes([]); setProjects([]); setRutinas([]); setMonthlyBudget(0);
@@ -896,6 +921,7 @@ export const useAlDiaState = () => {
         notes, addNote: lw(addNote), removeNote: lw(removeNote), toggleNoteItem: lw(toggleNoteItem), updateNote: lw(updateNote),
         accounts, setAccounts: lw(setAccounts),
         preferences, updatePreference: lw((key: keyof UserPreferences, value: any) => setPreferences(prev => ({ ...prev, [key]: value }))),
+        incomeCategories, expenseCategories, addCategory: lw(addCategory), removeCategory: lw(removeCategory),
         // Bloques Diarios
         dailyBlocks, addDailyBlock: lw(addDailyBlock), toggleDailyBlock: lw(toggleDailyBlock), removeDailyBlock: lw(removeDailyBlock), updateDailyBlock: lw(updateDailyBlock),
         // Lista de compras

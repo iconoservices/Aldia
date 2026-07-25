@@ -271,6 +271,10 @@ function App() {
                 projects={state.projects}
                 addTransaction={state.addTransaction}
                 accounts={state.accounts}
+                incomeCategories={state.incomeCategories}
+                expenseCategories={state.expenseCategories}
+                addCategory={state.addCategory}
+                removeCategory={state.removeCategory}
               />
             ) : activeTab === 'Plan' ? (
               <PlanDashboard
@@ -377,6 +381,10 @@ function App() {
                 updateProject={state.updateProject}
                 setSelectedProjectDetailId={setSelectedProjectDetailId}
                 onNavigate={setActiveTab}
+                incomeCategories={state.incomeCategories}
+                expenseCategories={state.expenseCategories}
+                addCategory={state.addCategory}
+                removeCategory={state.removeCategory}
               />
             ) : activeTab === 'Movimientos' ? (
               <MovimientosDashboard
