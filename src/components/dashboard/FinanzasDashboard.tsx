@@ -972,9 +972,11 @@ export const FinanzasDashboard = ({
                 )}
             </div>
 
-            {/* ── Selector de vista + Ver todo ─── */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", flex: movil ? 1 : undefined }}>
+            {/* ── Selector de vista + Ver todo: en móvil las 3 vistas + el botón
+                comparten una sola fila (antes "Ver todo" se iba a su propia fila
+                al pedir 100% de ancho) ─── */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: movil ? "6px" : "10px", flexWrap: movil ? "nowrap" : "wrap" }}>
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", flex: movil ? 1 : undefined, minWidth: 0 }}>
                     {VISTAS.map(v => {
                         const activo = vista === v.id;
                         return (
@@ -985,13 +987,15 @@ export const FinanzasDashboard = ({
                                 style={{
                                     border: activo ? "none" : `1px solid ${C.outlineVariant}`,
                                     borderRadius: "10px", cursor: "pointer",
-                                    padding: movil ? "10px 12px" : "8px 16px",
+                                    padding: movil ? "10px 6px" : "8px 16px",
                                     minHeight: movil ? `${TOQUE_MINIMO}px` : undefined,
                                     flex: movil ? 1 : undefined,
-                                    fontSize: movil ? "0.78rem" : "0.82rem", fontWeight: 700,
+                                    minWidth: 0,
+                                    fontSize: movil ? "0.7rem" : "0.82rem", fontWeight: 700,
                                     fontFamily: "inherit", transition: "all 0.15s",
                                     background: activo ? C.secondary : C.surfaceLowest,
                                     color: activo ? "#fff" : C.onSurfaceVariant,
+                                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                                 }}
                             >
                                 {v.label}
@@ -1002,18 +1006,20 @@ export const FinanzasDashboard = ({
 
                 <button
                     onClick={() => setVerTodo(true)}
+                    title="Ver todo junto"
                     style={{
                         display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
                         background: "transparent", border: `1px solid ${C.outlineVariant}`,
                         borderRadius: "10px",
-                        padding: movil ? "10px 14px" : "8px 14px",
+                        padding: movil ? "0" : "8px 14px",
+                        width: movil ? `${TOQUE_MINIMO}px` : undefined,
                         minHeight: movil ? `${TOQUE_MINIMO}px` : undefined,
-                        width: movil ? "100%" : undefined,
+                        flexShrink: 0,
                         cursor: "pointer",
                         fontSize: "0.78rem", fontWeight: 700, color: C.secondary, fontFamily: "inherit",
                     }}
                 >
-                    <BarChart3 size={14} /> Ver todo junto
+                    <BarChart3 size={14} /> {!movil && "Ver todo junto"}
                 </button>
             </div>
 
