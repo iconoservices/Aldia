@@ -408,7 +408,11 @@ h3 {
   flex-direction: column;
   flex: 1;
   padding: 0.5rem 1rem;
-  padding-bottom: 7rem;
+  /* 7rem despeja el nav inferior fijo (68px) más margen; se suma el safe-area
+     porque en la PWA instalada (sin barra de navegador) esa franja inferior
+     del gesto/home-indicator no se restaba sola, y el contenido quedaba
+     pegado o tapado por el nav. */
+  padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
 }
 
 .dashboard.full-bleed {

@@ -376,12 +376,13 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         bottom: 0;
                         left: 0;
                         right: 0;
-                        height: 68px;
+                        height: calc(68px + env(safe-area-inset-bottom, 0px));
                         background: #ffffff;
                         border-top: 1px solid #edeeef;
                         z-index: 999;
                         box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
-                        padding: 0 8px;
+                        padding: 0 8px calc(env(safe-area-inset-bottom, 0px));
+                        box-sizing: border-box;
                         /* Con más de 7 tabs ya no entran todas en 375px de ancho.
                            Antes se cortaban en silencio (overflow visible, sin
                            forma de llegar a las últimas) — con scroll al menos

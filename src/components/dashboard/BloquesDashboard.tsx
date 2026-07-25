@@ -636,11 +636,12 @@ export const BloquesDashboard = ({
                                                     {/* Block info row */}
                                                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '8px' }}>
                                                         <div style={{ flex: 1, minWidth: 0 }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
                                                                 <span style={{
                                                                     margin: 0, fontSize: '15px', fontWeight: '700',
                                                                     color: '#191c1d',
-                                                                    wordBreak: 'break-word'
+                                                                    wordBreak: 'break-word',
+                                                                    flex: 1, minWidth: 0,
                                                                 }}>
                                                                     {row.label}
                                                                 </span>
@@ -656,7 +657,7 @@ export const BloquesDashboard = ({
                                                                     style={{
                                                                         background: 'none', border: 'none', color: '#877369',
                                                                         cursor: 'pointer', display: 'flex', alignItems: 'center',
-                                                                        padding: '2px', opacity: 0.6
+                                                                        padding: '2px', opacity: 0.6, flexShrink: 0,
                                                                     }}
                                                                     title="Editar rutina"
                                                                 >
