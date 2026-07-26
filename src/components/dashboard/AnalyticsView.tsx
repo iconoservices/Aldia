@@ -538,19 +538,23 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                 )}
             </div>
 
-            {/* Balance neto: el número principal, arriba para que no quede perdido al final del scroll */}
-            <GlassCard style={{ padding: '0.9rem 1.1rem', background: periodStats.net >= 0 ? 'var(--domain-green)' : '#ef4444', color: 'white', border: 'none' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                        <span style={{ display: 'block', fontSize: '0.6rem', fontWeight: 800, opacity: 0.8 }}>BALANCE NETO</span>
-                        <h4 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900 }}>S/.{periodStats.net.toLocaleString()}</h4>
-                    </div>
-                    {periodStats.net >= 0 ? <TrendingUp size={26} /> : <TrendingDown size={26} />}
-                </div>
-            </GlassCard>
-
-            {/* Salud financiera + Ingresos/Gastos: en escritorio comparten una sola fila para ahorrar espacio vertical */}
+            {/* Balance neto + Ingresos/Gastos: en la misma fila, arriba para que no quede perdido al final del scroll */}
             {(() => {
+                const statPadding = isDesktop ? '0.8rem 1.1rem' : '0.7rem 0.6rem';
+                const statAmountSize = isDesktop ? '1.1rem' : '0.85rem';
+
+                const balanceBlock = (
+                    <GlassCard style={{ padding: statPadding, background: periodStats.net >= 0 ? 'var(--domain-green)' : '#ef4444', color: 'white', border: 'none', flex: isDesktop ? 1 : undefined }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                {periodStats.net >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                                <span style={{ fontSize: '0.6rem', fontWeight: 800, opacity: 0.8 }}>BALANCE NETO</span>
+                            </div>
+                        </div>
+                        <span style={{ fontSize: statAmountSize, fontWeight: 900 }}>S/.{periodStats.net.toLocaleString()}</span>
+                    </GlassCard>
+                );
+
                 const saludBlock = (
                     <GlassCard style={{ padding: '0.8rem 1.1rem', background: health.bg, border: 'none', flex: isDesktop ? 2 : undefined }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem', flexWrap: 'wrap', height: '100%' }}>
@@ -584,52 +588,56 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                 );
 
                 const ingresosBlock = (
-                    <GlassCard style={{ padding: '0.8rem 1.1rem', background: '#dcfce7', border: 'none', flex: isDesktop ? 1 : undefined }}>
+                    <GlassCard style={{ padding: statPadding, background: '#dcfce7', border: 'none', flex: isDesktop ? 1 : undefined }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <TrendingUp size={14} color="#10b981" />
                                 <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#10b981', opacity: 0.8 }}>INGRESOS</span>
                             </div>
-                            {prevStats && prevStats.income > 0 && (
+                            {isDesktop && prevStats && prevStats.income > 0 && (
                                 <span style={{ fontSize: '0.6rem', fontWeight: 900, color: periodStats.income >= prevStats.income ? '#10b981' : '#ef4444' }}>
                                     {periodStats.income >= prevStats.income ? '↑' : '↓'} {Math.abs(((periodStats.income - prevStats.income) / prevStats.income) * 100).toFixed(0)}%
                                 </span>
                             )}
                         </div>
-                        <span style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-carbon)' }}>S/.{periodStats.income.toLocaleString()}</span>
+                        <span style={{ fontSize: statAmountSize, fontWeight: 900, color: 'var(--text-carbon)' }}>S/.{periodStats.income.toLocaleString()}</span>
                     </GlassCard>
                 );
 
                 const gastosBlock = (
-                    <GlassCard style={{ padding: '0.8rem 1.1rem', background: '#fee2e2', border: 'none', flex: isDesktop ? 1 : undefined }}>
+                    <GlassCard style={{ padding: statPadding, background: '#fee2e2', border: 'none', flex: isDesktop ? 1 : undefined }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <TrendingDown size={14} color="#ef4444" />
                                 <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#ef4444', opacity: 0.8 }}>GASTOS</span>
                             </div>
-                            {prevStats && prevStats.expense > 0 && (
+                            {isDesktop && prevStats && prevStats.expense > 0 && (
                                 <span style={{ fontSize: '0.6rem', fontWeight: 900, color: periodStats.expense <= prevStats.expense ? '#10b981' : '#ef4444' }}>
                                     {periodStats.expense <= prevStats.expense ? '↓' : '↑'} {Math.abs(((periodStats.expense - prevStats.expense) / prevStats.expense) * 100).toFixed(0)}%
                                 </span>
                             )}
                         </div>
-                        <span style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-carbon)' }}>S/.{periodStats.expense.toLocaleString()}</span>
+                        <span style={{ fontSize: statAmountSize, fontWeight: 900, color: 'var(--text-carbon)' }}>S/.{periodStats.expense.toLocaleString()}</span>
                     </GlassCard>
                 );
 
                 return isDesktop ? (
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'stretch' }}>
-                        {saludBlock}
-                        {ingresosBlock}
-                        {gastosBlock}
-                    </div>
-                ) : (
                     <>
-                        {saludBlock}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'stretch' }}>
+                            {balanceBlock}
                             {ingresosBlock}
                             {gastosBlock}
                         </div>
+                        {saludBlock}
+                    </>
+                ) : (
+                    <>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                            {balanceBlock}
+                            {ingresosBlock}
+                            {gastosBlock}
+                        </div>
+                        {saludBlock}
                     </>
                 );
             })()}
