@@ -382,6 +382,8 @@ function App() {
                 expenseCategories={state.expenseCategories}
                 addCategory={state.addCategory}
                 removeCategory={state.removeCategory}
+                renameCategory={state.renameCategory}
+                mergeCategory={state.mergeCategory}
               />
             ) : activeTab === 'Movimientos' ? (
               <MovimientosDashboard

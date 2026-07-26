@@ -725,6 +725,24 @@ export const useAlDiaState = () => {
         setter(prev => prev.filter(c => c !== name));
     };
 
+    // Renombrar reasigna también los movimientos ya existentes con esa categoría,
+    // para que el historial no quede huérfano con un nombre que ya no existe.
+    // Si el nuevo nombre coincide con una categoría existente, el efecto es fusionar.
+    const renameCategory = (type: 'ingreso' | 'gasto', oldName: string, newName: string) => {
+        const trimmed = newName.trim();
+        if (!trimmed || trimmed === oldName) return;
+        const setter = type === 'ingreso' ? setIncomeCategories : setExpenseCategories;
+        setter(prev => prev.includes(trimmed) ? prev.filter(c => c !== oldName) : prev.map(c => c === oldName ? trimmed : c));
+        setTransactions(prev => prev.map(t => t.type === type && t.category === oldName ? { ...t, category: trimmed } : t));
+    };
+
+    const mergeCategory = (type: 'ingreso' | 'gasto', sourceName: string, targetName: string) => {
+        if (sourceName === targetName) return;
+        const setter = type === 'ingreso' ? setIncomeCategories : setExpenseCategories;
+        setter(prev => prev.filter(c => c !== sourceName));
+        setTransactions(prev => prev.map(t => t.type === type && t.category === sourceName ? { ...t, category: targetName } : t));
+    };
+
     const clearAllData = async () => {
         setMisionesDirect([]); setTransactions([]); setHabits([]); setAgenda([]);
         setNotes([]); setProjects([]); setRutinas([]); setMonthlyBudget(0);
@@ -922,6 +940,7 @@ export const useAlDiaState = () => {
         accounts, setAccounts: lw(setAccounts),
         preferences, updatePreference: lw((key: keyof UserPreferences, value: any) => setPreferences(prev => ({ ...prev, [key]: value }))),
         incomeCategories, expenseCategories, addCategory: lw(addCategory), removeCategory: lw(removeCategory),
+        renameCategory: lw(renameCategory), mergeCategory: lw(mergeCategory),
         // Bloques Diarios
         dailyBlocks, addDailyBlock: lw(addDailyBlock), toggleDailyBlock: lw(toggleDailyBlock), removeDailyBlock: lw(removeDailyBlock), updateDailyBlock: lw(updateDailyBlock),
         // Lista de compras

@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import type { DailyBlock } from '../../hooks/useAlDiaState';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 interface BloquesDashboardProps {
     dailyBlocks: DailyBlock[];
@@ -64,6 +65,7 @@ export const BloquesDashboard = ({
     const [editingRepeatDays, setEditingRepeatDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
     const [editingPeriod, setEditingPeriod] = useState<'Mañana' | 'Tarde' | 'Noche' | 'Otro'>('Mañana');
     const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
+    const [confirmDeleteRow, setConfirmDeleteRow] = useState<{ label: string; period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro' } | null>(null);
 
     const [groupBy, setGroupBy] = useState<'period' | 'project' | 'none'>('period');
     const [sortBy, setSortBy] = useState<'period' | 'name' | 'progress'>('period');
@@ -1911,7 +1913,7 @@ export const BloquesDashboard = ({
                                                                             Editar
                                                                         </button>
                                                                         <button
-                                                                            onClick={() => handleRemoveRow(row.label, row.period)}
+                                                                            onClick={() => setConfirmDeleteRow({ label: row.label, period: row.period })}
                                                                             style={{
                                                                                 background: 'white',
                                                                                 border: '1px solid #ffdad6',
@@ -2391,6 +2393,18 @@ export const BloquesDashboard = ({
                     </div>
                 </div>
             )}
+            <ConfirmDialog
+                open={!!confirmDeleteRow}
+                title="Eliminar bloque"
+                message={`¿Eliminar el bloque "${confirmDeleteRow?.label}"? Se quitará de todos los días donde se repite.`}
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                onConfirm={() => {
+                    if (confirmDeleteRow) handleRemoveRow(confirmDeleteRow.label, confirmDeleteRow.period);
+                    setConfirmDeleteRow(null);
+                }}
+                onCancel={() => setConfirmDeleteRow(null)}
+            />
         </div>
     );
 };

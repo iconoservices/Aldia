@@ -3,7 +3,7 @@ import {
     Wallet, Plus, TrendingUp, TrendingDown,
     Trash2, Edit2, PieChart, X,
     UserMinus, UserPlus, Check, PiggyBank, ArrowDownCircle,
-    BarChart3, Tag, MoreVertical
+    BarChart3, Tag, MoreVertical, Merge
 } from "lucide-react";
 import { AnalyticsView } from "./AnalyticsView";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,6 +11,7 @@ import { ProjectDetailView } from "./ProjectDetailView";
 import type { Transaction, FixedExpense, Project, Routine, UserPreferences } from "../../hooks/useAlDiaState";
 import { C, bento, etiqueta, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina, botonPrimario, TOQUE_MINIMO } from "../../theme";
 import { RegistroMovimiento } from "../features/RegistroMovimiento";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 
 interface FinanzasProps {
     balance: number;
@@ -60,6 +61,8 @@ interface FinanzasProps {
     expenseCategories?: string[];
     addCategory?: (type: "ingreso" | "gasto", name: string) => void;
     removeCategory?: (type: "ingreso" | "gasto", name: string) => void;
+    renameCategory?: (type: "ingreso" | "gasto", oldName: string, newName: string) => void;
+    mergeCategory?: (type: "ingreso" | "gasto", sourceName: string, targetName: string) => void;
 }
 
 export type PeriodMode = "day" | "week" | "month" | "year" | "all";
@@ -361,7 +364,7 @@ export const FinanzasDashboard = ({
     updateProject,
     preferences, updatePreference,
     onNavigate,
-    incomeCategories, expenseCategories, addCategory, removeCategory,
+    incomeCategories, expenseCategories, addCategory, removeCategory, renameCategory, mergeCategory,
 }: FinanzasProps) => {
     const currentMonthStr = useMemo(() => new Date().toLocaleDateString("en-CA").substring(0, 7), []);
 
@@ -614,11 +617,42 @@ export const FinanzasDashboard = ({
     const [isCategoriesVisible, setIsCategoriesVisible] = useState(false);
     const [categoryTab, setCategoryTab] = useState<"gasto" | "ingreso">("gasto");
     const [newCategoryName, setNewCategoryName] = useState("");
+    const [activeMenuCategory, setActiveMenuCategory] = useState<string | null>(null);
+    const [categoryMenuMode, setCategoryMenuMode] = useState<"root" | "merge">("root");
+    const [renamingCategory, setRenamingCategory] = useState<string | null>(null);
+    const [renameDraft, setRenameDraft] = useState("");
+    const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<string | null>(null);
 
     const handleAddCategory = () => {
         if (!newCategoryName.trim() || !addCategory) return;
         addCategory(categoryTab, newCategoryName.trim());
         setNewCategoryName("");
+    };
+
+    const closeCategoryMenu = () => { setActiveMenuCategory(null); setCategoryMenuMode("root"); };
+
+    const startRenameCategory = (cat: string) => {
+        setRenameDraft(cat);
+        setRenamingCategory(cat);
+        closeCategoryMenu();
+    };
+
+    const saveRenameCategory = () => {
+        const trimmed = renameDraft.trim();
+        if (renamingCategory && renameCategory && trimmed && trimmed !== renamingCategory) {
+            renameCategory(categoryTab, renamingCategory, trimmed);
+        }
+        setRenamingCategory(null);
+    };
+
+    const handleMergeCategory = (source: string, target: string) => {
+        mergeCategory?.(categoryTab, source, target);
+        closeCategoryMenu();
+    };
+
+    const handleConfirmDeleteCategory = () => {
+        if (confirmDeleteCategory) removeCategory?.(categoryTab, confirmDeleteCategory);
+        setConfirmDeleteCategory(null);
     };
 
     const handleAddAccount = () => {
@@ -860,7 +894,7 @@ export const FinanzasDashboard = ({
                         display: "flex", alignItems: "center", gap: movil ? "8px" : "10px", flexWrap: "nowrap",
                         justifyContent: movil ? "space-between" : undefined,
                     }}>
-                        <div style={{ display: "flex", background: C.surfaceContainerLow, borderRadius: "999px", padding: "3px", border: `1px solid ${C.outlineVariant}` }}>
+                        <div style={{ display: "flex", background: C.surfaceContainerLow, borderRadius: "999px", padding: "3px", border: `1px solid ${C.outlineVariant}`, overflowX: movil ? "auto" : undefined, minWidth: 0, flexShrink: movil ? 1 : undefined }}>
                             {(["day", "week", "month", "year", "all"] as PeriodMode[]).map(mode => {
                                 const etiquetas: Record<PeriodMode, string> = { day: "Día", week: "Sem", month: "Mes", year: "Año", all: "Todo" };
                                 const activo = topPeriod === mode;
@@ -869,7 +903,7 @@ export const FinanzasDashboard = ({
                                         key={mode}
                                         onClick={() => setTopPeriod(mode)}
                                         style={{
-                                            border: "none", borderRadius: "999px", cursor: "pointer",
+                                            border: "none", borderRadius: "999px", cursor: "pointer", flexShrink: 0,
                                             padding: movil ? "5px 9px" : "5px 13px", fontSize: movil ? "0.68rem" : "0.75rem", fontWeight: 700,
                                             fontFamily: "inherit", transition: "all 0.15s",
                                             background: activo ? C.secondary : "transparent",
@@ -882,6 +916,22 @@ export const FinanzasDashboard = ({
                                 );
                             })}
                         </div>
+
+                        <button
+                            onClick={() => setShowAnalytics(true)}
+                            title="Analizar"
+                            style={{
+                                display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                                background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`,
+                                borderRadius: "999px", cursor: "pointer", flexShrink: 0,
+                                padding: movil ? "0" : "8px 14px",
+                                width: movil ? `${TOQUE_MINIMO}px` : undefined,
+                                minHeight: movil ? `${TOQUE_MINIMO}px` : undefined,
+                                fontSize: "0.78rem", fontWeight: 700, color: C.secondary, fontFamily: "inherit",
+                            }}
+                        >
+                            <PieChart size={15} /> {!movil && "Analizar"}
+                        </button>
 
                         <button
                             onClick={() => setShowTxForm(v => !v)}
@@ -1313,7 +1363,6 @@ export const FinanzasDashboard = ({
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
                         <span style={{ fontSize: "0.9rem", fontWeight: 800 }}>Flujo de Caja</span>
                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <button onClick={() => setShowAnalytics(true)} style={{ background: C.surface, border: `1px solid ${C.outlineVariant}`, borderRadius: "8px", padding: "3px 8px", display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", fontSize: "0.62rem", fontWeight: 700, color: C.secondary }}><PieChart size={11} /> Analizar</button>
                             <PillToggle options={["7d", "30d"]} value={chartPeriod} onChange={v => setChartPeriod(v as any)} />
                         </div>
                     </div>
@@ -1403,29 +1452,96 @@ export const FinanzasDashboard = ({
                                     />
                                 </div>
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "14px" }}>
-                                    {(categoryTab === "gasto" ? expenseCategories : incomeCategories)?.map(cat => (
-                                        <div key={cat} style={{
-                                            display: "flex", alignItems: "center", gap: "6px",
-                                            background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`,
-                                            borderRadius: "999px", padding: "6px 6px 6px 12px",
-                                        }}>
-                                            <span style={{ fontSize: "0.78rem", fontWeight: 700, color: C.onSurfaceVariant }}>{cat}</span>
-                                            {removeCategory && (
-                                                <button
-                                                    onClick={() => window.confirm(`¿Eliminar la categoría "${cat}"?`) && removeCategory(categoryTab, cat)}
-                                                    style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, display: "flex", padding: "2px" }}
-                                                >
-                                                    <X size={12} />
-                                                </button>
-                                            )}
-                                        </div>
-                                    ))}
+                                    {(() => {
+                                        const currentCategories = (categoryTab === "gasto" ? expenseCategories : incomeCategories) || [];
+                                        const menuItemStyle: React.CSSProperties = { width: "100%", display: "flex", alignItems: "center", gap: "8px", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", fontSize: "0.78rem", fontWeight: 600, color: C.onSurface, textAlign: "left", fontFamily: "inherit" };
+                                        return currentCategories.map(cat => {
+                                            const isRenaming = renamingCategory === cat;
+                                            const isMenuOpen = activeMenuCategory === cat;
+                                            const otherCategories = currentCategories.filter(c => c !== cat);
+                                            return (
+                                                <div key={cat} style={{
+                                                    display: "flex", alignItems: "center", gap: "4px",
+                                                    background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`,
+                                                    borderRadius: "999px", padding: isRenaming ? "4px 8px" : "6px 4px 6px 12px",
+                                                }}>
+                                                    {isRenaming ? (
+                                                        <input
+                                                            autoFocus
+                                                            value={renameDraft}
+                                                            onChange={e => setRenameDraft(e.target.value)}
+                                                            onKeyDown={e => { if (e.key === "Enter") saveRenameCategory(); if (e.key === "Escape") setRenamingCategory(null); }}
+                                                            onBlur={saveRenameCategory}
+                                                            style={{ fontSize: "0.78rem", fontWeight: 700, color: C.onSurfaceVariant, border: "none", borderBottom: `2px solid ${C.secondary}`, outline: "none", padding: "2px 0", width: `${Math.max(renameDraft.length, 4)}ch`, fontFamily: "inherit", background: "transparent" }}
+                                                        />
+                                                    ) : (
+                                                        <span style={{ fontSize: "0.78rem", fontWeight: 700, color: C.onSurfaceVariant }}>{cat}</span>
+                                                    )}
+                                                    {!isRenaming && (renameCategory || removeCategory || mergeCategory) && (
+                                                        <div style={{ position: "relative" }}>
+                                                            <button
+                                                                onClick={() => { setActiveMenuCategory(isMenuOpen ? null : cat); setCategoryMenuMode("root"); }}
+                                                                style={{ background: "none", border: "none", cursor: "pointer", color: C.outline, display: "flex", padding: "4px" }}
+                                                            >
+                                                                <MoreVertical size={14} />
+                                                            </button>
+                                                            <AnimatePresence>
+                                                                {isMenuOpen && (
+                                                                    <motion.div
+                                                                        initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                                                                        style={{ position: "absolute", top: "26px", right: 0, background: "white", borderRadius: "12px", boxShadow: "0 8px 24px rgba(0,0,0,0.15)", border: `1px solid ${C.outlineVariant}`, overflow: "hidden", zIndex: 20, minWidth: "170px" }}
+                                                                    >
+                                                                        {categoryMenuMode === "root" ? (
+                                                                            <>
+                                                                                {renameCategory && (
+                                                                                    <button onClick={() => startRenameCategory(cat)} style={menuItemStyle}>
+                                                                                        <Edit2 size={13} /> Renombrar
+                                                                                    </button>
+                                                                                )}
+                                                                                {mergeCategory && otherCategories.length > 0 && (
+                                                                                    <button onClick={() => setCategoryMenuMode("merge")} style={menuItemStyle}>
+                                                                                        <Merge size={13} /> Fusionar con...
+                                                                                    </button>
+                                                                                )}
+                                                                                {removeCategory && (
+                                                                                    <button onClick={() => { setConfirmDeleteCategory(cat); closeCategoryMenu(); }} style={{ ...menuItemStyle, color: C.rojo, borderTop: `1px solid ${C.outlineVariant}` }}>
+                                                                                        <Trash2 size={13} /> Eliminar
+                                                                                    </button>
+                                                                                )}
+                                                                            </>
+                                                                        ) : (
+                                                                            <div style={{ maxHeight: "180px", overflowY: "auto" }}>
+                                                                                {otherCategories.map(other => (
+                                                                                    <button key={other} onClick={() => handleMergeCategory(cat, other)} style={menuItemStyle}>
+                                                                                        {other}
+                                                                                    </button>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                    </motion.div>
+                                                                )}
+                                                            </AnimatePresence>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        });
+                                    })()}
                                     {(categoryTab === "gasto" ? expenseCategories : incomeCategories)?.length === 0 && (
                                         <p style={{ fontSize: "0.78rem", color: C.outline, fontStyle: "italic", margin: 0 }}>
                                             Sin categorías de {categoryTab}.
                                         </p>
                                     )}
                                 </div>
+                                <ConfirmDialog
+                                    open={!!confirmDeleteCategory}
+                                    title="Eliminar categoría"
+                                    message={`¿Eliminar la categoría "${confirmDeleteCategory}"? Los movimientos ya registrados con esta categoría no cambiarán.`}
+                                    confirmLabel="Eliminar"
+                                    cancelLabel="Cancelar"
+                                    onConfirm={handleConfirmDeleteCategory}
+                                    onCancel={() => setConfirmDeleteCategory(null)}
+                                />
                                 {addCategory && (
                                     <div style={{ display: "flex", gap: "6px" }}>
                                         <input
@@ -1451,7 +1567,7 @@ export const FinanzasDashboard = ({
                 {selectedProject && <ProjectDetailView project={selectedProject} onClose={() => setSelectedProject(null)} accounts={accounts} setAccounts={setAccounts} transactions={transactions} addProjectTask={addProjectTask} toggleProjectTask={toggleProjectTask} removeProjectTask={removeProjectTask} updateProjectTask={updateProjectTask} reorderProjectTasks={reorderProjectTasks} promoteTaskToRoutine={promoteTaskToRoutine} rutinas={rutinas} addProjectCategory={addProjectCategory} removeProjectCategory={removeProjectCategory} addInventoryItem={addInventoryItem} updateInventoryItemQuantity={updateInventoryItemQuantity} removeInventoryItem={removeInventoryItem} projects={projects} updateProject={updateProject} />}
             </AnimatePresence>
             <AnimatePresence>
-                {showAnalytics && <AnalyticsView transactions={transactions} onClose={() => setShowAnalytics(false)} />}
+                {showAnalytics && <AnalyticsView transactions={transactions} onClose={() => setShowAnalytics(false)} owe={realOwe} owed={realOwed} accounts={accounts} />}
             </AnimatePresence>
             <AnimatePresence>
                 {selectedAccountId != null && accountsWithBalance.find(a => a.id === selectedAccountId) && (
