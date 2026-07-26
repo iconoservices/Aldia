@@ -751,19 +751,25 @@ export const BloquesDashboard = ({
 
                                                     {/* Días de la rutina: solo referencial (qué días repite), no tocable.
                                                         Marcar "hecho" se hace con el checkbox de arriba o en Checklist. */}
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
                                                         {weekDays.map((day, idx) => {
                                                             const isRepeatDay = repeatDays.includes(idx);
+                                                            const dayLetter = ['L', 'M', 'X', 'J', 'V', 'S', 'D'][idx];
                                                             return (
                                                                 <span
                                                                     key={day.date}
                                                                     title={['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][idx]}
                                                                     style={{
-                                                                        width: '8px', height: '8px', borderRadius: '50%',
-                                                                        background: isRepeatDay ? pStyle.accentBg : '#e7e8e9',
+                                                                        width: '16px', height: '16px', borderRadius: '50%',
+                                                                        background: isRepeatDay ? pStyle.accentBg : '#eeeeef',
+                                                                        color: isRepeatDay ? '#ffffff' : '#b5aeaa',
+                                                                        fontSize: '8px', fontWeight: '800',
+                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                                         flexShrink: 0,
                                                                     }}
-                                                                />
+                                                                >
+                                                                    {dayLetter}
+                                                                </span>
                                                             );
                                                         })}
                                                         <span style={{ fontSize: '10px', color: '#877369', fontWeight: '600', marginLeft: '4px' }}>
