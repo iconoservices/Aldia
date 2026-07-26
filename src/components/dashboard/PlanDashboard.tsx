@@ -425,7 +425,7 @@ export const PlanDashboard = ({
                     <select
                         value={lote.projectId}
                         onChange={e => setLote(v => ({ ...v, projectId: e.target.value }))}
-                        style={{ ...campo(movil), background: C.surfaceContainerLow, cursor: 'pointer', minWidth: movil ? '100%' : '160px' }}
+                        style={{ ...campo(movil), background: C.surfaceContainerLow, cursor: 'pointer', width: movil ? '100%' : undefined, minWidth: movil ? 0 : '160px' }}
                     >
                         <option value="">¿De dónde vino?</option>
                         {projects.map(p => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
@@ -438,12 +438,12 @@ export const PlanDashboard = ({
                         style={{ ...campo(movil), background: C.surfaceContainerLow, flex: movil ? undefined : '1 1 240px', width: movil ? '100%' : undefined }}
                     />
 
-                    <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ display: 'flex', gap: '10px', width: movil ? '100%' : undefined }}>
                         {accounts.length > 0 && (
                             <select
                                 value={lote.accountId}
                                 onChange={e => setLote(v => ({ ...v, accountId: e.target.value }))}
-                                style={{ ...campo(movil), background: C.surfaceContainerLow, cursor: 'pointer', flex: movil ? 1 : undefined }}
+                                style={{ ...campo(movil), background: C.surfaceContainerLow, cursor: 'pointer', flex: movil ? 1 : undefined, minWidth: movil ? 0 : undefined }}
                             >
                                 <option value="">Cuenta…</option>
                                 {accounts.map(a => <option key={a.id} value={String(a.id)}>{a.name}</option>)}
@@ -456,12 +456,13 @@ export const PlanDashboard = ({
                             placeholder="Total S/"
                             type="number" min="0" step="0.01"
                             inputMode="decimal"
-                            style={{ ...campo(movil), background: C.surfaceContainerLow, fontWeight: 700, width: movil ? undefined : '120px', flex: movil ? 1 : undefined }}
+                            style={{ ...campo(movil), background: C.surfaceContainerLow, fontWeight: 700, width: movil ? undefined : '120px', flex: movil ? 1 : undefined, minWidth: movil ? 0 : undefined }}
                         />
                     </div>
 
                     <button type="submit" disabled={!parseFloat(lote.amount)} style={{
                         ...botonPrimario(movil),
+                        width: movil ? '100%' : undefined,
                         background: parseFloat(lote.amount) ? C.verde : C.surfaceContainerHigh,
                         color: parseFloat(lote.amount) ? '#fff' : C.onSurfaceVariant,
                         boxShadow: parseFloat(lote.amount) ? '0 4px 14px rgba(16,185,129,0.25)' : 'none',
