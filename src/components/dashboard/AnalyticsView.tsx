@@ -29,6 +29,97 @@ type AccountFilter = 'all' | Set<AccountKey>;
 
 const fmtDate = (d: Date) => d.toLocaleDateString('en-CA');
 
+// Modal de selección de cuentas: checklist con confirmación explícita
+// (Cancelar / Guardar) en vez del popover que aplicaba cada click al instante.
+const AccountSelectModal = ({ open, accounts, initialSelection, onSave, onCancel }: {
+    open: boolean;
+    accounts: AnalyticsAccount[];
+    initialSelection: AccountFilter;
+    onSave: (sel: AccountFilter) => void;
+    onCancel: () => void;
+}) => {
+    const [draft, setDraft] = useState<AccountFilter>(initialSelection);
+    const allKeys = useMemo(() => new Set<AccountKey>([...accounts.map(a => a.id), NONE_ACCOUNT_KEY]), [accounts]);
+
+    // Resetea el borrador al abrir (patrón de "ajustar estado durante el render"
+    // de React, en vez de un efecto, para no reflejar el guardado anterior al reabrir).
+    const [wasOpen, setWasOpen] = useState(open);
+    if (open !== wasOpen) {
+        setWasOpen(open);
+        if (open) setDraft(initialSelection);
+    }
+
+    const isSelected = (key: AccountKey) => draft === 'all' || draft.has(key);
+    const toggle = (key: AccountKey) => {
+        setDraft(prev => {
+            const current = prev === 'all' ? new Set(allKeys) : new Set(prev);
+            if (current.has(key)) current.delete(key); else current.add(key);
+            if (current.size === allKeys.size) return 'all';
+            return current;
+        });
+    };
+    const count = draft === 'all' ? allKeys.size : draft.size;
+
+    return (
+        <AnimatePresence>
+            {open && (
+                <motion.div
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+                    onClick={onCancel}
+                >
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 12 }}
+                        onClick={e => e.stopPropagation()}
+                        style={{ background: 'white', borderRadius: '20px', padding: '1.4rem', width: '100%', maxWidth: '380px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
+                    >
+                        <h3 style={{ margin: '0 0 6px', fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-carbon)' }}>¿Qué cuentas quieres ver?</h3>
+                        <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', color: '#64748B', lineHeight: 1.4 }}>
+                            El análisis solo mostrará los movimientos de las cuentas que marques.
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto', marginBottom: '1rem' }}>
+                            <button
+                                onClick={() => toggle(NONE_ACCOUNT_KEY)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '12px', border: `1px solid ${isSelected(NONE_ACCOUNT_KEY) ? '#191c1d' : '#E2E8F0'}`, background: 'white', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+                            >
+                                <span style={{ width: '18px', height: '18px', borderRadius: '5px', border: '2px solid #191c1d', background: isSelected(NONE_ACCOUNT_KEY) ? '#191c1d' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    {isSelected(NONE_ACCOUNT_KEY) && <Check size={12} color="white" />}
+                                </span>
+                                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#94A3B8', flexShrink: 0 }} />
+                                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-carbon)' }}>Sin cuenta</span>
+                            </button>
+                            {accounts.map(a => (
+                                <button
+                                    key={a.id}
+                                    onClick={() => toggle(a.id)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '12px', border: `1px solid ${isSelected(a.id) ? '#191c1d' : '#E2E8F0'}`, background: 'white', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+                                >
+                                    <span style={{ width: '18px', height: '18px', borderRadius: '5px', border: '2px solid #191c1d', background: isSelected(a.id) ? '#191c1d' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        {isSelected(a.id) && <Check size={12} color="white" />}
+                                    </span>
+                                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: a.color, flexShrink: 0 }} />
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-carbon)' }}>{a.name}</span>
+                                </button>
+                            ))}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                            <span style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600 }}>{count} seleccionada{count === 1 ? '' : 's'}</span>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: '10px', border: '1px solid #E2E8F0', background: 'white', color: '#475569', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                    Cancelar
+                                </button>
+                                <button onClick={() => onSave(draft)} style={{ padding: '9px 16px', borderRadius: '10px', border: 'none', background: '#191c1d', color: 'white', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                    Guardar selección
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+};
+
 export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accounts = [] }: AnalyticsViewProps) => {
     const isDesktop = !useIsMobile();
 
@@ -40,20 +131,13 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
     const [customEnd, setCustomEnd] = useState('');
     const [mobileTab, setMobileTab] = useState<'chart' | 'categories'>('chart');
     const [categoryView, setCategoryView] = useState<'bars' | 'pie'>('bars');
+    const [breakdownType, setBreakdownType] = useState<'gasto' | 'ingreso'>('gasto');
+    const [breakdownGroupBy, setBreakdownGroupBy] = useState<'category' | 'account'>('category');
+    const [expandedBreakdownKey, setExpandedBreakdownKey] = useState<string | null>(null);
 
     // ── Filtro por cuenta: todas, o una selección (incluye "Sin cuenta") ──
     const [accountFilter, setAccountFilter] = useState<AccountFilter>('all');
-    const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-    const allAccountKeys = useMemo(() => new Set<AccountKey>([...accounts.map(a => a.id), NONE_ACCOUNT_KEY]), [accounts]);
-
-    const toggleAccountKey = (key: AccountKey) => {
-        setAccountFilter(prev => {
-            const current = prev === 'all' ? new Set(allAccountKeys) : new Set(prev);
-            if (current.has(key)) current.delete(key); else current.add(key);
-            if (current.size === allAccountKeys.size) return 'all';
-            return current;
-        });
-    };
+    const [accountModalOpen, setAccountModalOpen] = useState(false);
 
     const scopedTransactions = useMemo(() => {
         if (accountFilter === 'all') return transactions;
@@ -99,17 +183,34 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
         return { income, expense };
     }, [scopedTransactions, prevBounds]);
 
-    // Desglose por categorías del periodo activo
-    const categoryData = useMemo(() => {
+    // Mayor categoría de gasto del periodo — fija, independiente del selector de la
+    // tarjeta de distribución, porque alimenta la tarjeta de Salud Financiera.
+    const topExpenseCategory = useMemo(() => {
         const cats: Record<string, number> = {};
         periodTxs.filter(t => t.type === 'gasto' && !t.isDebt).forEach(t => {
             const c = t.category || 'Otros';
             cats[c] = (cats[c] || 0) + Math.abs(t.amount);
         });
-        return Object.entries(cats)
+        const sorted = Object.entries(cats).sort((a, b) => b[1] - a[1]);
+        return sorted[0] ? { name: sorted[0][0], amount: sorted[0][1] } : undefined;
+    }, [periodTxs]);
+
+    // Desglose interactivo (tarjeta "Distribución"): por categoría o por cuenta,
+    // de gastos o de ingresos, según lo que el usuario elija ahí mismo.
+    const breakdownData = useMemo(() => {
+        const groups: Record<string, number> = {};
+        periodTxs.filter(t => t.type === breakdownType && !t.isDebt).forEach(t => {
+            const key = breakdownGroupBy === 'category'
+                ? (t.category || 'Otros')
+                : (accounts.find(a => a.id === t.accountId)?.name || 'Sin cuenta');
+            groups[key] = (groups[key] || 0) + Math.abs(t.amount);
+        });
+        return Object.entries(groups)
             .sort((a, b) => b[1] - a[1])
             .map(([name, amount]) => ({ name, amount }));
-    }, [periodTxs]);
+    }, [periodTxs, breakdownType, breakdownGroupBy, accounts]);
+
+    const breakdownTotal = breakdownType === 'gasto' ? periodStats.expense : periodStats.income;
 
     // Gráfico de flujo: por día si el rango es corto (<= ~3 meses), por mes si es largo
     const chartBuckets = useMemo(() => {
@@ -147,7 +248,6 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
     // ── Salud financiera: tasa de ahorro del periodo + una recomendación simple ──
     const savingsRate = periodStats.income > 0 ? (periodStats.net / periodStats.income) * 100 : 0;
     const netDebt = owe - owed;
-    const topCategory = categoryData[0];
 
     const health = useMemo(() => {
         if (periodStats.income <= 0) return { label: 'Sin datos', color: '#64748B', bg: '#F1F5F9' };
@@ -158,15 +258,15 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
     }, [savingsRate, periodStats.income]);
 
     const donutGradient = useMemo(() => {
-        if (categoryData.length === 0 || periodStats.expense <= 0) return 'conic-gradient(#F1F5F9 0% 100%)';
+        if (breakdownData.length === 0 || breakdownTotal <= 0) return 'conic-gradient(#F1F5F9 0% 100%)';
         let acc = 0;
-        const stops = categoryData.map((cat, i) => {
-            const pct = (cat.amount / periodStats.expense) * 100;
+        const stops = breakdownData.map((cat, i) => {
+            const pct = (cat.amount / breakdownTotal) * 100;
             const start = acc; acc += pct;
             return `${CATEGORY_COLORS[i % CATEGORY_COLORS.length]} ${start}% ${acc}%`;
         });
         return `conic-gradient(${stops.join(', ')})`;
-    }, [categoryData, periodStats.expense]);
+    }, [breakdownData, breakdownTotal]);
 
     const periodLabelStr = mode === 'custom'
         ? (customStart && customEnd ? `${customStart} → ${customEnd}` : 'Elige un rango de fechas')
@@ -222,42 +322,102 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
         </div>
     );
 
+    const breakdownAccent = breakdownType === 'gasto' ? '#f59e0b' : '#10b981';
+
+    // Al tocar una fila del desglose, muestra la otra dimensión: si agrupas por
+    // categoría, cuánto salió de cada cuenta; si agrupas por cuenta, qué categorías la componen.
+    const getSubBreakdown = (key: string) => {
+        const groups: Record<string, number> = {};
+        periodTxs.filter(t => t.type === breakdownType && !t.isDebt).forEach(t => {
+            const primaryKey = breakdownGroupBy === 'category' ? (t.category || 'Otros') : (accounts.find(a => a.id === t.accountId)?.name || 'Sin cuenta');
+            if (primaryKey !== key) return;
+            const secondaryKey = breakdownGroupBy === 'category' ? (accounts.find(a => a.id === t.accountId)?.name || 'Sin cuenta') : (t.category || 'Otros');
+            groups[secondaryKey] = (groups[secondaryKey] || 0) + Math.abs(t.amount);
+        });
+        return Object.entries(groups).sort((a, b) => b[1] - a[1]).map(([name, amount]) => ({ name, amount }));
+    };
+
     const categoriesBlock = (
-        <div className="glass-card" style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+        <div className="glass-card" style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <PieChart size={18} color="var(--domain-orange)" />
-                    <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 900, color: '#666' }}>DISTRIBUCIÓN POR CATEGORÍA</h3>
+                    <PieChart size={18} color={breakdownAccent} />
+                    <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 900, color: '#666' }}>
+                        DISTRIBUCIÓN {breakdownGroupBy === 'category' ? 'POR CATEGORÍA' : 'POR CUENTA'}
+                    </h3>
                 </div>
-                <div style={{ display: 'flex', background: '#F1F5F9', padding: '3px', borderRadius: '10px', gap: '2px' }}>
-                    <button
-                        onClick={() => setCategoryView('bars')}
-                        title="Ver como lista"
-                        style={{ padding: '5px 7px', borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', background: categoryView === 'bars' ? 'white' : 'transparent', color: categoryView === 'bars' ? 'var(--domain-orange)' : '#94A3B8', boxShadow: categoryView === 'bars' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}
-                    >
-                        <List size={13} />
-                    </button>
-                    <button
-                        onClick={() => setCategoryView('pie')}
-                        title="Ver como gráfico circular"
-                        style={{ padding: '5px 7px', borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', background: categoryView === 'pie' ? 'white' : 'transparent', color: categoryView === 'pie' ? 'var(--domain-orange)' : '#94A3B8', boxShadow: categoryView === 'pie' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}
-                    >
-                        <PieChart size={13} />
-                    </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {accounts.length > 0 && (
+                        <button
+                            onClick={() => setAccountModalOpen(true)}
+                            title={`Cuentas: ${accountFilterLabel}`}
+                            style={{ padding: '5px 7px', borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', background: '#F1F5F9', color: '#64748B' }}
+                        >
+                            <Filter size={13} />
+                        </button>
+                    )}
+                    <div style={{ display: 'flex', background: '#F1F5F9', padding: '3px', borderRadius: '10px', gap: '2px' }}>
+                        <button
+                            onClick={() => setCategoryView('bars')}
+                            title="Ver como lista"
+                            style={{ padding: '5px 7px', borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', background: categoryView === 'bars' ? 'white' : 'transparent', color: categoryView === 'bars' ? breakdownAccent : '#94A3B8', boxShadow: categoryView === 'bars' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}
+                        >
+                            <List size={13} />
+                        </button>
+                        <button
+                            onClick={() => setCategoryView('pie')}
+                            title="Ver como gráfico circular"
+                            style={{ padding: '5px 7px', borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', background: categoryView === 'pie' ? 'white' : 'transparent', color: categoryView === 'pie' ? breakdownAccent : '#94A3B8', boxShadow: categoryView === 'pie' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}
+                        >
+                            <PieChart size={13} />
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            {categoryData.length === 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto' }}>
+                <div style={{ display: 'flex', background: '#F1F5F9', borderRadius: '999px', padding: '3px', gap: '2px', flexShrink: 0 }}>
+                    {([['gasto', 'Gastos'], ['ingreso', 'Ingresos']] as ['gasto' | 'ingreso', string][]).map(([t, label]) => (
+                        <button
+                            key={t}
+                            onClick={() => setBreakdownType(t)}
+                            style={{ border: 'none', borderRadius: '999px', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap', padding: '5px 9px', fontSize: '0.66rem', fontWeight: 700, fontFamily: 'inherit', background: breakdownType === t ? 'white' : 'transparent', color: breakdownType === t ? (t === 'gasto' ? '#ef4444' : '#10b981') : '#94A3B8', boxShadow: breakdownType === t ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
+                {accounts.length > 0 && (
+                    <div style={{ display: 'flex', background: '#F1F5F9', borderRadius: '999px', padding: '3px', gap: '2px', flexShrink: 0 }}>
+                        {([['category', 'Categoría'], ['account', 'Cuenta']] as ['category' | 'account', string][]).map(([g, label]) => (
+                            <button
+                                key={g}
+                                onClick={() => setBreakdownGroupBy(g)}
+                                style={{ border: 'none', borderRadius: '999px', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap', padding: '5px 9px', fontSize: '0.66rem', fontWeight: 700, fontFamily: 'inherit', background: breakdownGroupBy === g ? 'white' : 'transparent', color: breakdownGroupBy === g ? '#475569' : '#94A3B8', boxShadow: breakdownGroupBy === g ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {breakdownData.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-                    <span style={{ fontSize: '0.8rem', color: '#BBB', fontWeight: 600 }}>No hay gastos registrados en este periodo.</span>
+                    <span style={{ fontSize: '0.8rem', color: '#BBB', fontWeight: 600 }}>No hay {breakdownType === 'gasto' ? 'gastos' : 'ingresos'} registrados en este periodo.</span>
                 </div>
             ) : categoryView === 'bars' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {categoryData.map((cat, i) => {
-                        const percentage = (cat.amount / (periodStats.expense || 1)) * 100;
+                    {breakdownData.map((cat, i) => {
+                        const percentage = (cat.amount / (breakdownTotal || 1)) * 100;
+                        const isExpanded = expandedBreakdownKey === cat.name;
+                        const canExpand = breakdownGroupBy === 'account' || accounts.length > 0;
                         return (
                             <div key={cat.name} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div
+                                    onClick={() => canExpand && setExpandedBreakdownKey(isExpanded ? null : cat.name)}
+                                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: canExpand ? 'pointer' : 'default' }}
+                                >
                                     <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-carbon)' }}>{cat.name}</span>
                                     <span style={{ fontSize: '0.85rem', fontWeight: 900, color: '#666' }}>S/.{cat.amount.toLocaleString()} ({percentage.toFixed(1)}%)</span>
                                 </div>
@@ -268,6 +428,16 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                                         style={{ height: '100%', background: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }}
                                     />
                                 </div>
+                                {isExpanded && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', padding: '8px 0 2px 12px', borderLeft: '2px solid #F1F5F9', marginLeft: '4px' }}>
+                                        {getSubBreakdown(cat.name).map(sub => (
+                                            <div key={sub.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748B' }}>{sub.name}</span>
+                                                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#94A3B8' }}>S/.{sub.amount.toLocaleString()} ({((sub.amount / (cat.amount || 1)) * 100).toFixed(0)}%)</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         );
                     })}
@@ -276,16 +446,16 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.2rem' }}>
                     <div style={{ width: '160px', height: '160px', borderRadius: '50%', background: donutGradient, position: 'relative', flexShrink: 0 }}>
                         <div style={{ position: 'absolute', inset: '24px', background: 'white', borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-                            <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#94A3B8' }}>GASTO TOTAL</span>
-                            <span style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-carbon)' }}>S/.{periodStats.expense.toLocaleString()}</span>
+                            <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#94A3B8' }}>{breakdownType === 'gasto' ? 'GASTO' : 'INGRESO'} TOTAL</span>
+                            <span style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-carbon)' }}>S/.{breakdownTotal.toLocaleString()}</span>
                         </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
-                        {categoryData.map((cat, i) => (
+                        {breakdownData.map((cat, i) => (
                             <div key={cat.name} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: CATEGORY_COLORS[i % CATEGORY_COLORS.length], flexShrink: 0 }} />
                                 <span style={{ flex: 1, fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-carbon)' }}>{cat.name}</span>
-                                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#666' }}>{((cat.amount / (periodStats.expense || 1)) * 100).toFixed(1)}%</span>
+                                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#666' }}>S/.{cat.amount.toLocaleString()} ({((cat.amount / (breakdownTotal || 1)) * 100).toFixed(1)}%)</span>
                             </div>
                         ))}
                     </div>
@@ -342,52 +512,13 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                         })}
                     </div>
 
-                    <div style={{ position: 'relative', flexShrink: 0 }}>
-                        <button
-                            onClick={() => setAccountMenuOpen(v => !v)}
-                            title={`Cuentas: ${accountFilterLabel}`}
-                            style={{ display: 'flex', alignItems: 'center', gap: '5px', background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '7px 10px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}
-                        >
-                            <Filter size={13} /> {isDesktop && <span>Cuentas: {accountFilterLabel}</span>}
-                        </button>
-                        <AnimatePresence>
-                            {accountMenuOpen && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                                    style={{ position: 'absolute', top: '38px', right: 0, background: 'white', borderRadius: '14px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', border: '1px solid #E2E8F0', overflow: 'hidden', zIndex: 20, minWidth: '200px' }}
-                                >
-                                    <button
-                                        onClick={() => setAccountFilter('all')}
-                                        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', background: 'none', border: 'none', borderBottom: '1px solid #F1F5F9', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700, color: '#191c1d', textAlign: 'left', fontFamily: 'inherit' }}
-                                    >
-                                        <span style={{ width: '16px', display: 'flex', justifyContent: 'center' }}>{accountFilter === 'all' && <Check size={13} />}</span>
-                                        Todas
-                                    </button>
-                                    <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
-                                        <button
-                                            onClick={() => toggleAccountKey(NONE_ACCOUNT_KEY)}
-                                            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, color: '#191c1d', textAlign: 'left', fontFamily: 'inherit' }}
-                                        >
-                                            <span style={{ width: '16px', display: 'flex', justifyContent: 'center' }}>{(accountFilter === 'all' || accountFilter.has(NONE_ACCOUNT_KEY)) && <Check size={13} />}</span>
-                                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#94A3B8', flexShrink: 0 }} />
-                                            Sin cuenta
-                                        </button>
-                                        {accounts.map(a => (
-                                            <button
-                                                key={a.id}
-                                                onClick={() => toggleAccountKey(a.id)}
-                                                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, color: '#191c1d', textAlign: 'left', fontFamily: 'inherit' }}
-                                            >
-                                                <span style={{ width: '16px', display: 'flex', justifyContent: 'center' }}>{(accountFilter === 'all' || accountFilter.has(a.id)) && <Check size={13} />}</span>
-                                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: a.color, flexShrink: 0 }} />
-                                                {a.name}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
+                    <button
+                        onClick={() => setAccountModalOpen(true)}
+                        title={`Cuentas: ${accountFilterLabel}`}
+                        style={{ display: 'flex', alignItems: 'center', gap: '5px', background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '7px 10px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap', flexShrink: 0 }}
+                    >
+                        <Filter size={13} /> {isDesktop && <span>Cuentas: {accountFilterLabel}</span>}
+                    </button>
                 </div>
 
                 {mode === 'custom' ? (
@@ -407,6 +538,17 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                 )}
             </div>
 
+            {/* Balance neto: el número principal, arriba para que no quede perdido al final del scroll */}
+            <GlassCard style={{ padding: '0.9rem 1.1rem', background: periodStats.net >= 0 ? 'var(--domain-green)' : '#ef4444', color: 'white', border: 'none' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                        <span style={{ display: 'block', fontSize: '0.6rem', fontWeight: 800, opacity: 0.8 }}>BALANCE NETO</span>
+                        <h4 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900 }}>S/.{periodStats.net.toLocaleString()}</h4>
+                    </div>
+                    {periodStats.net >= 0 ? <TrendingUp size={26} /> : <TrendingDown size={26} />}
+                </div>
+            </GlassCard>
+
             {/* Salud financiera + Ingresos/Gastos: en escritorio comparten una sola fila para ahorrar espacio vertical */}
             {(() => {
                 const saludBlock = (
@@ -422,10 +564,10 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                                     <span style={{ display: 'block', fontSize: '0.56rem', fontWeight: 800, color: '#94A3B8' }}>AHORRO</span>
                                     <div style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{savingsRate.toFixed(0)}%</div>
                                 </div>
-                                {topCategory && (
+                                {topExpenseCategory && (
                                     <div>
                                         <span style={{ display: 'block', fontSize: '0.56rem', fontWeight: 800, color: '#94A3B8' }}>MAYOR GASTO</span>
-                                        <div style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{topCategory.name}</div>
+                                        <div style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{topExpenseCategory.name}</div>
                                     </div>
                                 )}
                                 {(owe > 0 || owed > 0) && (
@@ -534,16 +676,13 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                 </div>
             )}
 
-            {/* Performance Card */}
-            <GlassCard style={{ padding: '1.2rem', background: periodStats.net >= 0 ? 'var(--domain-green)' : '#ef4444', color: 'white', border: 'none' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                        <span style={{ display: 'block', fontSize: '0.65rem', fontWeight: 800, opacity: 0.8 }}>BALANCE NETO</span>
-                        <h4 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900 }}>S/.{periodStats.net.toLocaleString()}</h4>
-                    </div>
-                    {periodStats.net >= 0 ? <TrendingUp size={32} /> : <TrendingDown size={32} />}
-                </div>
-            </GlassCard>
+            <AccountSelectModal
+                open={accountModalOpen}
+                accounts={accounts}
+                initialSelection={accountFilter}
+                onSave={sel => { setAccountFilter(sel); setAccountModalOpen(false); }}
+                onCancel={() => setAccountModalOpen(false)}
+            />
         </motion.div>
     );
 };
