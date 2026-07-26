@@ -656,11 +656,11 @@ export const BloquesDashboard = ({
                                         borderBottom: `1px solid ${pStyle.border}`,
                                         borderLeft: `4px solid ${pStyle.accentBg}`,
                                         boxShadow: '0 4px 10px rgba(0,0,0,0.03)',
-                                        padding: '20px 16px',
-                                        marginBottom: '20px',
+                                        padding: '14px 12px',
+                                        marginBottom: '14px',
                                         display: 'flex',
                                         flexDirection: 'column',
-                                        gap: '16px'
+                                        gap: '10px'
                                     }}
                                 >
                                     {/* Jornada Card Header */}
@@ -686,7 +686,7 @@ export const BloquesDashboard = ({
                                     </div>
 
                                     {/* List of routine blocks */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                         {rows.map((row) => {
                                             const repeatDays = row.repeatDays || [0, 1, 2, 3, 4, 5, 6];
                                             const totalScheduledDays = repeatDays.length;
@@ -712,12 +712,12 @@ export const BloquesDashboard = ({
                                                     style={{
                                                         background: '#ffffff',
                                                         borderRadius: '12px',
-                                                        padding: '12px 12px 14px',
+                                                        padding: '10px 10px 10px',
                                                         boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
                                                     }}
                                                 >
                                                     {/* Block info row */}
-                                                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '6px' }}>
                                                         <div style={{ flex: 1, minWidth: 0 }}>
                                                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
                                                                 <span style={{
@@ -770,11 +770,13 @@ export const BloquesDashboard = ({
                                                         </span>
                                                     </div>
 
-                                                    {/* Weekdays inline tracker (L, M, X, J, V, S, D) */}
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '4px', marginTop: '12px' }}>
+                                                    {/* Weekdays inline tracker (L, M, X, J, V, S, D): los días no
+                                                        programados se reducen a un punto chico, sin letra — solo los
+                                                        días que sí se pueden marcar tienen el peso visual de un botón. */}
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '4px', marginTop: '8px' }}>
                                                         {weekDays.map((day, idx) => {
                                                             const isRepeatDay = repeatDays.includes(idx);
-                                                            
+
                                                             const existingBlock = dailyBlocks.find(b =>
                                                                 b.label.toLowerCase() === row.label.toLowerCase() &&
                                                                 b.period === row.period &&
@@ -786,39 +788,41 @@ export const BloquesDashboard = ({
                                                             const dayLetters = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
                                                             const dayLetter = dayLetters[idx];
 
+                                                            if (!isRepeatDay) {
+                                                                return (
+                                                                    <div key={day.date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', flex: 1, height: '38px', justifyContent: 'center' }}>
+                                                                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#e7e8e9' }} />
+                                                                    </div>
+                                                                );
+                                                            }
+
                                                             return (
-                                                                <div key={day.date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', flex: 1 }}>
-                                                                    <span style={{ 
-                                                                        fontSize: '11px', 
-                                                                        fontWeight: '700', 
+                                                                <div key={day.date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', flex: 1 }}>
+                                                                    <span style={{
+                                                                        fontSize: '10px',
+                                                                        fontWeight: '700',
                                                                         color: isToday ? pStyle.color : '#877369',
-                                                                        opacity: isRepeatDay ? 1 : 0.4,
-                                                                        marginBottom: '2px'
                                                                     }}>
                                                                         {dayLetter}
                                                                     </span>
                                                                     <button
                                                                         onClick={() => handleCellToggle(row.label, row.period, day.date)}
-                                                                        disabled={!isRepeatDay}
                                                                         style={{
-                                                                            width: '32px',
-                                                                            height: '32px',
-                                                                            borderRadius: '8px',
-                                                                            border: isRepeatDay 
-                                                                                ? (isDone ? `2px solid ${pStyle.color}` : `2px solid ${pStyle.accentBg}`) 
-                                                                                : 'none',
-                                                                            background: isRepeatDay
-                                                                                ? (isDone ? pStyle.accentBg : '#ffffff')
-                                                                                : '#f3f4f5',
-                                                                            cursor: isRepeatDay ? 'pointer' : 'default',
+                                                                            width: '24px',
+                                                                            height: '24px',
+                                                                            borderRadius: '7px',
+                                                                            border: isDone ? `2px solid ${pStyle.color}` : `1.5px solid ${pStyle.accentBg}`,
+                                                                            background: isDone ? pStyle.accentBg : '#ffffff',
+                                                                            cursor: 'pointer',
                                                                             display: 'flex',
                                                                             alignItems: 'center',
                                                                             justifyContent: 'center',
-                                                                            transition: 'all 0.15s ease'
+                                                                            transition: 'all 0.15s ease',
+                                                                            padding: 0,
                                                                         }}
                                                                     >
-                                                                        {isRepeatDay && isDone && (
-                                                                            <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#ffffff', fontVariationSettings: "'FILL' 1" }}>
+                                                                        {isDone && (
+                                                                            <span className="material-symbols-outlined" style={{ fontSize: '13px', color: '#ffffff', fontVariationSettings: "'FILL' 1" }}>
                                                                                 check
                                                                             </span>
                                                                         )}
