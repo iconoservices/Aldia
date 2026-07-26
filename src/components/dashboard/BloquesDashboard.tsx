@@ -628,7 +628,7 @@ export const BloquesDashboard = ({
 
                 {/* ── Main Content: vista Semana (rutinas del día) ── */}
                 {semanalSubView === 'semana' && (
-                <div style={{ padding: '20px 20px 0' }}>
+                <div style={{ padding: '14px 14px 0' }}>
 
                     {dayBlocksByPeriod.length === 0 ? (
                         /* Empty state */
@@ -640,55 +640,14 @@ export const BloquesDashboard = ({
                             <p style={{ margin: 0, fontSize: '13px', opacity: 0.7 }}>Añade un block con el botón +</p>
                         </div>
                     ) : (
-                        dayBlocksByPeriod.map(({ period, rows }) => {
-                            const pStyle = periodColors[period] ?? periodColors['Otro'];
-
-                            return (
-                                <motion.div
-                                    key={period}
-                                    initial={{ opacity: 0, y: 8 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    style={{
-                                        background: pStyle.bg,
-                                        borderRadius: '16px',
-                                        borderTop: `1px solid ${pStyle.border}`,
-                                        borderRight: `1px solid ${pStyle.border}`,
-                                        borderBottom: `1px solid ${pStyle.border}`,
-                                        borderLeft: `4px solid ${pStyle.accentBg}`,
-                                        boxShadow: '0 4px 10px rgba(0,0,0,0.03)',
-                                        padding: '14px 12px',
-                                        marginBottom: '14px',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '10px'
-                                    }}
-                                >
-                                    {/* Jornada Card Header */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        <div style={{
-                                            width: '36px', height: '36px', borderRadius: '50%',
-                                            background: pStyle.accentBg, display: 'flex',
-                                            alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                                            boxShadow: `0 3px 8px ${pStyle.accentBg}66`,
-                                        }}>
-                                            <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#fff' }}>
-                                                {pStyle.icon}
-                                            </span>
-                                        </div>
-                                        <div>
-                                            <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: pStyle.color }}>
-                                                {period}
-                                            </h4>
-                                            <p style={{ margin: 0, fontSize: '12px', color: '#877369', fontWeight: '500' }}>
-                                                {rows.length} bloque{rows.length !== 1 ? 's' : ''} activo{rows.length !== 1 ? 's' : ''}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {/* List of routine blocks */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        {rows.map((row) => {
-                                            const repeatDays = row.repeatDays || [0, 1, 2, 3, 4, 5, 6];
+                        /* Una sola lista, un solo contenedor: antes cada jornada era su propia
+                           tarjeta de color y cada tarea su propia tarjeta separada. Ahora la
+                           jornada es solo un puntito de color (referencial) y las tareas son
+                           filas de una misma tarjeta, separadas por una línea fina — compacto. */
+                        <div style={{ background: '#ffffff', borderRadius: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', marginBottom: '14px', overflow: 'hidden' }}>
+                            {dayBlocksByPeriod.flatMap(({ period, rows }) => rows.map(row => ({ period, row }))).map(({ period, row }, idx) => {
+                                const pStyle = periodColors[period] ?? periodColors['Otro'];
+                                const repeatDays = row.repeatDays || [0, 1, 2, 3, 4, 5, 6];
                                             const totalScheduledDays = repeatDays.length;
                                             
                                             // Count days completed in the current week
@@ -710,16 +669,18 @@ export const BloquesDashboard = ({
                                                 <div
                                                     key={row.key}
                                                     style={{
-                                                        background: '#ffffff',
-                                                        borderRadius: '12px',
-                                                        padding: '10px 10px 10px',
-                                                        boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                                                        padding: '8px 10px',
+                                                        borderTop: idx > 0 ? '1px solid #f3f4f5' : 'none',
                                                     }}
                                                 >
                                                     {/* Block info row */}
-                                                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '4px' }}>
                                                         <div style={{ flex: 1, minWidth: 0 }}>
-                                                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                <span
+                                                                    title={period}
+                                                                    style={{ width: '8px', height: '8px', borderRadius: '50%', background: pStyle.accentBg, flexShrink: 0 }}
+                                                                />
                                                                 <span style={{
                                                                     margin: 0, fontSize: '15px', fontWeight: '700',
                                                                     color: '#191c1d',
@@ -773,7 +734,7 @@ export const BloquesDashboard = ({
                                                     {/* Weekdays inline tracker (L, M, X, J, V, S, D): los días no
                                                         programados se reducen a un punto chico, sin letra — solo los
                                                         días que sí se pueden marcar tienen el peso visual de un botón. */}
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '4px', marginTop: '8px' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '4px', marginTop: '4px' }}>
                                                         {weekDays.map((day, idx) => {
                                                             const isRepeatDay = repeatDays.includes(idx);
 
@@ -785,33 +746,28 @@ export const BloquesDashboard = ({
                                                             const isDone = existingBlock?.completed ?? false;
                                                             const isToday = day.isToday;
 
-                                                            const dayLetters = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
-                                                            const dayLetter = dayLetters[idx];
-
                                                             if (!isRepeatDay) {
                                                                 return (
-                                                                    <div key={day.date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', flex: 1, height: '38px', justifyContent: 'center' }}>
+                                                                    <div key={day.date} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, height: '22px' }}>
                                                                         <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#e7e8e9' }} />
                                                                     </div>
                                                                 );
                                                             }
 
+                                                            // Sin letra: son puntos/círculos chicos, tocables para marcar el
+                                                            // día como hecho. "Hoy" se marca con un anillo, no con texto.
                                                             return (
-                                                                <div key={day.date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', flex: 1 }}>
-                                                                    <span style={{
-                                                                        fontSize: '10px',
-                                                                        fontWeight: '700',
-                                                                        color: isToday ? pStyle.color : '#877369',
-                                                                    }}>
-                                                                        {dayLetter}
-                                                                    </span>
+                                                                <div key={day.date} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
                                                                     <button
                                                                         onClick={() => handleCellToggle(row.label, row.period, day.date)}
+                                                                        title={['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][idx]}
                                                                         style={{
-                                                                            width: '24px',
-                                                                            height: '24px',
-                                                                            borderRadius: '7px',
+                                                                            width: '20px',
+                                                                            height: '20px',
+                                                                            borderRadius: '50%',
                                                                             border: isDone ? `2px solid ${pStyle.color}` : `1.5px solid ${pStyle.accentBg}`,
+                                                                            outline: isToday ? `2px solid ${pStyle.color}` : 'none',
+                                                                            outlineOffset: isToday ? '2px' : '0',
                                                                             background: isDone ? pStyle.accentBg : '#ffffff',
                                                                             cursor: 'pointer',
                                                                             display: 'flex',
@@ -822,7 +778,7 @@ export const BloquesDashboard = ({
                                                                         }}
                                                                     >
                                                                         {isDone && (
-                                                                            <span className="material-symbols-outlined" style={{ fontSize: '13px', color: '#ffffff', fontVariationSettings: "'FILL' 1" }}>
+                                                                            <span className="material-symbols-outlined" style={{ fontSize: '11px', color: '#ffffff', fontVariationSettings: "'FILL' 1" }}>
                                                                                 check
                                                                             </span>
                                                                         )}
@@ -834,10 +790,7 @@ export const BloquesDashboard = ({
                                                 </div>
                                             );
                                         })}
-                                    </div>
-                                </motion.div>
-                            );
-                        })
+                        </div>
                     )}
                 </div>
                 )}
