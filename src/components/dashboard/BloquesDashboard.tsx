@@ -716,79 +716,59 @@ export const BloquesDashboard = ({
                                                             )}
                                                         </div>
 
-                                                        {/* Progress badge: verde si ya completó todo lo de hoy en la semana, si no el acento de la jornada */}
-                                                        <span style={{
-                                                            background: daysCompleted >= totalScheduledDays && totalScheduledDays > 0 ? 'rgba(16,185,129,0.1)' : pStyle.bg,
-                                                            color: daysCompleted >= totalScheduledDays && totalScheduledDays > 0 ? '#0E9F6E' : pStyle.color,
-                                                            border: `1px solid ${daysCompleted >= totalScheduledDays && totalScheduledDays > 0 ? 'rgba(16,185,129,0.25)' : pStyle.border}`,
-                                                            borderRadius: '999px',
-                                                            padding: '4px 10px',
-                                                            fontSize: '11px',
-                                                            fontWeight: '700',
-                                                            flexShrink: 0
-                                                        }}>
-                                                            {daysCompleted}/{totalScheduledDays} Días
-                                                        </span>
-                                                    </div>
-
-                                                    {/* Weekdays inline tracker (L, M, X, J, V, S, D): los días no
-                                                        programados se reducen a un punto chico, sin letra — solo los
-                                                        días que sí se pueden marcar tienen el peso visual de un botón. */}
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '4px', marginTop: '4px' }}>
-                                                        {weekDays.map((day, idx) => {
-                                                            const isRepeatDay = repeatDays.includes(idx);
-
-                                                            const existingBlock = dailyBlocks.find(b =>
+                                                        {/* Checkbox de HOY: la marca de "hecho" vive acá (y en Checklist,
+                                                            misma data). Los puntitos de abajo ya no son tocables — son
+                                                            solo referencia de qué días repite esta rutina. */}
+                                                        {(() => {
+                                                            const todayEntry = weekDays.find(d => d.isToday);
+                                                            const isTodayScheduled = todayEntry ? repeatDays.includes(weekDays.indexOf(todayEntry)) : false;
+                                                            const todayBlock = todayEntry ? dailyBlocks.find(b =>
                                                                 b.label.toLowerCase() === row.label.toLowerCase() &&
                                                                 b.period === row.period &&
-                                                                b.date === day.date
-                                                            );
-                                                            const isDone = existingBlock?.completed ?? false;
-                                                            const isToday = day.isToday;
-
-                                                            if (!isRepeatDay) {
-                                                                return (
-                                                                    <div key={day.date} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, height: '22px' }}>
-                                                                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#e7e8e9' }} />
-                                                                    </div>
-                                                                );
-                                                            }
-
-                                                            // Sin letra: son puntos/círculos chicos, tocables para marcar el
-                                                            // día como hecho. "Hoy" se marca con un anillo, no con texto.
+                                                                b.date === todayEntry.date
+                                                            ) : undefined;
+                                                            const isTodayDone = todayBlock?.completed ?? false;
+                                                            if (!todayEntry || !isTodayScheduled) return null;
                                                             return (
-                                                                <div key={day.date} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
-                                                                    {/* Puro punto de referencia: sin borde/aro de "casilla" cuando no
-                                                                        está marcado, solo un puntito gris; al marcarlo se rellena del
-                                                                        color de la jornada. Sigue siendo tocable para marcar el día. */}
-                                                                    <button
-                                                                        onClick={() => handleCellToggle(row.label, row.period, day.date)}
-                                                                        title={['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][idx]}
-                                                                        style={{
-                                                                            width: '14px',
-                                                                            height: '14px',
-                                                                            borderRadius: '50%',
-                                                                            border: 'none',
-                                                                            outline: isToday ? `1.5px solid ${pStyle.color}` : 'none',
-                                                                            outlineOffset: '2px',
-                                                                            background: isDone ? pStyle.accentBg : '#e3e4e5',
-                                                                            cursor: 'pointer',
-                                                                            display: 'flex',
-                                                                            alignItems: 'center',
-                                                                            justifyContent: 'center',
-                                                                            transition: 'all 0.15s ease',
-                                                                            padding: 0,
-                                                                        }}
-                                                                    >
-                                                                        {isDone && (
-                                                                            <span className="material-symbols-outlined" style={{ fontSize: '9px', color: '#ffffff', fontVariationSettings: "'FILL' 1" }}>
-                                                                                check
-                                                                            </span>
-                                                                        )}
-                                                                    </button>
-                                                                </div>
+                                                                <button
+                                                                    onClick={() => handleCellToggle(row.label, row.period, todayEntry.date)}
+                                                                    title="Marcar hoy"
+                                                                    style={{
+                                                                        width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
+                                                                        border: isTodayDone ? 'none' : `2px solid ${pStyle.accentBg}`,
+                                                                        background: isTodayDone ? pStyle.accentBg : '#ffffff',
+                                                                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                        transition: 'all 0.15s ease', padding: 0,
+                                                                    }}
+                                                                >
+                                                                    {isTodayDone && (
+                                                                        <span className="material-symbols-outlined" style={{ fontSize: '15px', color: '#ffffff', fontVariationSettings: "'FILL' 1" }}>check</span>
+                                                                    )}
+                                                                </button>
+                                                            );
+                                                        })()}
+                                                    </div>
+
+                                                    {/* Días de la rutina: solo referencial (qué días repite), no tocable.
+                                                        Marcar "hecho" se hace con el checkbox de arriba o en Checklist. */}
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
+                                                        {weekDays.map((day, idx) => {
+                                                            const isRepeatDay = repeatDays.includes(idx);
+                                                            return (
+                                                                <span
+                                                                    key={day.date}
+                                                                    title={['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][idx]}
+                                                                    style={{
+                                                                        width: '8px', height: '8px', borderRadius: '50%',
+                                                                        background: isRepeatDay ? pStyle.accentBg : '#e7e8e9',
+                                                                        flexShrink: 0,
+                                                                    }}
+                                                                />
                                                             );
                                                         })}
+                                                        <span style={{ fontSize: '10px', color: '#877369', fontWeight: '600', marginLeft: '4px' }}>
+                                                            {daysCompleted}/{totalScheduledDays} días
+                                                        </span>
                                                     </div>
                                                 </div>
                                             );
