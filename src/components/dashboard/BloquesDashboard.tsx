@@ -644,14 +644,17 @@ export const BloquesDashboard = ({
                             const pStyle = periodColors[period] ?? periodColors['Otro'];
 
                             return (
-                                <motion.div 
-                                    key={period} 
+                                <motion.div
+                                    key={period}
                                     initial={{ opacity: 0, y: 8 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    style={{ 
-                                        background: '#ffffff',
+                                    style={{
+                                        background: pStyle.bg,
                                         borderRadius: '16px',
-                                        border: '1px solid #e7e8e9',
+                                        borderTop: `1px solid ${pStyle.border}`,
+                                        borderRight: `1px solid ${pStyle.border}`,
+                                        borderBottom: `1px solid ${pStyle.border}`,
+                                        borderLeft: `4px solid ${pStyle.accentBg}`,
                                         boxShadow: '0 4px 10px rgba(0,0,0,0.03)',
                                         padding: '20px 16px',
                                         marginBottom: '20px',
@@ -662,17 +665,18 @@ export const BloquesDashboard = ({
                                 >
                                     {/* Jornada Card Header */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        <div style={{ 
-                                            width: '36px', height: '36px', borderRadius: '50%', 
-                                            background: pStyle.bg, display: 'flex', 
-                                            alignItems: 'center', justifyContent: 'center', flexShrink: 0 
+                                        <div style={{
+                                            width: '36px', height: '36px', borderRadius: '50%',
+                                            background: pStyle.accentBg, display: 'flex',
+                                            alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                            boxShadow: `0 3px 8px ${pStyle.accentBg}66`,
                                         }}>
-                                            <span className="material-symbols-outlined" style={{ fontSize: '20px', color: pStyle.color }}>
+                                            <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#fff' }}>
                                                 {pStyle.icon}
                                             </span>
                                         </div>
                                         <div>
-                                            <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#191c1d' }}>
+                                            <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: pStyle.color }}>
                                                 {period}
                                             </h4>
                                             <p style={{ margin: 0, fontSize: '12px', color: '#877369', fontWeight: '500' }}>
@@ -683,7 +687,7 @@ export const BloquesDashboard = ({
 
                                     {/* List of routine blocks */}
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                                        {rows.map((row, rIdx) => {
+                                        {rows.map((row) => {
                                             const repeatDays = row.repeatDays || [0, 1, 2, 3, 4, 5, 6];
                                             const totalScheduledDays = repeatDays.length;
                                             
@@ -703,11 +707,13 @@ export const BloquesDashboard = ({
                                             const project = projects.find(p => p.id === row.projectId);
 
                                             return (
-                                                <div 
-                                                    key={row.key} 
-                                                    style={{ 
-                                                        borderTop: rIdx > 0 ? '1px solid #f3f4f5' : 'none', 
-                                                        paddingTop: rIdx > 0 ? '16px' : '0' 
+                                                <div
+                                                    key={row.key}
+                                                    style={{
+                                                        background: '#ffffff',
+                                                        borderRadius: '12px',
+                                                        padding: '12px 12px 14px',
+                                                        boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
                                                     }}
                                                 >
                                                     {/* Block info row */}
@@ -749,10 +755,11 @@ export const BloquesDashboard = ({
                                                             )}
                                                         </div>
 
-                                                        {/* Progress badge */}
+                                                        {/* Progress badge: verde si ya completó todo lo de hoy en la semana, si no el acento de la jornada */}
                                                         <span style={{
-                                                            background: 'rgba(72, 88, 171, 0.08)',
-                                                            color: '#4858ab',
+                                                            background: daysCompleted >= totalScheduledDays && totalScheduledDays > 0 ? 'rgba(16,185,129,0.1)' : pStyle.bg,
+                                                            color: daysCompleted >= totalScheduledDays && totalScheduledDays > 0 ? '#0E9F6E' : pStyle.color,
+                                                            border: `1px solid ${daysCompleted >= totalScheduledDays && totalScheduledDays > 0 ? 'rgba(16,185,129,0.25)' : pStyle.border}`,
                                                             borderRadius: '999px',
                                                             padding: '4px 10px',
                                                             fontSize: '11px',
