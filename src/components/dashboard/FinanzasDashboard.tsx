@@ -599,7 +599,6 @@ export const FinanzasDashboard = ({
     const [showTxForm, setShowTxForm] = useState(false);
     const [selectedProject, setSelectedProject] = useState<any>(null);
     const [showAnalytics, setShowAnalytics] = useState(false);
-    const [chartPeriod, setChartPeriod] = useState<"7d" | "30d">("7d");
 
     // ── Accounts ──────────────────────────────────────────────────────────
     const accountsWithBalance = useMemo(() =>
@@ -660,23 +659,6 @@ export const FinanzasDashboard = ({
         setAccounts(prev => [...prev, { id: Date.now(), name: newAccountName, color: newAccountColor, projectIds: [] }]);
         setNewAccountName(""); setIsAddingAccount(false);
     };
-
-    // ── Chart ─────────────────────────────────────────────────────────────
-    const historyData = useMemo(() => {
-        const days = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-        const count = chartPeriod === "7d" ? 7 : 30;
-        return Array.from({ length: count }, (_, i) => {
-            const d = new Date(); d.setDate(d.getDate() - (count - 1 - i));
-            const dateStr = d.toLocaleDateString("en-CA");
-            const label = i === count - 1 ? "Hoy" : (chartPeriod === "7d" ? days[d.getDay()] : String(d.getDate()));
-            const dayTxs = transactions.filter(tx => tx.fullDate === dateStr && !tx.isDebt);
-            return {
-                day: label,
-                inc: dayTxs.filter(t => t.type === "ingreso").reduce((s, t) => s + (Number(t.amount) || 0), 0),
-                exp: dayTxs.filter(t => t.type === "gasto").reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0),
-            };
-        });
-    }, [transactions, chartPeriod]);
 
     // ─────────────────────────────────────────────────────────────────────
     /* ── Las tres lecturas, como variables para poder reutilizarlas ── */
@@ -1355,37 +1337,8 @@ export const FinanzasDashboard = ({
 
             </div>
 
-            {/* ── Row 5: Chart + Debts ─── */}
+            {/* ── Row 5: Debts ─── */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
-
-                {/* Cash flow chart */}
-                <div style={{ ...CARD, display: "flex", flexDirection: "column", minHeight: "240px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-                        <span style={{ fontSize: "0.9rem", fontWeight: 800 }}>Flujo de Caja</span>
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <PillToggle options={["7d", "30d"]} value={chartPeriod} onChange={v => setChartPeriod(v as any)} />
-                        </div>
-                    </div>
-                    <div style={{ display: "flex", gap: "10px", marginBottom: "6px" }}>
-                        <LegendDot color={C.verde} label="Ingresos" />
-                        <LegendDot color={C.rojo} label="Gastos" />
-                    </div>
-                    <div style={{ display: "flex", flex: 1, alignItems: "flex-end", gap: chartPeriod === "7d" ? "8px" : "3px", padding: "4px 0" }}>
-                        {historyData.map((data, i) => {
-                            const maxVal = Math.max(...historyData.map(h => Math.max(h.inc, h.exp)), 1);
-                            const w = chartPeriod === "7d" ? "9px" : "4px";
-                            return (
-                                <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", height: "100%", justifyContent: "flex-end" }}>
-                                    <div style={{ display: "flex", gap: "1px", alignItems: "flex-end", height: "100%", width: "100%", justifyContent: "center" }}>
-                                        <motion.div initial={{ height: 0 }} animate={{ height: `${(data.inc / maxVal) * 100}%` }} transition={{ duration: 0.4 }} style={{ width: w, background: C.verde, borderRadius: "2px 2px 0 0", opacity: 0.85 }} />
-                                        <motion.div initial={{ height: 0 }} animate={{ height: `${(data.exp / maxVal) * 100}%` }} transition={{ duration: 0.4 }} style={{ width: w, background: C.rojo, borderRadius: "2px 2px 0 0", opacity: 0.85 }} />
-                                    </div>
-                                    <span style={{ fontSize: "0.42rem", color: C.outline }}>{data.day}</span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
 
                 {/* Debts & collections */}
                 <div 
@@ -1592,13 +1545,6 @@ export const FinanzasDashboard = ({
 };
 
 // ─── Shared micro-components ──────────────────────────────────────────────────
-const LegendDot = ({ color, label }: { color: string; label: string }) => (
-    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-        <div style={{ width: "8px", height: "8px", borderRadius: "2px", background: color }} />
-        <span style={{ fontSize: "0.58rem", color: C.onSurfaceVariant }}>{label}</span>
-    </div>
-);
-
 export const PillToggle = ({ options, labels, value, onChange }: { options: string[]; labels?: string[]; value: string; onChange: (v: string) => void }) => (
     <div style={{ display: "flex", background: C.surfaceContainerLow, padding: "2px", borderRadius: "10px", gap: "2px" }}>
         {options.map((o, i) => (
