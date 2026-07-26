@@ -758,17 +758,20 @@ export const BloquesDashboard = ({
                                                             // día como hecho. "Hoy" se marca con un anillo, no con texto.
                                                             return (
                                                                 <div key={day.date} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+                                                                    {/* Puro punto de referencia: sin borde/aro de "casilla" cuando no
+                                                                        está marcado, solo un puntito gris; al marcarlo se rellena del
+                                                                        color de la jornada. Sigue siendo tocable para marcar el día. */}
                                                                     <button
                                                                         onClick={() => handleCellToggle(row.label, row.period, day.date)}
                                                                         title={['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][idx]}
                                                                         style={{
-                                                                            width: '15px',
-                                                                            height: '15px',
+                                                                            width: '14px',
+                                                                            height: '14px',
                                                                             borderRadius: '50%',
-                                                                            border: isDone ? `2px solid ${pStyle.color}` : `1.5px solid ${pStyle.accentBg}`,
-                                                                            outline: isToday ? `2px solid ${pStyle.color}` : 'none',
-                                                                            outlineOffset: isToday ? '1.5px' : '0',
-                                                                            background: isDone ? pStyle.accentBg : '#ffffff',
+                                                                            border: 'none',
+                                                                            outline: isToday ? `1.5px solid ${pStyle.color}` : 'none',
+                                                                            outlineOffset: '2px',
+                                                                            background: isDone ? pStyle.accentBg : '#e3e4e5',
                                                                             cursor: 'pointer',
                                                                             display: 'flex',
                                                                             alignItems: 'center',
