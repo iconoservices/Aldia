@@ -762,12 +762,12 @@ export const BloquesDashboard = ({
                                                                         onClick={() => handleCellToggle(row.label, row.period, day.date)}
                                                                         title={['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][idx]}
                                                                         style={{
-                                                                            width: '20px',
-                                                                            height: '20px',
+                                                                            width: '15px',
+                                                                            height: '15px',
                                                                             borderRadius: '50%',
                                                                             border: isDone ? `2px solid ${pStyle.color}` : `1.5px solid ${pStyle.accentBg}`,
                                                                             outline: isToday ? `2px solid ${pStyle.color}` : 'none',
-                                                                            outlineOffset: isToday ? '2px' : '0',
+                                                                            outlineOffset: isToday ? '1.5px' : '0',
                                                                             background: isDone ? pStyle.accentBg : '#ffffff',
                                                                             cursor: 'pointer',
                                                                             display: 'flex',
@@ -778,7 +778,7 @@ export const BloquesDashboard = ({
                                                                         }}
                                                                     >
                                                                         {isDone && (
-                                                                            <span className="material-symbols-outlined" style={{ fontSize: '11px', color: '#ffffff', fontVariationSettings: "'FILL' 1" }}>
+                                                                            <span className="material-symbols-outlined" style={{ fontSize: '9px', color: '#ffffff', fontVariationSettings: "'FILL' 1" }}>
                                                                                 check
                                                                             </span>
                                                                         )}
