@@ -480,7 +480,6 @@ export const FinanzasDashboard = ({
 
     const [showAllFixedIncomes, setShowAllFixedIncomes] = useState(false);
     const [showAllFixedExpenses, setShowAllFixedExpenses] = useState(false);
-    const [showAllDebts, setShowAllDebts] = useState(false);
     const LISTA_VISIBLE = 3;
     const toggleDebtActive = (key: string) => setDebtActiveMap(m => ({ ...m, [key]: !(m[key] ?? true) }));
     const [payInputs, setPayInputs] = useState<Record<string, string>>({});
@@ -1531,7 +1530,7 @@ const feInputStyle: React.CSSProperties = { padding: "7px 9px", borderRadius: "9
 const feLabelStyle: React.CSSProperties = { fontSize: "0.62rem", fontWeight: 800, color: C.outline, textTransform: "uppercase", letterSpacing: "0.03em", marginBottom: "3px", display: "block" };
 
 // ─── Fixed expense row ────────────────────────────────────────────────────────
-const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, updateFixedExpense, markFixedExpensePaid, payFixedExpensePartial, unmarkFixedExpensePaid, isPaid, accounts, projects }: any) => {
+const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, updateFixedExpense, payFixedExpensePartial, unmarkFixedExpensePaid, isPaid, accounts, projects }: any) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(expense.text);
     const [editAmount, setEditAmount] = useState(String(expense.amount));
@@ -1751,7 +1750,7 @@ const NewFixedExpenseForm = ({ addFixedExpense, projects, accounts }: any) => {
 };
 
 // ─── Fixed income row ─────────────────────────────────────────────────────────
-const FixedIncomeRow = ({ item, toggleFixedIncome, removeFixedIncome, updateFixedIncome, markFixedIncomeReceived, receiveFixedIncomePartial, unmarkFixedIncomeReceived, isReceived, accounts }: any) => {
+const FixedIncomeRow = ({ item, toggleFixedIncome, removeFixedIncome, updateFixedIncome, receiveFixedIncomePartial, unmarkFixedIncomeReceived, isReceived, accounts }: any) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(item.name);
     const [editAmount, setEditAmount] = useState(String(item.amount));
