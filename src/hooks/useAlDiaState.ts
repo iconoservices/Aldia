@@ -65,6 +65,7 @@ export interface Transaction {
     accountId?: number;
     category?: string;
     contact?: string;
+    dueDate?: string; // YYYY-MM-DD, opcional — usado por deudas/préstamos
 }
 
 export interface Account {
@@ -910,8 +911,8 @@ export const useAlDiaState = () => {
         toggleFixedExpense: lw(toggleFixedExpense), updateFixedExpense: lw(updateFixedExpense),
         markFixedExpensePaid: lw(markFixedExpensePaid), payFixedExpensePartial: lw(payFixedExpensePartial), unmarkFixedExpensePaid: lw(unmarkFixedExpensePaid),
         repayDebt: lw(repayDebtBase),
-        addTransaction: lw((text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projId?: number, accId?: number, isCashless?: boolean, cat?: string, contact?: string) => {
-            addTransaction(text, amount, type, isDebt, projId, accId, isCashless, cat, contact);
+        addTransaction: lw((text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projId?: number, accId?: number, isCashless?: boolean, cat?: string, contact?: string, dueDate?: string) => {
+            addTransaction(text, amount, type, isDebt, projId, accId, isCashless, cat, contact, dueDate);
             if (projId && accId) {
                 setAccounts(prev => prev.map(acc => {
                     if (acc.id === accId && !acc.projectIds?.includes(projId)) {

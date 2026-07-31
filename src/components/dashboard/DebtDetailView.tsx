@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, UserMinus, UserPlus, Wallet, History, CreditCard, Trash2, Edit2, Check, X, Plus } from 'lucide-react';
+import { ArrowLeft, UserMinus, UserPlus, Wallet, History, CreditCard, Trash2, Edit2, Check, X, Plus, Calendar } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import type { Transaction, Account } from '../../hooks/useAlDiaState';
 
 interface DebtDetailViewProps {
@@ -11,8 +12,8 @@ interface DebtDetailViewProps {
     onClose: () => void;
     repayDebt: (originalTx: Transaction, amount: number, accountId: number) => void;
     removeTransaction: (id: number) => void;
-    updateTransactionGroup: (oldText: string, oldContact: string | undefined, updates: { text?: string, contact?: string, amount?: number }, originalId: number) => void;
-    addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string) => void;
+    updateTransactionGroup: (oldText: string, oldContact: string | undefined, updates: { text?: string, contact?: string, amount?: number, accountId?: number, dueDate?: string }, originalId: number) => void;
+    addTransaction: (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string, dueDate?: string) => void;
 }
 
 export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, repayDebt, removeTransaction, updateTransactionGroup, addTransaction }: DebtDetailViewProps) => {
@@ -25,12 +26,18 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
     const [editName, setEditName] = useState('');
     const [editAmount, setEditAmount] = useState('');
     const [editContact, setEditContact] = useState('');
-    
+    const [editAccountId, setEditAccountId] = useState<number | undefined>(undefined);
+    const [editDueDate, setEditDueDate] = useState('');
+
+    const [confirmDelete, setConfirmDelete] = useState<{ id: number; name: string } | null>(null);
+
     // New Debt Form
     const [isAddingMode, setIsAddingMode] = useState(false);
     const [newName, setNewName] = useState('');
     const [newAmount, setNewAmount] = useState('');
     const [newContact, setNewContact] = useState('');
+    const [newAccountId, setNewAccountId] = useState<number | undefined>(accounts[0]?.id);
+    const [newDueDate, setNewDueDate] = useState('');
     const [isCashTransaction, setIsCashTransaction] = useState(false); // ¿Salió/entró efectivo real?
 
     const debtList = useMemo(() => {
@@ -86,19 +93,13 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
         }
     };
 
-    const handleDelete = (txId: number) => {
-        if (window.confirm('¿Estás seguro de que quieres eliminar esta deuda? También se perderá el registro de sus abonos asociados.')) {
-            // Nota: En una implementación más robusta, buscaríamos transacciones de pago con el mismo texto y las borraríamos también.
-            // Por ahora, borramos la deuda original.
-            removeTransaction(txId);
-        }
-    };
-
     const handleUpdate = (item: any) => {
         updateTransactionGroup(item.name, item.contact, {
             text: editName,
             amount: parseFloat(editAmount) || 0,
-            contact: editContact
+            contact: editContact,
+            accountId: editAccountId,
+            dueDate: editDueDate || undefined
         }, item.originalTx.id);
         setEditingId(null);
     };
@@ -214,7 +215,32 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
                                 </div>
                             </div>
 
-                            <button 
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                {accounts.length > 0 && (
+                                    <div style={{ position: 'relative', flex: 1 }}>
+                                        <label style={{ fontSize: '0.55rem', fontWeight: 900, color: '#AAA', position: 'absolute', top: '4px', left: '8px', textTransform: 'uppercase' }}>¿Qué cuenta?</label>
+                                        <select
+                                            value={newAccountId ?? ''}
+                                            onChange={(e) => setNewAccountId(e.target.value ? Number(e.target.value) : undefined)}
+                                            style={{ width: '100%', padding: '14px 10px 4px 10px', borderRadius: '10px', border: '1px solid #EEE', fontSize: '0.85rem', fontWeight: 800, boxSizing: 'border-box', background: 'white', cursor: 'pointer' }}
+                                        >
+                                            <option value="">Sin cuenta</option>
+                                            {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+                                        </select>
+                                    </div>
+                                )}
+                                <div style={{ position: 'relative', flex: 1 }}>
+                                    <label style={{ fontSize: '0.55rem', fontWeight: 900, color: '#AAA', position: 'absolute', top: '4px', left: '8px', textTransform: 'uppercase' }}>Fecha límite (opcional)</label>
+                                    <input
+                                        type="date"
+                                        value={newDueDate}
+                                        onChange={(e) => setNewDueDate(e.target.value)}
+                                        style={{ width: '100%', padding: '14px 10px 4px 10px', borderRadius: '10px', border: '1px solid #EEE', fontSize: '0.8rem', fontWeight: 700, boxSizing: 'border-box' }}
+                                    />
+                                </div>
+                            </div>
+
+                            <button
                                 type="button"
                                 onClick={() => setIsCashTransaction(!isCashTransaction)}
                                 style={{ 
@@ -251,15 +277,17 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
                                         type,
                                         true, // isDebt
                                         undefined, // projId
-                                        accounts[0]?.id, // default account
+                                        newAccountId,
                                         !isCashTransaction, // isCashless
                                         'Deudas',
-                                        newContact
+                                        newContact,
+                                        newDueDate || undefined
                                     );
                                     setIsAddingMode(false);
                                     setNewAmount('');
                                     setNewName('');
                                     setNewContact('');
+                                    setNewDueDate('');
                                 }}
                                 style={{ 
                                     background: mode === 'owe' ? '#ef4444' : '#10b981', color: 'white', border: 'none', 
@@ -303,26 +331,44 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
                                 <div style={{ flex: 1 }}>
                                     {editingId === idx ? (
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                            <input 
+                                            <input
                                                 value={editContact}
                                                 onChange={(e) => setEditContact(e.target.value)}
                                                 placeholder="Nombre / Cliente"
                                                 style={{ padding: '6px', borderRadius: '8px', border: '1px solid #DDD', fontSize: '0.8rem', fontWeight: 800, background: '#F8FAFC' }}
                                             />
-                                            <input 
+                                            <input
                                                 value={editName}
                                                 onChange={(e) => setEditName(e.target.value)}
                                                 style={{ padding: '6px', borderRadius: '8px', border: '1px solid #DDD', fontSize: '0.85rem', fontWeight: 900 }}
                                             />
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <input 
+                                                <input
                                                     type="number"
                                                     value={editAmount}
                                                     onChange={(e) => setEditAmount(e.target.value)}
                                                     style={{ width: '80px', padding: '6px', borderRadius: '8px', border: '1px solid #DDD', fontSize: '0.85rem', fontWeight: 900 }}
                                                 />
-                                                <button onClick={() => handleUpdate(item)} style={{ background: 'var(--domain-green)', border: 'none', borderRadius: '6px', padding: '4px', cursor: 'pointer' }}><Check size={14} color="white" /></button>
-                                                <button onClick={() => setEditingId(null)} style={{ background: '#EEE', border: 'none', borderRadius: '6px', padding: '4px', cursor: 'pointer' }}><X size={14} color="#888" /></button>
+                                                {accounts.length > 0 && (
+                                                    <select
+                                                        value={editAccountId ?? ''}
+                                                        onChange={(e) => setEditAccountId(e.target.value ? Number(e.target.value) : undefined)}
+                                                        style={{ flex: 1, padding: '6px', borderRadius: '8px', border: '1px solid #DDD', fontSize: '0.75rem', fontWeight: 800, background: 'white', cursor: 'pointer' }}
+                                                    >
+                                                        <option value="">Sin cuenta</option>
+                                                        {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+                                                    </select>
+                                                )}
+                                            </div>
+                                            <input
+                                                type="date"
+                                                value={editDueDate}
+                                                onChange={(e) => setEditDueDate(e.target.value)}
+                                                style={{ padding: '6px', borderRadius: '8px', border: '1px solid #DDD', fontSize: '0.78rem', fontWeight: 700 }}
+                                            />
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <button onClick={() => handleUpdate(item)} style={{ background: 'var(--domain-green)', border: 'none', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', color: 'white', fontSize: '0.72rem', fontWeight: 800 }}><Check size={14} /> Guardar</button>
+                                                <button onClick={() => setEditingId(null)} style={{ background: '#EEE', border: 'none', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', color: '#888', fontSize: '0.72rem', fontWeight: 800 }}><X size={14} /> Cancelar</button>
                                             </div>
                                         </div>
                                     ) : (
@@ -333,7 +379,23 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
                                                 </span>
                                             )}
                                             <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{item.name}</h4>
-                                            <span style={{ fontSize: '0.65rem', color: '#AAA', fontWeight: 600 }}>{item.originalTx.date} - {item.originalTx.fullDate}</span>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                                                <span style={{ fontSize: '0.65rem', color: '#AAA', fontWeight: 600 }}>{item.originalTx.date} - {item.originalTx.fullDate}</span>
+                                                {item.originalTx.accountId && accounts.find(a => a.id === item.originalTx.accountId) ? (
+                                                    <span style={{ fontSize: '0.62rem', fontWeight: 800, color: '#64748B', background: '#F1F5F9', padding: '2px 7px', borderRadius: '999px' }}>
+                                                        {accounts.find(a => a.id === item.originalTx.accountId)!.name}
+                                                    </span>
+                                                ) : (
+                                                    <span style={{ fontSize: '0.62rem', fontWeight: 800, color: '#ef4444', background: '#fee2e2', padding: '2px 7px', borderRadius: '999px' }}>
+                                                        sin cuenta
+                                                    </span>
+                                                )}
+                                                {item.originalTx.dueDate && (
+                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '0.62rem', fontWeight: 800, color: '#B45309', background: '#FEF3C7', padding: '2px 7px', borderRadius: '999px' }}>
+                                                        <Calendar size={9} /> {item.originalTx.dueDate}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </>
                                     )}
                                 </div>
@@ -341,25 +403,29 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
                                     <span style={{ display: 'block', fontSize: '1.1rem', fontWeight: 900, color: mode === 'owe' ? '#ef4444' : '#10b981' }}>
                                         S/.{item.amount.toLocaleString()}
                                     </span>
-                                    <div style={{ display: 'flex', gap: '8px' }}>
-                                        <button 
-                                            onClick={() => { 
-                                                setEditingId(idx); 
-                                                setEditName(item.name); 
-                                                setEditAmount(item.originalTx.amount.toString()); 
-                                                setEditContact(item.contact || '');
-                                            }}
-                                            style={{ background: 'transparent', border: 'none', color: '#CBD5E1', cursor: 'pointer', padding: '4px' }}
-                                        >
-                                            <Edit2 size={12} />
-                                        </button>
-                                        <button 
-                                            onClick={() => handleDelete(item.originalTx.id)}
-                                            style={{ background: 'transparent', border: 'none', color: '#fee2e2', cursor: 'pointer', padding: '4px' }}
-                                        >
-                                            <Trash2 size={12} color="#f87171" style={{ opacity: 0.5 }} />
-                                        </button>
-                                    </div>
+                                    {editingId !== idx && (
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <button
+                                                onClick={() => {
+                                                    setEditingId(idx);
+                                                    setEditName(item.name);
+                                                    setEditAmount(item.originalTx.amount.toString());
+                                                    setEditContact(item.contact || '');
+                                                    setEditAccountId(item.originalTx.accountId);
+                                                    setEditDueDate(item.originalTx.dueDate || '');
+                                                }}
+                                                style={{ background: 'transparent', border: 'none', color: '#CBD5E1', cursor: 'pointer', padding: '4px' }}
+                                            >
+                                                <Edit2 size={12} />
+                                            </button>
+                                            <button
+                                                onClick={() => setConfirmDelete({ id: item.originalTx.id, name: item.name })}
+                                                style={{ background: 'transparent', border: 'none', color: '#fee2e2', cursor: 'pointer', padding: '4px' }}
+                                            >
+                                                <Trash2 size={12} color="#f87171" style={{ opacity: 0.5 }} />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -403,8 +469,8 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
                                         </div>
                                     </motion.div>
                                 ) : (
-                                    <button 
-                                        onClick={() => { setRepayingId(idx); setRepayAmount(item.amount.toString()); }}
+                                    <button
+                                        onClick={() => { setRepayingId(idx); setRepayAmount(item.amount.toString()); setSelectedAccountId(item.originalTx.accountId || accounts[0]?.id || 0); }}
                                         style={{ 
                                             width: '100%', padding: '8px', borderRadius: '12px', border: 'none',
                                             background: mode === 'owe' ? '#fee2e2' : '#dcfce7',
@@ -429,6 +495,16 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
                     )}
                 </div>
             </div>
+
+            <ConfirmDialog
+                open={!!confirmDelete}
+                title={mode === 'owe' ? 'Eliminar deuda' : 'Eliminar préstamo'}
+                message={`¿Eliminar "${confirmDelete?.name ?? ''}"? También se pierde el registro de sus abonos asociados.`}
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                onConfirm={() => { if (confirmDelete) removeTransaction(confirmDelete.id); setConfirmDelete(null); }}
+                onCancel={() => setConfirmDelete(null)}
+            />
         </motion.div>
     );
 };

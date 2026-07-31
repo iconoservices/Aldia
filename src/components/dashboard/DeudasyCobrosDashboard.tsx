@@ -2,13 +2,14 @@
 import { motion, AnimatePresence } from "framer-motion";
 import type { Transaction } from "../../hooks/useAlDiaState";
 import { useIsMobile } from "../../theme";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 
 interface DeudasyCobrosDashboardProps {
     transactions: Transaction[];
     addTransaction: (
         text: string, amount: number, type: "ingreso" | "gasto",
         isDebt: boolean, projectId?: number, accountId?: number,
-        isCashless?: boolean, category?: string, contact?: string
+        isCashless?: boolean, category?: string, contact?: string, dueDate?: string
     ) => void;
     removeTransaction: (id: number) => void;
     repayDebt: (originalTx: Transaction, amount: number, accountId: number) => void;
@@ -28,7 +29,8 @@ type FilterEstado = "todos" | "vencido" | "proximo" | "pendiente" | "confirmado"
 const getEstadoBadge = (tx: Transaction): { label: string; bg: string; text: string } => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const txDate = tx.fullDate ? new Date(tx.fullDate + "T12:00:00") : null;
+    const refDate = tx.dueDate || tx.fullDate;
+    const txDate = refDate ? new Date(refDate + "T12:00:00") : null;
 
     if (!txDate) return { label: "Pendiente", bg: "#E2E8F0", text: "#475569" };
 
@@ -154,10 +156,12 @@ export const DeudasyCobrosDashboard = ({
     const [newContact, setNewContact] = useState("");
     const [newAmount, setNewAmount] = useState("");
     const [newAccountId, setNewAccountId] = useState<string>("");
+    const [newDueDate, setNewDueDate] = useState<string>("");
     const [confirmPayId, setConfirmPayId] = useState<number | null>(null);
     const [editingTx, setEditingTx] = useState<Transaction | null>(null);
     const [abonarId, setAbonarId] = useState<number | null>(null);
     const [abonarAmount, setAbonarAmount] = useState<Record<number, string>>({});
+    const [confirmDeleteTx, setConfirmDeleteTx] = useState<Transaction | null>(null);
 
     const handleAbonar = (tx: Transaction, amount: number) => {
         if (amount <= 0) return;
@@ -182,7 +186,8 @@ export const DeudasyCobrosDashboard = ({
         setNewContact(tx.contact || "");
         setNewAmount(String(Math.abs(tx.amount)));
         setNewType(tx.type);
-        setNewAccountId("");
+        setNewAccountId(tx.accountId ? String(tx.accountId) : "");
+        setNewDueDate(tx.dueDate || "");
         setShowAddModal(true);
     };
 
@@ -198,24 +203,28 @@ export const DeudasyCobrosDashboard = ({
             newType,
             true,
             undefined,
-            undefined,
+            newAccountId ? Number(newAccountId) : undefined,
             // isCashless: la deuda en sí no es un movimiento de caja real, así que no debe
             // restar/sumar en Balance/Patrimonio Neto por su cuenta — solo cuenta "Debo/Me Deben".
             true,
             "Deudas",
-            newContact.trim() || undefined
+            newContact.trim() || undefined,
+            newDueDate || undefined
         );
         setEditingTx(null);
         setShowAddModal(false);
         setNewText("");
         setNewContact("");
         setNewAmount("");
+        setNewAccountId("");
+        setNewDueDate("");
     };
 
-    const handleDelete = (tx: Transaction) => {
-        if (confirm(`¿Eliminar esta ${tx.type === "gasto" ? "deuda" : "cobro"} de S/ ${Math.abs(tx.amount).toFixed(2)}?`)) {
-            removeTransaction(tx.id);
-        }
+    const handleDelete = (tx: Transaction) => setConfirmDeleteTx(tx);
+
+    const confirmDeleteNow = () => {
+        if (confirmDeleteTx) removeTransaction(confirmDeleteTx.id);
+        setConfirmDeleteTx(null);
     };
 
     const debtTxs = useMemo(() =>
@@ -254,14 +263,17 @@ export const DeudasyCobrosDashboard = ({
             newType,
             true,
             undefined,
-            undefined,
+            // accountId aquí es solo metadata (a qué cuenta pertenece la deuda) —
+            // no mueve efectivo por sí sola, eso lo hace la transacción real de abajo.
+            newAccountId ? Number(newAccountId) : undefined,
             // isCashless: la deuda en sí no es un movimiento de caja real (haya o no
             // cuenta ligada) — si hay cuenta, el efectivo lo cuenta la transacción real
             // de abajo; si no la hay, todavía no hay caja de por medio. Sin esto, cada
             // deuda restaba/sumaba el doble en Balance/Patrimonio Neto.
             true,
             undefined,
-            newContact.trim() || undefined
+            newContact.trim() || undefined,
+            newDueDate || undefined
         );
         // Si se eligió cuenta, el efectivo también se mueve de verdad:
         // "Debo" (gasto) = me prestaron, entra plata a la cuenta.
@@ -279,7 +291,7 @@ export const DeudasyCobrosDashboard = ({
                 newContact.trim() || undefined
             );
         }
-        setNewText(""); setNewContact(""); setNewAmount(""); setNewAccountId("");
+        setNewText(""); setNewContact(""); setNewAmount(""); setNewAccountId(""); setNewDueDate("");
         setShowAddModal(false);
     };
 
@@ -333,7 +345,7 @@ export const DeudasyCobrosDashboard = ({
                                 <td style={{ ...TD, fontWeight: 700, color: "#BA1A1A", fontVariantNumeric: "tabular-nums" }}>
                                     {formatCurrency(tx.amount)}
                                 </td>
-                                <td style={{ ...TD, color: "#424754", fontSize: "0.82rem" }}>{formatDate(tx.fullDate)}</td>
+                                <td style={{ ...TD, color: "#424754", fontSize: "0.82rem" }}>{formatDate(tx.dueDate || tx.fullDate)}</td>
                                 <td style={TD}>
                                     <span style={{ padding: "3px 10px", borderRadius: "999px", background: badge.bg, color: badge.text, fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
                                         {badge.label}
@@ -415,7 +427,7 @@ export const DeudasyCobrosDashboard = ({
                                 <td style={{ ...TD, fontWeight: 700, color: "#10B981", fontVariantNumeric: "tabular-nums" }}>
                                     {formatCurrency(tx.amount)}
                                 </td>
-                                <td style={{ ...TD, color: "#424754", fontSize: "0.82rem" }}>{formatDate(tx.fullDate)}</td>
+                                <td style={{ ...TD, color: "#424754", fontSize: "0.82rem" }}>{formatDate(tx.dueDate || tx.fullDate)}</td>
                                 <td style={TD}>
                                     <span style={{ padding: "3px 10px", borderRadius: "999px", background: badge.bg, color: badge.text, fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
                                         {badge.label}
@@ -485,7 +497,7 @@ export const DeudasyCobrosDashboard = ({
                             </div>
                             <div style={{ textAlign: "right", flexShrink: 0 }}>
                                 <div style={{ fontWeight: 700, color: "#BA1A1A", fontSize: "0.82rem", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(tx.amount)}</div>
-                                <div style={{ fontSize: "0.6rem", color: "#424754" }}>{formatDate(tx.fullDate)}</div>
+                                <div style={{ fontSize: "0.6rem", color: "#424754" }}>{formatDate(tx.dueDate || tx.fullDate)}</div>
                             </div>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px", gap: "6px" }}>
@@ -538,7 +550,7 @@ export const DeudasyCobrosDashboard = ({
                             </div>
                             <div style={{ textAlign: "right", flexShrink: 0 }}>
                                 <div style={{ fontWeight: 700, color: "#10B981", fontSize: "0.82rem", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(tx.amount)}</div>
-                                <div style={{ fontSize: "0.6rem", color: "#424754" }}>{formatDate(tx.fullDate)}</div>
+                                <div style={{ fontSize: "0.6rem", color: "#424754" }}>{formatDate(tx.dueDate || tx.fullDate)}</div>
                             </div>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px", gap: "6px", flexWrap: "wrap" }}>
@@ -722,7 +734,7 @@ export const DeudasyCobrosDashboard = ({
                             >
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
                             <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#191B23", fontFamily: "'Inter',sans-serif" }}>{editingTx ? "Editar Deuda / Cobro" : "Agregar Deuda / Cobro"}</h3>
-                            <button onClick={() => { setShowAddModal(false); setEditingTx(null); setNewAccountId(""); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#727785", padding: "4px" }}>
+                            <button onClick={() => { setShowAddModal(false); setEditingTx(null); setNewAccountId(""); setNewDueDate(""); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#727785", padding: "4px" }}>
                                 <span className="material-symbols-outlined">close</span>
                             </button>
                         </div>
@@ -760,6 +772,39 @@ export const DeudasyCobrosDashboard = ({
                                 </div>
                             ))}
 
+                            <div style={{ marginBottom: "1rem" }}>
+                                <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#424754", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Inter',sans-serif" }}>
+                                    Fecha límite (opcional)
+                                </label>
+                                <input
+                                    type="date"
+                                    value={newDueDate}
+                                    onChange={e => setNewDueDate(e.target.value)}
+                                    style={{ width: "100%", padding: "10px 12px", border: "1px solid #C2C6D6", borderRadius: "8px", fontFamily: "'Inter',sans-serif", fontSize: "0.9rem", color: "#191B23", boxSizing: "border-box" as const, outline: "none" }}
+                                />
+                            </div>
+
+                            {editingTx && (
+                                <div style={{ marginBottom: "1rem" }}>
+                                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#424754", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Inter',sans-serif" }}>
+                                        ¿A qué cuenta pertenece? (referencia)
+                                    </label>
+                                    <select
+                                        value={newAccountId}
+                                        onChange={e => setNewAccountId(e.target.value)}
+                                        style={{ width: "100%", padding: "10px 12px", border: "1px solid #C2C6D6", borderRadius: "8px", fontFamily: "'Inter',sans-serif", fontSize: "0.9rem", color: "#191B23", boxSizing: "border-box" as const, outline: "none", background: "#fff" }}
+                                    >
+                                        <option value="">Sin cuenta asignada</option>
+                                        {accounts.map(acc => (
+                                            <option key={acc.id} value={acc.id}>{acc.name}</option>
+                                        ))}
+                                    </select>
+                                    <p style={{ margin: "6px 0 0", fontSize: "0.7rem", color: "#424754" }}>
+                                        Solo cambia la referencia — para mover efectivo de verdad usa "Abonar".
+                                    </p>
+                                </div>
+                            )}
+
                             {!editingTx && (
                                 <div style={{ marginBottom: "1rem" }}>
                                     <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#424754", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Inter',sans-serif" }}>
@@ -786,7 +831,7 @@ export const DeudasyCobrosDashboard = ({
                             )}
 
 <div style={{ display: "flex", gap: "8px", marginTop: "1.5rem" }}>
-                                <button onClick={() => { setShowAddModal(false); setEditingTx(null); setNewAccountId(""); }} style={{ ...BTN_SECONDARY, flex: 1, justifyContent: "center" }}>Cancelar</button>
+                                <button onClick={() => { setShowAddModal(false); setEditingTx(null); setNewAccountId(""); setNewDueDate(""); }} style={{ ...BTN_SECONDARY, flex: 1, justifyContent: "center" }}>Cancelar</button>
                                 <button onClick={editingTx ? handleSaveEdit : handleAdd} style={{ ...BTN_PRIMARY, flex: 1, justifyContent: "center" }}>{editingTx ? "Guardar Cambios" : "Guardar"}</button>
                             </div>
                             </motion.div>
@@ -794,6 +839,16 @@ export const DeudasyCobrosDashboard = ({
                     </>
                 )}
             </AnimatePresence>
+
+            <ConfirmDialog
+                open={!!confirmDeleteTx}
+                title={confirmDeleteTx?.type === "gasto" ? "Eliminar deuda" : "Eliminar cobro"}
+                message={confirmDeleteTx ? `¿Eliminar "${confirmDeleteTx.contact || confirmDeleteTx.text}" por S/ ${Math.abs(confirmDeleteTx.amount).toFixed(2)}? Esta acción no se puede deshacer.` : ""}
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                onConfirm={confirmDeleteNow}
+                onCancel={() => setConfirmDeleteTx(null)}
+            />
         </div>
     );
 };

@@ -16,7 +16,7 @@ export const useFinanzasState = () => {
             .reduce((acc, t) => acc + (Number(t?.amount) || 0), 0);
     }, [txArr]);
 
-    const addTransaction = (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string) => {
+    const addTransaction = (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string, dueDate?: string) => {
         const value = Math.abs(amount);
 
         const newTx: Transaction = {
@@ -31,7 +31,8 @@ export const useFinanzasState = () => {
             projectId,
             accountId,
             category,
-            contact
+            contact,
+            dueDate
         };
         setTransactions(prev => [newTx, ...prev]);
     };
@@ -187,7 +188,7 @@ export const useFinanzasState = () => {
         setTransactions((prev: Transaction[]) => prev.map(t => t.id === id ? { ...t, ...updates } : t));
     };
 
-    const updateTransactionGroup = (oldText: string, oldContact: string | undefined, updates: { text?: string, contact?: string, amount?: number }, originalId: number) => {
+    const updateTransactionGroup = (oldText: string, oldContact: string | undefined, updates: { text?: string, contact?: string, amount?: number, accountId?: number, dueDate?: string }, originalId: number) => {
         setTransactions((prev: Transaction[]) => prev.map(t => {
             const isOriginal = t.id === originalId;
             const tTextBase = t.text.startsWith('Pago: ') ? t.text.replace('Pago: ', '') : t.text;

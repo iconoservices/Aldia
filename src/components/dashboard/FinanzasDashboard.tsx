@@ -486,8 +486,9 @@ export const FinanzasDashboard = ({
     const [payOpen, setPayOpen] = useState<Record<string, boolean>>({});
     const handlePay = (key: string, amount: number, d: typeof activeDebtsAndCollections[0]) => {
         if (amount <= 0) return;
+        const payAccountId = d.originalTx.accountId ?? accounts[0]?.id;
         // Transacción REAL: aparece en topTxs (finanzas) y en periodBalance
-        addTransaction(`Pago: ${d.name}`, d.isOwe ? -amount : amount, d.isOwe ? 'gasto' : 'ingreso', false, undefined, accounts[0]?.id, false, 'Deudas', d.contact);
+        addTransaction(`Pago: ${d.name}`, d.isOwe ? -amount : amount, d.isOwe ? 'gasto' : 'ingreso', false, undefined, payAccountId, false, 'Deudas', d.contact);
         // Transacción de seguimiento: reduce la deuda en el grouping, sin afectar balance (isCashless: true)
         addTransaction(`Pago: ${d.name}`, d.isOwe ? -amount : amount, d.isOwe ? 'gasto' : 'ingreso', true, undefined, undefined, true, 'Deudas', d.contact);
         setPayInputs(m => ({ ...m, [key]: '' }));
