@@ -3,7 +3,7 @@ import {
     Wallet, Plus, TrendingUp, TrendingDown,
     Trash2, Edit2, PieChart, X,
     UserMinus, UserPlus, Check, PiggyBank, ArrowDownCircle,
-    BarChart3, Tag, MoreVertical, Merge
+    BarChart3, Tag, MoreVertical, Merge, ArrowLeftRight
 } from "lucide-react";
 import { AnalyticsView } from "./AnalyticsView";
 import { motion, AnimatePresence } from "framer-motion";
@@ -646,10 +646,41 @@ export const FinanzasDashboard = ({
             balance: transactions.filter(tx => tx.accountId === acc.id && !tx.isCashless).reduce((s, tx) => s + (Number(tx.amount) || 0), 0)
         })), [accounts, transactions]);
 
+    // "Presupuesto real" por cuenta: ingreso genuino (sin transferencias que llegan de otra
+    // cuenta, esas no son plata ganada) menos todo lo gastado (una transferencia SALIENTE sí
+    // cuenta como gasto real, porque esa cuenta sí perdió el dinero). Sirve para ver si te
+    // pasaste de lo que de verdad generaste, aunque el saldo se vea bien por una ayuda que te
+    // diste entre tus propias cuentas.
+    const accountsBudget = useMemo(() => {
+        const { start, end } = getPeriodBounds(topPeriod, new Date());
+        return accounts.map(acc => {
+            const inPeriod = transactions.filter(tx => tx.accountId === acc.id && !tx.isCashless && tx.fullDate >= start && tx.fullDate <= end);
+            const ingresoReal = inPeriod.filter(tx => tx.type === "ingreso" && tx.category !== "Transferencia").reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
+            const gastoTotal = inPeriod.filter(tx => tx.type === "gasto").reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
+            return { id: acc.id, remaining: ingresoReal - gastoTotal, ingresoReal, gastoTotal };
+        });
+    }, [accounts, transactions, topPeriod]);
+
     const [isAddingAccount, setIsAddingAccount] = useState(false);
     const [newAccountName, setNewAccountName] = useState("");
     const [newAccountColor, setNewAccountColor] = useState("#0055FF");
     const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+
+    // ── Transferir entre cuentas ──────────────────────────────────────────
+    const [isTransferring, setIsTransferring] = useState(false);
+    const [transferAmount, setTransferAmount] = useState("");
+    const [transferFrom, setTransferFrom] = useState<number | undefined>(undefined);
+    const [transferTo, setTransferTo] = useState<number | undefined>(undefined);
+    const [transferConcept, setTransferConcept] = useState("");
+
+    const submitTransfer = () => {
+        const amt = parseFloat(transferAmount);
+        if (!amt || amt <= 0 || !transferFrom || !transferTo || transferFrom === transferTo) return;
+        const label = `Transferencia: ${transferConcept.trim() || "entre cuentas"}`;
+        addTransaction(label, amt, "gasto", false, undefined, transferFrom, false, "Transferencia");
+        addTransaction(label, amt, "ingreso", false, undefined, transferTo, false, "Transferencia");
+        setTransferAmount(""); setTransferFrom(undefined); setTransferTo(undefined); setTransferConcept(""); setIsTransferring(false);
+    };
 
     // ── Categorías ────────────────────────────────────────────────────────
     const [isCategoriesVisible, setIsCategoriesVisible] = useState(false);
@@ -1030,6 +1061,20 @@ export const FinanzasDashboard = ({
                         >
                             <Plus size={12} />
                         </button>
+                        {accounts.length > 1 && (
+                            <button
+                                onClick={() => setIsTransferring(v => !v)}
+                                title="Transferir entre cuentas"
+                                style={{
+                                    display: "flex", alignItems: "center", gap: "4px", justifyContent: "center",
+                                    padding: "3px 8px", borderRadius: "999px",
+                                    border: `1px solid ${C.outlineVariant}`, background: "transparent",
+                                    color: C.onSurfaceVariant, cursor: "pointer", fontSize: "0.65rem", fontWeight: 700,
+                                }}
+                            >
+                                <ArrowLeftRight size={11} /> Transferir
+                            </button>
+                        )}
                     </div>
                     <div style={{ display: "flex", alignItems: "baseline", gap: "5px" }}>
                         <span style={{ fontSize: "0.65rem", color: C.onSurfaceVariant, fontWeight: 700 }}>Total:</span>
@@ -1045,6 +1090,41 @@ export const FinanzasDashboard = ({
                         <input type="color" value={newAccountColor} onChange={e => setNewAccountColor(e.target.value)} style={{ width: "28px", height: "28px", borderRadius: "6px", border: `1px solid ${C.outlineVariant}`, padding: "1px", cursor: "pointer", flexShrink: 0 }} />
                         <button onClick={handleAddAccount} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "6px", padding: "6px 10px", fontSize: "0.7rem", fontWeight: 800, cursor: "pointer", flexShrink: 0 }}>OK</button>
                         <button onClick={() => setIsAddingAccount(false)} style={{ background: C.outlineVariant, color: C.onSurfaceVariant, border: "none", borderRadius: "6px", padding: "6px 8px", fontSize: "0.7rem", fontWeight: 800, cursor: "pointer", flexShrink: 0 }}>X</button>
+                    </div>
+                )}
+
+                {isTransferring && (
+                    <div style={{ borderRadius: movil ? "10px" : "14px", padding: movil ? "8px" : "12px", border: `1px solid ${C.secondary}`, background: C.surface, display: "flex", flexDirection: "column", gap: "8px", marginBottom: movil ? "8px" : "12px" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                            <div>
+                                <label style={feLabelStyle}>De</label>
+                                <select value={transferFrom ?? ""} onChange={e => setTransferFrom(e.target.value ? Number(e.target.value) : undefined)} style={{ ...feInputStyle, fontWeight: 700, cursor: "pointer" }}>
+                                    <option value="">Cuenta origen</option>
+                                    {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label style={feLabelStyle}>A</label>
+                                <select value={transferTo ?? ""} onChange={e => setTransferTo(e.target.value ? Number(e.target.value) : undefined)} style={{ ...feInputStyle, fontWeight: 700, cursor: "pointer" }}>
+                                    <option value="">Cuenta destino</option>
+                                    {accounts.filter(a => a.id !== transferFrom).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "8px" }}>
+                            <div>
+                                <label style={feLabelStyle}>Monto</label>
+                                <input type="number" placeholder="0.00" value={transferAmount} onChange={e => setTransferAmount(e.target.value)} onKeyDown={e => e.key === "Enter" && submitTransfer()} style={feInputStyle} />
+                            </div>
+                            <div>
+                                <label style={feLabelStyle}>Concepto (opcional)</label>
+                                <input placeholder="Ej. pago semanal" value={transferConcept} onChange={e => setTransferConcept(e.target.value)} onKeyDown={e => e.key === "Enter" && submitTransfer()} style={feInputStyle} />
+                            </div>
+                        </div>
+                        <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                            <button onClick={() => { setIsTransferring(false); setTransferAmount(""); setTransferFrom(undefined); setTransferTo(undefined); setTransferConcept(""); }} style={{ background: "none", border: `1px solid ${C.outlineVariant}`, color: C.onSurfaceVariant, borderRadius: "9px", padding: "7px 14px", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer" }}>Cancelar</button>
+                            <button onClick={submitTransfer} disabled={!transferAmount || !transferFrom || !transferTo} style={{ background: (transferAmount && transferFrom && transferTo) ? C.secondary : C.outlineVariant, color: "white", border: "none", borderRadius: "9px", padding: "7px 14px", fontWeight: 800, fontSize: "0.78rem", cursor: (transferAmount && transferFrom && transferTo) ? "pointer" : "not-allowed" }}>Transferir</button>
+                        </div>
                     </div>
                 )}
 
@@ -1069,6 +1149,15 @@ export const FinanzasDashboard = ({
                                 <div style={{ fontSize: movil ? "0.8rem" : "1.2rem", fontWeight: 900, marginTop: movil ? "3px" : "6px", color: C.onSurface, whiteSpace: "nowrap" }}>
                                     S/ {acc.balance.toLocaleString("en-US", { minimumFractionDigits: movil ? 0 : 2 })}
                                 </div>
+                                {(() => {
+                                    const b = accountsBudget.find(x => x.id === acc.id);
+                                    if (!b || (b.ingresoReal === 0 && b.gastoTotal === 0)) return null;
+                                    return (
+                                        <div title="Ingreso real (sin transferencias que llegaron de otra cuenta) menos gasto, en el período elegido arriba" style={{ fontSize: movil ? "0.55rem" : "0.62rem", fontWeight: 800, marginTop: "3px", color: b.remaining < 0 ? C.rojo : C.verde, whiteSpace: "nowrap" }}>
+                                            Presupuesto: {b.remaining < 0 ? "-" : ""}S/ {Math.abs(b.remaining).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                        </div>
+                                    );
+                                })()}
                             </button>
                         ))}
                     </div>
