@@ -66,8 +66,8 @@ export const useFinanzasState = () => {
         setTransactions(prev => [repaymentTx, ...prev]);
     };
 
-    const addFixedExpense = (text: string, amount: number, projectId?: number, dueDay?: number) => {
-        const newExpense: FixedExpense = { id: Date.now() + Math.random(), text, amount, active: true, projectId, dueDay };
+    const addFixedExpense = (text: string, amount: number, projectId?: number, dueDay?: number, accountId?: number) => {
+        const newExpense: FixedExpense = { id: Date.now() + Math.random(), text, amount, active: true, projectId, dueDay, accountId };
         setFixedExpenses(prev => [...prev, newExpense]);
     };
 
@@ -86,34 +86,57 @@ export const useFinanzasState = () => {
     const markFixedExpensePaid = (id: number, monthStr: string, accountId?: number) => {
         const expense = fixedExpenses.find(e => e.id === id);
         if (!expense) return;
-        
+
+        // Si no se pasa cuenta explícita, usar la cuenta habitual del gasto fijo
+        const resolvedAccountId = accountId ?? expense.accountId;
+
+        // Si ya había un abono parcial este mes, solo se registra lo que falta
+        const alreadyPaid = expense.partialPaid?.month === monthStr ? expense.partialPaid.amount : 0;
+        const remaining = Math.max(0, expense.amount - alreadyPaid);
+
         // Update the paid status
-        setFixedExpenses((prev: FixedExpense[]) => prev.map(e => e.id === id ? { ...e, lastPaidMonth: monthStr } : e));
-        
+        setFixedExpenses((prev: FixedExpense[]) => prev.map(e => e.id === id ? { ...e, lastPaidMonth: monthStr, partialPaid: undefined } : e));
+
         // Auto-generate the transaction if it's being marked as paid
-        if (expense.lastPaidMonth !== monthStr) {
-            addTransaction(`Pago: ${expense.text}`, expense.amount, 'gasto', false, expense.projectId, accountId, false, 'Servicios');
+        if (expense.lastPaidMonth !== monthStr && remaining > 0) {
+            addTransaction(`Pago: ${expense.text}`, remaining, 'gasto', false, expense.projectId, resolvedAccountId, false, 'Servicios');
         }
+    };
+
+    // Abona una parte del gasto fijo. Si el abono cubre el total pendiente, queda como pagado.
+    const payFixedExpensePartial = (id: number, monthStr: string, amount: number, accountId?: number) => {
+        const expense = fixedExpenses.find(e => e.id === id);
+        if (!expense) return;
+
+        const resolvedAccountId = accountId ?? expense.accountId;
+        const alreadyPaid = expense.partialPaid?.month === monthStr ? expense.partialPaid.amount : 0;
+        const remaining = Math.max(0, expense.amount - alreadyPaid);
+        const value = Math.min(Math.abs(amount), remaining);
+        if (value <= 0) return;
+
+        const totalPaid = alreadyPaid + value;
+        const isFullyPaid = totalPaid >= expense.amount - 0.005;
+
+        setFixedExpenses((prev: FixedExpense[]) => prev.map(e => e.id === id ? {
+            ...e,
+            lastPaidMonth: isFullyPaid ? monthStr : e.lastPaidMonth,
+            partialPaid: isFullyPaid ? undefined : { month: monthStr, amount: totalPaid },
+        } : e));
+
+        addTransaction(`Pago: ${expense.text}`, value, 'gasto', false, expense.projectId, resolvedAccountId, false, 'Servicios');
     };
 
     const unmarkFixedExpensePaid = (id: number, monthStr: string) => {
         const expense = fixedExpenses.find(e => e.id === id);
         if (!expense) return;
-        
-        // Reset the paid status
-        setFixedExpenses((prev: FixedExpense[]) => prev.map(e => e.id === id ? { ...e, lastPaidMonth: undefined } : e));
-        
-        // Find and remove the auto-generated transaction
-        // Note: gasto transactions are stored as negative, so compare with Math.abs
+
+        // Reset the paid status (borra también cualquier abono parcial del mes)
+        setFixedExpenses((prev: FixedExpense[]) => prev.map(e => e.id === id ? { ...e, lastPaidMonth: undefined, partialPaid: undefined } : e));
+
+        // Elimina todos los pagos/abonos generados para este gasto fijo en el mes
         setTransactions((prev: Transaction[]) => {
             const targetTxPrefix = `Pago: ${expense.text}`;
-            const idx = prev.findIndex(t => t.text === targetTxPrefix && t.fullDate.startsWith(monthStr) && Math.abs(t.amount) === expense.amount);
-            if (idx !== -1) {
-                const newTxs = [...prev];
-                newTxs.splice(idx, 1);
-                return newTxs;
-            }
-            return prev;
+            return prev.filter(t => !(t.text === targetTxPrefix && t.fullDate.startsWith(monthStr)));
         });
     };
 
@@ -200,6 +223,7 @@ export const useFinanzasState = () => {
         toggleFixedExpense,
         updateFixedExpense,
         markFixedExpensePaid,
+        payFixedExpensePartial,
         unmarkFixedExpensePaid,
         repayDebt,
         todayIncome,

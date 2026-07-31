@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import {
-    TrendingUp, TrendingDown, Trash2, DollarSign,
+    TrendingUp, TrendingDown, Trash2, DollarSign, Edit2, MoreVertical,
     ChevronLeft, ChevronRight, Calendar, BarChart3
 } from "lucide-react";
 import type { Transaction } from "../../hooks/useAlDiaState";
@@ -9,6 +9,7 @@ import {
     getPeriodBounds, periodLabel, shiftPeriod, PillToggle,
     type PeriodMode, type TxFilter,
 } from "./FinanzasDashboard";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 
 /* ══════════════════════════════════════════════════════════════════
    MovimientosDashboard — el Historial de Flujo que antes vivía dentro
@@ -23,13 +24,17 @@ import {
 interface MovimientosProps {
     transactions: Transaction[];
     removeTransaction: (id: number) => void;
+    updateTransaction: (id: number, updates: Partial<Transaction>) => void;
     accounts: { id: number; name: string; color: string }[];
 }
+
+const txInputStyle: React.CSSProperties = { padding: "6px 8px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", outline: "none", background: "white", boxSizing: "border-box", width: "100%" };
+const txLabelStyle: React.CSSProperties = { fontSize: "0.6rem", fontWeight: 800, color: C.outline, textTransform: "uppercase", letterSpacing: "0.03em", marginBottom: "2px", display: "block" };
 
 const CARD: React.CSSProperties = { ...bento, padding: "1.5rem" };
 const LABEL: React.CSSProperties = etiqueta;
 
-export const MovimientosDashboard = ({ transactions, removeTransaction, accounts }: MovimientosProps) => {
+export const MovimientosDashboard = ({ transactions, removeTransaction, updateTransaction, accounts }: MovimientosProps) => {
     const movil = useIsMobile();
     const [periodMode, setPeriodMode] = useState<PeriodMode>("month");
     const [periodRef, setPeriodRef] = useState<Date>(new Date());
@@ -127,34 +132,105 @@ export const MovimientosDashboard = ({ transactions, removeTransaction, accounts
                 ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
                         {filteredTxs.map(tx => (
-                            <div key={tx.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 12px", borderRadius: "12px", background: C.surface, border: `1px solid ${C.surfaceContainerLow}` }}>
-                                <div style={{ width: "32px", height: "32px", borderRadius: "10px", background: tx.type === "ingreso" ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)", color: tx.type === "ingreso" ? C.verde : C.rojo, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                    {tx.type === "ingreso" ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
-                                </div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontSize: "0.83rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tx.text}</div>
-                                    <div style={{ fontSize: "0.62rem", color: C.outline, display: "flex", alignItems: "center", gap: "5px", flexWrap: "wrap" }}>
-                                        {tx.fullDate} · {tx.date}
-                                        {tx.category && <span style={{ background: C.surfaceContainerLow, padding: "1px 6px", borderRadius: "10px", color: C.onSurfaceVariant, fontWeight: 700 }}>{tx.category}</span>}
-                                        {tx.accountId && accountById.get(tx.accountId) && (
-                                            <span style={{ display: "flex", alignItems: "center", gap: "4px", background: C.surfaceContainerLow, padding: "1px 6px", borderRadius: "10px", color: C.onSurfaceVariant, fontWeight: 700 }}>
-                                                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: accountById.get(tx.accountId)!.color, display: "inline-block" }} />
-                                                {accountById.get(tx.accountId)!.name}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
-                                    <span style={{ fontWeight: 800, fontSize: "0.88rem", color: tx.type === "ingreso" ? C.verde : C.rojo }}>
-                                        {tx.type === "ingreso" ? "+" : "-"}S/ {Math.abs(tx.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                    </span>
-                                    <button onClick={() => removeTransaction(tx.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "2px", display: "flex" }}><Trash2 size={12} /></button>
-                                </div>
-                            </div>
+                            <MovimientoRow key={tx.id} tx={tx} accountById={accountById} accounts={accounts} removeTransaction={removeTransaction} updateTransaction={updateTransaction} />
                         ))}
                     </div>
                 )}
             </div>
+        </div>
+    );
+};
+
+// ─── Movimiento row ────────────────────────────────────────────────────────────
+const MovimientoRow = ({ tx, accountById, accounts, removeTransaction, updateTransaction }: {
+    tx: Transaction;
+    accountById: Map<number, { id: number; name: string; color: string }>;
+    accounts: { id: number; name: string; color: string }[];
+    removeTransaction: (id: number) => void;
+    updateTransaction: (id: number, updates: Partial<Transaction>) => void;
+}) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editText, setEditText] = useState(tx.text);
+    const [editAmount, setEditAmount] = useState(String(Math.abs(tx.amount)));
+    const [editAccountId, setEditAccountId] = useState<number | undefined>(tx.accountId);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(false);
+
+    const save = () => {
+        const value = Math.abs(Number(editAmount)) || 0;
+        updateTransaction(tx.id, { text: editText, amount: tx.type === "ingreso" ? value : -value, accountId: editAccountId });
+        setIsEditing(false);
+    };
+
+    if (isEditing) return (
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", padding: "10px 12px", borderRadius: "12px", background: C.surface, border: `1px solid ${C.outlineVariant}` }}>
+            <div>
+                <label style={txLabelStyle}>Descripción</label>
+                <input autoFocus value={editText} onChange={e => setEditText(e.target.value)} style={txInputStyle} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                <div>
+                    <label style={txLabelStyle}>Monto</label>
+                    <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} style={txInputStyle} />
+                </div>
+                <div>
+                    <label style={txLabelStyle}>Cuenta</label>
+                    <select value={editAccountId ?? ""} onChange={e => setEditAccountId(e.target.value ? Number(e.target.value) : undefined)} style={{ ...txInputStyle, fontWeight: 700, cursor: "pointer" }}>
+                        <option value="">Sin cuenta</option>
+                        {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                </div>
+            </div>
+            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "2px" }}>
+                <button onClick={() => setIsEditing(false)} style={{ background: "none", border: `1px solid ${C.outlineVariant}`, color: C.onSurfaceVariant, borderRadius: "8px", padding: "6px 12px", fontWeight: 700, fontSize: "0.75rem", cursor: "pointer" }}>Cancelar</button>
+                <button onClick={save} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "8px", padding: "6px 12px", fontWeight: 800, fontSize: "0.75rem", cursor: "pointer" }}>Guardar</button>
+            </div>
+        </div>
+    );
+
+    return (
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 12px", borderRadius: "12px", background: C.surface, border: `1px solid ${C.surfaceContainerLow}` }}>
+            <div style={{ width: "32px", height: "32px", borderRadius: "10px", background: tx.type === "ingreso" ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)", color: tx.type === "ingreso" ? C.verde : C.rojo, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                {tx.type === "ingreso" ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: "0.83rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tx.text}</div>
+                <div style={{ fontSize: "0.62rem", color: C.outline, display: "flex", alignItems: "center", gap: "5px", flexWrap: "wrap" }}>
+                    {tx.fullDate} · {tx.date}
+                    {tx.category && <span style={{ background: C.surfaceContainerLow, padding: "1px 6px", borderRadius: "10px", color: C.onSurfaceVariant, fontWeight: 700 }}>{tx.category}</span>}
+                    {tx.accountId && accountById.get(tx.accountId) ? (
+                        <span style={{ display: "flex", alignItems: "center", gap: "4px", background: C.surfaceContainerLow, padding: "1px 6px", borderRadius: "10px", color: C.onSurfaceVariant, fontWeight: 700 }}>
+                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: accountById.get(tx.accountId)!.color, display: "inline-block" }} />
+                            {accountById.get(tx.accountId)!.name}
+                        </span>
+                    ) : (
+                        <span style={{ background: "rgba(239,68,68,0.1)", padding: "1px 6px", borderRadius: "10px", color: C.rojo, fontWeight: 700 }}>sin cuenta</span>
+                    )}
+                </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0, position: "relative" }}>
+                <span style={{ fontWeight: 800, fontSize: "0.88rem", color: tx.type === "ingreso" ? C.verde : C.rojo }}>
+                    {tx.type === "ingreso" ? "+" : "-"}S/ {Math.abs(tx.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                </span>
+                <button onClick={() => setMenuOpen(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "2px", display: "flex" }}><MoreVertical size={14} /></button>
+
+                {menuOpen && (
+                    <div style={{ position: "absolute", top: "100%", right: 0, zIndex: 5, background: "white", border: `1px solid ${C.outlineVariant}`, borderRadius: "9px", boxShadow: "0 4px 14px rgba(0,0,0,0.1)", overflow: "hidden", minWidth: "120px" }}>
+                        <button onClick={() => { setIsEditing(true); setMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", color: C.onSurface, fontSize: "0.78rem", fontWeight: 600, textAlign: "left" }}><Edit2 size={13} /> Editar</button>
+                        <button onClick={() => { setConfirmDelete(true); setMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", color: C.rojo, fontSize: "0.78rem", fontWeight: 600, textAlign: "left", borderTop: `1px solid ${C.surfaceContainerLow}` }}><Trash2 size={13} /> Eliminar</button>
+                    </div>
+                )}
+            </div>
+
+            <ConfirmDialog
+                open={confirmDelete}
+                title="Eliminar movimiento"
+                message={`¿Eliminar "${tx.text}" por S/ ${Math.abs(tx.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}? Esta acción no se puede deshacer.`}
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                onConfirm={() => { removeTransaction(tx.id); setConfirmDelete(false); }}
+                onCancel={() => setConfirmDelete(false)}
+            />
         </div>
     );
 };

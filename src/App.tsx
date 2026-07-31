@@ -355,6 +355,7 @@ function App() {
                 removeTransaction={state.removeTransaction}
                 updateTransactionGroup={state.updateTransactionGroup}
                 markFixedExpensePaid={state.markFixedExpensePaid}
+                payFixedExpensePartial={state.payFixedExpensePartial}
                 unmarkFixedExpensePaid={state.unmarkFixedExpensePaid}
                 preferences={state.preferences}
                 updatePreference={state.updatePreference}
@@ -389,6 +390,7 @@ function App() {
               <MovimientosDashboard
                 transactions={state.transactions}
                 removeTransaction={state.removeTransaction}
+                updateTransaction={state.updateTransaction}
                 accounts={state.accounts}
               />
             ) : activeTab === 'Proyectos' ? (

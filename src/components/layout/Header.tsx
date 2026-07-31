@@ -42,7 +42,6 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Movimientos', tab: 'Movimientos', icon: 'list_alt'    },
         { label: 'Plan',      tab: 'Plan',      icon: 'savings'       },
         { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
-        { label: 'Ajustes',  tab: '__profile', icon: 'settings'       },
     ];
 
     // ── Secondary / all other tools ────────────────────────────────────
@@ -230,14 +229,23 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     <span className="mobile-logo-text">AlDía</span>
                     <span className="mobile-view-title">{getViewTitle(activeTab)}</span>
                 </div>
-                <div 
-                    className="mobile-profile-trigger" 
-                    onClick={onProfileClick}
-                    style={{
-                        backgroundImage: profilePic ? `url(${profilePic})` : 'none'
-                    }}
-                >
-                    {!profilePic && <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#888' }}>person</span>}
+                <div style={{ position: 'relative', flexShrink: 0 }} onClick={onProfileClick}>
+                    <div
+                        className="mobile-profile-trigger"
+                        style={{
+                            backgroundImage: profilePic ? `url(${profilePic})` : 'none'
+                        }}
+                    >
+                        {!profilePic && <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#888' }}>person</span>}
+                    </div>
+                    <div style={{
+                        position: 'absolute', bottom: '-2px', right: '-2px',
+                        width: '16px', height: '16px', borderRadius: '50%',
+                        background: '#944a18', border: '2px solid white',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '10px', color: 'white' }}>edit</span>
+                    </div>
                 </div>
             </div>
 

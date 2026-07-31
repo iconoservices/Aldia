@@ -80,8 +80,10 @@ export interface FixedExpense {
     amount: number;
     active: boolean;
     projectId?: number;
-    lastPaidMonth?: string; // YYYY-MM
+    accountId?: number; // Cuenta desde la que se paga habitualmente
+    lastPaidMonth?: string; // YYYY-MM, presente solo si se pagó el monto completo
     dueDay?: number; // 1-31 (Día de cobro en el mes)
+    partialPaid?: { month: string; amount: number }; // Abono parcial del mes en curso, aún no cubre el total
 }
 
 export interface CalendarEvent {
@@ -224,7 +226,7 @@ export const useAlDiaState = () => {
         transactions, setTransactions, balance,
         monthlyBudget, setMonthlyBudget, fixedExpenses, setFixedExpenses,
         addTransaction, addFixedExpense, removeFixedExpense, toggleFixedExpense,
-        updateFixedExpense, markFixedExpensePaid, unmarkFixedExpensePaid, repayDebt: repayDebtBase,
+        updateFixedExpense, markFixedExpensePaid, payFixedExpensePartial, unmarkFixedExpensePaid, repayDebt: repayDebtBase,
         todayIncome, todayExpense, todayNet, todayIncomeReal, todayExpenseReal,
         totalIncomeReal, totalExpenseReal, totalNetReal, debtsOwe, debtsOwed,
         removeTransaction, updateTransaction, updateTransactionGroup
@@ -906,7 +908,7 @@ export const useAlDiaState = () => {
         monthlyBudget, updateMonthlyBudget: lw((a: number) => setMonthlyBudget(a)),
         fixedExpenses, addFixedExpense: lw(addFixedExpense), removeFixedExpense: lw(removeFixedExpense),
         toggleFixedExpense: lw(toggleFixedExpense), updateFixedExpense: lw(updateFixedExpense),
-        markFixedExpensePaid: lw(markFixedExpensePaid), unmarkFixedExpensePaid: lw(unmarkFixedExpensePaid),
+        markFixedExpensePaid: lw(markFixedExpensePaid), payFixedExpensePartial: lw(payFixedExpensePartial), unmarkFixedExpensePaid: lw(unmarkFixedExpensePaid),
         repayDebt: lw(repayDebtBase),
         addTransaction: lw((text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projId?: number, accId?: number, isCashless?: boolean, cat?: string, contact?: string) => {
             addTransaction(text, amount, type, isDebt, projId, accId, isCashless, cat, contact);

@@ -27,11 +27,12 @@ interface FinanzasProps {
     monthlyBudget: number;
     updateMonthlyBudget: (amount: number) => void;
     fixedExpenses: FixedExpense[];
-    addFixedExpense: (text: string, amount: number, projectId?: number, dueDay?: number) => void;
+    addFixedExpense: (text: string, amount: number, projectId?: number, dueDay?: number, accountId?: number) => void;
     removeFixedExpense: (id: number) => void;
     toggleFixedExpense: (id: number) => void;
     updateFixedExpense: (id: number, updates: Partial<FixedExpense>) => void;
     markFixedExpensePaid: (id: number, monthStr: string, accountId?: number) => void;
+    payFixedExpensePartial: (id: number, monthStr: string, amount: number, accountId?: number) => void;
     unmarkFixedExpensePaid: (id: number, monthStr: string) => void;
     repayDebt: (originalTx: Transaction, amount: number, accountId: number) => void;
     removeTransaction: (id: number) => void;
@@ -354,7 +355,7 @@ export function shiftPeriod(mode: PeriodMode, ref: Date, dir: -1 | 1): Date {
 export const FinanzasDashboard = ({
     balance, transactions,
     fixedExpenses, addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense,
-    markFixedExpensePaid, unmarkFixedExpensePaid,
+    markFixedExpensePaid, payFixedExpensePartial, unmarkFixedExpensePaid,
     removeTransaction, addTransaction,
     projects, accounts, setAccounts,
     addProjectTask, toggleProjectTask, removeProjectTask, updateProjectTask,
@@ -415,56 +416,72 @@ export const FinanzasDashboard = ({
         [fixedExpenses]);
 
     const fixedExpensePaidTotal = useMemo(() =>
-        fixedExpenses.filter(e => e.active && e.lastPaidMonth === currentMonthStr).reduce((a, e) => a + e.amount, 0),
+        fixedExpenses.filter(e => e.active).reduce((a, e) => a + (e.lastPaidMonth === currentMonthStr ? e.amount : (e.partialPaid?.month === currentMonthStr ? e.partialPaid.amount : 0)), 0),
         [fixedExpenses, currentMonthStr]);
 
     const totalFixedPending = useMemo(() =>
-        fixedExpenses.filter(e => e.active && e.lastPaidMonth !== currentMonthStr).reduce((a, e) => a + e.amount, 0),
+        fixedExpenses.filter(e => e.active && e.lastPaidMonth !== currentMonthStr).reduce((a, e) => a + (e.amount - (e.partialPaid?.month === currentMonthStr ? e.partialPaid.amount : 0)), 0),
         [fixedExpenses, currentMonthStr]);
 
     // ── Fixed incomes (stored in preferences as JSON) ─────────────────────
-    type FixedIncomeItem = { id: number; name: string; amount: number; active: boolean; lastReceivedMonth?: string };
+    type FixedIncomeItem = { id: number; name: string; amount: number; active: boolean; accountId?: number; lastReceivedMonth?: string; partialReceived?: { month: string; amount: number } };
     const fixedIncomeItems: FixedIncomeItem[] = useMemo(() => {
         try { return JSON.parse(preferences.fixedIncomes || "[]"); } catch { return []; }
     }, [preferences.fixedIncomes]);
     const saveFixedIncomes = (items: FixedIncomeItem[]) =>
         updatePreference("fixedIncomes", JSON.stringify(items));
-    const addFixedIncome = (name: string, amount: number) =>
-        saveFixedIncomes([...fixedIncomeItems, { id: Date.now(), name, amount, active: true }]);
+    const addFixedIncome = (name: string, amount: number, accountId?: number) =>
+        saveFixedIncomes([...fixedIncomeItems, { id: Date.now(), name, amount, active: true, accountId }]);
     const removeFixedIncome = (id: number) =>
         saveFixedIncomes(fixedIncomeItems.filter(f => f.id !== id));
     const toggleFixedIncome = (id: number) =>
         saveFixedIncomes(fixedIncomeItems.map(f => f.id === id ? { ...f, active: !f.active } : f));
-    const updateFixedIncome = (id: number, name: string, amount: number) =>
-        saveFixedIncomes(fixedIncomeItems.map(f => f.id === id ? { ...f, name, amount } : f));
-    const markFixedIncomeReceived = (id: number, monthStr: string) => {
+    const updateFixedIncome = (id: number, name: string, amount: number, accountId?: number) =>
+        saveFixedIncomes(fixedIncomeItems.map(f => f.id === id ? { ...f, name, amount, accountId } : f));
+    const markFixedIncomeReceived = (id: number, monthStr: string, accountId?: number) => {
         const item = fixedIncomeItems.find(f => f.id === id);
         if (!item) return;
-        saveFixedIncomes(fixedIncomeItems.map(f => f.id === id ? { ...f, lastReceivedMonth: monthStr } : f));
-        if (item.lastReceivedMonth !== monthStr) {
-            addTransaction(`Depósito: ${item.name}`, item.amount, 'ingreso', false, undefined, undefined, false, 'Sueldo');
+        const resolvedAccountId = accountId ?? item.accountId;
+        const alreadyReceived = item.partialReceived?.month === monthStr ? item.partialReceived.amount : 0;
+        const remaining = Math.max(0, item.amount - alreadyReceived);
+        saveFixedIncomes(fixedIncomeItems.map(f => f.id === id ? { ...f, lastReceivedMonth: monthStr, partialReceived: undefined } : f));
+        if (item.lastReceivedMonth !== monthStr && remaining > 0) {
+            addTransaction(`Depósito: ${item.name}`, remaining, 'ingreso', false, undefined, resolvedAccountId, false, 'Sueldo');
         }
+    };
+    // Recibe una parte del ingreso fijo. Si cubre el total pendiente, queda como recibido.
+    const receiveFixedIncomePartial = (id: number, monthStr: string, amount: number, accountId?: number) => {
+        const item = fixedIncomeItems.find(f => f.id === id);
+        if (!item) return;
+        const resolvedAccountId = accountId ?? item.accountId;
+        const alreadyReceived = item.partialReceived?.month === monthStr ? item.partialReceived.amount : 0;
+        const remaining = Math.max(0, item.amount - alreadyReceived);
+        const value = Math.min(Math.abs(amount), remaining);
+        if (value <= 0) return;
+        const totalReceived = alreadyReceived + value;
+        const isFullyReceived = totalReceived >= item.amount - 0.005;
+        saveFixedIncomes(fixedIncomeItems.map(f => f.id === id ? {
+            ...f,
+            lastReceivedMonth: isFullyReceived ? monthStr : f.lastReceivedMonth,
+            partialReceived: isFullyReceived ? undefined : { month: monthStr, amount: totalReceived },
+        } : f));
+        addTransaction(`Depósito: ${item.name}`, value, 'ingreso', false, undefined, resolvedAccountId, false, 'Sueldo');
     };
     const unmarkFixedIncomeReceived = (id: number, monthStr: string) => {
         const item = fixedIncomeItems.find(f => f.id === id);
         if (!item) return;
-        saveFixedIncomes(fixedIncomeItems.map(f => f.id === id ? { ...f, lastReceivedMonth: undefined } : f));
+        saveFixedIncomes(fixedIncomeItems.map(f => f.id === id ? { ...f, lastReceivedMonth: undefined, partialReceived: undefined } : f));
         const targetTxPrefix = `Depósito: ${item.name}`;
-        const matchedTx = transactions.find(t => t.text === targetTxPrefix && t.fullDate.startsWith(monthStr) && Number(t.amount) === item.amount);
-        if (matchedTx) {
-            removeTransaction(matchedTx.id);
-        }
+        transactions.filter(t => t.text === targetTxPrefix && t.fullDate.startsWith(monthStr)).forEach(t => removeTransaction(t.id));
     };
     const fixedIncomeTotal = useMemo(() =>
         fixedIncomeItems.filter(f => f.active).reduce((s, f) => s + f.amount, 0),
         [fixedIncomeItems]);
 
-    const [isAddingIncome, setIsAddingIncome] = useState(false);
-    const [newIncomeName, setNewIncomeName] = useState("");
-    const [newIncomeAmount, setNewIncomeAmount] = useState("");
-    const [editingIncomeId, setEditingIncomeId] = useState<number | null>(null);
-    const [editIncomeName, setEditIncomeName] = useState("");
-    const [editIncomeAmount, setEditIncomeAmount] = useState("");
+    const [showAllFixedIncomes, setShowAllFixedIncomes] = useState(false);
+    const [showAllFixedExpenses, setShowAllFixedExpenses] = useState(false);
+    const [showAllDebts, setShowAllDebts] = useState(false);
+    const LISTA_VISIBLE = 3;
     const toggleDebtActive = (key: string) => setDebtActiveMap(m => ({ ...m, [key]: !(m[key] ?? true) }));
     const [payInputs, setPayInputs] = useState<Record<string, string>>({});
     const [payOpen, setPayOpen] = useState<Record<string, boolean>>({});
@@ -477,13 +494,6 @@ export const FinanzasDashboard = ({
         setPayInputs(m => ({ ...m, [key]: '' }));
         setPayOpen(m => ({ ...m, [key]: false }));
     };
-    const submitNewIncome = () => {
-        if (newIncomeName.trim() && newIncomeAmount) {
-            addFixedIncome(newIncomeName.trim(), parseFloat(newIncomeAmount));
-            setNewIncomeName(""); setNewIncomeAmount(""); setIsAddingIncome(false);
-        }
-    };
-
     const periodMultiplier = useMemo(() => {
         if (topPeriod === "day") return 1 / 30;
         if (topPeriod === "week") return 7 / 30;
@@ -519,7 +529,7 @@ export const FinanzasDashboard = ({
     const projectedSavings = projectedResources - projectedExpenses;
 
     const totalIncomePending = useMemo(() =>
-        fixedIncomeItems.filter(f => f.active && f.lastReceivedMonth !== currentMonthStr).reduce((s, f) => s + f.amount, 0),
+        fixedIncomeItems.filter(f => f.active && f.lastReceivedMonth !== currentMonthStr).reduce((s, f) => s + (f.amount - (f.partialReceived?.month === currentMonthStr ? f.partialReceived.amount : 0)), 0),
         [fixedIncomeItems, currentMonthStr]);
 
     const projectedIncomeVal = useMemo(() => {
@@ -1151,88 +1161,38 @@ export const FinanzasDashboard = ({
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem" }}>
 
                 {/* Fixed incomes card */}
-                <div style={{ ...cardConAcento(C.secondary), display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
+                <div style={{ ...bento, padding: "1.1rem", display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span style={LABEL}>Ingresos Fijos</span>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <span style={{ fontSize: "0.72rem", fontWeight: 700, color: C.secondary }}>S/ {fixedIncomeTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                            <span style={{ fontSize: "0.72rem", fontWeight: 700, color: C.secondary }}>Pendiente: S/ {totalIncomePending.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
                             <Wallet size={14} color={C.secondary} />
                         </div>
                     </div>
 
                     {/* List of fixed incomes */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", flex: 1, overflowY: "auto", maxHeight: "160px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
                         {fixedIncomeItems.length === 0 && (
                             <p style={{ fontSize: "0.75rem", color: C.outline, margin: 0 }}>Sin ingresos fijos. Agrega uno abajo.</p>
                         )}
-                        {fixedIncomeItems.map(item => {
-                            const isReceived = item.lastReceivedMonth === currentMonthStr;
-                            const isEditing = editingIncomeId === item.id;
-                            return (
-                                <div key={item.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 0", borderBottom: `1px solid ${C.surfaceContainerLow}`, opacity: item.active ? 1 : 0.45, transition: "opacity 0.15s" }}>
-                                    {/* mini toggle */}
-                                    <div onClick={() => toggleFixedIncome(item.id)} style={{ width: "28px", height: "16px", borderRadius: "8px", background: item.active ? C.secondary : C.outlineVariant, position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
-                                        <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: item.active ? "14px" : "2px", transition: "left 0.15s" }} />
-                                    </div>
-                                    {/* ok button to mark as received */}
-                                    <button onClick={() => isReceived ? unmarkFixedIncomeReceived(item.id, currentMonthStr) : markFixedIncomeReceived(item.id, currentMonthStr)} style={{ background: isReceived ? C.verde : C.surfaceContainerLow, border: "none", borderRadius: "50%", width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
-                                        <span style={{ color: isReceived ? "white" : C.outline, fontSize: "0.62rem", fontWeight: 900 }}>ok</span>
-                                    </button>
-                                    {isEditing ? (
-                                        <>
-                                            <input autoFocus value={editIncomeName} onChange={e => setEditIncomeName(e.target.value)}
-                                                onKeyDown={e => { if (e.key === "Enter") { updateFixedIncome(item.id, editIncomeName.trim(), parseFloat(editIncomeAmount) || 0); setEditingIncomeId(null); } if (e.key === "Escape") setEditingIncomeId(null); }}
-                                                style={{ flex: 1, padding: "3px 6px", borderRadius: "5px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", outline: "none" }} />
-                                            <div style={{ position: "relative", width: "70px" }}>
-                                                <span style={{ position: "absolute", left: "4px", top: "50%", transform: "translateY(-50%)", fontSize: "0.62rem", fontWeight: 700, color: C.onSurfaceVariant }}>S/</span>
-                                                <input type="number" value={editIncomeAmount} onChange={e => setEditIncomeAmount(e.target.value)}
-                                                    onKeyDown={e => { if (e.key === "Enter") { updateFixedIncome(item.id, editIncomeName.trim(), parseFloat(editIncomeAmount) || 0); setEditingIncomeId(null); } if (e.key === "Escape") setEditingIncomeId(null); }}
-                                                    style={{ width: "100%", padding: "3px 3px 3px 18px", borderRadius: "5px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
-                                            </div>
-                                            <button onClick={() => { updateFixedIncome(item.id, editIncomeName.trim(), parseFloat(editIncomeAmount) || 0); setEditingIncomeId(null); }} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "4px", padding: "3px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>OK</button>
-                                            <button onClick={() => setEditingIncomeId(null)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "2px", display: "flex" }}><X size={11} /></button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isReceived ? "line-through" : "none", color: isReceived ? C.outline : "var(--text-carbon)" }}>
-                                                {item.name}
-                                            </span>
-                                            <span style={{ fontSize: "0.8rem", fontWeight: 800, color: isReceived ? C.verde : (item.active ? C.secondary : C.outline) }}>
-                                                S/ {item.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                            </span>
-                                            <button onClick={() => { setEditingIncomeId(item.id); setEditIncomeName(item.name); setEditIncomeAmount(String(item.amount)); }} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "2px", display: "flex" }}><Edit2 size={11} /></button>
-                                            <button onClick={() => removeFixedIncome(item.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "2px", display: "flex" }}><Trash2 size={11} /></button>
-                                        </>
-                                    )}
-                                </div>
-                            );
-                        })}
+                        {(showAllFixedIncomes ? fixedIncomeItems : fixedIncomeItems.slice(0, LISTA_VISIBLE)).map(item => (
+                            <FixedIncomeRow key={item.id} item={item} toggleFixedIncome={toggleFixedIncome} removeFixedIncome={removeFixedIncome} updateFixedIncome={updateFixedIncome} markFixedIncomeReceived={markFixedIncomeReceived} receiveFixedIncomePartial={receiveFixedIncomePartial} unmarkFixedIncomeReceived={unmarkFixedIncomeReceived} isReceived={item.lastReceivedMonth === currentMonthStr} accounts={accounts} />
+                        ))}
+                        {fixedIncomeItems.length > LISTA_VISIBLE && (
+                            <button onClick={() => setShowAllFixedIncomes(v => !v)} style={{ background: "none", border: "none", padding: "2px 0", cursor: "pointer", color: C.secondary, fontSize: "0.72rem", fontWeight: 700, textAlign: "left" }}>
+                                {showAllFixedIncomes ? "Ver menos" : `Ver todos (${fixedIncomeItems.length})`}
+                            </button>
+                        )}
                     </div>
 
                     {/* Add new income */}
-                    {isAddingIncome ? (
-                        <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                            <input autoFocus placeholder="Nombre" value={newIncomeName} onChange={e => setNewIncomeName(e.target.value)}
-                                onKeyDown={e => e.key === "Enter" && submitNewIncome()}
-                                style={{ flex: 2, padding: "5px 8px", borderRadius: "7px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", outline: "none" }} />
-                            <div style={{ position: "relative", flex: 1 }}>
-                                <span style={{ position: "absolute", left: "6px", top: "50%", transform: "translateY(-50%)", fontSize: "0.72rem", fontWeight: 700, color: C.onSurfaceVariant }}>S/</span>
-                                <input type="number" placeholder="0" value={newIncomeAmount} onChange={e => setNewIncomeAmount(e.target.value)}
-                                    onKeyDown={e => e.key === "Enter" && submitNewIncome()}
-                                    style={{ width: "100%", padding: "5px 5px 5px 22px", borderRadius: "7px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
-                            </div>
-                            <button onClick={submitNewIncome} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.65rem", cursor: "pointer" }}>OK</button>
-                            <button onClick={() => setIsAddingIncome(false)} style={{ background: C.outlineVariant, border: "none", borderRadius: "6px", padding: "5px 7px", fontWeight: 800, fontSize: "0.65rem", cursor: "pointer" }}>X</button>
-                        </motion.div>
-                    ) : (
-                        <button onClick={() => setIsAddingIncome(true)} style={{ display: "flex", alignItems: "center", gap: "6px", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}>
-                            <Plus size={13} color={C.outline} /><span style={{ fontSize: "0.75rem", fontWeight: 600, color: C.outline }}>Nuevo ingreso fijo...</span>
-                        </button>
-                    )}
+                    <div style={{ marginTop: "0.2rem" }}>
+                        <NewFixedIncomeForm addFixedIncome={addFixedIncome} accounts={accounts} />
+                    </div>
                 </div>
 
                 {/* Fixed expenses card */}
-                <div style={{ ...cardConAcento(C.rojo), display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
+                <div style={{ ...bento, padding: "1.1rem", display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span style={LABEL}>Gastos Fijos</span>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -1242,23 +1202,28 @@ export const FinanzasDashboard = ({
                     </div>
 
                     {/* List of fixed expenses */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", flex: 1, overflowY: "auto", maxHeight: "160px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
                         {fixedExpenses.length === 0 && (
                             <p style={{ fontSize: "0.75rem", color: C.outline, margin: 0 }}>Sin gastos fijos. Agrega uno abajo.</p>
                         )}
-                        {fixedExpenses.map(exp => (
-                            <FixedExpenseRow key={exp.id} expense={exp} toggleFixedExpense={toggleFixedExpense} removeFixedExpense={removeFixedExpense} updateFixedExpense={updateFixedExpense} markFixedExpensePaid={markFixedExpensePaid} unmarkFixedExpensePaid={unmarkFixedExpensePaid} isPaid={exp.lastPaidMonth === currentMonthStr} projects={projects} />
+                        {(showAllFixedExpenses ? fixedExpenses : fixedExpenses.slice(0, LISTA_VISIBLE)).map(exp => (
+                            <FixedExpenseRow key={exp.id} expense={exp} toggleFixedExpense={toggleFixedExpense} removeFixedExpense={removeFixedExpense} updateFixedExpense={updateFixedExpense} markFixedExpensePaid={markFixedExpensePaid} payFixedExpensePartial={payFixedExpensePartial} unmarkFixedExpensePaid={unmarkFixedExpensePaid} isPaid={exp.lastPaidMonth === currentMonthStr} projects={projects} accounts={accounts} />
                         ))}
+                        {fixedExpenses.length > LISTA_VISIBLE && (
+                            <button onClick={() => setShowAllFixedExpenses(v => !v)} style={{ background: "none", border: "none", padding: "2px 0", cursor: "pointer", color: C.rojo, fontSize: "0.72rem", fontWeight: 700, textAlign: "left" }}>
+                                {showAllFixedExpenses ? "Ver menos" : `Ver todos (${fixedExpenses.length})`}
+                            </button>
+                        )}
                     </div>
 
                     {/* Add new expense */}
                     <div style={{ marginTop: "0.2rem" }}>
-                        <NewFixedExpenseForm addFixedExpense={addFixedExpense} projects={projects} />
+                        <NewFixedExpenseForm addFixedExpense={addFixedExpense} projects={projects} accounts={accounts} />
                     </div>
                 </div>
 
                 {/* Debts card */}
-                <div style={{ ...cardConAcento(C.secondary), display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
+                <div style={{ ...bento, padding: "1.1rem", display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span style={LABEL}>Deudas</span>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -1555,53 +1520,185 @@ export const PillToggle = ({ options, labels, value, onChange }: { options: stri
     </div>
 );
 
+// ─── Chip helper (gastos fijos) ────────────────────────────────────────────────
+const FEChip = ({ children, color, bg }: { children: React.ReactNode, color: string, bg: string }) => (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", fontSize: "0.62rem", fontWeight: 700, color, background: bg, padding: "2px 7px", borderRadius: "999px", lineHeight: 1.4 }}>
+        {children}
+    </span>
+);
+
+const feInputStyle: React.CSSProperties = { padding: "7px 9px", borderRadius: "9px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.8rem", outline: "none", background: "white", boxSizing: "border-box", width: "100%" };
+const feLabelStyle: React.CSSProperties = { fontSize: "0.62rem", fontWeight: 800, color: C.outline, textTransform: "uppercase", letterSpacing: "0.03em", marginBottom: "3px", display: "block" };
+
 // ─── Fixed expense row ────────────────────────────────────────────────────────
-const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, updateFixedExpense, markFixedExpensePaid, unmarkFixedExpensePaid, isPaid }: any) => {
+const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, updateFixedExpense, markFixedExpensePaid, payFixedExpensePartial, unmarkFixedExpensePaid, isPaid, accounts, projects }: any) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(expense.text);
     const [editAmount, setEditAmount] = useState(String(expense.amount));
+    const [editAccountId, setEditAccountId] = useState<number | undefined>(expense.accountId);
+    const [editProjectId, setEditProjectId] = useState<number | undefined>(expense.projectId);
+    const [editDueDay, setEditDueDay] = useState<number | undefined>(expense.dueDay);
+    const [isPaying, setIsPaying] = useState(false);
+    const [payAmount, setPayAmount] = useState("");
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(false);
+
     const monthStr = new Date().toLocaleDateString("en-CA").substring(0, 7);
+    const account = accounts?.find((a: any) => a.id === expense.accountId);
+    const project = projects?.find((p: any) => p.id === expense.projectId);
+
+    const paidSoFar = isPaid ? expense.amount : (expense.partialPaid?.month === monthStr ? expense.partialPaid.amount : 0);
+    const pending = Math.max(0, expense.amount - paidSoFar);
+    const hasPartial = !isPaid && paidSoFar > 0;
+
+    const openPay = () => { setPayAmount(pending.toFixed(2)); setIsPaying(true); };
+    const confirmPay = () => {
+        const value = parseFloat(payAmount);
+        if (!value || value <= 0) return;
+        payFixedExpensePartial(expense.id, monthStr, value, expense.accountId);
+        setIsPaying(false);
+    };
 
     if (isEditing) return (
-        <div style={{ display: "flex", gap: "7px", marginBottom: "7px", alignItems: "center", padding: "8px", background: C.surface, borderRadius: "10px", border: `1px solid ${C.outlineVariant}` }}>
-            <input autoFocus value={editName} onChange={e => setEditName(e.target.value)} style={{ flex: 2, padding: "5px 8px", borderRadius: "7px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.82rem", outline: "none" }} />
-            <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} style={{ flex: 1, padding: "5px 8px", borderRadius: "7px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.82rem", outline: "none" }} />
-            <button onClick={() => { updateFixedExpense(expense.id, { text: editName, amount: Number(editAmount) }); setIsEditing(false); }} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "7px", padding: "5px 10px", fontWeight: 800, cursor: "pointer" }}>OK</button>
-            <button onClick={() => setIsEditing(false)} style={{ background: C.outlineVariant, border: "none", borderRadius: "7px", padding: "5px 8px", fontWeight: 800, cursor: "pointer" }}>X</button>
+        <div style={{ display: "flex", flexDirection: "column", gap: "9px", padding: "10px 2px 14px", borderBottom: `1px solid ${C.surfaceContainerLow}` }}>
+            <div>
+                <label style={feLabelStyle}>Nombre</label>
+                <input autoFocus value={editName} onChange={e => setEditName(e.target.value)} style={feInputStyle} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "9px" }}>
+                <div>
+                    <label style={feLabelStyle}>Monto</label>
+                    <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} style={feInputStyle} />
+                </div>
+                <div>
+                    <label style={feLabelStyle}>Día de cobro</label>
+                    <input type="number" min="1" max="31" placeholder="—" value={editDueDay ?? ""} onChange={e => setEditDueDay(e.target.value ? Number(e.target.value) : undefined)} style={feInputStyle} />
+                </div>
+            </div>
+            <div>
+                <label style={feLabelStyle}>¿Desde qué cuenta?</label>
+                <select value={editAccountId ?? ""} onChange={e => setEditAccountId(e.target.value ? Number(e.target.value) : undefined)} style={{ ...feInputStyle, fontWeight: 700, cursor: "pointer" }}>
+                    <option value="">Sin cuenta asignada</option>
+                    {accounts?.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+            </div>
+            {projects?.length > 0 && (
+                <div>
+                    <label style={feLabelStyle}>Proyecto</label>
+                    <select value={editProjectId ?? ""} onChange={e => setEditProjectId(e.target.value ? Number(e.target.value) : undefined)} style={{ ...feInputStyle, fontWeight: 700, cursor: "pointer" }}>
+                        <option value="">Sin proyecto</option>
+                        {projects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                </div>
+            )}
+            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "2px" }}>
+                <button onClick={() => setIsEditing(false)} style={{ background: "none", border: `1px solid ${C.outlineVariant}`, color: C.onSurfaceVariant, borderRadius: "9px", padding: "7px 14px", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer" }}>Cancelar</button>
+                <button onClick={() => { updateFixedExpense(expense.id, { text: editName, amount: Number(editAmount), accountId: editAccountId, projectId: editProjectId, dueDay: editDueDay }); setIsEditing(false); }} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "9px", padding: "7px 14px", fontWeight: 800, fontSize: "0.78rem", cursor: "pointer" }}>Guardar</button>
+            </div>
         </div>
     );
 
     return (
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 0", borderBottom: `1px solid ${C.surfaceContainerLow}` }}>
-            <div onClick={() => toggleFixedExpense(expense.id)} style={{ width: "30px", height: "17px", borderRadius: "9px", background: expense.active ? C.secondary : C.outlineVariant, position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
-                <div style={{ width: "13px", height: "13px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: expense.active ? "15px" : "2px", transition: "left 0.15s" }} />
+        <div style={{ display: "flex", flexDirection: "column", gap: "7px", padding: "10px 2px", borderBottom: `1px solid ${C.surfaceContainerLow}`, opacity: expense.active ? 1 : 0.5 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "9px" }}>
+                <div onClick={() => toggleFixedExpense(expense.id)} title={expense.active ? "Desactivar" : "Activar"} style={{ width: "28px", height: "16px", borderRadius: "9px", background: expense.active ? C.secondary : C.outlineVariant, position: "relative", cursor: "pointer", flexShrink: 0, marginTop: "2px", transition: "background 0.2s" }}>
+                    <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: expense.active ? "14px" : "2px", transition: "left 0.15s" }} />
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: "0.85rem", color: isPaid ? C.outline : C.onSurface, textDecoration: isPaid ? "line-through" : "none" }}>
+                        {expense.text}
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "4px" }}>
+                        {expense.dueDay && <FEChip color={C.onSurfaceVariant} bg={C.surfaceContainer}>día {expense.dueDay}</FEChip>}
+                        {account ? (
+                            <FEChip color={C.secondary} bg="rgba(72,88,171,0.1)">{account.name}</FEChip>
+                        ) : (
+                            <FEChip color={C.rojo} bg="rgba(239,68,68,0.1)">sin cuenta</FEChip>
+                        )}
+                        {project && <FEChip color={C.primary} bg="rgba(148,74,24,0.1)">{project.name}</FEChip>}
+                    </div>
+                </div>
+
+                <div style={{ textAlign: "right", flexShrink: 0, position: "relative" }}>
+                    <div style={{ fontWeight: 800, fontSize: "0.9rem", color: isPaid ? C.verde : C.onSurface }}>
+                        S/ {expense.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </div>
+                    <button onClick={() => setMenuOpen(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "3px", display: "flex", marginLeft: "auto", marginTop: "2px" }}><MoreVertical size={14} /></button>
+
+                    {menuOpen && (
+                        <div style={{ position: "absolute", top: "100%", right: 0, zIndex: 5, background: "white", border: `1px solid ${C.outlineVariant}`, borderRadius: "9px", boxShadow: "0 4px 14px rgba(0,0,0,0.1)", overflow: "hidden", minWidth: "120px" }}>
+                            <button onClick={() => { setIsEditing(true); setMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", color: C.onSurface, fontSize: "0.78rem", fontWeight: 600, textAlign: "left" }}><Edit2 size={13} /> Editar</button>
+                            <button onClick={() => { setConfirmDelete(true); setMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", color: C.rojo, fontSize: "0.78rem", fontWeight: 600, textAlign: "left", borderTop: `1px solid ${C.surfaceContainerLow}` }}><Trash2 size={13} /> Eliminar</button>
+                        </div>
+                    )}
+                </div>
             </div>
-            <button onClick={() => isPaid ? unmarkFixedExpensePaid(expense.id, monthStr) : markFixedExpensePaid(expense.id, monthStr)} style={{ background: isPaid ? C.verde : C.surfaceContainerLow, border: "none", borderRadius: "50%", width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
-                <span style={{ color: isPaid ? "white" : C.outline, fontSize: "0.62rem", fontWeight: 900 }}>ok</span>
-            </button>
-            <span style={{ textDecoration: isPaid ? "line-through" : "none", fontWeight: 600, flex: 1, fontSize: "0.83rem", color: isPaid ? C.outline : "var(--text-carbon)", opacity: expense.active ? 1 : 0.45 }}>
-                {expense.text}
-                {expense.dueDay && <span style={{ fontSize: "0.6rem", color: C.outline, marginLeft: "5px" }}>dia {expense.dueDay}</span>}
-            </span>
-            <span style={{ fontWeight: 800, fontSize: "0.88rem", opacity: expense.active ? 1 : 0.45, color: isPaid ? C.verde : "var(--text-carbon)" }}>S/ {expense.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-            <button onClick={() => setIsEditing(true)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "3px", display: "flex" }}><Edit2 size={12} /></button>
-            <button onClick={() => removeFixedExpense(expense.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "3px", display: "flex" }}><Trash2 size={12} /></button>
+
+            <ConfirmDialog
+                open={confirmDelete}
+                title="Eliminar gasto fijo"
+                message={`¿Eliminar "${expense.text}"? Esto no borra los pagos ya registrados, solo deja de aparecer como gasto fijo.`}
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                onConfirm={() => { removeFixedExpense(expense.id); setConfirmDelete(false); }}
+                onCancel={() => setConfirmDelete(false)}
+            />
+
+            {hasPartial && (
+                <div>
+                    <div style={{ height: "5px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${Math.min(100, (paidSoFar / expense.amount) * 100)}%`, background: C.ambar, borderRadius: "999px" }} />
+                    </div>
+                    <div style={{ fontSize: "0.65rem", color: C.outline, marginTop: "3px", fontWeight: 600 }}>
+                        Abonado S/ {paidSoFar.toLocaleString("en-US", { minimumFractionDigits: 2 })} de S/ {expense.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })} · falta S/ {pending.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </div>
+                </div>
+            )}
+
+            {isPaying ? (
+                <div style={{ display: "flex", gap: "6px", alignItems: "center", background: C.surfaceContainerLow, padding: "6px", borderRadius: "9px" }}>
+                    <div style={{ position: "relative", flex: 1 }}>
+                        <span style={{ position: "absolute", left: "8px", top: "50%", transform: "translateY(-50%)", fontSize: "0.72rem", fontWeight: 700, color: C.onSurfaceVariant }}>S/</span>
+                        <input autoFocus type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} onKeyDown={e => e.key === "Enter" && confirmPay()} style={{ width: "100%", padding: "6px 6px 6px 26px", borderRadius: "7px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.8rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
+                    </div>
+                    <button onClick={() => setPayAmount(pending.toFixed(2))} style={{ padding: "6px 8px", borderRadius: "7px", border: "none", background: C.surfaceContainerHigh, color: C.onSurfaceVariant, fontSize: "0.65rem", fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>Todo</button>
+                    <button onClick={confirmPay} style={{ padding: "6px 10px", borderRadius: "7px", border: "none", background: C.verde, color: "white", fontSize: "0.7rem", fontWeight: 800, cursor: "pointer" }}>Pagar</button>
+                    <button onClick={() => setIsPaying(false)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "4px", display: "flex" }}><X size={14} /></button>
+                </div>
+            ) : isPaid ? (
+                <button onClick={() => unmarkFixedExpensePaid(expense.id, monthStr)} style={{ display: "flex", alignItems: "center", gap: "5px", background: "none", border: "none", padding: 0, cursor: "pointer", color: C.outline, fontSize: "0.7rem", fontWeight: 700 }}>
+                    <Check size={13} color={C.verde} /> Pagado · deshacer
+                </button>
+            ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <button onClick={openPay} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "5px", flex: 1, background: C.surfaceContainerLow, border: "none", borderRadius: "8px", padding: "7px", cursor: "pointer", color: C.onSurfaceVariant, fontSize: "0.75rem", fontWeight: 700 }}>
+                        <Check size={13} /> {hasPartial ? `Abonar resto · S/ ${pending.toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "Marcar pagado"}
+                    </button>
+                    {hasPartial && (
+                        <button onClick={() => unmarkFixedExpensePaid(expense.id, monthStr)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.outline, fontSize: "0.68rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                            Deshacer abono
+                        </button>
+                    )}
+                </div>
+            )}
         </div>
     );
 };
 
 // ─── New fixed expense form ───────────────────────────────────────────────────
-const NewFixedExpenseForm = ({ addFixedExpense, projects }: any) => {
+const NewFixedExpenseForm = ({ addFixedExpense, projects, accounts }: any) => {
     const [name, setName] = useState("");
     const [amount, setAmount] = useState("");
     const [dueDay, setDueDay] = useState<number | undefined>(undefined);
     const [projectId, setProjectId] = useState<number | undefined>(undefined);
+    const [accountId, setAccountId] = useState<number | undefined>(undefined);
     const [open, setOpen] = useState(false);
 
     const submit = () => {
         if (name && amount) {
-            addFixedExpense(name, parseFloat(amount), projectId, dueDay);
-            setName(""); setAmount(""); setProjectId(undefined); setDueDay(undefined); setOpen(false);
+            addFixedExpense(name, parseFloat(amount), projectId, dueDay, accountId);
+            setName(""); setAmount(""); setProjectId(undefined); setDueDay(undefined); setAccountId(undefined); setOpen(false);
         }
     };
 
@@ -1612,16 +1709,225 @@ const NewFixedExpenseForm = ({ addFixedExpense, projects }: any) => {
     );
 
     return (
-        <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} style={{ display: "flex", flexDirection: "column", gap: "6px", background: C.surface, padding: "10px", borderRadius: "12px", border: `1px solid ${C.outlineVariant}` }}>
-            <div style={{ display: "flex", gap: "6px" }}>
-                <input autoFocus placeholder="Nombre" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} style={{ flex: 2, padding: "6px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.8rem", outline: "none" }} />
-                <input type="number" placeholder="S/ " value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} style={{ flex: 1, padding: "6px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.8rem", outline: "none" }} />
+        <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} style={{ display: "flex", flexDirection: "column", gap: "9px", background: C.surface, padding: "12px", borderRadius: "12px", border: `1px solid ${C.outlineVariant}` }}>
+            <div>
+                <label style={feLabelStyle}>Nombre</label>
+                <input autoFocus placeholder="Ej. Netflix" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} style={feInputStyle} />
             </div>
-            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                {projects.length > 0 && <select value={projectId || ""} onChange={e => setProjectId(e.target.value ? Number(e.target.value) : undefined)} style={{ flex: 1, padding: "4px", borderRadius: "6px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.7rem", fontWeight: 700, background: "white", outline: "none" }}><option value="">Proyecto?</option>{projects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>}
-                <input type="number" placeholder="Dia" value={dueDay || ""} onChange={e => setDueDay(e.target.value ? Number(e.target.value) : undefined)} min="1" max="31" style={{ width: "44px", padding: "4px", borderRadius: "6px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.7rem", fontWeight: 800, background: C.surfaceContainerLow, textAlign: "center", outline: "none" }} />
-                <button onClick={() => setOpen(false)} style={{ padding: "4px 8px", borderRadius: "6px", border: "none", background: C.outlineVariant, color: C.onSurfaceVariant, fontSize: "0.65rem", fontWeight: 800, cursor: "pointer" }}>X</button>
-                <button onClick={submit} style={{ padding: "4px 10px", borderRadius: "6px", border: "none", background: C.secondary, color: "white", fontSize: "0.65rem", fontWeight: 800, cursor: "pointer" }}>OK</button>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "9px" }}>
+                <div>
+                    <label style={feLabelStyle}>Monto</label>
+                    <input type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} style={feInputStyle} />
+                </div>
+                <div>
+                    <label style={feLabelStyle}>Día de cobro</label>
+                    <input type="number" placeholder="—" value={dueDay || ""} onChange={e => setDueDay(e.target.value ? Number(e.target.value) : undefined)} min="1" max="31" style={feInputStyle} />
+                </div>
+            </div>
+            {accounts?.length > 0 && (
+                <div>
+                    <label style={feLabelStyle}>¿Desde qué cuenta?</label>
+                    <select value={accountId || ""} onChange={e => setAccountId(e.target.value ? Number(e.target.value) : undefined)} style={{ ...feInputStyle, fontWeight: 700, cursor: "pointer" }}>
+                        <option value="">Sin cuenta asignada</option>
+                        {accounts.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                </div>
+            )}
+            {projects.length > 0 && (
+                <div>
+                    <label style={feLabelStyle}>Proyecto</label>
+                    <select value={projectId || ""} onChange={e => setProjectId(e.target.value ? Number(e.target.value) : undefined)} style={{ ...feInputStyle, fontWeight: 700, cursor: "pointer" }}>
+                        <option value="">Sin proyecto</option>
+                        {projects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                </div>
+            )}
+            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "2px" }}>
+                <button onClick={() => setOpen(false)} style={{ background: "none", border: `1px solid ${C.outlineVariant}`, color: C.onSurfaceVariant, borderRadius: "9px", padding: "7px 14px", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer" }}>Cancelar</button>
+                <button onClick={submit} style={{ padding: "7px 14px", borderRadius: "9px", border: "none", background: C.secondary, color: "white", fontSize: "0.78rem", fontWeight: 800, cursor: "pointer" }}>Agregar</button>
+            </div>
+        </motion.div>
+    );
+};
+
+// ─── Fixed income row ─────────────────────────────────────────────────────────
+const FixedIncomeRow = ({ item, toggleFixedIncome, removeFixedIncome, updateFixedIncome, markFixedIncomeReceived, receiveFixedIncomePartial, unmarkFixedIncomeReceived, isReceived, accounts }: any) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editName, setEditName] = useState(item.name);
+    const [editAmount, setEditAmount] = useState(String(item.amount));
+    const [editAccountId, setEditAccountId] = useState<number | undefined>(item.accountId);
+    const [isReceiving, setIsReceiving] = useState(false);
+    const [receiveAmount, setReceiveAmount] = useState("");
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(false);
+
+    const monthStr = new Date().toLocaleDateString("en-CA").substring(0, 7);
+    const account = accounts?.find((a: any) => a.id === item.accountId);
+
+    const receivedSoFar = isReceived ? item.amount : (item.partialReceived?.month === monthStr ? item.partialReceived.amount : 0);
+    const pending = Math.max(0, item.amount - receivedSoFar);
+    const hasPartial = !isReceived && receivedSoFar > 0;
+
+    const openReceive = () => { setReceiveAmount(pending.toFixed(2)); setIsReceiving(true); };
+    const confirmReceive = () => {
+        const value = parseFloat(receiveAmount);
+        if (!value || value <= 0) return;
+        receiveFixedIncomePartial(item.id, monthStr, value, item.accountId);
+        setIsReceiving(false);
+    };
+
+    if (isEditing) return (
+        <div style={{ display: "flex", flexDirection: "column", gap: "9px", padding: "10px 2px 14px", borderBottom: `1px solid ${C.surfaceContainerLow}` }}>
+            <div>
+                <label style={feLabelStyle}>Nombre</label>
+                <input autoFocus value={editName} onChange={e => setEditName(e.target.value)} style={feInputStyle} />
+            </div>
+            <div>
+                <label style={feLabelStyle}>Monto</label>
+                <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} style={feInputStyle} />
+            </div>
+            <div>
+                <label style={feLabelStyle}>¿A qué cuenta llega?</label>
+                <select value={editAccountId ?? ""} onChange={e => setEditAccountId(e.target.value ? Number(e.target.value) : undefined)} style={{ ...feInputStyle, fontWeight: 700, cursor: "pointer" }}>
+                    <option value="">Sin cuenta asignada</option>
+                    {accounts?.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+            </div>
+            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "2px" }}>
+                <button onClick={() => setIsEditing(false)} style={{ background: "none", border: `1px solid ${C.outlineVariant}`, color: C.onSurfaceVariant, borderRadius: "9px", padding: "7px 14px", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer" }}>Cancelar</button>
+                <button onClick={() => { updateFixedIncome(item.id, editName, Number(editAmount), editAccountId); setIsEditing(false); }} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "9px", padding: "7px 14px", fontWeight: 800, fontSize: "0.78rem", cursor: "pointer" }}>Guardar</button>
+            </div>
+        </div>
+    );
+
+    return (
+        <div style={{ display: "flex", flexDirection: "column", gap: "7px", padding: "10px 2px", borderBottom: `1px solid ${C.surfaceContainerLow}`, opacity: item.active ? 1 : 0.5 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "9px" }}>
+                <div onClick={() => toggleFixedIncome(item.id)} title={item.active ? "Desactivar" : "Activar"} style={{ width: "28px", height: "16px", borderRadius: "9px", background: item.active ? C.secondary : C.outlineVariant, position: "relative", cursor: "pointer", flexShrink: 0, marginTop: "2px", transition: "background 0.2s" }}>
+                    <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: item.active ? "14px" : "2px", transition: "left 0.15s" }} />
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: "0.85rem", color: isReceived ? C.outline : C.onSurface, textDecoration: isReceived ? "line-through" : "none" }}>
+                        {item.name}
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "4px" }}>
+                        {account ? (
+                            <FEChip color={C.secondary} bg="rgba(72,88,171,0.1)">{account.name}</FEChip>
+                        ) : (
+                            <FEChip color={C.rojo} bg="rgba(239,68,68,0.1)">sin cuenta</FEChip>
+                        )}
+                    </div>
+                </div>
+
+                <div style={{ textAlign: "right", flexShrink: 0, position: "relative" }}>
+                    <div style={{ fontWeight: 800, fontSize: "0.9rem", color: isReceived ? C.verde : C.onSurface }}>
+                        S/ {item.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </div>
+                    <button onClick={() => setMenuOpen(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "3px", display: "flex", marginLeft: "auto", marginTop: "2px" }}><MoreVertical size={14} /></button>
+
+                    {menuOpen && (
+                        <div style={{ position: "absolute", top: "100%", right: 0, zIndex: 5, background: "white", border: `1px solid ${C.outlineVariant}`, borderRadius: "9px", boxShadow: "0 4px 14px rgba(0,0,0,0.1)", overflow: "hidden", minWidth: "120px" }}>
+                            <button onClick={() => { setIsEditing(true); setMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", color: C.onSurface, fontSize: "0.78rem", fontWeight: 600, textAlign: "left" }}><Edit2 size={13} /> Editar</button>
+                            <button onClick={() => { setConfirmDelete(true); setMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", color: C.rojo, fontSize: "0.78rem", fontWeight: 600, textAlign: "left", borderTop: `1px solid ${C.surfaceContainerLow}` }}><Trash2 size={13} /> Eliminar</button>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <ConfirmDialog
+                open={confirmDelete}
+                title="Eliminar ingreso fijo"
+                message={`¿Eliminar "${item.name}"? Esto no borra los depósitos ya registrados, solo deja de aparecer como ingreso fijo.`}
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                onConfirm={() => { removeFixedIncome(item.id); setConfirmDelete(false); }}
+                onCancel={() => setConfirmDelete(false)}
+            />
+
+            {hasPartial && (
+                <div>
+                    <div style={{ height: "5px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${Math.min(100, (receivedSoFar / item.amount) * 100)}%`, background: C.secondary, borderRadius: "999px" }} />
+                    </div>
+                    <div style={{ fontSize: "0.65rem", color: C.outline, marginTop: "3px", fontWeight: 600 }}>
+                        Recibido S/ {receivedSoFar.toLocaleString("en-US", { minimumFractionDigits: 2 })} de S/ {item.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })} · falta S/ {pending.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </div>
+                </div>
+            )}
+
+            {isReceiving ? (
+                <div style={{ display: "flex", gap: "6px", alignItems: "center", background: C.surfaceContainerLow, padding: "6px", borderRadius: "9px" }}>
+                    <div style={{ position: "relative", flex: 1 }}>
+                        <span style={{ position: "absolute", left: "8px", top: "50%", transform: "translateY(-50%)", fontSize: "0.72rem", fontWeight: 700, color: C.onSurfaceVariant }}>S/</span>
+                        <input autoFocus type="number" value={receiveAmount} onChange={e => setReceiveAmount(e.target.value)} onKeyDown={e => e.key === "Enter" && confirmReceive()} style={{ width: "100%", padding: "6px 6px 6px 26px", borderRadius: "7px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.8rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
+                    </div>
+                    <button onClick={() => setReceiveAmount(pending.toFixed(2))} style={{ padding: "6px 8px", borderRadius: "7px", border: "none", background: C.surfaceContainerHigh, color: C.onSurfaceVariant, fontSize: "0.65rem", fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>Todo</button>
+                    <button onClick={confirmReceive} style={{ padding: "6px 10px", borderRadius: "7px", border: "none", background: C.verde, color: "white", fontSize: "0.7rem", fontWeight: 800, cursor: "pointer" }}>Recibir</button>
+                    <button onClick={() => setIsReceiving(false)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "4px", display: "flex" }}><X size={14} /></button>
+                </div>
+            ) : isReceived ? (
+                <button onClick={() => unmarkFixedIncomeReceived(item.id, monthStr)} style={{ display: "flex", alignItems: "center", gap: "5px", background: "none", border: "none", padding: 0, cursor: "pointer", color: C.outline, fontSize: "0.7rem", fontWeight: 700 }}>
+                    <Check size={13} color={C.verde} /> Recibido · deshacer
+                </button>
+            ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <button onClick={openReceive} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "5px", flex: 1, background: C.surfaceContainerLow, border: "none", borderRadius: "8px", padding: "7px", cursor: "pointer", color: C.onSurfaceVariant, fontSize: "0.75rem", fontWeight: 700 }}>
+                        <Check size={13} /> {hasPartial ? `Recibir resto · S/ ${pending.toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "Marcar recibido"}
+                    </button>
+                    {hasPartial && (
+                        <button onClick={() => unmarkFixedIncomeReceived(item.id, monthStr)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.outline, fontSize: "0.68rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                            Deshacer abono
+                        </button>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ─── New fixed income form ─────────────────────────────────────────────────────
+const NewFixedIncomeForm = ({ addFixedIncome, accounts }: any) => {
+    const [name, setName] = useState("");
+    const [amount, setAmount] = useState("");
+    const [accountId, setAccountId] = useState<number | undefined>(undefined);
+    const [open, setOpen] = useState(false);
+
+    const submit = () => {
+        if (name && amount) {
+            addFixedIncome(name, parseFloat(amount), accountId);
+            setName(""); setAmount(""); setAccountId(undefined); setOpen(false);
+        }
+    };
+
+    if (!open) return (
+        <button onClick={() => setOpen(true)} style={{ display: "flex", alignItems: "center", gap: "7px", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}>
+            <Plus size={13} color={C.outline} /><span style={{ fontSize: "0.75rem", fontWeight: 600, color: C.outline }}>Nuevo ingreso fijo...</span>
+        </button>
+    );
+
+    return (
+        <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} style={{ display: "flex", flexDirection: "column", gap: "9px", background: C.surface, padding: "12px", borderRadius: "12px", border: `1px solid ${C.outlineVariant}` }}>
+            <div>
+                <label style={feLabelStyle}>Nombre</label>
+                <input autoFocus placeholder="Ej. Sueldo" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} style={feInputStyle} />
+            </div>
+            <div>
+                <label style={feLabelStyle}>Monto</label>
+                <input type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} style={feInputStyle} />
+            </div>
+            {accounts?.length > 0 && (
+                <div>
+                    <label style={feLabelStyle}>¿A qué cuenta llega?</label>
+                    <select value={accountId || ""} onChange={e => setAccountId(e.target.value ? Number(e.target.value) : undefined)} style={{ ...feInputStyle, fontWeight: 700, cursor: "pointer" }}>
+                        <option value="">Sin cuenta asignada</option>
+                        {accounts.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                </div>
+            )}
+            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "2px" }}>
+                <button onClick={() => setOpen(false)} style={{ background: "none", border: `1px solid ${C.outlineVariant}`, color: C.onSurfaceVariant, borderRadius: "9px", padding: "7px 14px", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer" }}>Cancelar</button>
+                <button onClick={submit} style={{ padding: "7px 14px", borderRadius: "9px", border: "none", background: C.secondary, color: "white", fontSize: "0.78rem", fontWeight: 800, cursor: "pointer" }}>Agregar</button>
             </div>
         </motion.div>
     );
