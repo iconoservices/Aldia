@@ -489,8 +489,12 @@ export const FinanzasDashboard = ({
         const payAccountId = d.originalTx.accountId ?? accounts[0]?.id;
         // Transacción REAL: aparece en topTxs (finanzas) y en periodBalance
         addTransaction(`Pago: ${d.name}`, d.isOwe ? -amount : amount, d.isOwe ? 'gasto' : 'ingreso', false, undefined, payAccountId, false, 'Deudas', d.contact);
-        // Transacción de seguimiento: reduce la deuda en el grouping, sin afectar balance (isCashless: true)
-        addTransaction(`Pago: ${d.name}`, d.isOwe ? -amount : amount, d.isOwe ? 'gasto' : 'ingreso', true, undefined, undefined, true, 'Deudas', d.contact);
+        // Transacción de seguimiento: reduce la deuda en el grouping, sin afectar balance (isCashless: true).
+        // El tipo va INVERTIDO a propósito — activeDebtsAndCollections agrupa transacciones sin garantía
+        // de orden (el array es más-reciente-primero) y deduce isOwe tanto desde el original como desde
+        // el pago; para que ambos caminos den el mismo resultado, el pago debe tener el tipo opuesto al
+        // original. Si aquí usa el mismo tipo, la deuda salta de "Debo" a "Me deben" al abonar.
+        addTransaction(`Pago: ${d.name}`, d.isOwe ? -amount : amount, d.isOwe ? 'ingreso' : 'gasto', true, undefined, undefined, true, 'Deudas', d.contact);
         setPayInputs(m => ({ ...m, [key]: '' }));
         setPayOpen(m => ({ ...m, [key]: false }));
     };
