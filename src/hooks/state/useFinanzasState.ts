@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import type { Transaction, FixedExpense } from '../useAlDiaState';
+import { getPeriodKey, type Transaction, type FixedExpense } from '../useAlDiaState';
 
 export const useFinanzasState = () => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -67,8 +67,8 @@ export const useFinanzasState = () => {
         setTransactions(prev => [repaymentTx, ...prev]);
     };
 
-    const addFixedExpense = (text: string, amount: number, projectId?: number, dueDay?: number, accountId?: number) => {
-        const newExpense: FixedExpense = { id: Date.now() + Math.random(), text, amount, active: true, projectId, dueDay, accountId };
+    const addFixedExpense = (text: string, amount: number, projectId?: number, dueDay?: number, accountId?: number, frequency?: 'monthly' | 'weekly', dueWeekday?: number) => {
+        const newExpense: FixedExpense = { id: Date.now() + Math.random(), text, amount, active: true, projectId, dueDay, accountId, frequency, dueWeekday };
         setFixedExpenses(prev => [...prev, newExpense]);
     };
 
@@ -131,13 +131,14 @@ export const useFinanzasState = () => {
         const expense = fixedExpenses.find(e => e.id === id);
         if (!expense) return;
 
-        // Reset the paid status (borra también cualquier abono parcial del mes)
+        // Reset the paid status (borra también cualquier abono parcial del período)
         setFixedExpenses((prev: FixedExpense[]) => prev.map(e => e.id === id ? { ...e, lastPaidMonth: undefined, partialPaid: undefined } : e));
 
-        // Elimina todos los pagos/abonos generados para este gasto fijo en el mes
+        // Elimina todos los pagos/abonos generados para este gasto fijo en el período
+        // (mensual: por prefijo "YYYY-MM"; semanal: por semana ISO calculada de la fecha real)
         setTransactions((prev: Transaction[]) => {
             const targetTxPrefix = `Pago: ${expense.text}`;
-            return prev.filter(t => !(t.text === targetTxPrefix && t.fullDate.startsWith(monthStr)));
+            return prev.filter(t => !(t.text === targetTxPrefix && getPeriodKey(expense.frequency, t.fullDate) === monthStr));
         });
     };
 

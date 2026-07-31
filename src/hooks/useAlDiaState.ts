@@ -82,9 +82,26 @@ export interface FixedExpense {
     active: boolean;
     projectId?: number;
     accountId?: number; // Cuenta desde la que se paga habitualmente
-    lastPaidMonth?: string; // YYYY-MM, presente solo si se pagó el monto completo
-    dueDay?: number; // 1-31 (Día de cobro en el mes)
-    partialPaid?: { month: string; amount: number }; // Abono parcial del mes en curso, aún no cubre el total
+    frequency?: 'monthly' | 'weekly'; // Ausente = 'monthly' (compatibilidad con datos antiguos)
+    lastPaidMonth?: string; // Período ya cubierto: "YYYY-MM" si es mensual, "YYYY-Www" (ISO) si es semanal
+    dueDay?: number; // 1-31 (Día de cobro en el mes), solo si frequency === 'monthly'
+    dueWeekday?: number; // 0-6 (Dom-Sáb, como Date.getDay()), solo si frequency === 'weekly'
+    partialPaid?: { month: string; amount: number }; // Abono parcial del período en curso, aún no cubre el total
+}
+
+// Clave de período para un gasto/ingreso fijo: "YYYY-MM" si es mensual (igual que antes),
+// o semana ISO "YYYY-Www" si es semanal. Se usa tanto para marcar "ya pagado este período"
+// como para saber a qué período pertenece una transacción ya generada (ver unmarkFixedExpensePaid).
+export function getPeriodKey(frequency: 'monthly' | 'weekly' | undefined, dateStr: string): string {
+    if (frequency !== 'weekly') return dateStr.substring(0, 7);
+    const d = new Date(dateStr + 'T00:00:00');
+    const dayNum = (d.getDay() + 6) % 7; // Lunes=0 ... Domingo=6
+    d.setDate(d.getDate() - dayNum + 3); // Jueves de esa semana (ancla ISO)
+    const firstThursday = new Date(d.getFullYear(), 0, 4);
+    const firstDayNum = (firstThursday.getDay() + 6) % 7;
+    firstThursday.setDate(firstThursday.getDate() - firstDayNum + 3);
+    const week = 1 + Math.round((d.getTime() - firstThursday.getTime()) / (7 * 86400000));
+    return `${d.getFullYear()}-W${String(week).padStart(2, '0')}`;
 }
 
 export interface CalendarEvent {

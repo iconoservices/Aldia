@@ -9,6 +9,7 @@ import { AnalyticsView } from "./AnalyticsView";
 import { motion, AnimatePresence } from "framer-motion";
 import { ProjectDetailView } from "./ProjectDetailView";
 import type { Transaction, FixedExpense, Project, Routine, UserPreferences } from "../../hooks/useAlDiaState";
+import { getPeriodKey } from "../../hooks/useAlDiaState";
 import { C, bento, etiqueta, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina, botonPrimario, TOQUE_MINIMO } from "../../theme";
 import { RegistroMovimiento } from "../features/RegistroMovimiento";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
@@ -27,7 +28,7 @@ interface FinanzasProps {
     monthlyBudget: number;
     updateMonthlyBudget: (amount: number) => void;
     fixedExpenses: FixedExpense[];
-    addFixedExpense: (text: string, amount: number, projectId?: number, dueDay?: number, accountId?: number) => void;
+    addFixedExpense: (text: string, amount: number, projectId?: number, dueDay?: number, accountId?: number, frequency?: 'monthly' | 'weekly', dueWeekday?: number) => void;
     removeFixedExpense: (id: number) => void;
     toggleFixedExpense: (id: number) => void;
     updateFixedExpense: (id: number, updates: Partial<FixedExpense>) => void;
@@ -367,7 +368,6 @@ export const FinanzasDashboard = ({
     onNavigate,
     incomeCategories, expenseCategories, addCategory, removeCategory, renameCategory, mergeCategory,
 }: FinanzasProps) => {
-    const currentMonthStr = useMemo(() => new Date().toLocaleDateString("en-CA").substring(0, 7), []);
 
     // ── Config ────────────────────────────────────────────────────────────
     const [includeDebts, setIncludeDebts] = useState(false);
@@ -415,29 +415,50 @@ export const FinanzasDashboard = ({
         fixedExpenses.filter(e => e.active).reduce((a, e) => a + e.amount, 0),
         [fixedExpenses]);
 
+    const todayStr = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
+
     const fixedExpensePaidTotal = useMemo(() =>
-        fixedExpenses.filter(e => e.active).reduce((a, e) => a + (e.lastPaidMonth === currentMonthStr ? e.amount : (e.partialPaid?.month === currentMonthStr ? e.partialPaid.amount : 0)), 0),
-        [fixedExpenses, currentMonthStr]);
+        fixedExpenses.filter(e => e.active).reduce((a, e) => {
+            const period = getPeriodKey(e.frequency, todayStr);
+            return a + (e.lastPaidMonth === period ? e.amount : (e.partialPaid?.month === period ? e.partialPaid.amount : 0));
+        }, 0),
+        [fixedExpenses, todayStr]);
 
     const totalFixedPending = useMemo(() =>
-        fixedExpenses.filter(e => e.active && e.lastPaidMonth !== currentMonthStr).reduce((a, e) => a + (e.amount - (e.partialPaid?.month === currentMonthStr ? e.partialPaid.amount : 0)), 0),
-        [fixedExpenses, currentMonthStr]);
+        fixedExpenses.filter(e => e.active).reduce((a, e) => {
+            const period = getPeriodKey(e.frequency, todayStr);
+            if (e.lastPaidMonth === period) return a;
+            return a + (e.amount - (e.partialPaid?.month === period ? e.partialPaid.amount : 0));
+        }, 0),
+        [fixedExpenses, todayStr]);
+
+    // Orden: primero los que tienen un abono parcial este período (les falta poco,
+    // quiere verlos de un vistazo), luego los sin pagar, y al final los ya pagados.
+    const sortedFixedExpenses = useMemo(() => {
+        const statusRank = (e: FixedExpense) => {
+            const period = getPeriodKey(e.frequency, todayStr);
+            if (e.lastPaidMonth === period) return 2;
+            if (e.partialPaid?.month === period && e.partialPaid.amount > 0) return 0;
+            return 1;
+        };
+        return [...fixedExpenses].sort((a, b) => statusRank(a) - statusRank(b));
+    }, [fixedExpenses, todayStr]);
 
     // ── Fixed incomes (stored in preferences as JSON) ─────────────────────
-    type FixedIncomeItem = { id: number; name: string; amount: number; active: boolean; accountId?: number; lastReceivedMonth?: string; partialReceived?: { month: string; amount: number } };
+    type FixedIncomeItem = { id: number; name: string; amount: number; active: boolean; accountId?: number; frequency?: 'monthly' | 'weekly'; dueDay?: number; dueWeekday?: number; lastReceivedMonth?: string; partialReceived?: { month: string; amount: number } };
     const fixedIncomeItems: FixedIncomeItem[] = useMemo(() => {
         try { return JSON.parse(preferences.fixedIncomes || "[]"); } catch { return []; }
     }, [preferences.fixedIncomes]);
     const saveFixedIncomes = (items: FixedIncomeItem[]) =>
         updatePreference("fixedIncomes", JSON.stringify(items));
-    const addFixedIncome = (name: string, amount: number, accountId?: number) =>
-        saveFixedIncomes([...fixedIncomeItems, { id: Date.now(), name, amount, active: true, accountId }]);
+    const addFixedIncome = (name: string, amount: number, accountId?: number, frequency?: 'monthly' | 'weekly', dueDay?: number, dueWeekday?: number) =>
+        saveFixedIncomes([...fixedIncomeItems, { id: Date.now(), name, amount, active: true, accountId, frequency, dueDay, dueWeekday }]);
     const removeFixedIncome = (id: number) =>
         saveFixedIncomes(fixedIncomeItems.filter(f => f.id !== id));
     const toggleFixedIncome = (id: number) =>
         saveFixedIncomes(fixedIncomeItems.map(f => f.id === id ? { ...f, active: !f.active } : f));
-    const updateFixedIncome = (id: number, name: string, amount: number, accountId?: number) =>
-        saveFixedIncomes(fixedIncomeItems.map(f => f.id === id ? { ...f, name, amount, accountId } : f));
+    const updateFixedIncome = (id: number, name: string, amount: number, accountId?: number, frequency?: 'monthly' | 'weekly', dueDay?: number, dueWeekday?: number) =>
+        saveFixedIncomes(fixedIncomeItems.map(f => f.id === id ? { ...f, name, amount, accountId, frequency, dueDay, dueWeekday } : f));
     const markFixedIncomeReceived = (id: number, monthStr: string, accountId?: number) => {
         const item = fixedIncomeItems.find(f => f.id === id);
         if (!item) return;
@@ -472,7 +493,7 @@ export const FinanzasDashboard = ({
         if (!item) return;
         saveFixedIncomes(fixedIncomeItems.map(f => f.id === id ? { ...f, lastReceivedMonth: undefined, partialReceived: undefined } : f));
         const targetTxPrefix = `Depósito: ${item.name}`;
-        transactions.filter(t => t.text === targetTxPrefix && t.fullDate.startsWith(monthStr)).forEach(t => removeTransaction(t.id));
+        transactions.filter(t => t.text === targetTxPrefix && getPeriodKey(item.frequency, t.fullDate) === monthStr).forEach(t => removeTransaction(t.id));
     };
     const fixedIncomeTotal = useMemo(() =>
         fixedIncomeItems.filter(f => f.active).reduce((s, f) => s + f.amount, 0),
@@ -533,8 +554,12 @@ export const FinanzasDashboard = ({
     const projectedSavings = projectedResources - projectedExpenses;
 
     const totalIncomePending = useMemo(() =>
-        fixedIncomeItems.filter(f => f.active && f.lastReceivedMonth !== currentMonthStr).reduce((s, f) => s + (f.amount - (f.partialReceived?.month === currentMonthStr ? f.partialReceived.amount : 0)), 0),
-        [fixedIncomeItems, currentMonthStr]);
+        fixedIncomeItems.filter(f => f.active).reduce((s, f) => {
+            const period = getPeriodKey(f.frequency, todayStr);
+            if (f.lastReceivedMonth === period) return s;
+            return s + (f.amount - (f.partialReceived?.month === period ? f.partialReceived.amount : 0));
+        }, 0),
+        [fixedIncomeItems, todayStr]);
 
     const projectedIncomeVal = useMemo(() => {
         if (topPeriod === "month" || topPeriod === "all") return totalIncomePending;
@@ -1180,7 +1205,7 @@ export const FinanzasDashboard = ({
                             <p style={{ fontSize: "0.75rem", color: C.outline, margin: 0 }}>Sin ingresos fijos. Agrega uno abajo.</p>
                         )}
                         {(showAllFixedIncomes ? fixedIncomeItems : fixedIncomeItems.slice(0, LISTA_VISIBLE)).map(item => (
-                            <FixedIncomeRow key={item.id} item={item} toggleFixedIncome={toggleFixedIncome} removeFixedIncome={removeFixedIncome} updateFixedIncome={updateFixedIncome} markFixedIncomeReceived={markFixedIncomeReceived} receiveFixedIncomePartial={receiveFixedIncomePartial} unmarkFixedIncomeReceived={unmarkFixedIncomeReceived} isReceived={item.lastReceivedMonth === currentMonthStr} accounts={accounts} />
+                            <FixedIncomeRow key={item.id} item={item} toggleFixedIncome={toggleFixedIncome} removeFixedIncome={removeFixedIncome} updateFixedIncome={updateFixedIncome} markFixedIncomeReceived={markFixedIncomeReceived} receiveFixedIncomePartial={receiveFixedIncomePartial} unmarkFixedIncomeReceived={unmarkFixedIncomeReceived} isReceived={item.lastReceivedMonth === getPeriodKey(item.frequency, todayStr)} accounts={accounts} />
                         ))}
                         {fixedIncomeItems.length > LISTA_VISIBLE && (
                             <button onClick={() => setShowAllFixedIncomes(v => !v)} style={{ background: "none", border: "none", padding: "2px 0", cursor: "pointer", color: C.secondary, fontSize: "0.72rem", fontWeight: 700, textAlign: "left" }}>
@@ -1210,8 +1235,8 @@ export const FinanzasDashboard = ({
                         {fixedExpenses.length === 0 && (
                             <p style={{ fontSize: "0.75rem", color: C.outline, margin: 0 }}>Sin gastos fijos. Agrega uno abajo.</p>
                         )}
-                        {(showAllFixedExpenses ? fixedExpenses : fixedExpenses.slice(0, LISTA_VISIBLE)).map(exp => (
-                            <FixedExpenseRow key={exp.id} expense={exp} toggleFixedExpense={toggleFixedExpense} removeFixedExpense={removeFixedExpense} updateFixedExpense={updateFixedExpense} markFixedExpensePaid={markFixedExpensePaid} payFixedExpensePartial={payFixedExpensePartial} unmarkFixedExpensePaid={unmarkFixedExpensePaid} isPaid={exp.lastPaidMonth === currentMonthStr} projects={projects} accounts={accounts} />
+                        {(showAllFixedExpenses ? sortedFixedExpenses : sortedFixedExpenses.slice(0, LISTA_VISIBLE)).map(exp => (
+                            <FixedExpenseRow key={exp.id} expense={exp} toggleFixedExpense={toggleFixedExpense} removeFixedExpense={removeFixedExpense} updateFixedExpense={updateFixedExpense} markFixedExpensePaid={markFixedExpensePaid} payFixedExpensePartial={payFixedExpensePartial} unmarkFixedExpensePaid={unmarkFixedExpensePaid} isPaid={exp.lastPaidMonth === getPeriodKey(exp.frequency, todayStr)} projects={projects} accounts={accounts} />
                         ))}
                         {fixedExpenses.length > LISTA_VISIBLE && (
                             <button onClick={() => setShowAllFixedExpenses(v => !v)} style={{ background: "none", border: "none", padding: "2px 0", cursor: "pointer", color: C.rojo, fontSize: "0.72rem", fontWeight: 700, textAlign: "left" }}>
@@ -1533,6 +1558,16 @@ const FEChip = ({ children, color, bg }: { children: React.ReactNode, color: str
 
 const feInputStyle: React.CSSProperties = { padding: "7px 9px", borderRadius: "9px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.8rem", outline: "none", background: "white", boxSizing: "border-box", width: "100%" };
 const feLabelStyle: React.CSSProperties = { fontSize: "0.62rem", fontWeight: 800, color: C.outline, textTransform: "uppercase", letterSpacing: "0.03em", marginBottom: "3px", display: "block" };
+const WEEKDAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+// dueDay === 0 es un valor especial: "último día del mes" (cubre feb/abr/jun... sin fijar 31 a mano)
+const dueDayLabel = (dueDay?: number) => dueDay === 0 ? "último día del mes" : (dueDay ? `día ${dueDay}` : "");
+const FrequencyToggle = ({ frequency, setFrequency }: { frequency: 'monthly' | 'weekly'; setFrequency: (f: 'monthly' | 'weekly') => void }) => (
+    <div style={{ display: "flex", gap: "6px" }}>
+        {([["monthly", "Mensual"], ["weekly", "Semanal"]] as const).map(([val, label]) => (
+            <button key={val} type="button" onClick={() => setFrequency(val)} style={{ flex: 1, padding: "6px", borderRadius: "8px", border: `1px solid ${frequency === val ? C.secondary : C.outlineVariant}`, background: frequency === val ? C.secondary : "white", color: frequency === val ? "white" : C.onSurfaceVariant, fontSize: "0.72rem", fontWeight: 700, cursor: "pointer" }}>{label}</button>
+        ))}
+    </div>
+);
 
 // ─── Fixed expense row ────────────────────────────────────────────────────────
 const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, updateFixedExpense, payFixedExpensePartial, unmarkFixedExpensePaid, isPaid, accounts, projects }: any) => {
@@ -1542,12 +1577,16 @@ const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, upda
     const [editAccountId, setEditAccountId] = useState<number | undefined>(expense.accountId);
     const [editProjectId, setEditProjectId] = useState<number | undefined>(expense.projectId);
     const [editDueDay, setEditDueDay] = useState<number | undefined>(expense.dueDay);
+    const [editFrequency, setEditFrequency] = useState<'monthly' | 'weekly'>(expense.frequency ?? 'monthly');
+    const [editDueWeekday, setEditDueWeekday] = useState<number>(expense.dueWeekday ?? 1);
     const [isPaying, setIsPaying] = useState(false);
     const [payAmount, setPayAmount] = useState("");
+    const [payAccountId, setPayAccountId] = useState<number | undefined>(expense.accountId);
     const [menuOpen, setMenuOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
 
-    const monthStr = new Date().toLocaleDateString("en-CA").substring(0, 7);
+    const todayStr = new Date().toLocaleDateString("en-CA");
+    const monthStr = getPeriodKey(expense.frequency, todayStr);
     const account = accounts?.find((a: any) => a.id === expense.accountId);
     const project = projects?.find((p: any) => p.id === expense.projectId);
 
@@ -1555,11 +1594,11 @@ const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, upda
     const pending = Math.max(0, expense.amount - paidSoFar);
     const hasPartial = !isPaid && paidSoFar > 0;
 
-    const openPay = () => { setPayAmount(pending.toFixed(2)); setIsPaying(true); };
+    const openPay = () => { setPayAmount(pending.toFixed(2)); setPayAccountId(expense.accountId); setIsPaying(true); };
     const confirmPay = () => {
         const value = parseFloat(payAmount);
-        if (!value || value <= 0) return;
-        payFixedExpensePartial(expense.id, monthStr, value, expense.accountId);
+        if (!value || value <= 0 || !payAccountId) return;
+        payFixedExpensePartial(expense.id, monthStr, value, payAccountId);
         setIsPaying(false);
     };
 
@@ -1569,15 +1608,32 @@ const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, upda
                 <label style={feLabelStyle}>Nombre</label>
                 <input autoFocus value={editName} onChange={e => setEditName(e.target.value)} style={feInputStyle} />
             </div>
+            <div>
+                <label style={feLabelStyle}>Frecuencia</label>
+                <FrequencyToggle frequency={editFrequency} setFrequency={setEditFrequency} />
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "9px" }}>
                 <div>
                     <label style={feLabelStyle}>Monto</label>
                     <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} style={feInputStyle} />
                 </div>
-                <div>
-                    <label style={feLabelStyle}>Día de cobro</label>
-                    <input type="number" min="1" max="31" placeholder="—" value={editDueDay ?? ""} onChange={e => setEditDueDay(e.target.value ? Number(e.target.value) : undefined)} style={feInputStyle} />
-                </div>
+                {editFrequency === 'weekly' ? (
+                    <div>
+                        <label style={feLabelStyle}>Día de la semana</label>
+                        <select value={editDueWeekday} onChange={e => setEditDueWeekday(Number(e.target.value))} style={{ ...feInputStyle, fontWeight: 700, cursor: "pointer" }}>
+                            {WEEKDAYS.map((w, i) => <option key={i} value={i}>{w}</option>)}
+                        </select>
+                    </div>
+                ) : (
+                    <div>
+                        <label style={feLabelStyle}>Día de cobro</label>
+                        <input type="number" min="1" max="31" placeholder="—" disabled={editDueDay === 0} value={editDueDay === 0 ? "" : editDueDay ?? ""} onChange={e => setEditDueDay(e.target.value ? Number(e.target.value) : undefined)} style={feInputStyle} />
+                        <label style={{ display: "flex", alignItems: "center", gap: "5px", marginTop: "5px", fontSize: "0.7rem", color: C.onSurfaceVariant, cursor: "pointer" }}>
+                            <input type="checkbox" checked={editDueDay === 0} onChange={e => setEditDueDay(e.target.checked ? 0 : undefined)} />
+                            Último día del mes
+                        </label>
+                    </div>
+                )}
             </div>
             <div>
                 <label style={feLabelStyle}>¿Desde qué cuenta?</label>
@@ -1597,7 +1653,7 @@ const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, upda
             )}
             <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "2px" }}>
                 <button onClick={() => setIsEditing(false)} style={{ background: "none", border: `1px solid ${C.outlineVariant}`, color: C.onSurfaceVariant, borderRadius: "9px", padding: "7px 14px", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer" }}>Cancelar</button>
-                <button onClick={() => { updateFixedExpense(expense.id, { text: editName, amount: Number(editAmount), accountId: editAccountId, projectId: editProjectId, dueDay: editDueDay }); setIsEditing(false); }} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "9px", padding: "7px 14px", fontWeight: 800, fontSize: "0.78rem", cursor: "pointer" }}>Guardar</button>
+                <button onClick={() => { updateFixedExpense(expense.id, { text: editName, amount: Number(editAmount), accountId: editAccountId, projectId: editProjectId, frequency: editFrequency, dueDay: editFrequency === 'monthly' ? editDueDay : undefined, dueWeekday: editFrequency === 'weekly' ? editDueWeekday : undefined }); setIsEditing(false); }} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "9px", padding: "7px 14px", fontWeight: 800, fontSize: "0.78rem", cursor: "pointer" }}>Guardar</button>
             </div>
         </div>
     );
@@ -1614,7 +1670,9 @@ const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, upda
                         {expense.text}
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "4px" }}>
-                        {expense.dueDay && <FEChip color={C.onSurfaceVariant} bg={C.surfaceContainer}>día {expense.dueDay}</FEChip>}
+                        {expense.frequency === 'weekly'
+                            ? <FEChip color={C.onSurfaceVariant} bg={C.surfaceContainer}>cada {WEEKDAYS[expense.dueWeekday ?? 1]}</FEChip>
+                            : (expense.dueDay !== undefined && <FEChip color={C.onSurfaceVariant} bg={C.surfaceContainer}>{dueDayLabel(expense.dueDay)}</FEChip>)}
                         {account ? (
                             <FEChip color={C.secondary} bg="rgba(72,88,171,0.1)">{account.name}</FEChip>
                         ) : (
@@ -1661,14 +1719,22 @@ const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, upda
             )}
 
             {isPaying ? (
-                <div style={{ display: "flex", gap: "6px", alignItems: "center", background: C.surfaceContainerLow, padding: "6px", borderRadius: "9px" }}>
-                    <div style={{ position: "relative", flex: 1 }}>
-                        <span style={{ position: "absolute", left: "8px", top: "50%", transform: "translateY(-50%)", fontSize: "0.72rem", fontWeight: 700, color: C.onSurfaceVariant }}>S/</span>
-                        <input autoFocus type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} onKeyDown={e => e.key === "Enter" && confirmPay()} style={{ width: "100%", padding: "6px 6px 6px 26px", borderRadius: "7px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.8rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px", background: C.surfaceContainerLow, padding: "6px", borderRadius: "9px" }}>
+                    {!expense.accountId && (
+                        <select autoFocus value={payAccountId ?? ""} onChange={e => setPayAccountId(e.target.value ? Number(e.target.value) : undefined)} style={{ padding: "6px", borderRadius: "7px", border: `1px solid ${!payAccountId ? C.rojo : C.outlineVariant}`, fontSize: "0.75rem", fontWeight: 700, outline: "none", background: "white", cursor: "pointer" }}>
+                            <option value="">¿De qué cuenta sale?</option>
+                            {accounts?.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                        </select>
+                    )}
+                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                        <div style={{ position: "relative", flex: 1 }}>
+                            <span style={{ position: "absolute", left: "8px", top: "50%", transform: "translateY(-50%)", fontSize: "0.72rem", fontWeight: 700, color: C.onSurfaceVariant }}>S/</span>
+                            <input autoFocus={!!expense.accountId} type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} onKeyDown={e => e.key === "Enter" && confirmPay()} style={{ width: "100%", padding: "6px 6px 6px 26px", borderRadius: "7px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.8rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
+                        </div>
+                        <button onClick={() => setPayAmount(pending.toFixed(2))} style={{ padding: "6px 8px", borderRadius: "7px", border: "none", background: C.surfaceContainerHigh, color: C.onSurfaceVariant, fontSize: "0.65rem", fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>Todo</button>
+                        <button onClick={confirmPay} disabled={!payAccountId} title={!payAccountId ? "Elige primero de qué cuenta sale" : undefined} style={{ padding: "6px 10px", borderRadius: "7px", border: "none", background: payAccountId ? C.verde : C.outlineVariant, color: "white", fontSize: "0.7rem", fontWeight: 800, cursor: payAccountId ? "pointer" : "not-allowed" }}>Pagar</button>
+                        <button onClick={() => setIsPaying(false)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "4px", display: "flex" }}><X size={14} /></button>
                     </div>
-                    <button onClick={() => setPayAmount(pending.toFixed(2))} style={{ padding: "6px 8px", borderRadius: "7px", border: "none", background: C.surfaceContainerHigh, color: C.onSurfaceVariant, fontSize: "0.65rem", fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>Todo</button>
-                    <button onClick={confirmPay} style={{ padding: "6px 10px", borderRadius: "7px", border: "none", background: C.verde, color: "white", fontSize: "0.7rem", fontWeight: 800, cursor: "pointer" }}>Pagar</button>
-                    <button onClick={() => setIsPaying(false)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "4px", display: "flex" }}><X size={14} /></button>
                 </div>
             ) : isPaid ? (
                 <button onClick={() => unmarkFixedExpensePaid(expense.id, monthStr)} style={{ display: "flex", alignItems: "center", gap: "5px", background: "none", border: "none", padding: 0, cursor: "pointer", color: C.outline, fontSize: "0.7rem", fontWeight: 700 }}>
@@ -1694,15 +1760,17 @@ const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, upda
 const NewFixedExpenseForm = ({ addFixedExpense, projects, accounts }: any) => {
     const [name, setName] = useState("");
     const [amount, setAmount] = useState("");
+    const [frequency, setFrequency] = useState<'monthly' | 'weekly'>('monthly');
     const [dueDay, setDueDay] = useState<number | undefined>(undefined);
+    const [dueWeekday, setDueWeekday] = useState<number>(1);
     const [projectId, setProjectId] = useState<number | undefined>(undefined);
     const [accountId, setAccountId] = useState<number | undefined>(undefined);
     const [open, setOpen] = useState(false);
 
     const submit = () => {
         if (name && amount) {
-            addFixedExpense(name, parseFloat(amount), projectId, dueDay, accountId);
-            setName(""); setAmount(""); setProjectId(undefined); setDueDay(undefined); setAccountId(undefined); setOpen(false);
+            addFixedExpense(name, parseFloat(amount), projectId, frequency === 'monthly' ? dueDay : undefined, accountId, frequency, frequency === 'weekly' ? dueWeekday : undefined);
+            setName(""); setAmount(""); setProjectId(undefined); setDueDay(undefined); setDueWeekday(1); setFrequency('monthly'); setAccountId(undefined); setOpen(false);
         }
     };
 
@@ -1718,15 +1786,32 @@ const NewFixedExpenseForm = ({ addFixedExpense, projects, accounts }: any) => {
                 <label style={feLabelStyle}>Nombre</label>
                 <input autoFocus placeholder="Ej. Netflix" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} style={feInputStyle} />
             </div>
+            <div>
+                <label style={feLabelStyle}>Frecuencia</label>
+                <FrequencyToggle frequency={frequency} setFrequency={setFrequency} />
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "9px" }}>
                 <div>
                     <label style={feLabelStyle}>Monto</label>
                     <input type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} style={feInputStyle} />
                 </div>
-                <div>
-                    <label style={feLabelStyle}>Día de cobro</label>
-                    <input type="number" placeholder="—" value={dueDay || ""} onChange={e => setDueDay(e.target.value ? Number(e.target.value) : undefined)} min="1" max="31" style={feInputStyle} />
-                </div>
+                {frequency === 'weekly' ? (
+                    <div>
+                        <label style={feLabelStyle}>Día de la semana</label>
+                        <select value={dueWeekday} onChange={e => setDueWeekday(Number(e.target.value))} style={{ ...feInputStyle, fontWeight: 700, cursor: "pointer" }}>
+                            {WEEKDAYS.map((w, i) => <option key={i} value={i}>{w}</option>)}
+                        </select>
+                    </div>
+                ) : (
+                    <div>
+                        <label style={feLabelStyle}>Día de cobro</label>
+                        <input type="number" placeholder="—" disabled={dueDay === 0} value={dueDay === 0 ? "" : dueDay || ""} onChange={e => setDueDay(e.target.value ? Number(e.target.value) : undefined)} min="1" max="31" style={feInputStyle} />
+                        <label style={{ display: "flex", alignItems: "center", gap: "5px", marginTop: "5px", fontSize: "0.7rem", color: C.onSurfaceVariant, cursor: "pointer" }}>
+                            <input type="checkbox" checked={dueDay === 0} onChange={e => setDueDay(e.target.checked ? 0 : undefined)} />
+                            Último día del mes
+                        </label>
+                    </div>
+                )}
             </div>
             {accounts?.length > 0 && (
                 <div>
@@ -1760,23 +1845,28 @@ const FixedIncomeRow = ({ item, toggleFixedIncome, removeFixedIncome, updateFixe
     const [editName, setEditName] = useState(item.name);
     const [editAmount, setEditAmount] = useState(String(item.amount));
     const [editAccountId, setEditAccountId] = useState<number | undefined>(item.accountId);
+    const [editFrequency, setEditFrequency] = useState<'monthly' | 'weekly'>(item.frequency ?? 'monthly');
+    const [editDueDay, setEditDueDay] = useState<number | undefined>(item.dueDay);
+    const [editDueWeekday, setEditDueWeekday] = useState<number>(item.dueWeekday ?? 1);
     const [isReceiving, setIsReceiving] = useState(false);
     const [receiveAmount, setReceiveAmount] = useState("");
+    const [receiveAccountId, setReceiveAccountId] = useState<number | undefined>(item.accountId);
     const [menuOpen, setMenuOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
 
-    const monthStr = new Date().toLocaleDateString("en-CA").substring(0, 7);
+    const todayStr = new Date().toLocaleDateString("en-CA");
+    const monthStr = getPeriodKey(item.frequency, todayStr);
     const account = accounts?.find((a: any) => a.id === item.accountId);
 
     const receivedSoFar = isReceived ? item.amount : (item.partialReceived?.month === monthStr ? item.partialReceived.amount : 0);
     const pending = Math.max(0, item.amount - receivedSoFar);
     const hasPartial = !isReceived && receivedSoFar > 0;
 
-    const openReceive = () => { setReceiveAmount(pending.toFixed(2)); setIsReceiving(true); };
+    const openReceive = () => { setReceiveAmount(pending.toFixed(2)); setReceiveAccountId(item.accountId); setIsReceiving(true); };
     const confirmReceive = () => {
         const value = parseFloat(receiveAmount);
-        if (!value || value <= 0) return;
-        receiveFixedIncomePartial(item.id, monthStr, value, item.accountId);
+        if (!value || value <= 0 || !receiveAccountId) return;
+        receiveFixedIncomePartial(item.id, monthStr, value, receiveAccountId);
         setIsReceiving(false);
     };
 
@@ -1787,8 +1877,31 @@ const FixedIncomeRow = ({ item, toggleFixedIncome, removeFixedIncome, updateFixe
                 <input autoFocus value={editName} onChange={e => setEditName(e.target.value)} style={feInputStyle} />
             </div>
             <div>
-                <label style={feLabelStyle}>Monto</label>
-                <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} style={feInputStyle} />
+                <label style={feLabelStyle}>Frecuencia</label>
+                <FrequencyToggle frequency={editFrequency} setFrequency={setEditFrequency} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "9px" }}>
+                <div>
+                    <label style={feLabelStyle}>Monto</label>
+                    <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} style={feInputStyle} />
+                </div>
+                {editFrequency === 'weekly' ? (
+                    <div>
+                        <label style={feLabelStyle}>Día de la semana</label>
+                        <select value={editDueWeekday} onChange={e => setEditDueWeekday(Number(e.target.value))} style={{ ...feInputStyle, fontWeight: 700, cursor: "pointer" }}>
+                            {WEEKDAYS.map((w, i) => <option key={i} value={i}>{w}</option>)}
+                        </select>
+                    </div>
+                ) : (
+                    <div>
+                        <label style={feLabelStyle}>Día de cobro</label>
+                        <input type="number" min="1" max="31" placeholder="—" disabled={editDueDay === 0} value={editDueDay === 0 ? "" : editDueDay ?? ""} onChange={e => setEditDueDay(e.target.value ? Number(e.target.value) : undefined)} style={feInputStyle} />
+                        <label style={{ display: "flex", alignItems: "center", gap: "5px", marginTop: "5px", fontSize: "0.7rem", color: C.onSurfaceVariant, cursor: "pointer" }}>
+                            <input type="checkbox" checked={editDueDay === 0} onChange={e => setEditDueDay(e.target.checked ? 0 : undefined)} />
+                            Último día del mes
+                        </label>
+                    </div>
+                )}
             </div>
             <div>
                 <label style={feLabelStyle}>¿A qué cuenta llega?</label>
@@ -1799,7 +1912,7 @@ const FixedIncomeRow = ({ item, toggleFixedIncome, removeFixedIncome, updateFixe
             </div>
             <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "2px" }}>
                 <button onClick={() => setIsEditing(false)} style={{ background: "none", border: `1px solid ${C.outlineVariant}`, color: C.onSurfaceVariant, borderRadius: "9px", padding: "7px 14px", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer" }}>Cancelar</button>
-                <button onClick={() => { updateFixedIncome(item.id, editName, Number(editAmount), editAccountId); setIsEditing(false); }} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "9px", padding: "7px 14px", fontWeight: 800, fontSize: "0.78rem", cursor: "pointer" }}>Guardar</button>
+                <button onClick={() => { updateFixedIncome(item.id, editName, Number(editAmount), editAccountId, editFrequency, editFrequency === 'monthly' ? editDueDay : undefined, editFrequency === 'weekly' ? editDueWeekday : undefined); setIsEditing(false); }} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "9px", padding: "7px 14px", fontWeight: 800, fontSize: "0.78rem", cursor: "pointer" }}>Guardar</button>
             </div>
         </div>
     );
@@ -1816,6 +1929,9 @@ const FixedIncomeRow = ({ item, toggleFixedIncome, removeFixedIncome, updateFixe
                         {item.name}
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "4px" }}>
+                        {item.frequency === 'weekly'
+                            ? <FEChip color={C.onSurfaceVariant} bg={C.surfaceContainer}>cada {WEEKDAYS[item.dueWeekday ?? 1]}</FEChip>
+                            : (item.dueDay !== undefined && <FEChip color={C.onSurfaceVariant} bg={C.surfaceContainer}>{dueDayLabel(item.dueDay)}</FEChip>)}
                         {account ? (
                             <FEChip color={C.secondary} bg="rgba(72,88,171,0.1)">{account.name}</FEChip>
                         ) : (
@@ -1861,14 +1977,22 @@ const FixedIncomeRow = ({ item, toggleFixedIncome, removeFixedIncome, updateFixe
             )}
 
             {isReceiving ? (
-                <div style={{ display: "flex", gap: "6px", alignItems: "center", background: C.surfaceContainerLow, padding: "6px", borderRadius: "9px" }}>
-                    <div style={{ position: "relative", flex: 1 }}>
-                        <span style={{ position: "absolute", left: "8px", top: "50%", transform: "translateY(-50%)", fontSize: "0.72rem", fontWeight: 700, color: C.onSurfaceVariant }}>S/</span>
-                        <input autoFocus type="number" value={receiveAmount} onChange={e => setReceiveAmount(e.target.value)} onKeyDown={e => e.key === "Enter" && confirmReceive()} style={{ width: "100%", padding: "6px 6px 6px 26px", borderRadius: "7px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.8rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px", background: C.surfaceContainerLow, padding: "6px", borderRadius: "9px" }}>
+                    {!item.accountId && (
+                        <select autoFocus value={receiveAccountId ?? ""} onChange={e => setReceiveAccountId(e.target.value ? Number(e.target.value) : undefined)} style={{ padding: "6px", borderRadius: "7px", border: `1px solid ${!receiveAccountId ? C.rojo : C.outlineVariant}`, fontSize: "0.75rem", fontWeight: 700, outline: "none", background: "white", cursor: "pointer" }}>
+                            <option value="">¿A qué cuenta entra?</option>
+                            {accounts?.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                        </select>
+                    )}
+                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                        <div style={{ position: "relative", flex: 1 }}>
+                            <span style={{ position: "absolute", left: "8px", top: "50%", transform: "translateY(-50%)", fontSize: "0.72rem", fontWeight: 700, color: C.onSurfaceVariant }}>S/</span>
+                            <input autoFocus={!!item.accountId} type="number" value={receiveAmount} onChange={e => setReceiveAmount(e.target.value)} onKeyDown={e => e.key === "Enter" && confirmReceive()} style={{ width: "100%", padding: "6px 6px 6px 26px", borderRadius: "7px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.8rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
+                        </div>
+                        <button onClick={() => setReceiveAmount(pending.toFixed(2))} style={{ padding: "6px 8px", borderRadius: "7px", border: "none", background: C.surfaceContainerHigh, color: C.onSurfaceVariant, fontSize: "0.65rem", fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>Todo</button>
+                        <button onClick={confirmReceive} disabled={!receiveAccountId} title={!receiveAccountId ? "Elige primero a qué cuenta entra" : undefined} style={{ padding: "6px 10px", borderRadius: "7px", border: "none", background: receiveAccountId ? C.verde : C.outlineVariant, color: "white", fontSize: "0.7rem", fontWeight: 800, cursor: receiveAccountId ? "pointer" : "not-allowed" }}>Recibir</button>
+                        <button onClick={() => setIsReceiving(false)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "4px", display: "flex" }}><X size={14} /></button>
                     </div>
-                    <button onClick={() => setReceiveAmount(pending.toFixed(2))} style={{ padding: "6px 8px", borderRadius: "7px", border: "none", background: C.surfaceContainerHigh, color: C.onSurfaceVariant, fontSize: "0.65rem", fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>Todo</button>
-                    <button onClick={confirmReceive} style={{ padding: "6px 10px", borderRadius: "7px", border: "none", background: C.verde, color: "white", fontSize: "0.7rem", fontWeight: 800, cursor: "pointer" }}>Recibir</button>
-                    <button onClick={() => setIsReceiving(false)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "4px", display: "flex" }}><X size={14} /></button>
                 </div>
             ) : isReceived ? (
                 <button onClick={() => unmarkFixedIncomeReceived(item.id, monthStr)} style={{ display: "flex", alignItems: "center", gap: "5px", background: "none", border: "none", padding: 0, cursor: "pointer", color: C.outline, fontSize: "0.7rem", fontWeight: 700 }}>
@@ -1894,13 +2018,16 @@ const FixedIncomeRow = ({ item, toggleFixedIncome, removeFixedIncome, updateFixe
 const NewFixedIncomeForm = ({ addFixedIncome, accounts }: any) => {
     const [name, setName] = useState("");
     const [amount, setAmount] = useState("");
+    const [frequency, setFrequency] = useState<'monthly' | 'weekly'>('monthly');
+    const [dueDay, setDueDay] = useState<number | undefined>(undefined);
+    const [dueWeekday, setDueWeekday] = useState<number>(1);
     const [accountId, setAccountId] = useState<number | undefined>(undefined);
     const [open, setOpen] = useState(false);
 
     const submit = () => {
         if (name && amount) {
-            addFixedIncome(name, parseFloat(amount), accountId);
-            setName(""); setAmount(""); setAccountId(undefined); setOpen(false);
+            addFixedIncome(name, parseFloat(amount), accountId, frequency, frequency === 'monthly' ? dueDay : undefined, frequency === 'weekly' ? dueWeekday : undefined);
+            setName(""); setAmount(""); setAccountId(undefined); setFrequency('monthly'); setDueDay(undefined); setDueWeekday(1); setOpen(false);
         }
     };
 
@@ -1917,8 +2044,31 @@ const NewFixedIncomeForm = ({ addFixedIncome, accounts }: any) => {
                 <input autoFocus placeholder="Ej. Sueldo" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} style={feInputStyle} />
             </div>
             <div>
-                <label style={feLabelStyle}>Monto</label>
-                <input type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} style={feInputStyle} />
+                <label style={feLabelStyle}>Frecuencia</label>
+                <FrequencyToggle frequency={frequency} setFrequency={setFrequency} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "9px" }}>
+                <div>
+                    <label style={feLabelStyle}>Monto</label>
+                    <input type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} style={feInputStyle} />
+                </div>
+                {frequency === 'weekly' ? (
+                    <div>
+                        <label style={feLabelStyle}>Día de la semana</label>
+                        <select value={dueWeekday} onChange={e => setDueWeekday(Number(e.target.value))} style={{ ...feInputStyle, fontWeight: 700, cursor: "pointer" }}>
+                            {WEEKDAYS.map((w, i) => <option key={i} value={i}>{w}</option>)}
+                        </select>
+                    </div>
+                ) : (
+                    <div>
+                        <label style={feLabelStyle}>Día de cobro</label>
+                        <input type="number" placeholder="—" disabled={dueDay === 0} value={dueDay === 0 ? "" : dueDay || ""} onChange={e => setDueDay(e.target.value ? Number(e.target.value) : undefined)} min="1" max="31" style={feInputStyle} />
+                        <label style={{ display: "flex", alignItems: "center", gap: "5px", marginTop: "5px", fontSize: "0.7rem", color: C.onSurfaceVariant, cursor: "pointer" }}>
+                            <input type="checkbox" checked={dueDay === 0} onChange={e => setDueDay(e.target.checked ? 0 : undefined)} />
+                            Último día del mes
+                        </label>
+                    </div>
+                )}
             </div>
             {accounts?.length > 0 && (
                 <div>
