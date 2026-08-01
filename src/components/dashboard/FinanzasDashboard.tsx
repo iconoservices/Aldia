@@ -389,12 +389,6 @@ export const FinanzasDashboard = ({
     const [includeSalary, setIncludeSalary] = useState(true);
     const [topPeriod, setTopPeriod] = useState<PeriodMode>("month");
     const [periodRef, setPeriodRef] = useState<Date>(new Date());
-    // Selector propio para "Presupuesto" en Mis Cuentas — independiente del selector grande de
-    // arriba (ese controla el resto de la página: KPIs, movimientos, etc). El usuario quiere
-    // poder mirar el acumulado por año o por mes sin que eso cambie lo que ve en el resto de
-    // Finanzas.
-    const [budgetPeriod, setBudgetPeriod] = useState<PeriodMode>("month");
-    const [budgetPeriodRef, setBudgetPeriodRef] = useState<Date>(new Date());
     const [debtActiveMap, setDebtActiveMap] = useState<Record<string, boolean>>({});
 
     // ── Debt groups (corrected: subtracts payments) ───────────────────────
@@ -668,9 +662,9 @@ export const FinanzasDashboard = ({
     // "Presupuesto real" por cuenta: ingreso genuino (sin transferencias que llegan de otra
     // cuenta, esas no son plata ganada) menos todo lo gastado (una transferencia SALIENTE sí
     // cuenta como gasto real, porque esa cuenta sí perdió el dinero). Dos versiones, ambas
-    // visibles a la vez: el acumulado fijo de siempre (nunca se mueve) y una ajustable con su
-    // propio selector (budgetPeriod: Mes/Año/Todo), independiente del selector grande de
-    // arriba que controla el resto de la página.
+    // visibles a la vez: el acumulado fijo de siempre (nunca se mueve, no depende de ningún
+    // selector) y una segunda atada al selector grande de arriba (Día/Sem/Mes/Año/Todo), el
+    // mismo que ya usa el resto de la página — sin agregar un selector nuevo aparte.
     const accountsBudgetAllTime = useMemo(() => {
         return accounts.map(acc => {
             const all = transactions.filter(tx => tx.accountId === acc.id && !tx.isCashless);
@@ -681,14 +675,14 @@ export const FinanzasDashboard = ({
     }, [accounts, transactions]);
 
     const accountsBudget = useMemo(() => {
-        const { start, end } = getPeriodBounds(budgetPeriod, budgetPeriodRef);
+        const { start, end } = getPeriodBounds(topPeriod, periodRef);
         return accounts.map(acc => {
             const inPeriod = transactions.filter(tx => tx.accountId === acc.id && !tx.isCashless && tx.fullDate >= start && tx.fullDate <= end);
             const ingresoReal = inPeriod.filter(tx => tx.type === "ingreso" && tx.category !== "Transferencia").reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
             const gastoTotal = inPeriod.filter(tx => tx.type === "gasto").reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
             return { id: acc.id, remaining: ingresoReal - gastoTotal, ingresoReal, gastoTotal };
         });
-    }, [accounts, transactions, budgetPeriod, budgetPeriodRef]);
+    }, [accounts, transactions, topPeriod, periodRef]);
 
     const [isAddingAccount, setIsAddingAccount] = useState(false);
     const [newAccountName, setNewAccountName] = useState("");
@@ -1164,18 +1158,6 @@ export const FinanzasDashboard = ({
                     </div>
                 )}
 
-                {accountsWithBalance.length > 0 && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: movil ? "8px" : "12px", flexWrap: "wrap" }}>
-                        <span style={{ fontSize: "0.65rem", color: C.onSurfaceVariant, fontWeight: 700 }}>Presupuesto:</span>
-                        <PillToggle
-                            options={["month", "year", "all"]}
-                            labels={["Mes", "Año", "Todo"]}
-                            value={budgetPeriod}
-                            onChange={v => { setBudgetPeriod(v as PeriodMode); setBudgetPeriodRef(new Date()); }}
-                        />
-                    </div>
-                )}
-
                 {accountsWithBalance.length === 0 ? (
                     <p style={{ fontSize: "0.8rem", color: C.outline, fontStyle: "italic", margin: 0 }}>Sin cuentas todavía. Toca el + para agregar una.</p>
                 ) : (
@@ -1214,8 +1196,8 @@ export const FinanzasDashboard = ({
                                     return (
                                         <>
                                             {linea("Acumulado", allTime, "Ingreso real acumulado (sin transferencias recibidas) menos todo lo gastado, desde siempre. Nunca se reinicia.")}
-                                            {budgetPeriod !== "all" && b && (b.ingresoReal > 0 || b.gastoTotal > 0) &&
-                                                linea(etiquetasPeriodo[budgetPeriod], b, "Ingreso real menos gasto, solo del período elegido en 'Presupuesto' arriba.")}
+                                            {topPeriod !== "all" && b && (b.ingresoReal > 0 || b.gastoTotal > 0) &&
+                                                linea(etiquetasPeriodo[topPeriod], b, "Ingreso real menos gasto, solo del período elegido arriba (Día/Sem/Mes/Año/Todo).")}
                                         </>
                                     );
                                 })()}
