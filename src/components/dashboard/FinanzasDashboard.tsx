@@ -675,6 +675,19 @@ export const FinanzasDashboard = ({
         });
     }, [accounts, transactions]);
 
+    // Misma cuenta (ingreso real sin transferencias menos gasto) pero SÍ atada al período de
+    // arriba (Mes/Semana/etc) — responde la otra pregunta: "¿este mes en particular gasté más
+    // de lo que gané?", que el acumulado de arriba no puede contestar por sí solo.
+    const accountsBudgetPeriod = useMemo(() => {
+        const { start, end } = getPeriodBounds(topPeriod, periodRef);
+        return accounts.map(acc => {
+            const inPeriod = transactions.filter(tx => tx.accountId === acc.id && !tx.isCashless && tx.fullDate >= start && tx.fullDate <= end);
+            const ingresoReal = inPeriod.filter(tx => tx.type === "ingreso" && tx.category !== "Transferencia").reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
+            const gastoTotal = inPeriod.filter(tx => tx.type === "gasto").reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
+            return { id: acc.id, remaining: ingresoReal - gastoTotal, ingresoReal, gastoTotal };
+        });
+    }, [accounts, transactions, topPeriod, periodRef]);
+
     const [isAddingAccount, setIsAddingAccount] = useState(false);
     const [newAccountName, setNewAccountName] = useState("");
     const [newAccountColor, setNewAccountColor] = useState("#0055FF");
@@ -1172,17 +1185,27 @@ export const FinanzasDashboard = ({
                                 </div>
                                 {(() => {
                                     const b = accountsBudget.find(x => x.id === acc.id);
+                                    const p = accountsBudgetPeriod.find(x => x.id === acc.id);
                                     if (!b || (b.ingresoReal === 0 && b.gastoTotal === 0)) return null;
+                                    const etiquetasPeriodo: Record<PeriodMode, string> = { day: "Hoy", week: "Esta sem.", month: "Este mes", year: "Este año", all: "Todo" };
+                                    const mostrarPeriodo = p && topPeriod !== "all" && (p.ingresoReal > 0 || p.gastoTotal > 0);
+                                    const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 0 });
                                     return (
-                                        <div title="Ingreso real acumulado (sin transferencias recibidas de otra cuenta) menos todo lo gastado. No se reinicia por mes." style={{ marginTop: "3px" }}>
-                                            <div style={{ fontSize: movil ? "0.55rem" : "0.62rem", fontWeight: 800, color: b.remaining < 0 ? C.rojo : C.verde, whiteSpace: movil ? "normal" : "nowrap", wordBreak: "break-word" }}>
-                                                Presupuesto: {b.remaining < 0 ? "-" : ""}S/ {Math.abs(b.remaining).toLocaleString("en-US", { minimumFractionDigits: movil ? 0 : 2 })}
+                                        <div style={{ marginTop: "3px", display: "flex", flexDirection: "column", gap: "2px" }}>
+                                            <div title="Ingreso real acumulado (sin transferencias recibidas de otra cuenta) menos todo lo gastado, desde siempre. No se reinicia por mes." style={{ whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.3 }}>
+                                                <span style={{ fontSize: movil ? "0.55rem" : "0.62rem", fontWeight: 800, color: b.remaining < 0 ? C.rojo : C.verde }}>
+                                                    Acumulado: {b.remaining < 0 ? "-" : ""}S/ {Math.abs(b.remaining).toLocaleString("en-US", { minimumFractionDigits: movil ? 0 : 2 })}
+                                                </span>
+                                                <span style={{ fontSize: movil ? "0.5rem" : "0.56rem", color: C.outline, fontWeight: 600 }}> (+S/{fmt(b.ingresoReal)} −S/{fmt(b.gastoTotal)})</span>
                                             </div>
-                                            <div style={{ fontSize: movil ? "0.5rem" : "0.58rem", color: C.outline, fontWeight: 600, whiteSpace: movil ? "normal" : "nowrap", lineHeight: 1.3 }}>
-                                                {movil
-                                                    ? `+${b.ingresoReal.toLocaleString("en-US", { minimumFractionDigits: 0 })} / -${b.gastoTotal.toLocaleString("en-US", { minimumFractionDigits: 0 })} · acum.`
-                                                    : `Ganaste S/ ${b.ingresoReal.toLocaleString("en-US", { minimumFractionDigits: 0 })} · Gastaste S/ ${b.gastoTotal.toLocaleString("en-US", { minimumFractionDigits: 0 })} (acumulado)`}
-                                            </div>
+                                            {mostrarPeriodo && (
+                                                <div title="Ingreso real menos gasto, solo del período elegido arriba. Se reinicia al cambiar de período." style={{ whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.3 }}>
+                                                    <span style={{ fontSize: movil ? "0.55rem" : "0.62rem", fontWeight: 800, color: p!.remaining < 0 ? C.rojo : C.verde }}>
+                                                        {etiquetasPeriodo[topPeriod]}: {p!.remaining < 0 ? "-" : ""}S/ {Math.abs(p!.remaining).toLocaleString("en-US", { minimumFractionDigits: movil ? 0 : 2 })}
+                                                    </span>
+                                                    <span style={{ fontSize: movil ? "0.5rem" : "0.56rem", color: C.outline, fontWeight: 600 }}> (+S/{fmt(p!.ingresoReal)} −S/{fmt(p!.gastoTotal)})</span>
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })()}
