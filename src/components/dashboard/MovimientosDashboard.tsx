@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import {
     TrendingUp, TrendingDown, Trash2, DollarSign, Edit2, MoreVertical,
-    ChevronLeft, ChevronRight, Calendar, BarChart3
+    ChevronLeft, ChevronRight, Calendar, BarChart3, Search, X
 } from "lucide-react";
 import type { Transaction } from "../../hooks/useAlDiaState";
 import { C, bento, etiqueta, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina } from "../../theme";
@@ -39,6 +39,8 @@ export const MovimientosDashboard = ({ transactions, removeTransaction, updateTr
     const [periodMode, setPeriodMode] = useState<PeriodMode>("month");
     const [periodRef, setPeriodRef] = useState<Date>(new Date());
     const [txFilter, setTxFilter] = useState<TxFilter>("all");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [accountFilter, setAccountFilter] = useState<number | "all">("all");
 
     const accountById = useMemo(() => new Map(accounts.map(a => [a.id, a])), [accounts]);
 
@@ -54,9 +56,13 @@ export const MovimientosDashboard = ({ transactions, removeTransaction, updateTr
         return { income, expense, net: income - expense };
     }, [periodTxs]);
 
-    const filteredTxs = useMemo(() =>
-        txFilter === "all" ? periodTxs : periodTxs.filter(t => t.type === txFilter),
-        [periodTxs, txFilter]);
+    const filteredTxs = useMemo(() => {
+        let list = txFilter === "all" ? periodTxs : periodTxs.filter(t => t.type === txFilter);
+        if (accountFilter !== "all") list = list.filter(t => t.accountId === accountFilter);
+        const q = searchQuery.trim().toLowerCase();
+        if (q) list = list.filter(t => t.text.toLowerCase().includes(q) || t.contact?.toLowerCase().includes(q) || t.category?.toLowerCase().includes(q));
+        return list;
+    }, [periodTxs, txFilter, accountFilter, searchQuery]);
 
     return (
         <div style={{
@@ -111,6 +117,28 @@ export const MovimientosDashboard = ({ transactions, removeTransaction, updateTr
                             <div style={{ fontWeight: 900, fontSize: "1.05rem", color: k.color }}>S/ {k.val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
                         </div>
                     ))}
+                </div>
+
+                {/* Search + account filter */}
+                <div style={{ display: "flex", gap: "8px", marginBottom: "0.85rem", flexWrap: "wrap" }}>
+                    <div style={{ position: "relative", flex: movil ? "1 1 100%" : "1 1 220px", minWidth: 0 }}>
+                        <Search size={14} color={C.outlineVariant} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }} />
+                        <input
+                            placeholder="Buscar por texto, contacto o categoría..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            style={{ width: "100%", padding: "7px 30px 7px 30px", borderRadius: "9px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.8rem", outline: "none", boxSizing: "border-box" }}
+                        />
+                        {searchQuery && (
+                            <button onClick={() => setSearchQuery("")} style={{ position: "absolute", right: "6px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "2px", display: "flex" }}><X size={13} /></button>
+                        )}
+                    </div>
+                    {accounts.length > 0 && (
+                        <select value={accountFilter} onChange={e => setAccountFilter(e.target.value === "all" ? "all" : Number(e.target.value))} style={{ padding: "7px 9px", borderRadius: "9px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", fontWeight: 700, background: "white", cursor: "pointer", flex: movil ? "1 1 100%" : undefined }}>
+                            <option value="all">Todas las cuentas</option>
+                            {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                        </select>
+                    )}
                 </div>
 
                 {/* Type filter */}
