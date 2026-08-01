@@ -659,20 +659,21 @@ export const FinanzasDashboard = ({
             balance: transactions.filter(tx => tx.accountId === acc.id && !tx.isCashless).reduce((s, tx) => s + (Number(tx.amount) || 0), 0)
         })), [accounts, transactions]);
 
-    // "Presupuesto real" por cuenta: ingreso genuino (sin transferencias que llegan de otra
-    // cuenta, esas no son plata ganada) menos todo lo gastado (una transferencia SALIENTE sí
-    // cuenta como gasto real, porque esa cuenta sí perdió el dinero). Sirve para ver si te
-    // pasaste de lo que de verdad generaste, aunque el saldo se vea bien por una ayuda que te
-    // diste entre tus propias cuentas.
+    // "Presupuesto real" por cuenta: ingreso genuino ACUMULADO (sin transferencias que llegan
+    // de otra cuenta, esas no son plata ganada) menos todo lo gastado ACUMULADO (una
+    // transferencia SALIENTE sí cuenta como gasto real, porque esa cuenta sí perdió el
+    // dinero). Es matemáticamente "el saldo actual menos toda transferencia recibida": si
+    // nunca te hubieras ayudado entre cuentas, esto es lo que tendrías ahí. A propósito NO se
+    // reinicia con el período de arriba (Mes/Semana/etc) — igual que el saldo de la cuenta,
+    // es acumulado desde siempre, para no dar falsos negativos a inicios de cada período.
     const accountsBudget = useMemo(() => {
-        const { start, end } = getPeriodBounds(topPeriod, periodRef);
         return accounts.map(acc => {
-            const inPeriod = transactions.filter(tx => tx.accountId === acc.id && !tx.isCashless && tx.fullDate >= start && tx.fullDate <= end);
-            const ingresoReal = inPeriod.filter(tx => tx.type === "ingreso" && tx.category !== "Transferencia").reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
-            const gastoTotal = inPeriod.filter(tx => tx.type === "gasto").reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
+            const all = transactions.filter(tx => tx.accountId === acc.id && !tx.isCashless);
+            const ingresoReal = all.filter(tx => tx.type === "ingreso" && tx.category !== "Transferencia").reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
+            const gastoTotal = all.filter(tx => tx.type === "gasto").reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
             return { id: acc.id, remaining: ingresoReal - gastoTotal, ingresoReal, gastoTotal };
         });
-    }, [accounts, transactions, topPeriod, periodRef]);
+    }, [accounts, transactions]);
 
     const [isAddingAccount, setIsAddingAccount] = useState(false);
     const [newAccountName, setNewAccountName] = useState("");
@@ -1173,14 +1174,14 @@ export const FinanzasDashboard = ({
                                     const b = accountsBudget.find(x => x.id === acc.id);
                                     if (!b || (b.ingresoReal === 0 && b.gastoTotal === 0)) return null;
                                     return (
-                                        <div title="Ingreso real (sin transferencias que llegaron de otra cuenta) menos gasto, en el período elegido arriba" style={{ marginTop: "3px" }}>
+                                        <div title="Ingreso real acumulado (sin transferencias recibidas de otra cuenta) menos todo lo gastado. No se reinicia por mes." style={{ marginTop: "3px" }}>
                                             <div style={{ fontSize: movil ? "0.55rem" : "0.62rem", fontWeight: 800, color: b.remaining < 0 ? C.rojo : C.verde, whiteSpace: movil ? "normal" : "nowrap", wordBreak: "break-word" }}>
                                                 Presupuesto: {b.remaining < 0 ? "-" : ""}S/ {Math.abs(b.remaining).toLocaleString("en-US", { minimumFractionDigits: movil ? 0 : 2 })}
                                             </div>
                                             <div style={{ fontSize: movil ? "0.5rem" : "0.58rem", color: C.outline, fontWeight: 600, whiteSpace: movil ? "normal" : "nowrap", lineHeight: 1.3 }}>
                                                 {movil
-                                                    ? `+${b.ingresoReal.toLocaleString("en-US", { minimumFractionDigits: 0 })} / -${b.gastoTotal.toLocaleString("en-US", { minimumFractionDigits: 0 })}`
-                                                    : `Ganaste S/ ${b.ingresoReal.toLocaleString("en-US", { minimumFractionDigits: 0 })} · Gastaste S/ ${b.gastoTotal.toLocaleString("en-US", { minimumFractionDigits: 0 })}`}
+                                                    ? `+${b.ingresoReal.toLocaleString("en-US", { minimumFractionDigits: 0 })} / -${b.gastoTotal.toLocaleString("en-US", { minimumFractionDigits: 0 })} · acum.`
+                                                    : `Ganaste S/ ${b.ingresoReal.toLocaleString("en-US", { minimumFractionDigits: 0 })} · Gastaste S/ ${b.gastoTotal.toLocaleString("en-US", { minimumFractionDigits: 0 })} (acumulado)`}
                                             </div>
                                         </div>
                                     );
