@@ -1173,8 +1173,15 @@ export const FinanzasDashboard = ({
                                     const b = accountsBudget.find(x => x.id === acc.id);
                                     if (!b || (b.ingresoReal === 0 && b.gastoTotal === 0)) return null;
                                     return (
-                                        <div title="Ingreso real (sin transferencias que llegaron de otra cuenta) menos gasto, en el período elegido arriba" style={{ fontSize: movil ? "0.55rem" : "0.62rem", fontWeight: 800, marginTop: "3px", color: b.remaining < 0 ? C.rojo : C.verde, whiteSpace: "nowrap" }}>
-                                            Presupuesto: {b.remaining < 0 ? "-" : ""}S/ {Math.abs(b.remaining).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                        <div title="Ingreso real (sin transferencias que llegaron de otra cuenta) menos gasto, en el período elegido arriba" style={{ marginTop: "3px" }}>
+                                            <div style={{ fontSize: movil ? "0.55rem" : "0.62rem", fontWeight: 800, color: b.remaining < 0 ? C.rojo : C.verde, whiteSpace: "nowrap" }}>
+                                                Presupuesto: {b.remaining < 0 ? "-" : ""}S/ {Math.abs(b.remaining).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                            </div>
+                                            <div style={{ fontSize: movil ? "0.5rem" : "0.58rem", color: C.outline, fontWeight: 600, whiteSpace: movil ? "normal" : "nowrap", lineHeight: 1.3 }}>
+                                                {movil
+                                                    ? `+${b.ingresoReal.toLocaleString("en-US", { minimumFractionDigits: 0 })} / -${b.gastoTotal.toLocaleString("en-US", { minimumFractionDigits: 0 })}`
+                                                    : `Ganaste S/ ${b.ingresoReal.toLocaleString("en-US", { minimumFractionDigits: 0 })} · Gastaste S/ ${b.gastoTotal.toLocaleString("en-US", { minimumFractionDigits: 0 })}`}
+                                            </div>
                                         </div>
                                     );
                                 })()}
