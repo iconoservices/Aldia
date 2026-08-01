@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
     Wallet, Plus, TrendingUp, TrendingDown,
     Trash2, Edit2, PieChart, X,
-    UserMinus, UserPlus, Check, PiggyBank, ArrowDownCircle,
+    Check, PiggyBank, ArrowDownCircle,
     BarChart3, Tag, MoreVertical, Merge, ArrowLeftRight
 } from "lucide-react";
 import { AnalyticsView } from "./AnalyticsView";
@@ -37,6 +37,7 @@ interface FinanzasProps {
     unmarkFixedExpensePaid: (id: number, monthStr: string) => void;
     repayDebt: (originalTx: Transaction, amount: number, accountId: number) => void;
     removeTransaction: (id: number) => void;
+    updateTransaction: (id: number, updates: Partial<Transaction>) => void;
     updateTransactionGroup: (oldText: string, oldContact: string | undefined, updates: { text?: string, contact?: string, amount?: number }, originalId: number) => void;
     addTransaction: (text: string, amount: number, type: "ingreso" | "gasto", isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string) => void;
     projects: Project[];
@@ -357,7 +358,7 @@ export const FinanzasDashboard = ({
     balance, transactions,
     fixedExpenses, addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense,
     markFixedExpensePaid, payFixedExpensePartial, unmarkFixedExpensePaid,
-    removeTransaction, addTransaction,
+    removeTransaction, addTransaction, updateTransaction,
     projects, accounts, setAccounts,
     addProjectTask, toggleProjectTask, removeProjectTask, updateProjectTask,
     reorderProjectTasks, promoteTaskToRoutine, rutinas,
@@ -368,6 +369,16 @@ export const FinanzasDashboard = ({
     onNavigate,
     incomeCategories, expenseCategories, addCategory, removeCategory, renameCategory, mergeCategory,
 }: FinanzasProps) => {
+
+    // Migración retroactiva: los pares gasto/ingreso que antes se anotaban a mano con
+    // la categoría "AutoSueldo" (el mismo movimiento entre cuentas propias que ahora
+    // registra el botón "Transferir") pasan a "Transferencia" para que el Presupuesto
+    // real los excluya igual que a los nuevos. Una sola vez; ya migrados, el filtro no
+    // vuelve a encontrar nada.
+    useEffect(() => {
+        const desactualizadas = transactions.filter(t => t.category === "AutoSueldo");
+        desactualizadas.forEach(t => updateTransaction(t.id, { category: "Transferencia" }));
+    }, [transactions, updateTransaction]);
 
     // ── Config ────────────────────────────────────────────────────────────
     const [includeDebts, setIncludeDebts] = useState(false);
@@ -1382,6 +1393,11 @@ export const FinanzasDashboard = ({
                             );
                         })}
                     </div>
+                    {onNavigate && (
+                        <button onClick={() => onNavigate('Deudas')} style={{ background: "none", border: "none", padding: "2px 0", cursor: "pointer", color: C.secondary, fontSize: "0.72rem", fontWeight: 700, textAlign: "left" }}>
+                            Ver más →
+                        </button>
+                    )}
                     <div style={{ borderTop: `1px solid ${C.outlineVariant}`, paddingTop: "0.35rem", marginTop: "0.2rem" }}>
                         <span style={{ fontSize: "0.72rem", fontWeight: 700, color: C.verde }}>Me deben: S/ {realOwed.toFixed(2)}</span>
                         {activeDebtsAndCollections.filter(d => !d.isOwe).length === 0 ? (
@@ -1415,52 +1431,6 @@ export const FinanzasDashboard = ({
                                 </div>
                             );
                         })}
-                    </div>
-                </div>
-
-            </div>
-
-            {/* ── Row 5: Debts ─── */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
-
-                {/* Debts & collections */}
-                <div 
-                    onClick={() => onNavigate?.('Deudas')}
-                    style={{ ...CARD, display: "flex", flexDirection: "column", minHeight: "240px", cursor: "pointer" }}
-                >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-                        <span style={{ fontSize: "0.9rem", fontWeight: 800 }}>Deudas y Cobros</span>
-                        <div style={{ display: "flex", gap: "6px" }}>
-                            <button onClick={(e) => { e.stopPropagation(); onNavigate?.('Deudas'); }} style={{ background: "rgba(239,68,68,0.08)", border: "none", color: C.rojo, fontSize: "0.7rem", fontWeight: 800, cursor: "pointer", padding: "3px 10px", borderRadius: "8px" }}>Debo</button>
-                            <button onClick={(e) => { e.stopPropagation(); onNavigate?.('Deudas'); }} style={{ background: "rgba(16,185,129,0.08)", border: "none", color: C.verde, fontSize: "0.7rem", fontWeight: 800, cursor: "pointer", padding: "3px 10px", borderRadius: "8px" }}>Me Deben</button>
-                        </div>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", flex: 1, overflowY: "auto" }}>
-                        {activeDebtsAndCollections.length === 0 ? (
-                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: "6px", color: C.outlineVariant }}>
-                                <Check size={26} strokeWidth={1.5} />
-                                <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>Sin deudas activas</span>
-                            </div>
-                        ) : activeDebtsAndCollections.map((debt, i) => (
-                            <div key={i} onClick={(e) => { e.stopPropagation(); onNavigate?.('Deudas'); }}
-                                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px", borderRadius: "12px", background: C.surface, border: `1px solid ${C.surfaceContainerLow}`, cursor: "pointer" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                                    <div style={{ width: "30px", height: "30px", borderRadius: "50%", background: debt.isOwe ? "rgba(239,68,68,0.1)" : "rgba(16,185,129,0.1)", color: debt.isOwe ? C.rojo : C.verde, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                        {debt.isOwe ? <UserMinus size={14} /> : <UserPlus size={14} />}
-                                    </div>
-                                    <div>
-                                        <div style={{ fontSize: "0.82rem", fontWeight: 700 }}>{debt.name}</div>
-                                        {debt.contact && <div style={{ fontSize: "0.62rem", color: C.outline }}>{debt.contact}</div>}
-                                    </div>
-                                </div>
-                                <span style={{ fontWeight: 800, fontSize: "0.88rem", color: debt.isOwe ? C.rojo : C.verde }}>{debt.isOwe ? "-" : "+"}S/ {debt.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                            </div>
-                        ))}
-                    </div>
-                    {/* Footer with CORRECTED totals */}
-                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: `1px solid ${C.surfaceContainerLow}` }}>
-                        <span style={{ fontSize: "0.72rem", color: C.rojo, fontWeight: 700 }}>Debo: S/ {realOwe.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                        <span style={{ fontSize: "0.72rem", color: C.verde, fontWeight: 700 }}>Me deben: S/ {realOwed.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
                     </div>
                 </div>
 
