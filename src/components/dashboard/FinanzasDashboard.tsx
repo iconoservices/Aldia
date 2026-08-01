@@ -389,6 +389,12 @@ export const FinanzasDashboard = ({
     const [includeSalary, setIncludeSalary] = useState(true);
     const [topPeriod, setTopPeriod] = useState<PeriodMode>("month");
     const [periodRef, setPeriodRef] = useState<Date>(new Date());
+    // Selector propio para "Presupuesto" en Mis Cuentas — independiente del selector grande de
+    // arriba (ese controla el resto de la página: KPIs, movimientos, etc). El usuario quiere
+    // poder mirar el acumulado por año o por mes sin que eso cambie lo que ve en el resto de
+    // Finanzas.
+    const [budgetPeriod, setBudgetPeriod] = useState<PeriodMode>("month");
+    const [budgetPeriodRef, setBudgetPeriodRef] = useState<Date>(new Date());
     const [debtActiveMap, setDebtActiveMap] = useState<Record<string, boolean>>({});
 
     // ── Debt groups (corrected: subtracts payments) ───────────────────────
@@ -661,19 +667,28 @@ export const FinanzasDashboard = ({
 
     // "Presupuesto real" por cuenta: ingreso genuino (sin transferencias que llegan de otra
     // cuenta, esas no son plata ganada) menos todo lo gastado (una transferencia SALIENTE sí
-    // cuenta como gasto real, porque esa cuenta sí perdió el dinero), acotado al mismo
-    // selector Día/Sem/Mes/Año/Todo de arriba que ya usa el resto de la página. Con "Todo"
-    // seleccionado, getPeriodBounds cubre desde 0000-01-01 hasta 9999-12-31 — o sea da
-    // exactamente el acumulado de siempre, sin necesidad de un cálculo aparte.
+    // cuenta como gasto real, porque esa cuenta sí perdió el dinero). Dos versiones, ambas
+    // visibles a la vez: el acumulado fijo de siempre (nunca se mueve) y una ajustable con su
+    // propio selector (budgetPeriod: Mes/Año/Todo), independiente del selector grande de
+    // arriba que controla el resto de la página.
+    const accountsBudgetAllTime = useMemo(() => {
+        return accounts.map(acc => {
+            const all = transactions.filter(tx => tx.accountId === acc.id && !tx.isCashless);
+            const ingresoReal = all.filter(tx => tx.type === "ingreso" && tx.category !== "Transferencia").reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
+            const gastoTotal = all.filter(tx => tx.type === "gasto").reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
+            return { id: acc.id, remaining: ingresoReal - gastoTotal, ingresoReal, gastoTotal };
+        });
+    }, [accounts, transactions]);
+
     const accountsBudget = useMemo(() => {
-        const { start, end } = getPeriodBounds(topPeriod, periodRef);
+        const { start, end } = getPeriodBounds(budgetPeriod, budgetPeriodRef);
         return accounts.map(acc => {
             const inPeriod = transactions.filter(tx => tx.accountId === acc.id && !tx.isCashless && tx.fullDate >= start && tx.fullDate <= end);
             const ingresoReal = inPeriod.filter(tx => tx.type === "ingreso" && tx.category !== "Transferencia").reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
             const gastoTotal = inPeriod.filter(tx => tx.type === "gasto").reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
             return { id: acc.id, remaining: ingresoReal - gastoTotal, ingresoReal, gastoTotal };
         });
-    }, [accounts, transactions, topPeriod, periodRef]);
+    }, [accounts, transactions, budgetPeriod, budgetPeriodRef]);
 
     const [isAddingAccount, setIsAddingAccount] = useState(false);
     const [newAccountName, setNewAccountName] = useState("");
@@ -1149,6 +1164,18 @@ export const FinanzasDashboard = ({
                     </div>
                 )}
 
+                {accountsWithBalance.length > 0 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: movil ? "8px" : "12px", flexWrap: "wrap" }}>
+                        <span style={{ fontSize: "0.65rem", color: C.onSurfaceVariant, fontWeight: 700 }}>Presupuesto:</span>
+                        <PillToggle
+                            options={["month", "year", "all"]}
+                            labels={["Mes", "Año", "Todo"]}
+                            value={budgetPeriod}
+                            onChange={v => { setBudgetPeriod(v as PeriodMode); setBudgetPeriodRef(new Date()); }}
+                        />
+                    </div>
+                )}
+
                 {accountsWithBalance.length === 0 ? (
                     <p style={{ fontSize: "0.8rem", color: C.outline, fontStyle: "italic", margin: 0 }}>Sin cuentas todavía. Toca el + para agregar una.</p>
                 ) : (
@@ -1171,17 +1198,25 @@ export const FinanzasDashboard = ({
                                     S/ {acc.balance.toLocaleString("en-US", { minimumFractionDigits: movil ? 0 : 2 })}
                                 </div>
                                 {(() => {
+                                    const allTime = accountsBudgetAllTime.find(x => x.id === acc.id);
                                     const b = accountsBudget.find(x => x.id === acc.id);
-                                    if (!b || (b.ingresoReal === 0 && b.gastoTotal === 0)) return null;
+                                    if (!allTime || (allTime.ingresoReal === 0 && allTime.gastoTotal === 0)) return null;
                                     const etiquetasPeriodo: Record<PeriodMode, string> = { day: "Hoy", week: "Esta sem.", month: "Este mes", year: "Este año", all: "Acumulado" };
                                     const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 0 });
-                                    return (
-                                        <div title="Ingreso real (sin transferencias recibidas de otra cuenta) menos gasto, del período elegido arriba. Con 'Todo' es el acumulado desde siempre." style={{ marginTop: "3px", whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.3 }}>
-                                            <span style={{ fontSize: movil ? "0.55rem" : "0.62rem", fontWeight: 800, color: b.remaining < 0 ? C.rojo : C.verde }}>
-                                                {etiquetasPeriodo[topPeriod]}: {b.remaining < 0 ? "-" : ""}S/ {Math.abs(b.remaining).toLocaleString("en-US", { minimumFractionDigits: movil ? 0 : 2 })}
+                                    const linea = (label: string, v: { remaining: number; ingresoReal: number; gastoTotal: number }, tip: string) => (
+                                        <div title={tip} style={{ marginTop: "3px", whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.3 }}>
+                                            <span style={{ fontSize: movil ? "0.55rem" : "0.62rem", fontWeight: 800, color: v.remaining < 0 ? C.rojo : C.verde }}>
+                                                {label}: {v.remaining < 0 ? "-" : ""}S/ {Math.abs(v.remaining).toLocaleString("en-US", { minimumFractionDigits: movil ? 0 : 2 })}
                                             </span>
-                                            <span style={{ fontSize: movil ? "0.5rem" : "0.56rem", color: C.outline, fontWeight: 600 }}> (+S/{fmt(b.ingresoReal)} −S/{fmt(b.gastoTotal)})</span>
+                                            <span style={{ fontSize: movil ? "0.5rem" : "0.56rem", color: C.outline, fontWeight: 600 }}> (+S/{fmt(v.ingresoReal)} −S/{fmt(v.gastoTotal)})</span>
                                         </div>
+                                    );
+                                    return (
+                                        <>
+                                            {linea("Acumulado", allTime, "Ingreso real acumulado (sin transferencias recibidas) menos todo lo gastado, desde siempre. Nunca se reinicia.")}
+                                            {budgetPeriod !== "all" && b && (b.ingresoReal > 0 || b.gastoTotal > 0) &&
+                                                linea(etiquetasPeriodo[budgetPeriod], b, "Ingreso real menos gasto, solo del período elegido en 'Presupuesto' arriba.")}
+                                        </>
                                     );
                                 })()}
                             </button>
