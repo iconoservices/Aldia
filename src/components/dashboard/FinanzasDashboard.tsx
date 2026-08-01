@@ -3,7 +3,8 @@ import {
     Wallet, Plus, TrendingUp, TrendingDown,
     Trash2, Edit2, PieChart, X,
     Check, PiggyBank, ArrowDownCircle,
-    BarChart3, Tag, MoreVertical, Merge, ArrowLeftRight
+    BarChart3, Tag, MoreVertical, Merge, ArrowLeftRight,
+    ChevronLeft, ChevronRight
 } from "lucide-react";
 import { AnalyticsView } from "./AnalyticsView";
 import { motion, AnimatePresence } from "framer-motion";
@@ -387,6 +388,7 @@ export const FinanzasDashboard = ({
     const [includeBalance, setIncludeBalance] = useState(true);
     const [includeSalary, setIncludeSalary] = useState(true);
     const [topPeriod, setTopPeriod] = useState<PeriodMode>("month");
+    const [periodRef, setPeriodRef] = useState<Date>(new Date());
     const [debtActiveMap, setDebtActiveMap] = useState<Record<string, boolean>>({});
 
     // ── Debt groups (corrected: subtracts payments) ───────────────────────
@@ -554,11 +556,11 @@ export const FinanzasDashboard = ({
 
     const periodBalance = useMemo(() => {
         if (topPeriod === "all") return balance;
-        const { start, end } = getPeriodBounds(topPeriod, new Date());
+        const { start, end } = getPeriodBounds(topPeriod, periodRef);
         return transactions
             .filter(tx => !tx.isCashless && tx.fullDate >= start && tx.fullDate <= end)
             .reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
-    }, [transactions, topPeriod, balance]);
+    }, [transactions, topPeriod, periodRef, balance]);
 
     const projectedResources = (includeBalance ? periodBalance : 0) + (includeSalary ? fixedIncomeTotal * periodMultiplier : 0) + (includeOwed ? activeOwedTotal : 0);
     const projectedExpenses = (includeFixed ? projectedFixedVal : 0) + (includeDebts ? activeOweTotal : 0);
@@ -586,9 +588,9 @@ export const FinanzasDashboard = ({
     }, [includeBalance, periodBalance, includeSalary, projectedIncomeVal, includeOwed, activeOwedTotal, includeFixed, projectedFixedVal, includeDebts, activeOweTotal]);
 
     const topTxs = useMemo(() => {
-        const { start, end } = getPeriodBounds(topPeriod, new Date());
+        const { start, end } = getPeriodBounds(topPeriod, periodRef);
         return transactions.filter(tx => !tx.isDebt && tx.fullDate >= start && tx.fullDate <= end);
-    }, [transactions, topPeriod]);
+    }, [transactions, topPeriod, periodRef]);
 
     const topIncome = useMemo(() =>
         topTxs.filter(tx => tx.type === "ingreso").reduce((s, tx) => s + (Number(tx.amount) || 0), 0),
@@ -663,14 +665,14 @@ export const FinanzasDashboard = ({
     // pasaste de lo que de verdad generaste, aunque el saldo se vea bien por una ayuda que te
     // diste entre tus propias cuentas.
     const accountsBudget = useMemo(() => {
-        const { start, end } = getPeriodBounds(topPeriod, new Date());
+        const { start, end } = getPeriodBounds(topPeriod, periodRef);
         return accounts.map(acc => {
             const inPeriod = transactions.filter(tx => tx.accountId === acc.id && !tx.isCashless && tx.fullDate >= start && tx.fullDate <= end);
             const ingresoReal = inPeriod.filter(tx => tx.type === "ingreso" && tx.category !== "Transferencia").reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
             const gastoTotal = inPeriod.filter(tx => tx.type === "gasto").reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
             return { id: acc.id, remaining: ingresoReal - gastoTotal, ingresoReal, gastoTotal };
         });
-    }, [accounts, transactions, topPeriod]);
+    }, [accounts, transactions, topPeriod, periodRef]);
 
     const [isAddingAccount, setIsAddingAccount] = useState(false);
     const [newAccountName, setNewAccountName] = useState("");
@@ -800,7 +802,7 @@ export const FinanzasDashboard = ({
                                     options={["day", "week", "month", "year", "all"]}
                                     labels={["Día", "Sem.", "Mes", "Año", "Todo"]}
                                     value={topPeriod}
-                                    onChange={v => setTopPeriod(v as any)}
+                                    onChange={v => { setTopPeriod(v as any); setPeriodRef(new Date()); }}
                                 />
                                 <TrendingUp size={16} color={C.verde} style={{ marginLeft: "4px" }} />
                             </div>
@@ -964,7 +966,7 @@ export const FinanzasDashboard = ({
                                 return (
                                     <button
                                         key={mode}
-                                        onClick={() => setTopPeriod(mode)}
+                                        onClick={() => { setTopPeriod(mode); setPeriodRef(new Date()); }}
                                         style={{
                                             border: "none", borderRadius: "999px", cursor: "pointer", flexShrink: 0,
                                             padding: movil ? "5px 9px" : "5px 13px", fontSize: movil ? "0.68rem" : "0.75rem", fontWeight: 700,
@@ -1009,8 +1011,15 @@ export const FinanzasDashboard = ({
                     <div>
                         <h2 style={tituloPagina}>Finanzas</h2>
                         <p style={subtituloPagina}>
-                            {VISTAS.find(v => v.id === vista)?.sub} · {periodLabel(topPeriod, new Date())}
+                            {VISTAS.find(v => v.id === vista)?.sub} · {periodLabel(topPeriod, periodRef)}
                         </p>
+                        {topPeriod !== "all" && (
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "3px" }}>
+                                <button onClick={() => setPeriodRef(d => shiftPeriod(topPeriod, d, -1))} style={{ background: "none", border: "none", cursor: "pointer", color: C.onSurfaceVariant, display: "flex", padding: "2px" }}><ChevronLeft size={15} /></button>
+                                <span style={{ fontSize: "0.72rem", fontWeight: 700, color: C.onSurfaceVariant, textTransform: "capitalize" }}>{periodLabel(topPeriod, periodRef)}</span>
+                                <button onClick={() => setPeriodRef(d => shiftPeriod(topPeriod, d, 1))} style={{ background: "none", border: "none", cursor: "pointer", color: C.onSurfaceVariant, display: "flex", padding: "2px" }}><ChevronRight size={15} /></button>
+                            </div>
+                        )}
                     </div>
                 );
 
@@ -1262,7 +1271,7 @@ export const FinanzasDashboard = ({
                                         Las tres vistas
                                     </h3>
                                     <p style={{ margin: "2px 0 0", fontSize: "0.8rem", color: C.onSurfaceVariant, textTransform: "capitalize" }}>
-                                        {periodLabel(topPeriod, new Date())}
+                                        {periodLabel(topPeriod, periodRef)}
                                     </p>
                                 </div>
                                 <button
