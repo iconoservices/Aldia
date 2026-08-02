@@ -113,8 +113,18 @@ const TD: React.CSSProperties = {
 };
 
 const SELECT_MINI: React.CSSProperties = {
-    width: "78px", padding: "2px 3px", borderRadius: "4px", border: "1px solid #E2E8F0",
-    fontSize: "0.6rem", fontWeight: 700, outline: "none", background: "white", cursor: "pointer",
+    width: "100%", padding: "5px 6px", borderRadius: "6px", border: "1px solid #E2E8F0",
+    fontSize: "0.68rem", fontWeight: 700, outline: "none", background: "white", cursor: "pointer",
+    boxSizing: "border-box",
+};
+
+// Panel del abono: cuenta arriba (ancho completo, para que se lea el nombre), monto y
+// botones abajo — antes iba todo en una sola fila apretada y el selector quedaba
+// ilegible.
+const ABONO_PANEL: React.CSSProperties = {
+    display: "flex", flexDirection: "column", gap: "5px",
+    background: "#F8FAFC", border: "1px solid #E6E7F2", borderRadius: "8px",
+    padding: "7px", minWidth: "150px",
 };
 
 const BTN_PRIMARY: React.CSSProperties = {
@@ -432,16 +442,18 @@ export const DeudasyCobrosDashboard = ({
                                 <td style={TD}>
                                     <div style={{ display: "flex", gap: "4px" }}>
                                         {abonarId === id ? (
-                                            <div style={{ display: "flex", gap: "3px", alignItems: "center", flexWrap: "wrap" }}>
-                                                <select value={abonarAccountId[id] ?? ""} onChange={e => setAbonarAccountId(m => ({ ...m, [id]: e.target.value }))} style={SELECT_MINI} title="¿De/a qué cuenta?">
+                                            <div style={ABONO_PANEL}>
+                                                <select value={abonarAccountId[id] ?? ""} onChange={e => setAbonarAccountId(m => ({ ...m, [id]: e.target.value }))} style={SELECT_MINI} title="¿De qué cuenta sale?">
                                                     <option value="">Sin cuenta</option>
                                                     {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                                                 </select>
-                                                <input type="number" value={abonarAmount[id] ?? item.amount.toFixed(2)} onChange={e => setAbonarAmount(m => ({ ...m, [id]: e.target.value }))}
-                                                    style={{ width: "60px", padding: "2px 4px", borderRadius: "4px", border: "1px solid #E2E8F0", fontSize: "0.65rem", fontWeight: 700, outline: "none" }} />
-                                                <button onClick={() => handleAbonar(item, parseFloat(abonarAmount[id] || String(item.amount)), abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#10B981", color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Abonar</button>
-                                                <button onClick={() => handleAbonar(item, item.amount, abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#059669", color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Todo</button>
-                                                <button onClick={() => closeAbonar(id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "2px", fontSize: "0.7rem", fontWeight: 800 }}>X</button>
+                                                <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                                                    <input type="number" value={abonarAmount[id] ?? item.amount.toFixed(2)} onChange={e => setAbonarAmount(m => ({ ...m, [id]: e.target.value }))}
+                                                        style={{ width: "56px", padding: "5px 6px", borderRadius: "6px", border: "1px solid #E2E8F0", fontSize: "0.68rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
+                                                    <button onClick={() => handleAbonar(item, parseFloat(abonarAmount[id] || String(item.amount)), abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#10B981", color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.64rem", cursor: "pointer" }}>Abonar</button>
+                                                    <button onClick={() => handleAbonar(item, item.amount, abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#059669", color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.64rem", cursor: "pointer" }}>Todo</button>
+                                                    <button onClick={() => closeAbonar(id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", padding: "2px", fontSize: "0.75rem", fontWeight: 800 }}>✕</button>
+                                                </div>
                                             </div>
                                         ) : (
                                             <>
@@ -525,16 +537,18 @@ export const DeudasyCobrosDashboard = ({
                                     ) : (
                                         <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
                                             {abonarId === id ? (
-                                                <div style={{ display: "flex", gap: "3px", alignItems: "center", flexWrap: "wrap" }}>
-                                                    <select value={abonarAccountId[id] ?? ""} onChange={e => setAbonarAccountId(m => ({ ...m, [id]: e.target.value }))} style={SELECT_MINI} title="¿De/a qué cuenta?">
+                                                <div style={ABONO_PANEL}>
+                                                    <select value={abonarAccountId[id] ?? ""} onChange={e => setAbonarAccountId(m => ({ ...m, [id]: e.target.value }))} style={SELECT_MINI} title="¿A qué cuenta entra?">
                                                         <option value="">Sin cuenta</option>
                                                         {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                                                     </select>
-                                                    <input type="number" value={abonarAmount[id] ?? item.amount.toFixed(2)} onChange={e => setAbonarAmount(m => ({ ...m, [id]: e.target.value }))}
-                                                        style={{ width: "60px", padding: "2px 4px", borderRadius: "4px", border: "1px solid #E2E8F0", fontSize: "0.65rem", fontWeight: 700, outline: "none" }} />
-                                                    <button onClick={() => handleAbonar(item, parseFloat(abonarAmount[id] || String(item.amount)), abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#10B981", color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Cobrar</button>
-                                                    <button onClick={() => handleAbonar(item, item.amount, abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#059669", color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Todo</button>
-                                                    <button onClick={() => closeAbonar(id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "2px", fontSize: "0.7rem", fontWeight: 800 }}>X</button>
+                                                    <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                                                        <input type="number" value={abonarAmount[id] ?? item.amount.toFixed(2)} onChange={e => setAbonarAmount(m => ({ ...m, [id]: e.target.value }))}
+                                                            style={{ width: "56px", padding: "5px 6px", borderRadius: "6px", border: "1px solid #E2E8F0", fontSize: "0.68rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
+                                                        <button onClick={() => handleAbonar(item, parseFloat(abonarAmount[id] || String(item.amount)), abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#10B981", color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.64rem", cursor: "pointer" }}>Cobrar</button>
+                                                        <button onClick={() => handleAbonar(item, item.amount, abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#059669", color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.64rem", cursor: "pointer" }}>Todo</button>
+                                                        <button onClick={() => closeAbonar(id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", padding: "2px", fontSize: "0.75rem", fontWeight: 800 }}>✕</button>
+                                                    </div>
                                                 </div>
                                             ) : (
                                                 <>
@@ -588,20 +602,22 @@ export const DeudasyCobrosDashboard = ({
                                 <div style={{ fontSize: "0.6rem", color: "#424754" }}>{formatDate(item.originalTx.dueDate || item.originalTx.fullDate)}</div>
                             </div>
                         </div>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px", gap: "6px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: abonarId === id ? "flex-start" : "center", marginTop: "8px", gap: "6px", flexWrap: "wrap" }}>
                             <span style={{ padding: "2px 8px", borderRadius: "999px", background: badge.bg, color: badge.text, fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.04em", flexShrink: 0 }}>
                                 {badge.label}
                             </span>
                             {abonarId === id ? (
-                                <div style={{ display: "flex", gap: "3px", alignItems: "center", flex: 1, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                                    <select value={abonarAccountId[id] ?? ""} onChange={e => setAbonarAccountId(m => ({ ...m, [id]: e.target.value }))} style={SELECT_MINI} title="¿De/a qué cuenta?">
+                                <div style={{ ...ABONO_PANEL, flex: "1 1 100%" }}>
+                                    <select value={abonarAccountId[id] ?? ""} onChange={e => setAbonarAccountId(m => ({ ...m, [id]: e.target.value }))} style={SELECT_MINI} title="¿De qué cuenta sale?">
                                         <option value="">Sin cuenta</option>
                                         {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                                     </select>
-                                    <input type="number" value={abonarAmount[id] ?? item.amount.toFixed(2)} onChange={e => setAbonarAmount(m => ({ ...m, [id]: e.target.value }))}
-                                        style={{ width: "56px", padding: "3px 5px", borderRadius: "4px", border: "1px solid #E2E8F0", fontSize: "0.68rem", fontWeight: 700, outline: "none" }} />
-                                    <button onClick={() => handleAbonar(item, parseFloat(abonarAmount[id] || String(item.amount)), abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#10B981", color: "white", border: "none", borderRadius: "4px", padding: "4px 6px", fontWeight: 800, fontSize: "0.62rem", cursor: "pointer" }}>Abonar</button>
-                                    <button onClick={() => closeAbonar(id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "3px", fontSize: "0.75rem", fontWeight: 800 }}>X</button>
+                                    <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                                        <input type="number" value={abonarAmount[id] ?? item.amount.toFixed(2)} onChange={e => setAbonarAmount(m => ({ ...m, [id]: e.target.value }))}
+                                            style={{ width: "56px", padding: "5px 6px", borderRadius: "6px", border: "1px solid #E2E8F0", fontSize: "0.68rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
+                                        <button onClick={() => handleAbonar(item, parseFloat(abonarAmount[id] || String(item.amount)), abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#10B981", color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.64rem", cursor: "pointer" }}>Abonar</button>
+                                        <button onClick={() => closeAbonar(id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", padding: "2px", fontSize: "0.75rem", fontWeight: 800 }}>✕</button>
+                                    </div>
                                 </div>
                             ) : (
                                 <div style={{ display: "flex", gap: "4px" }}>
@@ -656,15 +672,17 @@ export const DeudasyCobrosDashboard = ({
                                     <button onClick={() => setConfirmPayId(null)} style={{ ...BTN_SECONDARY, padding: "4px 10px", fontSize: "0.68rem" }}>✗</button>
                                 </div>
                             ) : abonarId === id ? (
-                                <div style={{ display: "flex", gap: "3px", alignItems: "center", flexWrap: "wrap" }}>
-                                    <select value={abonarAccountId[id] ?? ""} onChange={e => setAbonarAccountId(m => ({ ...m, [id]: e.target.value }))} style={SELECT_MINI} title="¿De/a qué cuenta?">
+                                <div style={{ ...ABONO_PANEL, flex: "1 1 100%" }}>
+                                    <select value={abonarAccountId[id] ?? ""} onChange={e => setAbonarAccountId(m => ({ ...m, [id]: e.target.value }))} style={SELECT_MINI} title="¿A qué cuenta entra?">
                                         <option value="">Sin cuenta</option>
                                         {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                                     </select>
-                                    <input type="number" value={abonarAmount[id] ?? item.amount.toFixed(2)} onChange={e => setAbonarAmount(m => ({ ...m, [id]: e.target.value }))}
-                                        style={{ width: "56px", padding: "3px 5px", borderRadius: "4px", border: "1px solid #E2E8F0", fontSize: "0.68rem", fontWeight: 700, outline: "none" }} />
-                                    <button onClick={() => handleAbonar(item, parseFloat(abonarAmount[id] || String(item.amount)), abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#10B981", color: "white", border: "none", borderRadius: "4px", padding: "4px 6px", fontWeight: 800, fontSize: "0.62rem", cursor: "pointer" }}>Cobrar</button>
-                                    <button onClick={() => closeAbonar(id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#CBD5E1", padding: "3px", fontSize: "0.75rem", fontWeight: 800 }}>X</button>
+                                    <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                                        <input type="number" value={abonarAmount[id] ?? item.amount.toFixed(2)} onChange={e => setAbonarAmount(m => ({ ...m, [id]: e.target.value }))}
+                                            style={{ width: "56px", padding: "5px 6px", borderRadius: "6px", border: "1px solid #E2E8F0", fontSize: "0.68rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
+                                        <button onClick={() => handleAbonar(item, parseFloat(abonarAmount[id] || String(item.amount)), abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#10B981", color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.64rem", cursor: "pointer" }}>Cobrar</button>
+                                        <button onClick={() => closeAbonar(id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", padding: "2px", fontSize: "0.75rem", fontWeight: 800 }}>✕</button>
+                                    </div>
                                 </div>
                             ) : (
                                 <div style={{ display: "flex", gap: "4px" }}>
