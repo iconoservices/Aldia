@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { getPeriodKey, type Transaction, type FixedExpense } from '../useAlDiaState';
+import { getPeriodKey, addPeriod, type Transaction, type FixedExpense } from '../useAlDiaState';
 
 export const useFinanzasState = () => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -127,6 +127,82 @@ export const useFinanzasState = () => {
         addTransaction(`Pago: ${expense.text}`, value, 'gasto', false, expense.projectId, resolvedAccountId, false, 'Servicios');
     };
 
+    // Detecta gastos fijos que cruzaron a un período nuevo (mes/semana) sin quedar saldados
+    // y mueve lo que faltaba a `pendingPeriods`, cada uno marcado con su propio período,
+    // en vez de sumarlo al total del mes en curso.
+    const rolloverFixedExpenses = () => {
+        const todayStr = new Date().toLocaleDateString('en-CA');
+        setFixedExpenses((prev: FixedExpense[]) => prev.map(expense => {
+            const frequency = expense.frequency;
+            const currentPeriod = getPeriodKey(frequency, todayStr);
+            let trackedDate = expense.currentPeriodStart ?? todayStr;
+            let trackedPeriod = getPeriodKey(frequency, trackedDate);
+
+            if (trackedPeriod === currentPeriod) {
+                return expense.currentPeriodStart ? expense : { ...expense, currentPeriodStart: todayStr };
+            }
+
+            const newPending = [...(expense.pendingPeriods ?? [])];
+            let partialPaid = expense.partialPaid;
+            let guard = 0;
+            while (trackedPeriod !== currentPeriod && guard < 104) {
+                const wasFullyPaid = expense.lastPaidMonth === trackedPeriod;
+                if (!wasFullyPaid) {
+                    const amountPaid = partialPaid?.month === trackedPeriod ? partialPaid.amount : 0;
+                    newPending.push({ period: trackedPeriod, amountPaid });
+                }
+                partialPaid = undefined;
+                trackedDate = addPeriod(trackedDate, frequency);
+                trackedPeriod = getPeriodKey(frequency, trackedDate);
+                guard++;
+            }
+
+            return { ...expense, pendingPeriods: newPending, partialPaid, currentPeriodStart: todayStr };
+        }));
+    };
+
+    // Abona (total o parcial) un período anterior que quedó pendiente. Si el abono lo cubre
+    // por completo, ese período desaparece de la lista de pendientes.
+    const payPendingPeriod = (id: number, period: string, amount: number, accountId?: number) => {
+        const expense = fixedExpenses.find(e => e.id === id);
+        if (!expense) return;
+        const entry = expense.pendingPeriods?.find(p => p.period === period);
+        if (!entry) return;
+
+        const resolvedAccountId = accountId ?? expense.accountId;
+        const remaining = Math.max(0, expense.amount - entry.amountPaid);
+        const value = Math.min(Math.abs(amount), remaining);
+        if (value <= 0) return;
+
+        const totalPaid = entry.amountPaid + value;
+        const isFullySettled = totalPaid >= expense.amount - 0.005;
+
+        setFixedExpenses((prev: FixedExpense[]) => prev.map(e => e.id === id ? {
+            ...e,
+            pendingPeriods: isFullySettled
+                ? (e.pendingPeriods ?? []).filter(p => p.period !== period)
+                : (e.pendingPeriods ?? []).map(p => p.period === period ? { ...p, amountPaid: totalPaid } : p),
+        } : e));
+
+        addTransaction(`Pago: ${expense.text} (${period})`, value, 'gasto', false, expense.projectId, resolvedAccountId, false, 'Servicios');
+    };
+
+    // Deshace todos los abonos hechos a un período pendiente específico (vuelve a quedar en 0).
+    const unmarkPendingPeriod = (id: number, period: string) => {
+        const expense = fixedExpenses.find(e => e.id === id);
+        if (!expense) return;
+
+        setFixedExpenses((prev: FixedExpense[]) => prev.map(e => e.id === id ? {
+            ...e,
+            pendingPeriods: (e.pendingPeriods ?? []).map(p => p.period === period ? { ...p, amountPaid: 0 } : p),
+        } : e));
+
+        setTransactions((prev: Transaction[]) => {
+            const targetTxText = `Pago: ${expense.text} (${period})`;
+            return prev.filter(t => t.text !== targetTxText);
+        });
+    };
+
     const unmarkFixedExpensePaid = (id: number, monthStr: string) => {
         const expense = fixedExpenses.find(e => e.id === id);
         if (!expense) return;
@@ -227,6 +303,9 @@ export const useFinanzasState = () => {
         markFixedExpensePaid,
         payFixedExpensePartial,
         unmarkFixedExpensePaid,
+        rolloverFixedExpenses,
+        payPendingPeriod,
+        unmarkPendingPeriod,
         repayDebt,
         todayIncome,
         todayExpense,

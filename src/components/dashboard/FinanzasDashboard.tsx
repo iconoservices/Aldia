@@ -36,6 +36,9 @@ interface FinanzasProps {
     markFixedExpensePaid: (id: number, monthStr: string, accountId?: number) => void;
     payFixedExpensePartial: (id: number, monthStr: string, amount: number, accountId?: number) => void;
     unmarkFixedExpensePaid: (id: number, monthStr: string) => void;
+    rolloverFixedExpenses: () => void;
+    payPendingPeriod: (id: number, period: string, amount: number, accountId?: number) => void;
+    unmarkPendingPeriod: (id: number, period: string) => void;
     repayDebt: (originalTx: Transaction, amount: number, accountId: number) => void;
     removeTransaction: (id: number) => void;
     updateTransaction: (id: number, updates: Partial<Transaction>) => void;
@@ -359,6 +362,7 @@ export const FinanzasDashboard = ({
     balance, transactions,
     fixedExpenses, addFixedExpense, removeFixedExpense, toggleFixedExpense, updateFixedExpense,
     markFixedExpensePaid, payFixedExpensePartial, unmarkFixedExpensePaid,
+    rolloverFixedExpenses, payPendingPeriod, unmarkPendingPeriod,
     removeTransaction, addTransaction, updateTransaction,
     projects, accounts, setAccounts,
     addProjectTask, toggleProjectTask, removeProjectTask, updateProjectTask,
@@ -380,6 +384,13 @@ export const FinanzasDashboard = ({
         const desactualizadas = transactions.filter(t => t.category === "AutoSueldo");
         desactualizadas.forEach(t => updateTransaction(t.id, { category: "Transferencia" }));
     }, [transactions, updateTransaction]);
+
+    // Al entrar a Finanzas, revisa si algún gasto fijo cruzó de período (mes/semana)
+    // sin quedar saldado, y lo deja como pendiente marcado con su propio período.
+    useEffect(() => {
+        rolloverFixedExpenses();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // ── Config ────────────────────────────────────────────────────────────
     const [includeDebts, setIncludeDebts] = useState(false);
@@ -1368,7 +1379,7 @@ export const FinanzasDashboard = ({
                             <p style={{ fontSize: "0.75rem", color: C.outline, margin: 0 }}>Sin gastos fijos. Agrega uno abajo.</p>
                         )}
                         {(showAllFixedExpenses ? sortedFixedExpenses : sortedFixedExpenses.slice(0, LISTA_VISIBLE)).map(exp => (
-                            <FixedExpenseRow key={exp.id} expense={exp} toggleFixedExpense={toggleFixedExpense} removeFixedExpense={removeFixedExpense} updateFixedExpense={updateFixedExpense} markFixedExpensePaid={markFixedExpensePaid} payFixedExpensePartial={payFixedExpensePartial} unmarkFixedExpensePaid={unmarkFixedExpensePaid} isPaid={exp.lastPaidMonth === getPeriodKey(exp.frequency, todayStr)} projects={projects} accounts={accounts} />
+                            <FixedExpenseRow key={exp.id} expense={exp} toggleFixedExpense={toggleFixedExpense} removeFixedExpense={removeFixedExpense} updateFixedExpense={updateFixedExpense} markFixedExpensePaid={markFixedExpensePaid} payFixedExpensePartial={payFixedExpensePartial} unmarkFixedExpensePaid={unmarkFixedExpensePaid} payPendingPeriod={payPendingPeriod} unmarkPendingPeriod={unmarkPendingPeriod} isPaid={exp.lastPaidMonth === getPeriodKey(exp.frequency, todayStr)} projects={projects} accounts={accounts} />
                         ))}
                         {fixedExpenses.length > LISTA_VISIBLE && (
                             <button onClick={() => setShowAllFixedExpenses(v => !v)} style={{ background: "none", border: "none", padding: "2px 0", cursor: "pointer", color: C.rojo, fontSize: "0.72rem", fontWeight: 700, textAlign: "left" }}>
@@ -1661,7 +1672,19 @@ const FrequencyToggle = ({ frequency, setFrequency }: { frequency: 'monthly' | '
 );
 
 // ─── Fixed expense row ────────────────────────────────────────────────────────
-const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, updateFixedExpense, payFixedExpensePartial, unmarkFixedExpensePaid, isPaid, accounts, projects }: any) => {
+function pendingPeriodLabel(period: string): string {
+    const monthMatch = /^(\d{4})-(\d{2})$/.exec(period);
+    if (monthMatch) {
+        const [, y, m] = monthMatch;
+        const nombre = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("es-ES", { month: "long" });
+        return nombre.charAt(0).toUpperCase() + nombre.slice(1);
+    }
+    const weekMatch = /^(\d{4})-W(\d{2})$/.exec(period);
+    if (weekMatch) return `Semana ${weekMatch[2]} · ${weekMatch[1]}`;
+    return period;
+}
+
+const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, updateFixedExpense, payFixedExpensePartial, unmarkFixedExpensePaid, payPendingPeriod, unmarkPendingPeriod, isPaid, accounts, projects }: any) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(expense.text);
     const [editAmount, setEditAmount] = useState(String(expense.amount));
@@ -1809,6 +1832,21 @@ const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, upda
                 </div>
             )}
 
+            {expense.pendingPeriods && expense.pendingPeriods.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+                    {expense.pendingPeriods.map((p: { period: string; amountPaid: number }) => (
+                        <PendingPeriodRow
+                            key={p.period}
+                            expense={expense}
+                            entry={p}
+                            payPendingPeriod={payPendingPeriod}
+                            unmarkPendingPeriod={unmarkPendingPeriod}
+                            accounts={accounts}
+                        />
+                    ))}
+                </div>
+            )}
+
             {isPaying ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px", background: C.surfaceContainerLow, padding: "6px", borderRadius: "9px" }}>
                     {!expense.accountId && (
@@ -1841,6 +1879,61 @@ const FixedExpenseRow = ({ expense, toggleFixedExpense, removeFixedExpense, upda
                             Deshacer abono
                         </button>
                     )}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// Fila de un período anterior que quedó sin saldar: se muestra aparte, marcada con
+// su propio mes, sin sumarse al monto del período en curso.
+const PendingPeriodRow = ({ expense, entry, payPendingPeriod, unmarkPendingPeriod, accounts }: any) => {
+    const [isPaying, setIsPaying] = useState(false);
+    const pending = Math.max(0, expense.amount - entry.amountPaid);
+    const [payAmount, setPayAmount] = useState(pending.toFixed(2));
+    const [payAccountId, setPayAccountId] = useState<number | undefined>(expense.accountId);
+
+    const openPay = () => { setPayAmount(pending.toFixed(2)); setPayAccountId(expense.accountId); setIsPaying(true); };
+    const confirmPay = () => {
+        const value = parseFloat(payAmount);
+        if (!value || value <= 0 || !payAccountId) return;
+        payPendingPeriod(expense.id, entry.period, value, payAccountId);
+        setIsPaying(false);
+    };
+
+    return (
+        <div style={{ background: "rgba(239,68,68,0.06)", border: `1px solid rgba(239,68,68,0.18)`, borderRadius: "9px", padding: "7px 9px", display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                <div style={{ fontSize: "0.72rem", fontWeight: 700, color: C.rojo }}>
+                    {pendingPeriodLabel(entry.period)} · falta S/ {pending.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    {entry.amountPaid > 0 && <span style={{ color: C.outline, fontWeight: 600 }}> (abonado S/ {entry.amountPaid.toLocaleString("en-US", { minimumFractionDigits: 2 })})</span>}
+                </div>
+                {!isPaying && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+                        <button onClick={openPay} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.secondary, fontSize: "0.72rem", fontWeight: 800 }}>Pagar</button>
+                        {entry.amountPaid > 0 && (
+                            <button onClick={() => unmarkPendingPeriod(expense.id, entry.period)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.outline, fontSize: "0.68rem", fontWeight: 700 }}>Deshacer</button>
+                        )}
+                    </div>
+                )}
+            </div>
+            {isPaying && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    {!expense.accountId && (
+                        <select autoFocus value={payAccountId ?? ""} onChange={e => setPayAccountId(e.target.value ? Number(e.target.value) : undefined)} style={{ padding: "6px", borderRadius: "7px", border: `1px solid ${!payAccountId ? C.rojo : C.outlineVariant}`, fontSize: "0.75rem", fontWeight: 700, outline: "none", background: "white", cursor: "pointer" }}>
+                            <option value="">¿De qué cuenta sale?</option>
+                            {accounts?.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                        </select>
+                    )}
+                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                        <div style={{ position: "relative", flex: 1 }}>
+                            <span style={{ position: "absolute", left: "8px", top: "50%", transform: "translateY(-50%)", fontSize: "0.72rem", fontWeight: 700, color: C.onSurfaceVariant }}>S/</span>
+                            <input autoFocus={!!expense.accountId} type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} onKeyDown={e => e.key === "Enter" && confirmPay()} style={{ width: "100%", padding: "6px 6px 6px 26px", borderRadius: "7px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.8rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
+                        </div>
+                        <button onClick={() => setPayAmount(pending.toFixed(2))} style={{ padding: "6px 8px", borderRadius: "7px", border: "none", background: C.surfaceContainerHigh, color: C.onSurfaceVariant, fontSize: "0.65rem", fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>Todo</button>
+                        <button onClick={confirmPay} disabled={!payAccountId} title={!payAccountId ? "Elige primero de qué cuenta sale" : undefined} style={{ padding: "6px 10px", borderRadius: "7px", border: "none", background: payAccountId ? C.verde : C.outlineVariant, color: "white", fontSize: "0.7rem", fontWeight: 800, cursor: payAccountId ? "pointer" : "not-allowed" }}>Pagar</button>
+                        <button onClick={() => setIsPaying(false)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "4px", display: "flex" }}><X size={14} /></button>
+                    </div>
                 </div>
             )}
         </div>

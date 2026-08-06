@@ -361,6 +361,9 @@ function App() {
                 markFixedExpensePaid={state.markFixedExpensePaid}
                 payFixedExpensePartial={state.payFixedExpensePartial}
                 unmarkFixedExpensePaid={state.unmarkFixedExpensePaid}
+                rolloverFixedExpenses={state.rolloverFixedExpenses}
+                payPendingPeriod={state.payPendingPeriod}
+                unmarkPendingPeriod={state.unmarkPendingPeriod}
                 preferences={state.preferences}
                 updatePreference={state.updatePreference}
                 projects={state.projects}

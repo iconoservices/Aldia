@@ -87,6 +87,16 @@ export interface FixedExpense {
     dueDay?: number; // 1-31 (Día de cobro en el mes), solo si frequency === 'monthly'
     dueWeekday?: number; // 0-6 (Dom-Sáb, como Date.getDay()), solo si frequency === 'weekly'
     partialPaid?: { month: string; amount: number }; // Abono parcial del período en curso, aún no cubre el total
+    pendingPeriods?: { period: string; amountPaid: number }[]; // Períodos anteriores que quedaron sin saldar (arrastre), cada uno con lo ya abonado
+    currentPeriodStart?: string; // Fecha (YYYY-MM-DD) usada como ancla para detectar cuándo arrancó un período nuevo
+}
+
+// Avanza una fecha un período completo (mes o semana) según la frecuencia del gasto fijo.
+export function addPeriod(dateStr: string, frequency: 'monthly' | 'weekly' | undefined): string {
+    const d = new Date(dateStr + 'T00:00:00');
+    if (frequency === 'weekly') d.setDate(d.getDate() + 7);
+    else d.setMonth(d.getMonth() + 1);
+    return d.toLocaleDateString('en-CA');
 }
 
 // Clave de período para un gasto/ingreso fijo: "YYYY-MM" si es mensual (igual que antes),
@@ -244,7 +254,8 @@ export const useAlDiaState = () => {
         transactions, setTransactions, balance,
         monthlyBudget, setMonthlyBudget, fixedExpenses, setFixedExpenses,
         addTransaction, addFixedExpense, removeFixedExpense, toggleFixedExpense,
-        updateFixedExpense, markFixedExpensePaid, payFixedExpensePartial, unmarkFixedExpensePaid, repayDebt: repayDebtBase,
+        updateFixedExpense, markFixedExpensePaid, payFixedExpensePartial, unmarkFixedExpensePaid,
+        rolloverFixedExpenses, payPendingPeriod, unmarkPendingPeriod, repayDebt: repayDebtBase,
         todayIncome, todayExpense, todayNet, todayIncomeReal, todayExpenseReal,
         totalIncomeReal, totalExpenseReal, totalNetReal, debtsOwe, debtsOwed,
         removeTransaction, updateTransaction, updateTransactionGroup
@@ -927,6 +938,7 @@ export const useAlDiaState = () => {
         fixedExpenses, addFixedExpense: lw(addFixedExpense), removeFixedExpense: lw(removeFixedExpense),
         toggleFixedExpense: lw(toggleFixedExpense), updateFixedExpense: lw(updateFixedExpense),
         markFixedExpensePaid: lw(markFixedExpensePaid), payFixedExpensePartial: lw(payFixedExpensePartial), unmarkFixedExpensePaid: lw(unmarkFixedExpensePaid),
+        rolloverFixedExpenses: lw(rolloverFixedExpenses), payPendingPeriod: lw(payPendingPeriod), unmarkPendingPeriod: lw(unmarkPendingPeriod),
         repayDebt: lw(repayDebtBase),
         addTransaction: lw((text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projId?: number, accId?: number, isCashless?: boolean, cat?: string, contact?: string, dueDate?: string) => {
             addTransaction(text, amount, type, isDebt, projId, accId, isCashless, cat, contact, dueDate);
