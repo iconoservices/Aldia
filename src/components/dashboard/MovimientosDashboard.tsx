@@ -26,6 +26,8 @@ interface MovimientosProps {
     removeTransaction: (id: number) => void;
     updateTransaction: (id: number, updates: Partial<Transaction>) => void;
     accounts: { id: number; name: string; color: string }[];
+    incomeCategories?: string[];
+    expenseCategories?: string[];
 }
 
 const txInputStyle: React.CSSProperties = { padding: "6px 8px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", outline: "none", background: "white", boxSizing: "border-box", width: "100%" };
@@ -34,7 +36,7 @@ const txLabelStyle: React.CSSProperties = { fontSize: "0.6rem", fontWeight: 800,
 const CARD: React.CSSProperties = { ...bento, padding: "1.5rem" };
 const LABEL: React.CSSProperties = etiqueta;
 
-export const MovimientosDashboard = ({ transactions, removeTransaction, updateTransaction, accounts }: MovimientosProps) => {
+export const MovimientosDashboard = ({ transactions, removeTransaction, updateTransaction, accounts, incomeCategories = [], expenseCategories = [] }: MovimientosProps) => {
     const movil = useIsMobile();
     const [periodMode, setPeriodMode] = useState<PeriodMode>("month");
     const [periodRef, setPeriodRef] = useState<Date>(new Date());
@@ -165,7 +167,7 @@ export const MovimientosDashboard = ({ transactions, removeTransaction, updateTr
                 ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
                         {filteredTxs.map(tx => (
-                            <MovimientoRow key={tx.id} tx={tx} accountById={accountById} accounts={accounts} removeTransaction={removeTransaction} updateTransaction={updateTransaction} />
+                            <MovimientoRow key={tx.id} tx={tx} accountById={accountById} accounts={accounts} removeTransaction={removeTransaction} updateTransaction={updateTransaction} incomeCategories={incomeCategories} expenseCategories={expenseCategories} />
                         ))}
                     </div>
                 )}
@@ -175,23 +177,28 @@ export const MovimientosDashboard = ({ transactions, removeTransaction, updateTr
 };
 
 // ─── Movimiento row ────────────────────────────────────────────────────────────
-const MovimientoRow = ({ tx, accountById, accounts, removeTransaction, updateTransaction }: {
+const MovimientoRow = ({ tx, accountById, accounts, removeTransaction, updateTransaction, incomeCategories = [], expenseCategories = [] }: {
     tx: Transaction;
     accountById: Map<number, { id: number; name: string; color: string }>;
     accounts: { id: number; name: string; color: string }[];
     removeTransaction: (id: number) => void;
     updateTransaction: (id: number, updates: Partial<Transaction>) => void;
+    incomeCategories?: string[];
+    expenseCategories?: string[];
 }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editText, setEditText] = useState(tx.text);
     const [editAmount, setEditAmount] = useState(String(Math.abs(tx.amount)));
     const [editAccountId, setEditAccountId] = useState<number | undefined>(tx.accountId);
+    const [editCategory, setEditCategory] = useState(tx.category || "");
     const [menuOpen, setMenuOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
 
+    const categoriasDisponibles = tx.type === "ingreso" ? incomeCategories : expenseCategories;
+
     const save = () => {
         const value = Math.abs(Number(editAmount)) || 0;
-        updateTransaction(tx.id, { text: editText, amount: tx.type === "ingreso" ? value : -value, accountId: editAccountId });
+        updateTransaction(tx.id, { text: editText, amount: tx.type === "ingreso" ? value : -value, accountId: editAccountId, category: editCategory || undefined });
         setIsEditing(false);
     };
 
@@ -214,6 +221,15 @@ const MovimientoRow = ({ tx, accountById, accounts, removeTransaction, updateTra
                     </select>
                 </div>
             </div>
+            {categoriasDisponibles.length > 0 && (
+                <div>
+                    <label style={txLabelStyle}>Categoría</label>
+                    <select value={editCategory} onChange={e => setEditCategory(e.target.value)} style={{ ...txInputStyle, fontWeight: 700, cursor: "pointer" }}>
+                        <option value="">Sin categoría</option>
+                        {categoriasDisponibles.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    </select>
+                </div>
+            )}
             <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "2px" }}>
                 <button onClick={() => setIsEditing(false)} style={{ background: "none", border: `1px solid ${C.outlineVariant}`, color: C.onSurfaceVariant, borderRadius: "8px", padding: "6px 12px", fontWeight: 700, fontSize: "0.75rem", cursor: "pointer" }}>Cancelar</button>
                 <button onClick={save} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "8px", padding: "6px 12px", fontWeight: 800, fontSize: "0.75rem", cursor: "pointer" }}>Guardar</button>

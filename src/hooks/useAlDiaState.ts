@@ -174,12 +174,18 @@ export interface ShoppingItem {
 export interface UserPreferences {
     isBudgetFixed: boolean;
     fixedIncomes: string; // JSON: { id: number, name: string, amount: number, active: boolean }[]
+    // JSON: { ingreso: Record<categoria, accountId[]>, gasto: Record<categoria, accountId[]> }.
+    // Una categoria sin entrada (o con array vacio) aplica a todas las cuentas.
+    categoryAccountScope: string;
 }
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
     isBudgetFixed: false,
-    fixedIncomes: "[]"
+    fixedIncomes: "[]",
+    categoryAccountScope: '{"ingreso":{},"gasto":{}}'
 };
+
+export type CategoryAccountScope = { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
 
 export interface ProjectNode {
     id: number;
@@ -754,6 +760,7 @@ export const useAlDiaState = () => {
     const removeCategory = (type: 'ingreso' | 'gasto', name: string) => {
         const setter = type === 'ingreso' ? setIncomeCategories : setExpenseCategories;
         setter(prev => prev.filter(c => c !== name));
+        setCategoryAccounts(type, name, []);
     };
 
     // Renombrar reasigna también los movimientos ya existentes con esa categoría,
@@ -765,6 +772,11 @@ export const useAlDiaState = () => {
         const setter = type === 'ingreso' ? setIncomeCategories : setExpenseCategories;
         setter(prev => prev.includes(trimmed) ? prev.filter(c => c !== oldName) : prev.map(c => c === oldName ? trimmed : c));
         setTransactions(prev => prev.map(t => t.type === type && t.category === oldName ? { ...t, category: trimmed } : t));
+        const carriedScope = categoryAccountScope[type][oldName];
+        if (carriedScope) {
+            setCategoryAccounts(type, oldName, []);
+            setCategoryAccounts(type, trimmed, carriedScope);
+        }
     };
 
     const mergeCategory = (type: 'ingreso' | 'gasto', sourceName: string, targetName: string) => {
@@ -772,6 +784,31 @@ export const useAlDiaState = () => {
         const setter = type === 'ingreso' ? setIncomeCategories : setExpenseCategories;
         setter(prev => prev.filter(c => c !== sourceName));
         setTransactions(prev => prev.map(t => t.type === type && t.category === sourceName ? { ...t, category: targetName } : t));
+        setCategoryAccounts(type, sourceName, []);
+    };
+
+    // Categorías con alcance por cuenta: sin entrada (o array vacío) = aplica en
+    // todas las cuentas. Guardado dentro de preferences (mismo mecanismo que
+    // fixedIncomes) para no tocar el resto del pipeline de sync con Firestore.
+    const categoryAccountScope: CategoryAccountScope = useMemo(() => {
+        try {
+            const parsed = JSON.parse(preferences.categoryAccountScope || '{"ingreso":{},"gasto":{}}');
+            return { ingreso: parsed.ingreso || {}, gasto: parsed.gasto || {} };
+        } catch { return { ingreso: {}, gasto: {} }; }
+    }, [preferences.categoryAccountScope]);
+
+    const setCategoryAccounts = (type: 'ingreso' | 'gasto', name: string, accountIds: number[]) => {
+        setPreferences(prev => {
+            let current: CategoryAccountScope;
+            try {
+                const parsed = JSON.parse(prev.categoryAccountScope || '{"ingreso":{},"gasto":{}}');
+                current = { ingreso: parsed.ingreso || {}, gasto: parsed.gasto || {} };
+            } catch { current = { ingreso: {}, gasto: {} }; }
+            const next = { ...current, [type]: { ...current[type] } };
+            if (accountIds.length === 0) delete next[type][name];
+            else next[type][name] = accountIds;
+            return { ...prev, categoryAccountScope: JSON.stringify(next) };
+        });
     };
 
     const clearAllData = async () => {
@@ -973,6 +1010,7 @@ export const useAlDiaState = () => {
         preferences, updatePreference: lw((key: keyof UserPreferences, value: any) => setPreferences(prev => ({ ...prev, [key]: value }))),
         incomeCategories, expenseCategories, addCategory: lw(addCategory), removeCategory: lw(removeCategory),
         renameCategory: lw(renameCategory), mergeCategory: lw(mergeCategory),
+        categoryAccountScope, setCategoryAccounts: lw(setCategoryAccounts),
         // Bloques Diarios
         dailyBlocks, addDailyBlock: lw(addDailyBlock), toggleDailyBlock: lw(toggleDailyBlock), removeDailyBlock: lw(removeDailyBlock), updateDailyBlock: lw(updateDailyBlock),
         // Lista de compras

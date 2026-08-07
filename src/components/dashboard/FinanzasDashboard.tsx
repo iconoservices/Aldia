@@ -70,6 +70,8 @@ interface FinanzasProps {
     removeCategory?: (type: "ingreso" | "gasto", name: string) => void;
     renameCategory?: (type: "ingreso" | "gasto", oldName: string, newName: string) => void;
     mergeCategory?: (type: "ingreso" | "gasto", sourceName: string, targetName: string) => void;
+    categoryAccountScope?: { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
+    setCategoryAccounts?: (type: "ingreso" | "gasto", name: string, accountIds: number[]) => void;
 }
 
 export type PeriodMode = "day" | "week" | "month" | "year" | "all";
@@ -373,6 +375,7 @@ export const FinanzasDashboard = ({
     preferences, updatePreference,
     onNavigate,
     incomeCategories, expenseCategories, addCategory, removeCategory, renameCategory, mergeCategory,
+    categoryAccountScope, setCategoryAccounts,
 }: FinanzasProps) => {
 
     // Migración retroactiva: los pares gasto/ingreso que antes se anotaban a mano con
@@ -725,7 +728,7 @@ export const FinanzasDashboard = ({
     const [categoryTab, setCategoryTab] = useState<"gasto" | "ingreso">("gasto");
     const [newCategoryName, setNewCategoryName] = useState("");
     const [activeMenuCategory, setActiveMenuCategory] = useState<string | null>(null);
-    const [categoryMenuMode, setCategoryMenuMode] = useState<"root" | "merge">("root");
+    const [categoryMenuMode, setCategoryMenuMode] = useState<"root" | "merge" | "accounts">("root");
     const [renamingCategory, setRenamingCategory] = useState<string | null>(null);
     const [renameDraft, setRenameDraft] = useState("");
     const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<string | null>(null);
@@ -1085,6 +1088,7 @@ export const FinanzasDashboard = ({
                 accounts={accounts}
                 incomeCategories={incomeCategories}
                 expenseCategories={expenseCategories}
+                categoryAccountScope={categoryAccountScope}
             />
 
             {/* ── Mis Cuentas: vista directa y siempre visible de cuánto hay en cada
@@ -1556,19 +1560,50 @@ export const FinanzasDashboard = ({
                                                                                         <Merge size={13} /> Fusionar con...
                                                                                     </button>
                                                                                 )}
+                                                                                {setCategoryAccounts && accounts.length > 1 && (
+                                                                                    <button onClick={() => setCategoryMenuMode("accounts")} style={menuItemStyle}>
+                                                                                        <Wallet size={13} /> Cuentas...
+                                                                                    </button>
+                                                                                )}
                                                                                 {removeCategory && (
                                                                                     <button onClick={() => { setConfirmDeleteCategory(cat); closeCategoryMenu(); }} style={{ ...menuItemStyle, color: C.rojo, borderTop: `1px solid ${C.outlineVariant}` }}>
                                                                                         <Trash2 size={13} /> Eliminar
                                                                                     </button>
                                                                                 )}
                                                                             </>
-                                                                        ) : (
+                                                                        ) : categoryMenuMode === "merge" ? (
                                                                             <div style={{ maxHeight: "180px", overflowY: "auto" }}>
                                                                                 {otherCategories.map(other => (
                                                                                     <button key={other} onClick={() => handleMergeCategory(cat, other)} style={menuItemStyle}>
                                                                                         {other}
                                                                                     </button>
                                                                                 ))}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div style={{ maxHeight: "220px", overflowY: "auto", padding: "6px 4px" }}>
+                                                                                <div style={{ fontSize: "0.62rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.04em", padding: "2px 10px 6px" }}>
+                                                                                    Aplica en
+                                                                                </div>
+                                                                                {accounts.map(acc => {
+                                                                                    const scoped = categoryAccountScope?.[categoryTab]?.[cat] || [];
+                                                                                    const checked = scoped.includes(acc.id);
+                                                                                    return (
+                                                                                        <label key={acc.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 10px", fontSize: "0.78rem", fontWeight: 600, color: C.onSurface, cursor: "pointer" }}>
+                                                                                            <input
+                                                                                                type="checkbox"
+                                                                                                checked={checked}
+                                                                                                onChange={() => {
+                                                                                                    const next = checked ? scoped.filter(id => id !== acc.id) : [...scoped, acc.id];
+                                                                                                    setCategoryAccounts(categoryTab, cat, next);
+                                                                                                }}
+                                                                                            />
+                                                                                            {acc.name}
+                                                                                        </label>
+                                                                                    );
+                                                                                })}
+                                                                                <div style={{ fontSize: "0.62rem", color: C.outline, fontStyle: "italic", padding: "6px 10px 2px" }}>
+                                                                                    Ninguna marcada = aplica en todas.
+                                                                                </div>
                                                                             </div>
                                                                         )}
                                                                     </motion.div>

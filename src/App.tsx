@@ -274,6 +274,7 @@ function App() {
                 accounts={state.accounts}
                 incomeCategories={state.incomeCategories}
                 expenseCategories={state.expenseCategories}
+                categoryAccountScope={state.categoryAccountScope}
               />
             ) : activeTab === 'Plan' ? (
               <PlanDashboard
@@ -392,6 +393,8 @@ function App() {
                 removeCategory={state.removeCategory}
                 renameCategory={state.renameCategory}
                 mergeCategory={state.mergeCategory}
+                categoryAccountScope={state.categoryAccountScope}
+                setCategoryAccounts={state.setCategoryAccounts}
               />
             ) : activeTab === 'Movimientos' ? (
               <MovimientosDashboard
@@ -399,6 +402,8 @@ function App() {
                 removeTransaction={state.removeTransaction}
                 updateTransaction={state.updateTransaction}
                 accounts={state.accounts}
+                incomeCategories={state.incomeCategories}
+                expenseCategories={state.expenseCategories}
               />
             ) : activeTab === 'Listas' ? (
               <ListasDashboard

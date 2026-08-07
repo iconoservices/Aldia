@@ -189,6 +189,7 @@ interface ChecklistDiarioProps {
     accounts?:        { id: number; name: string; color: string }[];
     incomeCategories?:  string[];
     expenseCategories?: string[];
+    categoryAccountScope?: { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
 }
 
 const SORT_STORAGE_KEY = 'aldia-checklist-custom-order';
@@ -196,7 +197,7 @@ const SORT_STORAGE_KEY = 'aldia-checklist-custom-order';
 export const ChecklistDiario = ({
     dailyBlocks, addDailyBlock, toggleDailyBlock, removeDailyBlock, updateDailyBlock, projects,
     addTransaction, accounts = [],
-    incomeCategories, expenseCategories,
+    incomeCategories, expenseCategories, categoryAccountScope,
 }: ChecklistDiarioProps) => {
     /* La fecha se recalcula sola: si la app queda abierta y pasa medianoche,
        el checklist salta al día nuevo sin necesidad de recargar. */
@@ -777,6 +778,7 @@ export const ChecklistDiario = ({
                         <RegistroRapido
                             addTransaction={addTransaction} accounts={accounts}
                             incomeCategories={incomeCategories} expenseCategories={expenseCategories}
+                            categoryAccountScope={categoryAccountScope}
                             compacto
                         />
                     </div>
@@ -940,6 +942,7 @@ export const ChecklistDiario = ({
                     <RegistroRapido
                         addTransaction={addTransaction} accounts={accounts}
                         incomeCategories={incomeCategories} expenseCategories={expenseCategories}
+                        categoryAccountScope={categoryAccountScope}
                     />
                 )}
 
@@ -1363,11 +1366,12 @@ interface RegistroRapidoProps {
     compacto?: boolean;
     incomeCategories?: string[];
     expenseCategories?: string[];
+    categoryAccountScope?: { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
 }
 
 const RegistroRapido = ({
     addTransaction, accounts, compacto = false,
-    incomeCategories, expenseCategories,
+    incomeCategories, expenseCategories, categoryAccountScope,
 }: RegistroRapidoProps) => {
     const [tipo, setTipo] = useState<'gasto' | 'ingreso' | null>(null);
 
@@ -1412,6 +1416,7 @@ const RegistroRapido = ({
                 tipoInicial={tipo || 'gasto'}
                 incomeCategories={incomeCategories}
                 expenseCategories={expenseCategories}
+                categoryAccountScope={categoryAccountScope}
             />
         </div>
     );

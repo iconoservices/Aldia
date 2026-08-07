@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { C, campo, TOQUE_MINIMO, RADIO } from '../../theme';
@@ -71,11 +71,13 @@ interface RegistroMovimientoProps {
     tipoInicial?: 'gasto' | 'ingreso';
     incomeCategories?: string[];
     expenseCategories?: string[];
+    categoryAccountScope?: { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
 }
 
 export const RegistroMovimiento = ({
     open, onClose, addTransaction, accounts, tipoInicial = 'gasto',
     incomeCategories = DEFAULT_INCOME_CATEGORIES, expenseCategories = DEFAULT_EXPENSE_CATEGORIES,
+    categoryAccountScope,
 }: RegistroMovimientoProps) => {
     const [tipo, setTipo] = useState<'gasto' | 'ingreso'>(tipoInicial);
     const [texto, setTexto] = useState('');
@@ -114,7 +116,22 @@ export const RegistroMovimiento = ({
     };
 
     const colorTipo = tipo === 'gasto' ? C.rojo : C.verde;
-    const categorias = tipo === 'ingreso' ? incomeCategories : expenseCategories;
+    // Solo se filtra cuando ya hay una cuenta elegida: una categoría sin entrada
+    // en el scope (o con array vacío) aplica a todas las cuentas por igual.
+    const categorias = useMemo(() => {
+        const base = tipo === 'ingreso' ? incomeCategories : expenseCategories;
+        const scope = categoryAccountScope?.[tipo];
+        if (!scope || !cuentaId) return base;
+        const cid = Number(cuentaId);
+        return base.filter(cat => !scope[cat] || scope[cat].length === 0 || scope[cat].includes(cid));
+    }, [tipo, incomeCategories, expenseCategories, categoryAccountScope, cuentaId]);
+
+    // Si cambiar de cuenta deja la categoría elegida fuera de su alcance, se limpia
+    // para no dejar seleccionado algo que ya no está entre las opciones visibles.
+    useEffect(() => {
+        if (categoria && !categorias.includes(categoria)) setCategoria('');
+    }, [categorias, categoria]);
+
     const puedeGuardar = !!parseFloat(monto) && cuentaValida && !!categoria;
 
     // Portal a <body>: el modal usa position: fixed, y si se renderiza dentro de
