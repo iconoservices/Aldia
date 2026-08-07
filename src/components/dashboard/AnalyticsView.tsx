@@ -159,8 +159,11 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
         return getPeriodBounds(mode, refDate);
     }, [mode, refDate, customStart, customEnd, scopedTransactions]);
 
+    // Excluye "Transferencia": mover plata entre cuentas propias no es ingreso
+    // ni gasto real — sin este filtro cada transferencia infla Ingresos y
+    // Gastos del período por el mismo monto (ver mismo fix en FinanzasDashboard).
     const periodTxs = useMemo(() =>
-        scopedTransactions.filter(t => t.fullDate >= effectiveBounds.start && t.fullDate <= effectiveBounds.end),
+        scopedTransactions.filter(t => t.category !== 'Transferencia' && t.fullDate >= effectiveBounds.start && t.fullDate <= effectiveBounds.end),
         [scopedTransactions, effectiveBounds]);
 
     const periodStats = useMemo(() => {
@@ -177,7 +180,7 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
 
     const prevStats = useMemo(() => {
         if (!prevBounds) return null;
-        const txs = scopedTransactions.filter(t => t.fullDate >= prevBounds.start && t.fullDate <= prevBounds.end);
+        const txs = scopedTransactions.filter(t => t.category !== 'Transferencia' && t.fullDate >= prevBounds.start && t.fullDate <= prevBounds.end);
         const income = txs.filter(t => t.type === 'ingreso' && !t.isDebt).reduce((s, t) => s + (Number(t.amount) || 0), 0);
         const expense = txs.filter(t => t.type === 'gasto' && !t.isDebt).reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0);
         return { income, expense };

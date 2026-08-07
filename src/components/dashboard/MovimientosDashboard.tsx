@@ -50,9 +50,14 @@ export const MovimientosDashboard = ({ transactions, removeTransaction, updateTr
         transactions.filter(tx => !tx.isDebt && tx.fullDate >= pStart && tx.fullDate <= pEnd),
         [transactions, pStart, pEnd]);
 
+    // periodTxs sigue mostrando las transferencias en la lista (siguen siendo
+    // movimientos reales que el usuario quiere ver/editar), pero se excluyen
+    // acá porque mover plata entre cuentas propias no es ingreso ni gasto real
+    // y duplicaría ambos totales por el mismo monto.
     const periodStats = useMemo(() => {
-        const income = periodTxs.filter(t => t.type === "ingreso").reduce((s, t) => s + (Number(t.amount) || 0), 0);
-        const expense = periodTxs.filter(t => t.type === "gasto").reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0);
+        const real = periodTxs.filter(t => t.category !== "Transferencia");
+        const income = real.filter(t => t.type === "ingreso").reduce((s, t) => s + (Number(t.amount) || 0), 0);
+        const expense = real.filter(t => t.type === "gasto").reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0);
         return { income, expense, net: income - expense };
     }, [periodTxs]);
 

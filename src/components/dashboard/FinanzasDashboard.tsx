@@ -598,9 +598,13 @@ export const FinanzasDashboard = ({
         return res - exp;
     }, [includeBalance, periodBalance, includeSalary, projectedIncomeVal, includeOwed, activeOwedTotal, includeFixed, projectedFixedVal, includeDebts, activeOweTotal]);
 
+    // Excluye "Transferencia": mover plata entre cuentas propias no es ingreso
+    // ni gasto real a nivel global (aunque sí lo es a nivel de cada cuenta, ver
+    // accountsBudget). Sin este filtro, cada transferencia infla Ingresos Y
+    // Gastos del período por el mismo monto, aunque el Balance Neto no cambie.
     const topTxs = useMemo(() => {
         const { start, end } = getPeriodBounds(topPeriod, periodRef);
-        return transactions.filter(tx => !tx.isDebt && tx.fullDate >= start && tx.fullDate <= end);
+        return transactions.filter(tx => !tx.isDebt && tx.category !== "Transferencia" && tx.fullDate >= start && tx.fullDate <= end);
     }, [transactions, topPeriod, periodRef]);
 
     const topIncome = useMemo(() =>
