@@ -122,6 +122,7 @@ export interface CalendarEvent {
     endTime: string;   // HH:mm
     description?: string;
     projectId?: number;
+    notionId?: string; // ID de la pagina de Notion de origen, si vino importado
 }
 
 export interface Habit {
@@ -177,12 +178,14 @@ export interface UserPreferences {
     // JSON: { ingreso: Record<categoria, accountId[]>, gasto: Record<categoria, accountId[]> }.
     // Una categoria sin entrada (o con array vacio) aplica a todas las cuentas.
     categoryAccountScope: string;
+    notionSyncEnabled: boolean; // Si esta en false, el script de sync con Notion no escribe nada
 }
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
     isBudgetFixed: false,
     fixedIncomes: "[]",
-    categoryAccountScope: '{"ingreso":{},"gasto":{}}'
+    categoryAccountScope: '{"ingreso":{},"gasto":{}}',
+    notionSyncEnabled: true
 };
 
 export type CategoryAccountScope = { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };

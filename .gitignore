@@ -25,6 +25,13 @@ dist-ssr
 
 .vercel
 
+# Secretos / tokens de API (Notion, etc.) - el repo es publico
+.env
+.env.*
+!.env.example
+firebase-service-account.json
+*firebase-adminsdk*.json
+
 # Backups con datos personales reales (tareas, finanzas, proyectos).
 # El repo es publico: estos volcados NO deben subirse.
 backups/*.json

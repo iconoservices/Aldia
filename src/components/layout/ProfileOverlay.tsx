@@ -234,7 +234,29 @@ export const ProfileOverlay = ({ isOpen, onClose, clearAllData, clearFinanzasSel
                                                 />
                                             </div>
                                         </div>
-                                        
+
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.2rem', background: '#F9F9F9', borderRadius: '24px', border: '1px solid #EEE' }}>
+                                            <div style={{ flex: 1, paddingRight: '1rem' }}>
+                                                <p style={{ margin: 0, fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-carbon)' }}>Sincronizar con Notion</p>
+                                                <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#888', fontWeight: 600, lineHeight: 1.4 }}>Permite que las sesiones de tu Agenda de Notion se importen a tu Calendario.</p>
+                                            </div>
+                                            <div
+                                                onClick={() => updatePreference('notionSyncEnabled', !preferences.notionSyncEnabled)}
+                                                style={{
+                                                    width: '44px', height: '24px', borderRadius: '12px',
+                                                    background: preferences.notionSyncEnabled ? 'var(--domain-green)' : '#D1D5DB',
+                                                    position: 'relative', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                    boxShadow: preferences.notionSyncEnabled ? '0 4px 12px rgba(16, 185, 129, 0.2)' : 'none'
+                                                }}
+                                            >
+                                                <motion.div
+                                                    animate={{ x: preferences.notionSyncEnabled ? 22 : 2 }}
+                                                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                                    style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'white', position: 'absolute', top: '2px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
+                                                />
+                                            </div>
+                                        </div>
+
                                         <p style={{ fontSize: '0.7rem', color: '#AAA', textAlign: 'center', marginTop: '1rem', fontWeight: 600 }}>
                                             Estas preferencias se sincronizan automáticamente con tu cuenta.
                                         </p>
