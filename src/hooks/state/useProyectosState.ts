@@ -339,15 +339,15 @@ export const useProyectosState = () => {
         setRutinas(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
     };
 
-    const addRoutine = (title: string, color: string = '#8a5cf6') => {
+    const addRoutine = (title: string, color: string = '#8a5cf6', startTime: string = '09:00', endTime: string = '10:00', repeatDays: number[] = [0,1,2,3,4,5,6]) => {
         setRutinas(prev => [...prev, {
             id: Date.now(),
             title,
             color,
             isActive: true,
-            repeatDays: [0,1,2,3,4,5,6],
-            startTime: '09:00',
-            endTime: '10:00',
+            repeatDays,
+            startTime,
+            endTime,
             items: []
         }]);
     };

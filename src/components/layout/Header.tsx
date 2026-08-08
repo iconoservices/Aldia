@@ -43,6 +43,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Listas',    tab: 'Listas',    icon: 'fact_check'    },
         { label: 'Plan',      tab: 'Plan',      icon: 'savings'       },
         { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
+        { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
     ];
 
     // ── Secondary / all other tools ────────────────────────────────────
@@ -51,7 +52,6 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Acción',     tab: 'Acción',     icon: 'bolt'          },
         { label: 'Base de Datos', tab: 'Base de Datos', icon: 'database' },
         { label: 'Proyección',   tab: 'Proyección',  icon: 'trending_up' },
-        { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
         { label: 'Vida',       tab: 'Vida',        icon: 'spa'           },
         { label: 'Cerebro',    tab: 'Cerebro',     icon: 'psychology'    },
         { label: 'Ruta',       tab: 'Ruta',        icon: 'route'         },

@@ -227,6 +227,10 @@ function App() {
                 missions={state.missions}
                 onRemoveEvent={state.removeCalendarEvent}
                 onToggleMission={state.toggleMission}
+                updateRoutine={state.updateRoutine}
+                updateCalendarEvent={state.updateCalendarEvent}
+                addRoutine={state.addRoutine}
+                addCalendarEvent={state.addCalendarEvent}
               />
             ) : activeTab === 'Vida' ? (
               <VidaDashboard
