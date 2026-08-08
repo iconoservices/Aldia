@@ -1594,7 +1594,7 @@ export const FinanzasDashboard = ({
                                                                                                 checked={checked}
                                                                                                 onChange={() => {
                                                                                                     const next = checked ? scoped.filter(id => id !== acc.id) : [...scoped, acc.id];
-                                                                                                    setCategoryAccounts(categoryTab, cat, next);
+                                                                                                    setCategoryAccounts?.(categoryTab, cat, next);
                                                                                                 }}
                                                                                             />
                                                                                             {acc.name}

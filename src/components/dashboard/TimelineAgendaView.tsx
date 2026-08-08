@@ -51,6 +51,7 @@ export const TimelineAgendaView = ({
     const [editDate, setEditDate] = useState('');
     const [newItemType, setNewItemType] = useState<'routine' | 'calendar'>('routine');
     const scrollRef = useRef<HTMLDivElement>(null);
+    const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
     // Formato YYYY-MM-DD local para comparación con eventos e identificación de día
     const todayStr = selectedDate.toLocaleDateString('en-CA');
@@ -128,6 +129,22 @@ export const TimelineAgendaView = ({
         const newDate = new Date(selectedDate);
         newDate.setDate(selectedDate.getDate() + days);
         setSelectedDate(newDate);
+    };
+
+    // Swipe horizontal para navegar entre días en la vista mobile (timeline de un solo día)
+    const handleTouchStart = (e: React.TouchEvent) => {
+        const t = e.touches[0];
+        touchStartRef.current = { x: t.clientX, y: t.clientY };
+    };
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        const start = touchStartRef.current;
+        touchStartRef.current = null;
+        if (!start) return;
+        const t = e.changedTouches[0];
+        const dx = t.clientX - start.x;
+        const dy = t.clientY - start.y;
+        if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return; // gesto mayormente vertical o muy corto: ignorar
+        changeDate(dx < 0 ? 1 : -1);
     };
 
     const changeMonth = (months: number) => {
@@ -459,7 +476,12 @@ export const TimelineAgendaView = ({
                     </AnimatePresence>
                 </div>
 
-                <div style={{ flex: 1, overflow: 'auto', position: 'relative' }} ref={scrollRef}>
+                <div
+                    style={{ flex: 1, overflow: 'auto', position: 'relative' }}
+                    ref={scrollRef}
+                    onTouchStart={isMobile && viewMode === 'timeline' ? handleTouchStart : undefined}
+                    onTouchEnd={isMobile && viewMode === 'timeline' ? handleTouchEnd : undefined}
+                >
                     {viewMode === 'timeline' && (() => {
                         const visibleDays = isMobile ? [weekDays[dayIdx]] : weekDays;
                         const gridCols = `52px repeat(${visibleDays.length}, 1fr)`;
