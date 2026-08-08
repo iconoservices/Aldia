@@ -47,6 +47,20 @@ export default defineConfig({
   ],
   server: {
     port: 5180,
-    host: '0.0.0.0'
+    host: '0.0.0.0',
+    proxy: {
+      '/api/ddg-search': {
+        target: 'https://html.duckduckgo.com',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/api\/ddg-search/, '/html/'),
+      },
+      '/api/fetch-page': {
+        target: 'https://api.allorigins.win',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/api\/fetch-page/, '/get'),
+      }
+    }
   }
 })
