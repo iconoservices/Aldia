@@ -265,6 +265,8 @@ function App() {
                 removeDailyBlock={state.removeDailyBlock}
                 updateDailyBlock={state.updateDailyBlock}
                 projects={state.projects}
+                preferences={state.preferences}
+                updatePreference={state.updatePreference}
               />
             ) : activeTab === 'Checklist' ? (
               <ChecklistDiario

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import type { DailyBlock } from '../../hooks/useAlDiaState';
+import type { DailyBlock, UserPreferences } from '../../hooks/useAlDiaState';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 interface BloquesDashboardProps {
@@ -11,6 +11,8 @@ interface BloquesDashboardProps {
     removeDailyBlock: (id: number | number[]) => void;
     updateDailyBlock: (id: number, updates: Partial<DailyBlock>) => void;
     projects: any[];
+    preferences: UserPreferences;
+    updatePreference: (key: keyof UserPreferences, value: any) => void;
 }
 
 const getPeriodStyles = (period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro') => {
@@ -39,7 +41,9 @@ export const BloquesDashboard = ({
     toggleDailyBlock,
     removeDailyBlock,
     updateDailyBlock,
-    projects
+    projects,
+    preferences,
+    updatePreference
 }: BloquesDashboardProps) => {
     // 📅 Fecha de referencia para la semana actual
     const [referenceDate, setReferenceDate] = useState(() => new Date());
@@ -244,6 +248,30 @@ export const BloquesDashboard = ({
         return sorted;
     }, [dailyBlocks, weekDays, sortBy, groupBy, projects]);
 
+    // Orden manual (drag) por franja, guardado en preferences.blockOrder como
+    // Record<period, string[]> de row.key. Las filas que no estan en el orden
+    // guardado (nuevas) van al final, en su orden natural.
+    const blockOrderMap = useMemo<Record<string, string[]>>(() => {
+        try { return JSON.parse(preferences.blockOrder || '{}'); } catch { return {}; }
+    }, [preferences.blockOrder]);
+
+    const applySavedOrder = (period: string, rows: typeof blockRows) => {
+        const savedOrder = blockOrderMap[period];
+        if (!savedOrder || savedOrder.length === 0) return rows;
+        const byKey = new Map(rows.map(r => [r.key, r]));
+        const ordered: typeof blockRows = [];
+        savedOrder.forEach(key => {
+            const r = byKey.get(key);
+            if (r) { ordered.push(r); byKey.delete(key); }
+        });
+        return [...ordered, ...byKey.values()];
+    };
+
+    const reorderPeriod = (period: string, newRows: typeof blockRows) => {
+        const next = { ...blockOrderMap, [period]: newRows.map(r => r.key) };
+        updatePreference('blockOrder', JSON.stringify(next));
+    };
+
     const groupedRows = useMemo(() => {
         const groups: {
             id: string;
@@ -258,7 +286,7 @@ export const BloquesDashboard = ({
         if (groupBy === 'period') {
             const periods: ('Mañana' | 'Tarde' | 'Noche' | 'Otro')[] = ['Mañana', 'Tarde', 'Noche', 'Otro'];
             periods.forEach(p => {
-                const rows = blockRows.filter(r => r.period === p);
+                const rows = applySavedOrder(p, blockRows.filter(r => r.period === p));
                 if (rows.length > 0) {
                     const styles = getPeriodStyles(p);
                     groups.push({
@@ -306,7 +334,7 @@ export const BloquesDashboard = ({
         }
 
         return groups;
-    }, [blockRows, groupBy, projects]);
+    }, [blockRows, groupBy, projects, blockOrderMap]);
 
     // Toggle o Creación inteligente de bloque para un día específico
     const handleCellToggle = (label: string, period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro', date: string) => {
@@ -440,7 +468,7 @@ export const BloquesDashboard = ({
     if (isMobile) {
         // Blocks grouped by period
         const dayBlocksByPeriod = (['Mañana', 'Tarde', 'Noche', 'Otro'] as const).map(period => {
-            const rows = blockRows.filter(r => r.period === period);
+            const rows = applySavedOrder(period, blockRows.filter(r => r.period === period));
             return { period, rows };
         }).filter(g => g.rows.length > 0);
 
@@ -642,12 +670,21 @@ export const BloquesDashboard = ({
                             <p style={{ margin: 0, fontSize: '13px', opacity: 0.7 }}>Añade un block con el botón +</p>
                         </div>
                     ) : (
-                        /* Una sola lista, un solo contenedor: antes cada jornada era su propia
-                           tarjeta de color y cada tarea su propia tarjeta separada. Ahora la
-                           jornada es solo un puntito de color (referencial) y las tareas son
-                           filas de una misma tarjeta, separadas por una línea fina — compacto. */
-                        <div style={{ background: '#ffffff', borderRadius: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', marginBottom: '14px', overflow: 'hidden' }}>
-                            {dayBlocksByPeriod.flatMap(({ period, rows }) => rows.map(row => ({ period, row }))).map(({ period, row }, idx) => {
+                        /* Cada bloque es su propia tarjeta (mismo estilo que la versión de
+                           escritorio), separadas por espacio en vez de una línea fina, y
+                           arrastrable dentro de su franja (mismo orden que ve escritorio,
+                           guardado en preferences.blockOrder). */
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                            {dayBlocksByPeriod.map(({ period, rows }) => (
+                            <Reorder.Group
+                                key={period}
+                                as="div"
+                                axis="y"
+                                values={rows}
+                                onReorder={(newRows) => reorderPeriod(period, newRows)}
+                                style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+                            >
+                            {rows.map((row) => {
                                 const pStyle = periodColors[period] ?? periodColors['Otro'];
                                 const repeatDays = row.repeatDays || [0, 1, 2, 3, 4, 5, 6];
                                             const totalScheduledDays = repeatDays.length;
@@ -668,11 +705,16 @@ export const BloquesDashboard = ({
                                             const project = projects.find(p => p.id === row.projectId);
 
                                             return (
-                                                <div
+                                                <Reorder.Item
                                                     key={row.key}
+                                                    value={row}
+                                                    dragListener
+                                                    whileDrag={{ scale: 1.02, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', zIndex: 10 }}
                                                     style={{
-                                                        padding: '8px 10px',
-                                                        borderTop: idx > 0 ? '1px solid #f3f4f5' : 'none',
+                                                        padding: '10px 12px',
+                                                        background: '#ffffff',
+                                                        borderRadius: '14px',
+                                                        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
                                                     }}
                                                 >
                                                     {/* Block info row */}
@@ -778,9 +820,11 @@ export const BloquesDashboard = ({
                                                             {daysCompleted}/{totalScheduledDays} días
                                                         </span>
                                                     </div>
-                                                </div>
+                                                </Reorder.Item>
                                             );
                                         })}
+                            </Reorder.Group>
+                            ))}
                         </div>
                     )}
                 </div>
@@ -1603,46 +1647,12 @@ export const BloquesDashboard = ({
                     </div>
                 </div>
 
-                {/* Bento Table container — Stitch Layout */}
+                {/* Card container — reemplaza la grilla de 7 columnas por tarjetas
+                    arrastrables, igual que la vista mobile / Hábitos: cada tarjeta
+                    muestra en qué días repite (L M X J V S D, solo referencial) y un
+                    único check de "hecho hoy". Se puede reordenar arrastrando dentro
+                    de cada franja. */}
                 <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '1.2rem', marginBottom: '3rem' }}>
-                    {/* Table Header Row */}
-                    <div style={{ 
-                        display: 'grid', 
-                        gridTemplateColumns: 'repeat(12, 1fr)', 
-                        gap: '10px', 
-                        alignItems: 'center', 
-                        padding: '10px 16px', 
-                        background: '#edeeef',
-                        borderRadius: '16px 16px 0 0',
-                        borderBottom: '1px solid #dac2b6'
-                    }}>
-                        <div style={{ gridColumn: 'span 5', fontSize: '12px', fontWeight: '600', color: '#54433a', letterSpacing: '0.05em', textTransform: 'uppercase', paddingLeft: '16px' }}>
-                            BLOQUE DE ENFOQUE
-                        </div>
-                        <div style={{ gridColumn: 'span 7', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
-                            {weekDays.map((day) => (
-                                <div key={day.date} style={{ textAlign: 'center' }}>
-                                    <span style={{ fontSize: '12px', fontWeight: '600', display: 'block', color: day.isToday ? '#944a18' : '#54433a', letterSpacing: '0.05em', textTransform: 'uppercase' }}>{day.label}</span>
-                                    <span style={{ 
-                                        fontSize: '16px', 
-                                        fontWeight: '700', 
-                                        marginTop: '4px', 
-                                        display: 'inline-flex', 
-                                        alignItems: 'center', 
-                                        justifyContent: 'center', 
-                                        borderRadius: '50%',
-                                        width: '28px',
-                                        height: '28px',
-                                        backgroundColor: day.isToday ? '#ffdbc9' : 'transparent',
-                                        color: day.isToday ? '#944a18' : '#191c1d'
-                                    }}>
-                                        {day.dayNum}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
                     {/* Grouped Rows */}
                     <AnimatePresence initial={false}>
                         {groupedRows.length > 0 ? (
@@ -1681,27 +1691,39 @@ export const BloquesDashboard = ({
                                         </div>
                                     )}
 
-                                    {/* Rows container */}
-                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    {/* Rows container — arrastrable dentro de la franja (solo cuando
+                                        se agrupa por Período, que es donde tiene sentido el orden). */}
+                                    <Reorder.Group
+                                        as="div"
+                                        axis="y"
+                                        values={group.rows}
+                                        onReorder={(newRows) => { if (groupBy === 'period') reorderPeriod(group.rows[0]?.period || '', newRows); }}
+                                        style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px' }}
+                                    >
                                         {group.rows.map((row) => {
                                             const project = projects.find(p => p.id === row.projectId);
                                             const isEditing = editingRowId === row.key;
 
                                             return (
-                                                <motion.div
+                                                <Reorder.Item
                                                     key={row.key}
+                                                    value={row}
+                                                    dragListener={groupBy === 'period'}
                                                     initial={{ opacity: 0, y: 4 }}
                                                     animate={{ opacity: 1, y: 0 }}
                                                     exit={{ opacity: 0, x: -10 }}
+                                                    whileDrag={{ scale: 1.02, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 10 }}
                                                     transition={{ duration: 0.15 }}
-                                                    style={{ 
+                                                    style={{
                                                         display: 'grid',
                                                         gridTemplateColumns: 'repeat(12, 1fr)',
                                                         gap: '10px',
                                                         alignItems: 'center',
-                                                        padding: '8px 16px',
-                                                        borderBottom: '1px solid rgba(218, 194, 182, 0.15)',
-                                                        backgroundColor: hoveredRowId === row.key ? 'white' : 'transparent',
+                                                        padding: '10px 16px',
+                                                        borderRadius: '14px',
+                                                        background: hoveredRowId === row.key ? 'white' : 'rgba(255,255,255,0.7)',
+                                                        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                                                        cursor: groupBy === 'period' ? 'grab' : 'default',
                                                         transition: 'background-color 0.2s'
                                                     }}
                                                     onMouseEnter={() => setHoveredRowId(row.key)}
@@ -1936,98 +1958,68 @@ export const BloquesDashboard = ({
                                                                 )}
                                                             </div>
 
-                                                            {/* 7 Day cells — individual columns */}
-                                                            <div style={{ gridColumn: 'span 7', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', paddingLeft: '4px', paddingRight: '4px' }}>
-                                                                {weekDays.map((day, dayIdx) => {
-                                                                    const block = dailyBlocks.find(b => 
-                                                                        b.label.toLowerCase() === row.label.toLowerCase() && 
-                                                                        b.period === row.period && 
-                                                                        b.date === day.date
-                                                                    );
-                                                                    const isCompleted = block ? block.completed : false;
-                                                                    const isScheduled = row.repeatDays ? row.repeatDays.includes(dayIdx) : true;
+                                                            {/* Días que repite (referencial, como en Hábitos) + check de "hecho hoy" */}
+                                                            <div style={{ gridColumn: 'span 7', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', paddingRight: '4px' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                    {weekDays.map((day, dayIdx) => {
+                                                                        const isRepeatDay = row.repeatDays ? row.repeatDays.includes(dayIdx) : true;
+                                                                        const periodColor = getPeriodStyles(row.period).color;
+                                                                        const dayLetter = ['L', 'M', 'X', 'J', 'V', 'S', 'D'][dayIdx];
+                                                                        return (
+                                                                            <span
+                                                                                key={day.date}
+                                                                                title={['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][dayIdx]}
+                                                                                style={{
+                                                                                    width: '22px', height: '22px', borderRadius: '50%',
+                                                                                    background: isRepeatDay ? periodColor : '#eeeeef',
+                                                                                    color: isRepeatDay ? '#ffffff' : '#b5aeaa',
+                                                                                    fontSize: '10px', fontWeight: 800,
+                                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                                    flexShrink: 0
+                                                                                }}
+                                                                            >
+                                                                                {dayLetter}
+                                                                            </span>
+                                                                        );
+                                                                    })}
+                                                                </div>
 
+                                                                {(() => {
+                                                                    const todayEntry = weekDays.find(d => d.isToday);
+                                                                    const todayIdx = todayEntry ? weekDays.indexOf(todayEntry) : -1;
+                                                                    const isTodayScheduled = todayEntry && row.repeatDays ? row.repeatDays.includes(todayIdx) : !!todayEntry;
+                                                                    const todayBlock = todayEntry ? dailyBlocks.find(b =>
+                                                                        b.label.toLowerCase() === row.label.toLowerCase() &&
+                                                                        b.period === row.period &&
+                                                                        b.date === todayEntry.date
+                                                                    ) : undefined;
+                                                                    const isTodayDone = todayBlock?.completed ?? false;
+                                                                    const periodColor = getPeriodStyles(row.period).color;
+                                                                    if (!todayEntry || !isTodayScheduled) return <div style={{ width: '32px' }} />;
                                                                     return (
-                                                                        <div key={day.date} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                                                                            {isCompleted ? (
-                                                                                <button
-                                                                                    onClick={() => handleCellToggle(row.label, row.period, day.date)}
-                                                                                    style={{
-                                                                                        display: 'flex',
-                                                                                        alignItems: 'center',
-                                                                                        justifyContent: 'center',
-                                                                                        width: '100%',
-                                                                                        aspectRatio: '1',
-                                                                                        maxWidth: '38px',
-                                                                                        borderRadius: '8px',
-                                                                                        border: '2px solid #944a18', // terracotta brand color
-                                                                                        background: '#944a18',
-                                                                                        color: 'white',
-                                                                                        cursor: 'pointer',
-                                                                                        transition: 'all 0.15s'
-                                                                                    }}
-                                                                                    onMouseEnter={(e) => {
-                                                                                        e.currentTarget.style.transform = 'scale(1.05)';
-                                                                                    }}
-                                                                                    onMouseLeave={(e) => {
-                                                                                        e.currentTarget.style.transform = 'none';
-                                                                                    }}
-                                                                                >
-                                                                                    <span className="material-symbols-outlined" style={{ fontSize: '16px', fontWeight: 'bold' }}>check</span>
-                                                                                </button>
-                                                                            ) : isScheduled ? (
-                                                                                <button
-                                                                                    onClick={() => handleCellToggle(row.label, row.period, day.date)}
-                                                                                    style={{
-                                                                                        display: 'flex',
-                                                                                        alignItems: 'center',
-                                                                                        justifyContent: 'center',
-                                                                                        width: '100%',
-                                                                                        aspectRatio: '1',
-                                                                                        maxWidth: '38px',
-                                                                                        borderRadius: '8px',
-                                                                                        border: '2px solid rgba(218, 194, 182, 0.3)', // outline-variant/30
-                                                                                        background: 'transparent',
-                                                                                        color: '#dac2b6',
-                                                                                        cursor: 'pointer',
-                                                                                        transition: 'all 0.15s'
-                                                                                    }}
-                                                                                    onMouseEnter={(e) => {
-                                                                                        e.currentTarget.style.borderColor = 'rgba(148, 74, 24, 0.5)';
-                                                                                        e.currentTarget.style.color = '#944a18';
-                                                                                        e.currentTarget.style.background = 'rgba(148, 74, 24, 0.05)';
-                                                                                    }}
-                                                                                    onMouseLeave={(e) => {
-                                                                                        e.currentTarget.style.borderColor = 'rgba(218, 194, 182, 0.3)';
-                                                                                        e.currentTarget.style.color = '#dac2b6';
-                                                                                        e.currentTarget.style.background = 'transparent';
-                                                                                    }}
-                                                                                >
-                                                                                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span>
-                                                                                </button>
-                                                                            ) : (
-                                                                                <div
-                                                                                    title="No programado"
-                                                                                    style={{
-                                                                                        width: '100%',
-                                                                                        aspectRatio: '1',
-                                                                                        maxWidth: '38px',
-                                                                                        borderRadius: '8px',
-                                                                                        backgroundColor: '#edeeef', // surface-container
-                                                                                        opacity: 0.4
-                                                                                    }}
-                                                                                />
-                                                                            )}
-                                                                        </div>
+                                                                        <button
+                                                                            onClick={() => handleCellToggle(row.label, row.period, todayEntry.date)}
+                                                                            title="Marcar hoy"
+                                                                            style={{
+                                                                                width: '32px', height: '32px', borderRadius: '10px', flexShrink: 0,
+                                                                                border: isTodayDone ? 'none' : `2px solid ${periodColor}60`,
+                                                                                background: isTodayDone ? periodColor : `${periodColor}10`,
+                                                                                boxShadow: isTodayDone ? `0 2px 6px ${periodColor}55` : 'none',
+                                                                                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                                transition: 'all 0.15s'
+                                                                            }}
+                                                                        >
+                                                                            <span className="material-symbols-outlined" style={{ fontSize: '18px', fontWeight: 'bold', color: isTodayDone ? 'white' : periodColor }}>check</span>
+                                                                        </button>
                                                                     );
-                                                                })}
+                                                                })()}
                                                             </div>
                                                         </>
                                                     )}
-                                                </motion.div>
+                                                </Reorder.Item>
                                             );
                                         })}
-                                    </div>
+                                    </Reorder.Group>
                                 </div>
                             ))
                         ) : (

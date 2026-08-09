@@ -179,12 +179,14 @@ export interface UserPreferences {
     // Una categoria sin entrada (o con array vacio) aplica a todas las cuentas.
     categoryAccountScope: string;
     notionSyncEnabled: boolean; // Si esta en false, el script de sync con Notion no escribe nada
+    blockOrder: string; // JSON: Record<period, string[]> -- orden manual (drag) de las tarjetas de Bloques por franja
 }
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
     isBudgetFixed: false,
     fixedIncomes: "[]",
     categoryAccountScope: '{"ingreso":{},"gasto":{}}',
+    blockOrder: '{}',
     notionSyncEnabled: true
 };
 
