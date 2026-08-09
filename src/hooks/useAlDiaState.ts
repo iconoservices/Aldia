@@ -404,14 +404,22 @@ export const useAlDiaState = () => {
             if (docSnap.exists()) {
                 const cloud = docSnap.data();
 
-                // Si el snapshot es anterior a nuestro último cambio local, ignorarlo.
-                // Esto previene que snapshots con datos viejos sobreescriban transacciones recién añadidas.
-                const cloudLastSync = cloud.lastSync ? new Date(cloud.lastSync).getTime() : 0;
-                if (cloudLastSync < localWriteTimestampRef.current) {
-                    setHasLoadedFromCloud(true);
-                    setIsInitialLoad(false);
-                    return;
-                }
+                // NOTA: antes había un chequeo aca que comparaba cloud.lastSync contra
+                // localWriteTimestampRef y, si la nube "parecia" mas vieja, se saltaba
+                // aplicar sync() PERO igual marcaba hasLoadedFromCloud/isInitialLoad como
+                // listos. Eso es lo que causo que se vaciara la cuenta entera una vez:
+                // el estado local se quedaba en sus valores iniciales (vacios o con
+                // datos sembrados por defecto), el guard de guardado se destrababa
+                // igual, y 2s despues ese estado vacio se escribia encima de Firestore,
+                // borrando datos reales. La comparacion de timestamps ademas es fragil
+                // por naturaleza: cloud.lastSync lo escribe quien sea que haya tocado el
+                // documento (este dispositivo, otro, o un script/webhook externo como el
+                // de sync de Notion), mientras que localWriteTimestampRef es un reloj de
+                // pared local -- no hay garantia de que esten sincronizados, y Firestore
+                // ya entrega los snapshots de un mismo listener en orden. Por eso ahora
+                // simplemente se aplica siempre lo que llega; el guard anti-echo del
+                // guardado (mas abajo, comparando localWriteTimestampRef contra
+                // lastSnapshotTimestampRef) sigue evitando reenvios innecesarios.
 
                 // Función helper que usa el setter funcional para no depender del valor actual
                 const sync = (newValue: any, setter: Function) => {
