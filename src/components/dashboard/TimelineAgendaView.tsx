@@ -51,6 +51,7 @@ export const TimelineAgendaView = ({
     const [editRepeatDays, setEditRepeatDays] = useState<number[]>([]);
     const [editDate, setEditDate] = useState('');
     const [newItemType, setNewItemType] = useState<'routine' | 'calendar'>('routine');
+    const [saveToNotion, setSaveToNotion] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -79,6 +80,7 @@ export const TimelineAgendaView = ({
                 setEditEndTime('10:00');
                 setEditRepeatDays([0, 1, 2, 3, 4, 5, 6]);
                 setEditDate(todayStr);
+                setSaveToNotion(false);
             }
         }
     }, [editingItem, todayStr]);
@@ -96,6 +98,13 @@ export const TimelineAgendaView = ({
             addRoutine?.(title, undefined, editStartTime, editEndTime, editRepeatDays);
         } else if (type === 'new' && newItemType === 'calendar') {
             addCalendarEvent?.(title, editDate, editStartTime, editEndTime, '');
+            if (saveToNotion) {
+                fetch('/api/create-notion-session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, date: editDate, startTime: editStartTime, endTime: editEndTime })
+                }).catch(err => console.error('No se pudo guardar en Notion:', err));
+            }
         }
         setEditingItem(null);
     };
@@ -835,6 +844,7 @@ export const TimelineAgendaView = ({
                                 const effectiveType = editingItem.type === 'new' ? newItemType : editingItem.type;
                                 const showDate = effectiveType === 'calendar';
                                 const showRepeat = effectiveType === 'routine';
+                                const showNotionOption = editingItem.type === 'new' && effectiveType === 'calendar';
                                 if (effectiveType === 'timeblock') return null;
                                 return (
                                 <>
@@ -863,6 +873,16 @@ export const TimelineAgendaView = ({
                                             />
                                         </div>
                                     </div>
+
+                                    {showNotionOption && (
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px', cursor: 'pointer', padding: '10px 12px', background: '#F9FAFB', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                                            <input
+                                                type="checkbox" checked={saveToNotion} onChange={(e) => setSaveToNotion(e.target.checked)}
+                                                style={{ width: '16px', height: '16px', accentColor: 'var(--domain-orange)' }}
+                                            />
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Guardar también en Notion</span>
+                                        </label>
+                                    )}
 
                                     {showRepeat && (
                                         <div style={{ marginBottom: '14px' }}>

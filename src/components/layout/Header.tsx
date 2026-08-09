@@ -36,6 +36,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     // ── Primary sidebar items ─────────────────────────────────────────
     const PRIMARY_ITEMS = [
         { label: 'Checklist', tab: 'Checklist', icon: 'task_alt' },
+        { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
         { label: 'Finanzas',  tab: 'Finanzas',  icon: 'payments'      },
         { label: 'Deudas',     tab: 'Deudas',     icon: 'receipt_long'  },
         { label: 'Bloques', tab: 'Bloques',   icon: 'history_edu'    },
@@ -43,7 +44,6 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Listas',    tab: 'Listas',    icon: 'fact_check'    },
         { label: 'Plan',      tab: 'Plan',      icon: 'savings'       },
         { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
-        { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
     ];
 
     // ── Secondary / all other tools ────────────────────────────────────
