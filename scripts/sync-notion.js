@@ -42,19 +42,31 @@ async function fetchUpcomingNotionSessions() {
     return data.results;
 }
 
+// Lee fecha/hora literal del string ISO de Notion (ya viene en la zona horaria
+// que uso en Notion) sin pasar por Date, para no depender de la zona horaria
+// de la maquina/servidor donde corre este script.
+function parseNotionDate(iso) {
+    const [datePart, timePart] = iso.split('T');
+    return { date: datePart, time: timePart ? timePart.slice(0, 5) : null };
+}
+
+function addMinutesToTime(time, minutes) {
+    const [h, m] = time.split(':').map(Number);
+    const total = (h * 60 + m + minutes + 1440) % 1440;
+    return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
 function toCalendarEvent(page) {
     const props = page.properties;
     const title = props['Título']?.title?.[0]?.plain_text?.trim();
     const dateProp = props['Fecha y hora']?.date;
     if (!title || !dateProp?.start) return null;
 
-    const start = new Date(dateProp.start);
-    const hasTime = dateProp.start.includes('T');
-    const date = start.toLocaleDateString('en-CA');
-    const startTime = hasTime ? start.toTimeString().slice(0, 5) : '09:00';
+    const { date, time: parsedStart } = parseNotionDate(dateProp.start);
+    const startTime = parsedStart || '09:00';
     const endTime = dateProp.end
-        ? new Date(dateProp.end).toTimeString().slice(0, 5)
-        : new Date(start.getTime() + 90 * 60000).toTimeString().slice(0, 5);
+        ? parseNotionDate(dateProp.end).time || addMinutesToTime(startTime, 90)
+        : addMinutesToTime(startTime, 90);
 
     const location = props['Ubicación']?.select?.name;
     const status = props['Estado']?.status?.name;
