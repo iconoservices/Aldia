@@ -36,8 +36,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     // ── Primary sidebar items ─────────────────────────────────────────
     const PRIMARY_ITEMS = [
         { label: 'Checklist', tab: 'Checklist', icon: 'task_alt' },
-        { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
         { label: 'Finanzas',  tab: 'Finanzas',  icon: 'payments'      },
+        { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
         { label: 'Deudas',     tab: 'Deudas',     icon: 'receipt_long'  },
         { label: 'Bloques', tab: 'Bloques',   icon: 'history_edu'    },
         { label: 'Movimientos', tab: 'Movimientos', icon: 'list_alt'    },

@@ -464,6 +464,96 @@ export const BloquesDashboard = ({
         });
     };
 
+    // Contenido de una tarjeta de bloque — el MISMO para escritorio y mobile
+    // (antes eran dos layouts parecidos pero no identicos; ahora es una sola
+    // fuente de verdad para evitar que se desincronicen de nuevo).
+    // Titulo + proyecto a la izquierda, dias que repite (L M X J V S D,
+    // referencial) + check de "hecho hoy" a la derecha, en una sola fila.
+    const renderBlockCardContent = (
+        row: typeof blockRows[0],
+        project: any,
+        onEdit: () => void,
+        onDelete: () => void
+    ) => {
+        const periodColor = getPeriodStyles(row.period).color;
+        const repeatDays = row.repeatDays || [0, 1, 2, 3, 4, 5, 6];
+        const todayEntry = weekDays.find(d => d.isToday);
+        const todayIdx = todayEntry ? weekDays.indexOf(todayEntry) : -1;
+        const isTodayScheduled = todayEntry ? repeatDays.includes(todayIdx) : false;
+        const todayBlock = todayEntry ? dailyBlocks.find(b =>
+            b.label.toLowerCase() === row.label.toLowerCase() &&
+            b.period === row.period &&
+            b.date === todayEntry.date
+        ) : undefined;
+        const isTodayDone = todayBlock?.completed ?? false;
+
+        return (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span title={row.period} style={{ width: '8px', height: '8px', borderRadius: '50%', background: periodColor, flexShrink: 0 }} />
+                        <span style={{ fontSize: '15px', fontWeight: 700, color: '#191c1d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                            {row.label}
+                        </span>
+                        <button onClick={onEdit} title="Editar tarea" style={{ background: 'none', border: 'none', color: '#877369', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px', opacity: 0.6, flexShrink: 0 }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>edit</span>
+                        </button>
+                        <button onClick={onDelete} title="Eliminar tarea" style={{ background: 'none', border: 'none', color: '#ba1a1a', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px', opacity: 0.5, flexShrink: 0 }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>delete</span>
+                        </button>
+                    </div>
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: project ? (project.color || '#877369') : '#877369', marginTop: '2px', textTransform: 'uppercase', display: 'block', opacity: project ? 1 : 0.7 }}>
+                        {project ? project.name : 'General'}
+                    </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                        {weekDays.map((day, dayIdx) => {
+                            const isRepeatDay = repeatDays.includes(dayIdx);
+                            const dayLetter = ['L', 'M', 'X', 'J', 'V', 'S', 'D'][dayIdx];
+                            return (
+                                <span
+                                    key={day.date}
+                                    title={['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][dayIdx]}
+                                    style={{
+                                        width: '18px', height: '18px', borderRadius: '50%',
+                                        background: isRepeatDay ? periodColor : '#eeeeef',
+                                        color: isRepeatDay ? '#ffffff' : '#b5aeaa',
+                                        fontSize: '9px', fontWeight: 800,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        flexShrink: 0
+                                    }}
+                                >
+                                    {dayLetter}
+                                </span>
+                            );
+                        })}
+                    </div>
+
+                    {isTodayScheduled ? (
+                        <button
+                            onClick={() => handleCellToggle(row.label, row.period, todayEntry!.date)}
+                            title="Marcar hoy"
+                            style={{
+                                width: '28px', height: '28px', borderRadius: '10px', flexShrink: 0,
+                                border: isTodayDone ? 'none' : `2px solid ${periodColor}60`,
+                                background: isTodayDone ? periodColor : `${periodColor}10`,
+                                boxShadow: isTodayDone ? `0 2px 6px ${periodColor}55` : 'none',
+                                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                transition: 'all 0.15s'
+                            }}
+                        >
+                            {isTodayDone && <span className="material-symbols-outlined" style={{ fontSize: '16px', color: 'white', fontWeight: 'bold' }}>check</span>}
+                        </button>
+                    ) : (
+                        <div style={{ width: '28px' }} />
+                    )}
+                </div>
+            </div>
+        );
+    };
+
     // ── Mobile View ──────────────────────────────────────────────
     if (isMobile) {
         // Blocks grouped by period
@@ -471,13 +561,6 @@ export const BloquesDashboard = ({
             const rows = applySavedOrder(period, blockRows.filter(r => r.period === period));
             return { period, rows };
         }).filter(g => g.rows.length > 0);
-
-        const periodColors: Record<string, { color: string; bg: string; icon: string; accentBg: string }> = {
-            'Mañana': { color: '#785900', bg: 'rgba(255, 193, 7, 0.08)', icon: 'light_mode', accentBg: '#e6ae00' },
-            'Tarde':  { color: '#944a18', bg: 'rgba(255, 159, 102, 0.08)', icon: 'wb_sunny', accentBg: '#ff9f66' },
-            'Noche':  { color: '#4858ab', bg: 'rgba(72, 88, 171, 0.08)', icon: 'dark_mode', accentBg: '#96a5ff' },
-            'Otro':   { color: '#877369', bg: 'rgba(135, 115, 105, 0.08)', icon: 'settings', accentBg: '#dac2b6' },
-        };
 
         const handleFormSubmit = (e: React.FormEvent) => {
             e.preventDefault();
@@ -685,24 +768,8 @@ export const BloquesDashboard = ({
                                 style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
                             >
                             {rows.map((row) => {
-                                const pStyle = periodColors[period] ?? periodColors['Otro'];
                                 const repeatDays = row.repeatDays || [0, 1, 2, 3, 4, 5, 6];
-                                            const totalScheduledDays = repeatDays.length;
-                                            
-                                            // Count days completed in the current week
-                                            let daysCompleted = 0;
-                                            weekDays.forEach(day => {
-                                                const existingBlock = dailyBlocks.find(b =>
-                                                    b.label.toLowerCase() === row.label.toLowerCase() &&
-                                                    b.period === row.period &&
-                                                    b.date === day.date
-                                                );
-                                                if (existingBlock?.completed) {
-                                                    daysCompleted++;
-                                                }
-                                            });
-
-                                            const project = projects.find(p => p.id === row.projectId);
+                                const project = projects.find(p => p.id === row.projectId);
 
                                             return (
                                                 <Reorder.Item
@@ -717,109 +784,19 @@ export const BloquesDashboard = ({
                                                         boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
                                                     }}
                                                 >
-                                                    {/* Block info row */}
-                                                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                                <span
-                                                                    title={period}
-                                                                    style={{ width: '8px', height: '8px', borderRadius: '50%', background: pStyle.accentBg, flexShrink: 0 }}
-                                                                />
-                                                                <span style={{
-                                                                    margin: 0, fontSize: '15px', fontWeight: '700',
-                                                                    color: '#191c1d',
-                                                                    wordBreak: 'break-word',
-                                                                    flex: 1, minWidth: 0,
-                                                                }}>
-                                                                    {row.label}
-                                                                </span>
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setNewBlockText(row.label);
-                                                                        setNewBlockPeriod(row.period);
-                                                                        setSelectedProjectIdForNewBlock(row.projectId);
-                                                                        setNewBlockDays(repeatDays);
-                                                                        setMobileEditingRow(row);
-                                                                        setShowMobileAddModal(true);
-                                                                    }}
-                                                                    style={{
-                                                                        background: 'none', border: 'none', color: '#877369',
-                                                                        cursor: 'pointer', display: 'flex', alignItems: 'center',
-                                                                        padding: '2px', opacity: 0.6, flexShrink: 0,
-                                                                    }}
-                                                                    title="Editar rutina"
-                                                                >
-                                                                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>edit</span>
-                                                                </button>
-                                                            </div>
-                                                            {project && (
-                                                                <span style={{ fontSize: '11px', fontWeight: '600', color: project.color || '#877369', display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
-                                                                    <span className="material-symbols-outlined" style={{ fontSize: '11px' }}>folder</span>
-                                                                    {project.name}
-                                                                </span>
-                                                            )}
-                                                        </div>
-
-                                                        {/* Checkbox de HOY: la marca de "hecho" vive acá (y en Checklist,
-                                                            misma data). Los puntitos de abajo ya no son tocables — son
-                                                            solo referencia de qué días repite esta rutina. */}
-                                                        {(() => {
-                                                            const todayEntry = weekDays.find(d => d.isToday);
-                                                            const isTodayScheduled = todayEntry ? repeatDays.includes(weekDays.indexOf(todayEntry)) : false;
-                                                            const todayBlock = todayEntry ? dailyBlocks.find(b =>
-                                                                b.label.toLowerCase() === row.label.toLowerCase() &&
-                                                                b.period === row.period &&
-                                                                b.date === todayEntry.date
-                                                            ) : undefined;
-                                                            const isTodayDone = todayBlock?.completed ?? false;
-                                                            if (!todayEntry || !isTodayScheduled) return null;
-                                                            return (
-                                                                <button
-                                                                    onClick={() => handleCellToggle(row.label, row.period, todayEntry.date)}
-                                                                    title="Marcar hoy"
-                                                                    style={{
-                                                                        width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
-                                                                        border: isTodayDone ? 'none' : `2px solid ${pStyle.accentBg}`,
-                                                                        background: isTodayDone ? pStyle.accentBg : '#ffffff',
-                                                                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                        transition: 'all 0.15s ease', padding: 0,
-                                                                    }}
-                                                                >
-                                                                    {isTodayDone && (
-                                                                        <span className="material-symbols-outlined" style={{ fontSize: '15px', color: '#ffffff', fontVariationSettings: "'FILL' 1" }}>check</span>
-                                                                    )}
-                                                                </button>
-                                                            );
-                                                        })()}
-                                                    </div>
-
-                                                    {/* Días de la rutina: solo referencial (qué días repite), no tocable.
-                                                        Marcar "hecho" se hace con el checkbox de arriba o en Checklist. */}
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-                                                        {weekDays.map((day, idx) => {
-                                                            const isRepeatDay = repeatDays.includes(idx);
-                                                            const dayLetter = ['L', 'M', 'X', 'J', 'V', 'S', 'D'][idx];
-                                                            return (
-                                                                <span
-                                                                    key={day.date}
-                                                                    title={['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][idx]}
-                                                                    style={{
-                                                                        width: '16px', height: '16px', borderRadius: '50%',
-                                                                        background: isRepeatDay ? pStyle.accentBg : '#eeeeef',
-                                                                        color: isRepeatDay ? '#ffffff' : '#b5aeaa',
-                                                                        fontSize: '8px', fontWeight: '800',
-                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                        flexShrink: 0,
-                                                                    }}
-                                                                >
-                                                                    {dayLetter}
-                                                                </span>
-                                                            );
-                                                        })}
-                                                        <span style={{ fontSize: '10px', color: '#877369', fontWeight: '600', marginLeft: '4px' }}>
-                                                            {daysCompleted}/{totalScheduledDays} días
-                                                        </span>
-                                                    </div>
+                                                    {renderBlockCardContent(
+                                                        row,
+                                                        project,
+                                                        () => {
+                                                            setNewBlockText(row.label);
+                                                            setNewBlockPeriod(row.period);
+                                                            setSelectedProjectIdForNewBlock(row.projectId);
+                                                            setNewBlockDays(repeatDays);
+                                                            setMobileEditingRow(row);
+                                                            setShowMobileAddModal(true);
+                                                        },
+                                                        () => setConfirmDeleteRow({ label: row.label, period: row.period })
+                                                    )}
                                                 </Reorder.Item>
                                             );
                                         })}
@@ -1715,10 +1692,6 @@ export const BloquesDashboard = ({
                                                     whileDrag={{ scale: 1.02, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 10 }}
                                                     transition={{ duration: 0.15 }}
                                                     style={{
-                                                        display: 'grid',
-                                                        gridTemplateColumns: 'repeat(12, 1fr)',
-                                                        gap: '10px',
-                                                        alignItems: 'center',
                                                         padding: '10px 16px',
                                                         borderRadius: '14px',
                                                         background: hoveredRowId === row.key ? 'white' : 'rgba(255,255,255,0.7)',
@@ -1875,146 +1848,18 @@ export const BloquesDashboard = ({
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        /* Normal display row — Stitch Layout */
-                                                        <>
-                                                            {/* Task name & project badge */}
-                                                            <div style={{ gridColumn: 'span 5', display: 'flex', flexDirection: 'column', justifySelf: 'start', paddingLeft: '16px' }}>
-                                                                <span style={{ 
-                                                                    fontSize: '16px', 
-                                                                    fontWeight: '600', 
-                                                                    color: hoveredRowId === row.key ? '#944a18' : '#191c1d',
-                                                                    transition: 'color 0.2s'
-                                                                }}>
-                                                                    {row.label}
-                                                                </span>
-                                                                <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
-                                                                    {project ? (
-                                                                        <span style={{
-                                                                            fontSize: '10px', fontWeight: '700',
-                                                                            backgroundColor: `${project.color}15`, color: project.color,
-                                                                            padding: '2px 6px', borderRadius: '4px', border: `1px solid ${project.color}25`,
-                                                                            whiteSpace: 'nowrap', textTransform: 'uppercase'
-                                                                        }}>{project.name}</span>
-                                                                    ) : (
-                                                                        <span style={{
-                                                                            fontSize: '10px', fontWeight: '700',
-                                                                            backgroundColor: 'rgba(135,115,105,0.1)', color: '#877369',
-                                                                            padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(135,115,105,0.2)',
-                                                                            whiteSpace: 'nowrap', textTransform: 'uppercase'
-                                                                        }}>General</span>
-                                                                    )}
-                                                                </div>
-
-                                                                {/* Hover actions */}
-                                                                {hoveredRowId === row.key && (
-                                                                    <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                setEditingRowId(row.key);
-                                                                                setEditingText(row.label);
-                                                                                setEditingProjectId(row.projectId);
-                                                                                setEditingRepeatDays(row.repeatDays || [0,1,2,3,4,5,6]);
-                                                                                setEditingPeriod(row.period);
-                                                                            }}
-                                                                            style={{
-                                                                                background: 'white',
-                                                                                border: '1px solid #dac2b6',
-                                                                                borderRadius: '6px',
-                                                                                padding: '2px 8px',
-                                                                                fontSize: '12px',
-                                                                                fontWeight: '700',
-                                                                                color: '#944a18',
-                                                                                cursor: 'pointer',
-                                                                                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                                                                                transition: 'all 0.1s'
-                                                                            }}
-                                                                            onMouseEnter={(e) => { e.currentTarget.style.background = '#fdf0ea'; }}
-                                                                            onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}
-                                                                            title="Editar tarea"
-                                                                        >
-                                                                            Editar
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => setConfirmDeleteRow({ label: row.label, period: row.period })}
-                                                                            style={{
-                                                                                background: 'white',
-                                                                                border: '1px solid #ffdad6',
-                                                                                borderRadius: '6px',
-                                                                                padding: '2px 8px',
-                                                                                fontSize: '12px',
-                                                                                fontWeight: '700',
-                                                                                color: '#ba1a1a',
-                                                                                cursor: 'pointer',
-                                                                                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                                                                                transition: 'all 0.1s'
-                                                                            }}
-                                                                            onMouseEnter={(e) => { e.currentTarget.style.background = '#ffdad630'; }}
-                                                                            onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}
-                                                                            title="Eliminar tarea"
-                                                                        >
-                                                                            Eliminar
-                                                                        </button>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
-                                                            {/* Días que repite (referencial, como en Hábitos) + check de "hecho hoy" */}
-                                                            <div style={{ gridColumn: 'span 7', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', paddingRight: '4px' }}>
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                                    {weekDays.map((day, dayIdx) => {
-                                                                        const isRepeatDay = row.repeatDays ? row.repeatDays.includes(dayIdx) : true;
-                                                                        const periodColor = getPeriodStyles(row.period).color;
-                                                                        const dayLetter = ['L', 'M', 'X', 'J', 'V', 'S', 'D'][dayIdx];
-                                                                        return (
-                                                                            <span
-                                                                                key={day.date}
-                                                                                title={['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][dayIdx]}
-                                                                                style={{
-                                                                                    width: '22px', height: '22px', borderRadius: '50%',
-                                                                                    background: isRepeatDay ? periodColor : '#eeeeef',
-                                                                                    color: isRepeatDay ? '#ffffff' : '#b5aeaa',
-                                                                                    fontSize: '10px', fontWeight: 800,
-                                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                                    flexShrink: 0
-                                                                                }}
-                                                                            >
-                                                                                {dayLetter}
-                                                                            </span>
-                                                                        );
-                                                                    })}
-                                                                </div>
-
-                                                                {(() => {
-                                                                    const todayEntry = weekDays.find(d => d.isToday);
-                                                                    const todayIdx = todayEntry ? weekDays.indexOf(todayEntry) : -1;
-                                                                    const isTodayScheduled = todayEntry && row.repeatDays ? row.repeatDays.includes(todayIdx) : !!todayEntry;
-                                                                    const todayBlock = todayEntry ? dailyBlocks.find(b =>
-                                                                        b.label.toLowerCase() === row.label.toLowerCase() &&
-                                                                        b.period === row.period &&
-                                                                        b.date === todayEntry.date
-                                                                    ) : undefined;
-                                                                    const isTodayDone = todayBlock?.completed ?? false;
-                                                                    const periodColor = getPeriodStyles(row.period).color;
-                                                                    if (!todayEntry || !isTodayScheduled) return <div style={{ width: '32px' }} />;
-                                                                    return (
-                                                                        <button
-                                                                            onClick={() => handleCellToggle(row.label, row.period, todayEntry.date)}
-                                                                            title="Marcar hoy"
-                                                                            style={{
-                                                                                width: '32px', height: '32px', borderRadius: '10px', flexShrink: 0,
-                                                                                border: isTodayDone ? 'none' : `2px solid ${periodColor}60`,
-                                                                                background: isTodayDone ? periodColor : `${periodColor}10`,
-                                                                                boxShadow: isTodayDone ? `0 2px 6px ${periodColor}55` : 'none',
-                                                                                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                                transition: 'all 0.15s'
-                                                                            }}
-                                                                        >
-                                                                            <span className="material-symbols-outlined" style={{ fontSize: '18px', fontWeight: 'bold', color: isTodayDone ? 'white' : periodColor }}>check</span>
-                                                                        </button>
-                                                                    );
-                                                                })()}
-                                                            </div>
-                                                        </>
+                                                        renderBlockCardContent(
+                                                            row,
+                                                            project,
+                                                            () => {
+                                                                setEditingRowId(row.key);
+                                                                setEditingText(row.label);
+                                                                setEditingProjectId(row.projectId);
+                                                                setEditingRepeatDays(row.repeatDays || [0, 1, 2, 3, 4, 5, 6]);
+                                                                setEditingPeriod(row.period);
+                                                            },
+                                                            () => setConfirmDeleteRow({ label: row.label, period: row.period })
+                                                        )
                                                     )}
                                                 </Reorder.Item>
                                             );
