@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Filter, Trash2, Star, Plus } from 'lucide-react';
+import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Filter, Trash2, Star, Plus, Link2 } from 'lucide-react';
 
 interface TimelineAgendaViewProps {
     calendarEvents: any[];
@@ -40,7 +40,8 @@ export const TimelineAgendaView = ({
         rutinas: true,
         tareas: true,
         habitos: true,
-        mision: true
+        mision: true,
+        notion: true
     });
     
     // Estado para edición
@@ -176,16 +177,18 @@ export const TimelineAgendaView = ({
 
     // 4. Eventos y Misiones con hora
     const dayEvents = useMemo(() => {
-        if (!activeFilters.citas) return [];
-        const items = (calendarEvents || []).filter(e => e.date === todayStr).map(e => ({
-            ...e,
-            itemType: 'event',
-            color: e.color || '#3b82f6',
-            startMin: toMin(e.startTime),
-            endMin: toMin(e.endTime)
-        }));
+        const items = (calendarEvents || [])
+            .filter(e => e.date === todayStr)
+            .filter(e => (e.notionId ? activeFilters.notion : activeFilters.citas))
+            .map(e => ({
+                ...e,
+                itemType: 'event',
+                color: e.notionId ? '#191919' : (e.color || '#3b82f6'),
+                startMin: toMin(e.startTime),
+                endMin: toMin(e.endTime)
+            }));
         return items.sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
-    }, [calendarEvents, todayStr, activeFilters.citas]);
+    }, [calendarEvents, todayStr, activeFilters.citas, activeFilters.notion]);
 
     // 5.1 Misiones (Tareas)
     const dayMissions = useMemo(() => {
@@ -240,12 +243,15 @@ export const TimelineAgendaView = ({
             const dIdx = (d.getDay() + 6) % 7;
 
             // Filtrar eventos y rutinas para este día específico de la semana
-            const evs = !activeFilters.citas ? [] : (calendarEvents || []).filter(e => e.date === dStr).map(e => ({
-                ...e,
-                startMin: toMin(e.startTime),
-                endMin: toMin(e.endTime),
-                color: e.color || '#6366F1'
-            }));
+            const evs = (calendarEvents || [])
+                .filter(e => e.date === dStr)
+                .filter(e => (e.notionId ? activeFilters.notion : activeFilters.citas))
+                .map(e => ({
+                    ...e,
+                    startMin: toMin(e.startTime),
+                    endMin: toMin(e.endTime),
+                    color: e.notionId ? '#191919' : (e.color || '#6366F1')
+                }));
 
             const rts = !activeFilters.rutinas ? [] : (rutinas || []).filter(r => r.repeatDays?.includes(dIdx));
             const hbs = !activeFilters.habitos ? [] : (habits || []).filter(h => h.schedule?.includes(dIdx));
@@ -344,7 +350,8 @@ export const TimelineAgendaView = ({
                         { key: 'tareas', label: 'Tareas', color: '#F59E0B', icon: <Filter size={14} />, type: 'MICRO' },
                         { key: 'citas', label: 'Citas y Eventos', color: '#6366F1', icon: <Clock size={14} />, type: 'MACRO' },
                         { key: 'rutinas', label: 'Rutinas / Bloques', color: '#10B981', icon: <CalendarDays size={14} />, type: 'MACRO' },
-                        { key: 'habitos', label: 'Hábitos (Habits)', color: '#EC4899', icon: <CalendarDays size={14} />, type: 'MICRO' }
+                        { key: 'habitos', label: 'Hábitos (Habits)', color: '#EC4899', icon: <CalendarDays size={14} />, type: 'MICRO' },
+                        { key: 'notion', label: 'Notion', color: '#191919', icon: <Link2 size={14} />, type: 'SYNC' }
                     ].map(f => (
                         <div 
                             key={f.key} 

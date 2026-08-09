@@ -1,5 +1,5 @@
-// Trae las sesiones proximas de la base "Agenda" de Notion y las agrega
-// al calendario real de AlDia (Firestore), evitando duplicados.
+// Trae TODAS las sesiones (pasadas y futuras) de la base "Agenda" de Notion
+// y las agrega al calendario real de AlDia (Firestore), evitando duplicados.
 // Uso: npm run sync:notion
 
 process.loadEnvFile(new URL('../.env.local', import.meta.url));
@@ -23,23 +23,29 @@ const serviceAccount = JSON.parse(
 const app = initializeApp({ credential: cert(serviceAccount) });
 const db = getFirestore(app);
 
-async function fetchUpcomingNotionSessions() {
-    const today = new Date().toLocaleDateString('en-CA');
-    const res = await fetch(`https://api.notion.com/v1/databases/${NOTION_DATABASE_ID}/query`, {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${NOTION_TOKEN}`,
-            'Notion-Version': '2022-06-28',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            filter: { property: 'Fecha y hora', date: { on_or_after: today } },
-            sorts: [{ property: 'Fecha y hora', direction: 'ascending' }]
-        })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error('Notion API error: ' + JSON.stringify(data));
-    return data.results;
+// Trae TODAS las sesiones (pasadas y futuras), paginando si hace falta.
+async function fetchAllNotionSessions() {
+    const results = [];
+    let cursor;
+    do {
+        const res = await fetch(`https://api.notion.com/v1/databases/${NOTION_DATABASE_ID}/query`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${NOTION_TOKEN}`,
+                'Notion-Version': '2022-06-28',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                sorts: [{ property: 'Fecha y hora', direction: 'ascending' }],
+                ...(cursor ? { start_cursor: cursor } : {})
+            })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error('Notion API error: ' + JSON.stringify(data));
+        results.push(...data.results);
+        cursor = data.has_more ? data.next_cursor : undefined;
+    } while (cursor);
+    return results;
 }
 
 // Lee fecha/hora literal del string ISO de Notion (ya viene en la zona horaria
@@ -102,7 +108,7 @@ async function main() {
     const existingAgenda = Array.isArray(data.agenda) ? data.agenda : [];
     const existingNotionIds = new Set(existingAgenda.filter((e) => e.notionId).map((e) => e.notionId));
 
-    const pages = await fetchUpcomingNotionSessions();
+    const pages = await fetchAllNotionSessions();
     const newEvents = pages
         .map(toCalendarEvent)
         .filter((e) => e && !existingNotionIds.has(e.notionId));
