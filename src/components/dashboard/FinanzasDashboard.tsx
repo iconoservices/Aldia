@@ -698,9 +698,22 @@ export const FinanzasDashboard = ({
             const inPeriod = transactions.filter(tx => tx.accountId === acc.id && !tx.isCashless && tx.fullDate >= start && tx.fullDate <= end);
             const ingresoReal = inPeriod.filter(tx => tx.type === "ingreso" && tx.category !== "Transferencia").reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
             const gastoTotal = inPeriod.filter(tx => tx.type === "gasto").reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
-            return { id: acc.id, remaining: ingresoReal - gastoTotal, ingresoReal, gastoTotal };
+            // Cuánto de ese movimiento (entrada o salida) fue plata que solo cambió de cuenta,
+            // no gasto real ni ingreso nuevo — se muestra aparte para no confundirlo con lo demás.
+            const transferTotal = inPeriod.filter(tx => tx.category === "Transferencia").reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
+            return { id: acc.id, remaining: ingresoReal - gastoTotal, ingresoReal, gastoTotal, transferTotal };
         });
     }, [accounts, transactions, topPeriod, periodRef]);
+
+    // Total real transferido en el período: cada transferencia toca 2 cuentas (sale de una,
+    // entra a otra), así que sumar accountsBudget.transferTotal de todas las cuentas cuenta
+    // cada transferencia dos veces. Acá se cuenta solo la pata de entrada, una vez por evento.
+    const transferPeriodTotal = useMemo(() => {
+        const { start, end } = getPeriodBounds(topPeriod, periodRef);
+        return transactions
+            .filter(tx => !tx.isCashless && tx.category === "Transferencia" && tx.type === "ingreso" && tx.fullDate >= start && tx.fullDate <= end)
+            .reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
+    }, [transactions, topPeriod, periodRef]);
 
     const [isAddingAccount, setIsAddingAccount] = useState(false);
     const [newAccountName, setNewAccountName] = useState("");
@@ -1225,6 +1238,63 @@ export const FinanzasDashboard = ({
                     </div>
                 )}
             </div>
+
+            {/* ── Ingresos y Gastos por Cuenta: lista directa de cuánto entró (sin
+                transferencias) y cuánto salió de cada cuenta en el período elegido arriba ─── */}
+            {accountsWithBalance.length > 0 && (
+                <div style={{ ...CARD, padding: movil ? "1rem" : "1.5rem" }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "6px", marginBottom: movil ? "0.7rem" : "1rem" }}>
+                        <TrendingUp size={16} color={C.verde} />
+                        <span style={{ fontSize: "0.85rem", fontWeight: 800 }}>Ingresos y Gastos por Cuenta</span>
+                        <span style={{ fontSize: "0.65rem", color: C.outline, textTransform: "capitalize" }}>
+                            · {periodLabel(topPeriod, periodRef)}
+                        </span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: movil ? "6px" : "8px" }}>
+                        {accountsWithBalance.map(acc => {
+                            const b = accountsBudget.find(x => x.id === acc.id);
+                            const ingreso = b?.ingresoReal ?? 0;
+                            const gasto = b?.gastoTotal ?? 0;
+                            const transfer = b?.transferTotal ?? 0;
+                            return (
+                                <div key={acc.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: movil ? "8px 10px" : "10px 12px", borderRadius: "10px", background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, gap: "8px" }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                                        <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: acc.color, flexShrink: 0 }} />
+                                        <span style={{ fontSize: movil ? "0.75rem" : "0.82rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={acc.name}>
+                                            {acc.name}
+                                        </span>
+                                    </div>
+                                    <div style={{ display: "flex", gap: movil ? "8px" : "14px", flexShrink: 0, alignItems: "baseline" }}>
+                                        <span style={{ fontSize: movil ? "0.8rem" : "0.9rem", fontWeight: 900, color: C.verde }}>
+                                            +S/ {ingreso.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                        </span>
+                                        <span style={{ fontSize: movil ? "0.8rem" : "0.9rem", fontWeight: 900, color: C.rojo }}>
+                                            −S/ {gasto.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                        </span>
+                                        <span style={{ fontSize: movil ? "0.68rem" : "0.75rem", fontWeight: 700, color: C.outline }} title="Plata movida entre cuentas — no es ingreso ni gasto real">
+                                            ↔ S/ {transfer.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: movil ? "6px 10px 0" : "8px 12px 0", marginTop: "2px", borderTop: `1px solid ${C.outlineVariant}` }}>
+                            <span style={{ fontSize: "0.68rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.04em" }}>Total</span>
+                            <div style={{ display: "flex", gap: movil ? "8px" : "14px", alignItems: "baseline" }}>
+                                <span style={{ fontSize: movil ? "0.85rem" : "0.95rem", fontWeight: 900, color: C.verde }}>
+                                    +S/ {accountsBudget.reduce((s, b) => s + b.ingresoReal, 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                </span>
+                                <span style={{ fontSize: movil ? "0.85rem" : "0.95rem", fontWeight: 900, color: C.rojo }}>
+                                    −S/ {accountsBudget.reduce((s, b) => s + b.gastoTotal, 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                </span>
+                                <span style={{ fontSize: movil ? "0.68rem" : "0.75rem", fontWeight: 700, color: C.outline }} title="Plata movida entre cuentas — no es ingreso ni gasto real">
+                                    ↔ S/ {transferPeriodTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ── Selector de vista + Ver todo: en móvil las 3 vistas + el botón
                 comparten una sola fila (antes "Ver todo" se iba a su propia fila
