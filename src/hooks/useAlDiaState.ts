@@ -1034,6 +1034,7 @@ export const useAlDiaState = () => {
             ingredients,
         };
         setRecipes(prev => [recipe, ...prev]);
+        return recipe.id;
     };
 
     const updateRecipe = (id: number, updates: Partial<Recipe>) => {

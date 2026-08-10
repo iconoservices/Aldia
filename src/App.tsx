@@ -438,6 +438,7 @@ function App() {
               <ComidasDashboard
                 recipes={state.recipes}
                 addRecipe={state.addRecipe}
+                updateRecipe={state.updateRecipe}
                 removeRecipe={state.removeRecipe}
                 mealPlanEntries={state.mealPlanEntries}
                 addMealPlanEntry={state.addMealPlanEntry}
