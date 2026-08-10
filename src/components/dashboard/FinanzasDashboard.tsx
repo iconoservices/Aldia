@@ -702,7 +702,11 @@ export const FinanzasDashboard = ({
             // Cuánto de ese movimiento (entrada o salida) fue plata que solo cambió de cuenta,
             // no gasto real ni ingreso nuevo — se muestra aparte para no confundirlo con lo demás.
             const transferTotal = inPeriod.filter(tx => tx.category === "Transferencia").reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
-            return { id: acc.id, remaining: ingresoReal - gastoTotal, ingresoReal, gastoTotal, transferTotal };
+            // De gastoTotal, la parte que salió como transferencia hacia otra cuenta (no se gastó,
+            // solo cambió de bolsillo). Restándola queda lo que la cuenta gastó de verdad.
+            const gastoTransferSaliente = inPeriod.filter(tx => tx.type === "gasto" && tx.category === "Transferencia").reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
+            const gastoPuro = gastoTotal - gastoTransferSaliente;
+            return { id: acc.id, remaining: ingresoReal - gastoTotal, ingresoReal, gastoTotal, transferTotal, gastoPuro };
         });
     }, [accounts, transactions, topPeriod, periodRef]);
 
@@ -1235,8 +1239,11 @@ export const FinanzasDashboard = ({
                         {accountsWithBalance.map(acc => {
                             const b = accountsBudget.find(x => x.id === acc.id);
                             const ingreso = b?.ingresoReal ?? 0;
-                            const gasto = b?.gastoTotal ?? 0;
+                            const gastoTotalAcc = b?.gastoTotal ?? 0;
+                            const gastoReal = b?.gastoPuro ?? 0;
                             const transfer = b?.transferTotal ?? 0;
+                            const ganancia = ingreso - gastoReal;
+                            const colorGanancia = ganancia >= 0 ? C.verde : C.rojo;
                             return (
                                 <div key={acc.id} style={{ display: "flex", flexDirection: movil ? "column" : "row", justifyContent: movil ? "flex-start" : "space-between", alignItems: movil ? "stretch" : "center", padding: movil ? "10px" : "10px 12px", borderRadius: "10px", background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, gap: movil ? "8px" : "8px" }}>
                                     <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
@@ -1246,49 +1253,74 @@ export const FinanzasDashboard = ({
                                         </span>
                                     </div>
                                     {movil ? (
-                                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
+                                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "6px" }}>
                                             <MoneyMini label="Ingreso" val={ingreso} color={C.verde} prefix="+S/ " />
-                                            <MoneyMini label="Gasto" val={gasto} color={C.rojo} prefix="−S/ " />
+                                            <MoneyMini label="Gasto Total" val={gastoTotalAcc} color={C.rojo} prefix="−S/ " title="Gasto total: incluye lo que salió como transferencia a otra cuenta" />
+                                            <MoneyMini label="Gasto Real" val={gastoReal} color={C.rojo} prefix="−S/ " title="Gasto real: no incluye lo que salió como transferencia a otra cuenta" />
                                             <MoneyMini label="Transf." val={transfer} color={C.outline} prefix="↔ S/ " title="Plata movida entre cuentas — no es ingreso ni gasto real" />
+                                            <MoneyMini label="Ganancia" val={Math.abs(ganancia)} color={colorGanancia} prefix={ganancia >= 0 ? "+S/ " : "−S/ "} title="Ingreso Real menos Gasto Real" />
                                         </div>
                                     ) : (
                                         <div style={{ display: "flex", gap: "14px", flexShrink: 0, alignItems: "baseline" }}>
                                             <span style={{ fontSize: "0.9rem", fontWeight: 900, color: C.verde }}>
                                                 +S/ {ingreso.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                                             </span>
-                                            <span style={{ fontSize: "0.9rem", fontWeight: 900, color: C.rojo }}>
-                                                −S/ {gasto.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                            <span style={{ fontSize: "0.9rem", fontWeight: 900, color: C.rojo }} title="Gasto total: incluye lo que salió como transferencia a otra cuenta">
+                                                −S/ {gastoTotalAcc.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                            </span>
+                                            <span style={{ fontSize: "0.9rem", fontWeight: 700, color: C.rojo }} title="Gasto real: no incluye lo que salió como transferencia a otra cuenta">
+                                                −S/ {gastoReal.toLocaleString("en-US", { minimumFractionDigits: 2 })} real
                                             </span>
                                             <span style={{ fontSize: "0.75rem", fontWeight: 700, color: C.outline }} title="Plata movida entre cuentas — no es ingreso ni gasto real">
                                                 ↔ S/ {transfer.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                            </span>
+                                            <span style={{ fontSize: "0.9rem", fontWeight: 900, color: colorGanancia }} title="Ingreso Real menos Gasto Real">
+                                                {ganancia >= 0 ? "+" : "−"}S/ {Math.abs(ganancia).toLocaleString("en-US", { minimumFractionDigits: 2 })} ganancia
                                             </span>
                                         </div>
                                     )}
                                 </div>
                             );
                         })}
-                        <div style={{ display: "flex", flexDirection: movil ? "column" : "row", justifyContent: movil ? "flex-start" : "space-between", alignItems: movil ? "stretch" : "center", padding: movil ? "8px 10px 0" : "8px 12px 0", marginTop: "2px", borderTop: `1px solid ${C.outlineVariant}`, gap: movil ? "6px" : "8px" }}>
-                            <span style={{ fontSize: "0.68rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.04em" }}>Total</span>
-                            {movil ? (
-                                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
-                                    <MoneyMini label="Ingreso" val={accountsBudget.reduce((s, b) => s + b.ingresoReal, 0)} color={C.verde} prefix="+S/ " />
-                                    <MoneyMini label="Gasto" val={accountsBudget.reduce((s, b) => s + b.gastoTotal, 0)} color={C.rojo} prefix="−S/ " />
-                                    <MoneyMini label="Transf." val={transferPeriodTotal} color={C.outline} prefix="↔ S/ " title="Plata movida entre cuentas — no es ingreso ni gasto real" />
+                        {(() => {
+                            const ingresoTotal = accountsBudget.reduce((s, b) => s + b.ingresoReal, 0);
+                            const gastoTotalSum = accountsBudget.reduce((s, b) => s + b.gastoTotal, 0);
+                            const gastoRealTotal = accountsBudget.reduce((s, b) => s + b.gastoPuro, 0);
+                            const gananciaTotal = ingresoTotal - gastoRealTotal;
+                            const colorGananciaTotal = gananciaTotal >= 0 ? C.verde : C.rojo;
+                            return (
+                                <div style={{ display: "flex", flexDirection: movil ? "column" : "row", justifyContent: movil ? "flex-start" : "space-between", alignItems: movil ? "stretch" : "center", padding: movil ? "8px 10px 0" : "8px 12px 0", marginTop: "2px", borderTop: `1px solid ${C.outlineVariant}`, gap: movil ? "6px" : "8px" }}>
+                                    <span style={{ fontSize: "0.68rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.04em" }}>Total</span>
+                                    {movil ? (
+                                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "6px" }}>
+                                            <MoneyMini label="Ingreso" val={ingresoTotal} color={C.verde} prefix="+S/ " />
+                                            <MoneyMini label="Gasto Total" val={gastoTotalSum} color={C.rojo} prefix="−S/ " title="Gasto total: incluye lo que salió como transferencia a otra cuenta" />
+                                            <MoneyMini label="Gasto Real" val={gastoRealTotal} color={C.rojo} prefix="−S/ " title="Gasto real: no incluye lo que salió como transferencia a otra cuenta" />
+                                            <MoneyMini label="Transf." val={transferPeriodTotal} color={C.outline} prefix="↔ S/ " title="Plata movida entre cuentas — no es ingreso ni gasto real" />
+                                            <MoneyMini label="Ganancia" val={Math.abs(gananciaTotal)} color={colorGananciaTotal} prefix={gananciaTotal >= 0 ? "+S/ " : "−S/ "} title="Ingreso Real menos Gasto Real" />
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: "flex", gap: "14px", alignItems: "baseline" }}>
+                                            <span style={{ fontSize: "0.95rem", fontWeight: 900, color: C.verde }}>
+                                                +S/ {ingresoTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                            </span>
+                                            <span style={{ fontSize: "0.95rem", fontWeight: 900, color: C.rojo }} title="Gasto total: incluye lo que salió como transferencia a otra cuenta">
+                                                −S/ {gastoTotalSum.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                            </span>
+                                            <span style={{ fontSize: "0.95rem", fontWeight: 700, color: C.rojo }} title="Gasto real: no incluye lo que salió como transferencia a otra cuenta">
+                                                −S/ {gastoRealTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })} real
+                                            </span>
+                                            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: C.outline }} title="Plata movida entre cuentas — no es ingreso ni gasto real">
+                                                ↔ S/ {transferPeriodTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                            </span>
+                                            <span style={{ fontSize: "0.95rem", fontWeight: 900, color: colorGananciaTotal }} title="Ingreso Real menos Gasto Real">
+                                                {gananciaTotal >= 0 ? "+" : "−"}S/ {Math.abs(gananciaTotal).toLocaleString("en-US", { minimumFractionDigits: 2 })} ganancia
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
-                            ) : (
-                                <div style={{ display: "flex", gap: "14px", alignItems: "baseline" }}>
-                                    <span style={{ fontSize: "0.95rem", fontWeight: 900, color: C.verde }}>
-                                        +S/ {accountsBudget.reduce((s, b) => s + b.ingresoReal, 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                    </span>
-                                    <span style={{ fontSize: "0.95rem", fontWeight: 900, color: C.rojo }}>
-                                        −S/ {accountsBudget.reduce((s, b) => s + b.gastoTotal, 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                    </span>
-                                    <span style={{ fontSize: "0.75rem", fontWeight: 700, color: C.outline }} title="Plata movida entre cuentas — no es ingreso ni gasto real">
-                                        ↔ S/ {transferPeriodTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
+                            );
+                        })()}
                     </div>
                 </div>
             )}
