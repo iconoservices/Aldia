@@ -33,7 +33,7 @@ interface MovimientosProps {
 const txInputStyle: React.CSSProperties = { padding: "6px 8px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", outline: "none", background: "white", boxSizing: "border-box", width: "100%" };
 const txLabelStyle: React.CSSProperties = { fontSize: "0.6rem", fontWeight: 800, color: C.outline, textTransform: "uppercase", letterSpacing: "0.03em", marginBottom: "2px", display: "block" };
 
-const CARD: React.CSSProperties = { ...bento, padding: "1.5rem" };
+const CARD: React.CSSProperties = { ...bento, borderRadius: "10px", padding: "1.5rem" };
 const LABEL: React.CSSProperties = etiqueta;
 
 export const MovimientosDashboard = ({ transactions, removeTransaction, updateTransaction, accounts, incomeCategories = [], expenseCategories = [] }: MovimientosProps) => {
@@ -102,7 +102,7 @@ export const MovimientosDashboard = ({ transactions, removeTransaction, updateTr
 
                 {/* Period navigator */}
                 {periodMode !== "all" && (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", marginBottom: "1.2rem", background: C.surface, borderRadius: "12px", padding: "8px 16px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", marginBottom: "1.2rem", background: C.surface, borderRadius: "8px", padding: "8px 16px" }}>
                         <button onClick={() => setPeriodRef(d => shiftPeriod(periodMode, d, -1))} style={{ background: "none", border: "none", cursor: "pointer", color: C.onSurfaceVariant, display: "flex", alignItems: "center", padding: "2px" }}><ChevronLeft size={18} /></button>
                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                             <Calendar size={13} color={C.onSurfaceVariant} />
@@ -119,7 +119,7 @@ export const MovimientosDashboard = ({ transactions, removeTransaction, updateTr
                         { label: "Gastos", val: periodStats.expense, color: C.rojo, bg: "rgba(239,68,68,0.06)" },
                         { label: "Neto", val: periodStats.net, color: periodStats.net >= 0 ? C.verde : C.rojo, bg: periodStats.net >= 0 ? "rgba(16,185,129,0.06)" : "rgba(239,68,68,0.06)" },
                     ].map((k, i) => (
-                        <div key={i} style={{ background: k.bg, borderRadius: "12px", padding: "10px 12px", textAlign: "center" }}>
+                        <div key={i} style={{ background: k.bg, borderRadius: "8px", padding: "10px 12px", textAlign: "center" }}>
                             <div style={{ ...LABEL, color: k.color, marginBottom: "3px" }}>{k.label}</div>
                             <div style={{ fontWeight: 900, fontSize: "1.05rem", color: k.color }}>S/ {k.val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
                         </div>
@@ -134,14 +134,14 @@ export const MovimientosDashboard = ({ transactions, removeTransaction, updateTr
                             placeholder="Buscar por texto, contacto o categoría..."
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            style={{ width: "100%", padding: "7px 30px 7px 30px", borderRadius: "9px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.8rem", outline: "none", boxSizing: "border-box" }}
+                            style={{ width: "100%", padding: "7px 30px 7px 30px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.8rem", outline: "none", boxSizing: "border-box" }}
                         />
                         {searchQuery && (
                             <button onClick={() => setSearchQuery("")} style={{ position: "absolute", right: "6px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "2px", display: "flex" }}><X size={13} /></button>
                         )}
                     </div>
                     {accounts.length > 0 && (
-                        <select value={accountFilter} onChange={e => setAccountFilter(e.target.value === "all" ? "all" : Number(e.target.value))} style={{ padding: "7px 9px", borderRadius: "9px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", fontWeight: 700, background: "white", cursor: "pointer", flex: movil ? "1 1 100%" : undefined }}>
+                        <select value={accountFilter} onChange={e => setAccountFilter(e.target.value === "all" ? "all" : Number(e.target.value))} style={{ padding: "7px 9px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", fontWeight: 700, background: "white", cursor: "pointer", flex: movil ? "1 1 100%" : undefined }}>
                             <option value="all">Todas las cuentas</option>
                             {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                         </select>
@@ -151,7 +151,7 @@ export const MovimientosDashboard = ({ transactions, removeTransaction, updateTr
                 {/* Type filter */}
                 <div style={{ display: "flex", gap: "6px", marginBottom: "1rem", flexWrap: "wrap" }}>
                     {(["all", "ingreso", "gasto"] as TxFilter[]).map(f => (
-                        <button key={f} onClick={() => setTxFilter(f)} style={{ padding: "4px 14px", borderRadius: "20px", border: `1px solid ${txFilter === f ? C.primary : C.outlineVariant}`, background: txFilter === f ? C.primary : "transparent", color: txFilter === f ? "white" : C.onSurfaceVariant, fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", transition: "all 0.15s" }}>
+                        <button key={f} onClick={() => setTxFilter(f)} style={{ padding: "4px 14px", borderRadius: "6px", border: `1px solid ${txFilter === f ? C.primary : C.outlineVariant}`, background: txFilter === f ? C.primary : "transparent", color: txFilter === f ? "white" : C.onSurfaceVariant, fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", transition: "all 0.15s" }}>
                             {f === "all" ? "Todos" : f === "ingreso" ? "Ingresos" : "Gastos"}
                         </button>
                     ))}
@@ -203,7 +203,7 @@ const MovimientoRow = ({ tx, accountById, accounts, removeTransaction, updateTra
     };
 
     if (isEditing) return (
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px", padding: "10px 12px", borderRadius: "12px", background: C.surface, border: `1px solid ${C.outlineVariant}` }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", padding: "10px 12px", borderRadius: "8px", background: C.surface, border: `1px solid ${C.outlineVariant}` }}>
             <div>
                 <label style={txLabelStyle}>Descripción</label>
                 <input autoFocus value={editText} onChange={e => setEditText(e.target.value)} style={txInputStyle} />
@@ -238,22 +238,22 @@ const MovimientoRow = ({ tx, accountById, accounts, removeTransaction, updateTra
     );
 
     return (
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 12px", borderRadius: "12px", background: C.surface, border: `1px solid ${C.surfaceContainerLow}` }}>
-            <div style={{ width: "32px", height: "32px", borderRadius: "10px", background: tx.type === "ingreso" ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)", color: tx.type === "ingreso" ? C.verde : C.rojo, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 12px", borderRadius: "8px", background: C.surface, border: `1px solid ${C.surfaceContainerLow}` }}>
+            <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: tx.type === "ingreso" ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)", color: tx.type === "ingreso" ? C.verde : C.rojo, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 {tx.type === "ingreso" ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: "0.83rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tx.text}</div>
                 <div style={{ fontSize: "0.62rem", color: C.outline, display: "flex", alignItems: "center", gap: "5px", flexWrap: "wrap" }}>
                     {tx.fullDate} · {tx.date}
-                    {tx.category && <span style={{ background: C.surfaceContainerLow, padding: "1px 6px", borderRadius: "10px", color: C.onSurfaceVariant, fontWeight: 700 }}>{tx.category}</span>}
+                    {tx.category && <span style={{ background: C.surfaceContainerLow, padding: "1px 6px", borderRadius: "6px", color: C.onSurfaceVariant, fontWeight: 700 }}>{tx.category}</span>}
                     {tx.accountId && accountById.get(tx.accountId) ? (
-                        <span style={{ display: "flex", alignItems: "center", gap: "4px", background: C.surfaceContainerLow, padding: "1px 6px", borderRadius: "10px", color: C.onSurfaceVariant, fontWeight: 700 }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: "4px", background: C.surfaceContainerLow, padding: "1px 6px", borderRadius: "6px", color: C.onSurfaceVariant, fontWeight: 700 }}>
                             <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: accountById.get(tx.accountId)!.color, display: "inline-block" }} />
                             {accountById.get(tx.accountId)!.name}
                         </span>
                     ) : (
-                        <span style={{ background: "rgba(239,68,68,0.1)", padding: "1px 6px", borderRadius: "10px", color: C.rojo, fontWeight: 700 }}>sin cuenta</span>
+                        <span style={{ background: "rgba(239,68,68,0.1)", padding: "1px 6px", borderRadius: "6px", color: C.rojo, fontWeight: 700 }}>sin cuenta</span>
                     )}
                 </div>
             </div>
@@ -264,7 +264,7 @@ const MovimientoRow = ({ tx, accountById, accounts, removeTransaction, updateTra
                 <button onClick={() => setMenuOpen(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "2px", display: "flex" }}><MoreVertical size={14} /></button>
 
                 {menuOpen && (
-                    <div style={{ position: "absolute", top: "100%", right: 0, zIndex: 5, background: "white", border: `1px solid ${C.outlineVariant}`, borderRadius: "9px", boxShadow: "0 4px 14px rgba(0,0,0,0.1)", overflow: "hidden", minWidth: "120px" }}>
+                    <div style={{ position: "absolute", top: "100%", right: 0, zIndex: 5, background: "white", border: `1px solid ${C.outlineVariant}`, borderRadius: "8px", boxShadow: "0 4px 14px rgba(0,0,0,0.1)", overflow: "hidden", minWidth: "120px" }}>
                         <button onClick={() => { setIsEditing(true); setMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", color: C.onSurface, fontSize: "0.78rem", fontWeight: 600, textAlign: "left" }}><Edit2 size={13} /> Editar</button>
                         <button onClick={() => { setConfirmDelete(true); setMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", color: C.rojo, fontSize: "0.78rem", fontWeight: 600, textAlign: "left", borderTop: `1px solid ${C.surfaceContainerLow}` }}><Trash2 size={13} /> Eliminar</button>
                     </div>

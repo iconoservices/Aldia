@@ -700,11 +700,16 @@ h3 {
 @media (min-width: 769px) {
   .timeline-header-grid {
     display: grid !important;
-    grid-template-columns: 250px 1fr 250px !important; /* Columnas laterales fijas para estabilidad */
+    /* minmax(0, 250px) en vez de 250px fijo: con el panel de Misiones abierto
+       (320px) el espacio disponible baja de golpe, y una columna rígida no
+       puede ceder — se sale del contenedor y, como el padre tiene
+       overflow:hidden, el botón de esa columna queda recortado/invisible
+       sin ningún aviso. minmax(0, ...) deja que la columna se achique. */
+    grid-template-columns: minmax(0, 250px) 1fr minmax(0, 250px) !important;
     align-items: center !important;
     gap: 1rem !important;
   }
-  
+
   .timeline-tabs-block {
     grid-column: auto !important;
     width: 100% !important;
@@ -716,6 +721,12 @@ h3 {
 
   .timeline-nav-buttons {
     justify-self: end !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+  }
+  .timeline-nav-buttons::-webkit-scrollbar {
+    display: none;
   }
 }
 
@@ -781,6 +792,9 @@ h3 {
 
 .agenda-main-content {
   flex: 1;
+  min-width: 0; /* sin esto, el grid interno (con columnas de ancho fijo) se niega a
+                   encogerse cuando el panel de Misiones abre, y esta columna termina
+                   pintándose por debajo del panel en vez de dentro de su propio espacio */
   height: 100%;
   display: flex;
   flex-direction: column;

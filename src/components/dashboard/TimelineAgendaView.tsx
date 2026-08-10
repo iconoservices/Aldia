@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Filter, Trash2, Star, Plus, Link2 } from 'lucide-react';
+import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Filter, Trash2, Star, Plus, Link2, X } from 'lucide-react';
 
 interface TimelineAgendaViewProps {
     calendarEvents: any[];
@@ -113,18 +113,18 @@ export const TimelineAgendaView = ({
     const isActualToday = todayStr === new Date().toLocaleDateString('en-CA');
     const hours = Array.from({ length: 24 }, (_, i) => i);
 
+    const scrollToNow = () => {
+        const container = scrollRef.current;
+        if (!container) return;
+        const now = new Date();
+        // 60px por hora, offset para centrar la línea roja
+        const targetPx = Math.max(0, (now.getHours() * 60 + now.getMinutes()) - 80);
+        container.scrollTop = targetPx;
+    };
+
     // 1. Auto-scroll al momento actual — dispara en mount y al cambiar de vista
     useEffect(() => {
         if (viewMode !== 'timeline' || !isActualToday) return;
-        
-        const scrollToNow = () => {
-            const container = scrollRef.current;
-            if (!container) return;
-            const now = new Date();
-            // 60px por hora, offset para centrar la línea roja
-            const targetPx = Math.max(0, (now.getHours() * 60 + now.getMinutes()) - 80);
-            container.scrollTop = targetPx;
-        };
 
         // Primer intento inmediato
         scrollToNow();
@@ -450,7 +450,7 @@ export const TimelineAgendaView = ({
                                 <Plus size={16} />
                             </button>
                             <button onClick={() => viewMode === 'month' ? changeMonth(-1) : changeDate(viewMode === 'timeline' ? (isMobile ? -1 : -7) : -1)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer' }}><ChevronLeft size={16} /></button>
-                            <button onClick={() => setSelectedDate(new Date())} style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px 10px', fontSize: '0.65rem', fontWeight: 900, cursor: 'pointer' }}>HOY</button>
+                            <button onClick={() => { setSelectedDate(new Date()); scrollToNow(); setTimeout(scrollToNow, 300); }} style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px 10px', fontSize: '0.65rem', fontWeight: 900, cursor: 'pointer' }}>HOY</button>
                             <button onClick={() => viewMode === 'month' ? changeMonth(1) : changeDate(viewMode === 'timeline' ? (isMobile ? 1 : 7) : 1)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer' }}><ChevronRight size={16} /></button>
                             
                             {/* Separador */}
@@ -626,7 +626,14 @@ export const TimelineAgendaView = ({
                                 <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: config.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
                                     {config.icon}
                                 </div>
-                                <div style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{config.title}</div>
+                                <div style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--text-carbon)', flex: 1 }}>{config.title}</div>
+                                <button
+                                    onClick={() => setRightSidebarOpen(false)}
+                                    title="Cerrar panel"
+                                    style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#64748B', flexShrink: 0 }}
+                                >
+                                    <X size={16} />
+                                </button>
                             </div>
 
                             <div style={{ padding: '20px 16px 20px 0', flex: 1, overflowY: 'auto' }}>
