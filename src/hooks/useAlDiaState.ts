@@ -170,7 +170,39 @@ export interface ShoppingItem {
     purchasedAt?: string;       // YYYY-MM-DD, presente solo si ya se compró
     projectId?: number;
     note?: string;
+    category?: string;          // Tecnología, Hogar, Ropa... libre, sin catálogo fijo
+    status?: 'planning' | 'saving' | 'ready'; // en qué etapa está el ahorro para comprarlo
+    storeName?: string;         // ej. "Amazon"
+    storeUrl?: string;
+    nivel?: 1 | 2 | 3;           // Arquitectura de Abastecimiento: 1 OPEX, 2 CAPEX, 3 Cuarentena (deseo)
 }
+
+export interface Recipe {
+    id: number;
+    name: string;
+    kcal: number;
+    protein: number;    // gramos
+    carbs: number;       // gramos
+    prepMinutes?: number;
+    ingredients?: string; // uno por línea, para generar la lista de compras
+}
+
+export type MealType = 'desayuno' | 'almuerzo' | 'cena' | 'snacks';
+
+export interface MealPlanEntry {
+    id: number;
+    date: string;        // YYYY-MM-DD
+    mealType: MealType;
+    recipeId: number;
+}
+
+export interface NutritionGoals {
+    calories: number;
+    protein: number;
+    carbs: number;
+}
+
+export const DEFAULT_NUTRITION_GOALS: NutritionGoals = { calories: 2200, protein: 150, carbs: 250 };
 
 export interface UserPreferences {
     isBudgetFixed: boolean;
@@ -319,6 +351,9 @@ export const useAlDiaState = () => {
     const [expenseCategories, setExpenseCategories] = useState<string[]>(DEFAULT_EXPENSE_CATEGORIES);
     const [dailyBlocks, setDailyBlocks] = useState<DailyBlock[]>([]);
     const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
+    const [recipes, setRecipes] = useState<Recipe[]>([]);
+    const [mealPlanEntries, setMealPlanEntries] = useState<MealPlanEntry[]>([]);
+    const [nutritionGoals, setNutritionGoals] = useState<NutritionGoals>(DEFAULT_NUTRITION_GOALS);
     const [trash, setTrash] = useState<TrashItem[]>([]);
     const [hasLoadedFromCloud, setHasLoadedFromCloud] = useState(false);
     // Timestamp del último cambio local del usuario. Los snapshots de Firestore con lastSync
@@ -351,6 +386,9 @@ export const useAlDiaState = () => {
                 expenseCategories: JSON.parse(localStorage.getItem('aldia_expense_categories') || JSON.stringify(DEFAULT_EXPENSE_CATEGORIES)),
                 dailyblocks: JSON.parse(localStorage.getItem('aldia_dailyblocks') || '[]'),
                 shoppingList: JSON.parse(localStorage.getItem('aldia_shopping_list') || '[]'),
+                recipes: JSON.parse(localStorage.getItem('aldia_recipes') || '[]'),
+                mealPlanEntries: JSON.parse(localStorage.getItem('aldia_meal_plan_entries') || '[]'),
+                nutritionGoals: JSON.parse(localStorage.getItem('aldia_nutrition_goals') || JSON.stringify(DEFAULT_NUTRITION_GOALS)),
                 ritaEntries: JSON.parse(localStorage.getItem('aldia_rita_entries') || '[]'),
                 trash: JSON.parse(localStorage.getItem('aldia_trash') || '[]'),
                 negocioProjects: JSON.parse(localStorage.getItem('aldia_negocio_projects') || '[]')
@@ -371,6 +409,9 @@ export const useAlDiaState = () => {
             setExpenseCategories(data.expenseCategories);
             setDailyBlocks(data.dailyblocks);
             setShoppingList(data.shoppingList);
+            setRecipes(data.recipes);
+            setMealPlanEntries(data.mealPlanEntries);
+            setNutritionGoals(data.nutritionGoals);
             setRitaEntries(data.ritaEntries);
             setNegocioProjects(data.negocioProjects);
             setTrash(data.trash.filter((t: TrashItem) => Date.now() - t.deletedAt < 60 * 24 * 60 * 60 * 1000));
@@ -451,6 +492,9 @@ export const useAlDiaState = () => {
                 sync(cloud.expenseCategories, setExpenseCategories);
                 sync(cloud.dailyBlocks, setDailyBlocks);
                 sync(cloud.shoppingList, setShoppingList);
+                sync(cloud.recipes, setRecipes);
+                sync(cloud.mealPlanEntries, setMealPlanEntries);
+                sync(cloud.nutritionGoals, setNutritionGoals);
                 sync(cloud.ritaEntries, setRitaEntries);
                 sync(cloud.negocioProjects, setNegocioProjects);
                 sync(cloud.trash, setTrash);
@@ -478,10 +522,10 @@ export const useAlDiaState = () => {
     // Esto previene "stale closures" en el setTimeout del debounced save,
     // donde un array viejo de transactions podía enviarse a Firestore y causar un rollback visual.
     const latestStateRef = useRef({
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, ritaEntries, negocioProjects, trash
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, trash
     });
     latestStateRef.current = {
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, ritaEntries, negocioProjects, trash
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, trash
     };
 
     // 3. Persistencia Cloud (Debounced) y Local (Immediate)
@@ -506,6 +550,9 @@ export const useAlDiaState = () => {
         localStorage.setItem('aldia_expense_categories', JSON.stringify(expenseCategories));
         localStorage.setItem('aldia_dailyblocks', JSON.stringify(dailyBlocks));
         localStorage.setItem('aldia_shopping_list', JSON.stringify(shoppingList));
+        localStorage.setItem('aldia_recipes', JSON.stringify(recipes));
+        localStorage.setItem('aldia_meal_plan_entries', JSON.stringify(mealPlanEntries));
+        localStorage.setItem('aldia_nutrition_goals', JSON.stringify(nutritionGoals));
         localStorage.setItem('aldia_rita_entries', JSON.stringify(ritaEntries));
         localStorage.setItem('aldia_negocio_projects', JSON.stringify(negocioProjects));
         localStorage.setItem('aldia_trash', JSON.stringify(trash));
@@ -533,7 +580,7 @@ export const useAlDiaState = () => {
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, ritaEntries, negocioProjects, trash]);
+    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, trash]);
 
     // 4. Migraciones y Lógica Derivada
     useEffect(() => {
@@ -919,7 +966,12 @@ export const useAlDiaState = () => {
         estimatedAmount: number,
         priority: 'necesito' | 'quiero' = 'necesito',
         projectId?: number,
-        note?: string
+        note?: string,
+        category?: string,
+        status: 'planning' | 'saving' | 'ready' = 'planning',
+        storeName?: string,
+        storeUrl?: string,
+        nivel?: 1 | 2 | 3
     ) => {
         const item: ShoppingItem = {
             id: nextBlockId(),
@@ -928,7 +980,12 @@ export const useAlDiaState = () => {
             priority,
             createdAt: new Date().toLocaleDateString('en-CA'),
             projectId,
-            note
+            note,
+            category,
+            status,
+            storeName,
+            storeUrl,
+            nivel,
         };
         setShoppingList(prev => [item, ...prev]);
     };
@@ -962,6 +1019,50 @@ export const useAlDiaState = () => {
             const { purchasedAt, ...rest } = i;
             return rest as ShoppingItem;
         }));
+    };
+
+    /* ── Calendario de comidas ─────────────────────────────────────── */
+
+    const addRecipe = (name: string, kcal: number, protein: number, carbs: number, prepMinutes?: number, ingredients?: string) => {
+        const recipe: Recipe = {
+            id: nextBlockId(),
+            name,
+            kcal: Math.abs(kcal) || 0,
+            protein: Math.abs(protein) || 0,
+            carbs: Math.abs(carbs) || 0,
+            prepMinutes,
+            ingredients,
+        };
+        setRecipes(prev => [recipe, ...prev]);
+    };
+
+    const updateRecipe = (id: number, updates: Partial<Recipe>) => {
+        setRecipes(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
+    };
+
+    // Borrar una receta también saca sus asignaciones del calendario: una entrada
+    // apuntando a una receta inexistente no tiene forma de renderizarse.
+    const removeRecipe = (id: number) => {
+        setRecipes(prev => prev.filter(r => r.id !== id));
+        setMealPlanEntries(prev => prev.filter(e => e.recipeId !== id));
+    };
+
+    const addMealPlanEntry = (date: string, mealType: MealType, recipeId: number) => {
+        const entry: MealPlanEntry = { id: nextBlockId(), date, mealType, recipeId };
+        setMealPlanEntries(prev => [...prev, entry]);
+    };
+
+    // Mover (drag) una entrada ya puesta a otro día/comida, en vez de crear una nueva.
+    const moveMealPlanEntry = (id: number, date: string, mealType: MealType) => {
+        setMealPlanEntries(prev => prev.map(e => e.id === id ? { ...e, date, mealType } : e));
+    };
+
+    const removeMealPlanEntry = (id: number) => {
+        setMealPlanEntries(prev => prev.filter(e => e.id !== id));
+    };
+
+    const updateNutritionGoals = (updates: Partial<NutritionGoals>) => {
+        setNutritionGoals(prev => ({ ...prev, ...updates }));
     };
 
     // Helper: marca escritura local antes de cualquier mutación.
@@ -1032,6 +1133,10 @@ export const useAlDiaState = () => {
         removeShoppingItem: lw(removeShoppingItem),
         markShoppingItemPurchased: lw(markShoppingItemPurchased),
         unmarkShoppingItemPurchased: lw(unmarkShoppingItemPurchased),
+        // Calendario de comidas
+        recipes, addRecipe: lw(addRecipe), updateRecipe: lw(updateRecipe), removeRecipe: lw(removeRecipe),
+        mealPlanEntries, addMealPlanEntry: lw(addMealPlanEntry), moveMealPlanEntry: lw(moveMealPlanEntry), removeMealPlanEntry: lw(removeMealPlanEntry),
+        nutritionGoals, updateNutritionGoals: lw(updateNutritionGoals),
         trash, restoreFromTrash: lw(restoreFromTrash), clearTrash: lw(clearTrash),
         // Hoja de Rita
         ritaEntries,

@@ -36,6 +36,8 @@ import { NegocioLienzo } from './components/dashboard/NegocioLienzo';
 import { BuscadorDashboard } from './components/dashboard/BuscadorDashboard';
 import { MovimientosDashboard } from './components/dashboard/MovimientosDashboard';
 import { ListasDashboard } from './components/dashboard/ListasDashboard';
+import { ComprasDashboard } from './components/dashboard/ComprasDashboard';
+import { ComidasDashboard } from './components/dashboard/ComidasDashboard';
 
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -46,6 +48,8 @@ function App() {
     if (path.includes('/proyectos')) return 'Proyectos';
     if (path.includes('/movimientos')) return 'Movimientos';
     if (path.includes('/listas')) return 'Listas';
+    if (path.includes('/compras')) return 'Compras';
+    if (path.includes('/comidas')) return 'Comidas';
     if (path.includes('/tablero')) return 'Tablero';
     if (path.includes('/vida')) return 'Vida';
     if (path.includes('/cerebro')) return 'Cerebro';
@@ -99,6 +103,8 @@ function App() {
       else if (path.includes('/proyectos')) setActiveTab('Proyectos');
       else if (path.includes('/movimientos')) setActiveTab('Movimientos');
       else if (path.includes('/listas')) setActiveTab('Listas');
+      else if (path.includes('/compras')) setActiveTab('Compras');
+      else if (path.includes('/comidas')) setActiveTab('Comidas');
       else if (path.includes('/tablero')) setActiveTab('Tablero');
       else if (path.includes('/vida')) setActiveTab('Vida');
       else if (path.includes('/cerebro')) setActiveTab('Cerebro');
@@ -418,6 +424,29 @@ function App() {
                 removeNote={state.removeNote}
                 toggleNoteItem={state.toggleNoteItem}
                 updateNote={state.updateNote}
+              />
+            ) : activeTab === 'Compras' ? (
+              <ComprasDashboard
+                shoppingList={state.shoppingList}
+                addShoppingItem={state.addShoppingItem}
+                updateShoppingItem={state.updateShoppingItem}
+                removeShoppingItem={state.removeShoppingItem}
+                markShoppingItemPurchased={state.markShoppingItemPurchased}
+                presupuestoDisponible={state.balance}
+              />
+            ) : activeTab === 'Comidas' ? (
+              <ComidasDashboard
+                recipes={state.recipes}
+                addRecipe={state.addRecipe}
+                removeRecipe={state.removeRecipe}
+                mealPlanEntries={state.mealPlanEntries}
+                addMealPlanEntry={state.addMealPlanEntry}
+                moveMealPlanEntry={state.moveMealPlanEntry}
+                removeMealPlanEntry={state.removeMealPlanEntry}
+                nutritionGoals={state.nutritionGoals}
+                updateNutritionGoals={state.updateNutritionGoals}
+                shoppingList={state.shoppingList}
+                addShoppingItem={state.addShoppingItem}
               />
             ) : activeTab === 'Proyectos' ? (
               <ProyectosDashboard
