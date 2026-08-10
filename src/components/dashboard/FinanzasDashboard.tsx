@@ -74,7 +74,7 @@ interface FinanzasProps {
     setCategoryAccounts?: (type: "ingreso" | "gasto", name: string, accountIds: number[]) => void;
 }
 
-export type PeriodMode = "day" | "week" | "month" | "year" | "all";
+export type PeriodMode = "day" | "week" | "month" | "quarter" | "year" | "all";
 export type TxFilter = "all" | "ingreso" | "gasto";
 
 // Misma tarjeta que Plan/Checklist (bento), con el padding que ya usaban
@@ -173,7 +173,7 @@ const MoneyMini = ({ label, val, color, prefix = "S/ ", title: tip }: { label: s
     <div title={tip} style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
         <span style={{ fontSize: "0.56rem", fontWeight: 700, color: C.outline, textTransform: "uppercase", letterSpacing: "0.03em" }}>{label}</span>
         <span style={{ fontSize: "0.75rem", fontWeight: 900, color, whiteSpace: "nowrap" }}>
-            {prefix}{val.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            {prefix}{val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
     </div>
 );
@@ -348,6 +348,12 @@ export function getPeriodBounds(mode: PeriodMode, ref: Date): { start: string; e
         const last = new Date(ref.getFullYear(), ref.getMonth() + 1, 0);
         return { start: fmt(first), end: fmt(last) };
     }
+    if (mode === "quarter") {
+        const q = Math.floor(ref.getMonth() / 3);
+        const first = new Date(ref.getFullYear(), q * 3, 1);
+        const last = new Date(ref.getFullYear(), q * 3 + 3, 0);
+        return { start: fmt(first), end: fmt(last) };
+    }
     return { start: `${ref.getFullYear()}-01-01`, end: `${ref.getFullYear()}-12-31` };
 }
 
@@ -359,6 +365,7 @@ export function periodLabel(mode: PeriodMode, ref: Date): string {
         return `${start.slice(5)} → ${end.slice(5)}`;
     }
     if (mode === "month") return ref.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
+    if (mode === "quarter") return `T${Math.floor(ref.getMonth() / 3) + 1} ${ref.getFullYear()}`;
     return String(ref.getFullYear());
 }
 
@@ -367,6 +374,7 @@ export function shiftPeriod(mode: PeriodMode, ref: Date, dir: -1 | 1): Date {
     if (mode === "day") d.setDate(d.getDate() + dir);
     if (mode === "week") d.setDate(d.getDate() + dir * 7);
     if (mode === "month") d.setMonth(d.getMonth() + dir);
+    if (mode === "quarter") d.setMonth(d.getMonth() + dir * 3);
     if (mode === "year") d.setFullYear(d.getFullYear() + dir);
     return d;
 }
@@ -562,6 +570,7 @@ export const FinanzasDashboard = ({
         if (topPeriod === "day") return 1 / 30;
         if (topPeriod === "week") return 7 / 30;
         if (topPeriod === "month") return 1;
+        if (topPeriod === "quarter") return 3;
         if (topPeriod === "year") return 12;
         return 1;
     }, [topPeriod]);
@@ -570,12 +579,14 @@ export const FinanzasDashboard = ({
         if (topPeriod === "month" || topPeriod === "all") return totalFixedPending;
         if (topPeriod === "day") return monthlyFixedTotal / 30;
         if (topPeriod === "week") return (monthlyFixedTotal * 7) / 30;
+        if (topPeriod === "quarter") return monthlyFixedTotal * 3;
         return monthlyFixedTotal * 12; // "year"
     }, [topPeriod, totalFixedPending, monthlyFixedTotal]);
 
     const projectedPeriodLabel = useMemo(() => {
         if (topPeriod === "day") return "Proyección del día";
         if (topPeriod === "week") return "Proyección de la sem.";
+        if (topPeriod === "quarter") return "Proyección del trimestre";
         if (topPeriod === "year") return "Proyección del año";
         return "Proyección del mes";
     }, [topPeriod]);
@@ -604,6 +615,7 @@ export const FinanzasDashboard = ({
         if (topPeriod === "month" || topPeriod === "all") return totalIncomePending;
         if (topPeriod === "day") return fixedIncomeTotal / 30;
         if (topPeriod === "week") return (fixedIncomeTotal * 7) / 30;
+        if (topPeriod === "quarter") return fixedIncomeTotal * 3;
         return fixedIncomeTotal * 12; // "year"
     }, [topPeriod, totalIncomePending, fixedIncomeTotal]);
 
@@ -643,6 +655,7 @@ export const FinanzasDashboard = ({
     const fixedExpenseActual = useMemo(() => {
         if (topPeriod === "day") return fixedExpensePaidTotal / 30;
         if (topPeriod === "week") return (fixedExpensePaidTotal * 7) / 30;
+        if (topPeriod === "quarter") return fixedExpensePaidTotal * 3;
         if (topPeriod === "year") return fixedExpensePaidTotal * 12;
         return fixedExpensePaidTotal;
     }, [topPeriod, fixedExpensePaidTotal]);
@@ -652,6 +665,7 @@ export const FinanzasDashboard = ({
     const fixedExpenseProyectado = useMemo(() => {
         if (topPeriod === "day") return monthlyFixedTotal / 30;
         if (topPeriod === "week") return (monthlyFixedTotal * 7) / 30;
+        if (topPeriod === "quarter") return monthlyFixedTotal * 3;
         if (topPeriod === "year") return monthlyFixedTotal * 12;
         return monthlyFixedTotal;
     }, [topPeriod, monthlyFixedTotal]);
@@ -665,6 +679,7 @@ export const FinanzasDashboard = ({
             day: { label: "Ingresos (Día)", labelExp: "Gastos (Día)", sub: "Recibido hoy", subExp: "Gastado hoy" },
             week: { label: "Ingresos (Sem.)", labelExp: "Gastos (Sem.)", sub: "Recibido sem.", subExp: "Gastado sem." },
             month: { label: "Ingresos (Mes)", labelExp: "Gastos (Mes)", sub: "Recibido real", subExp: "Gastado real" },
+            quarter: { label: "Ingresos (Trim.)", labelExp: "Gastos (Trim.)", sub: "Recibido trim.", subExp: "Gastado trim." },
             year: { label: "Ingresos (Año)", labelExp: "Gastos (Año)", sub: "Recibido año", subExp: "Gastado año" },
             all: { label: "Ingresos (Total)", labelExp: "Gastos (Total)", sub: "Historial total", subExp: "Historial total" },
         };
@@ -710,14 +725,18 @@ export const FinanzasDashboard = ({
         });
     }, [accounts, transactions, topPeriod, periodRef]);
 
-    // Total real transferido en el período: cada transferencia toca 2 cuentas (sale de una,
-    // entra a otra), así que sumar accountsBudget.transferTotal de todas las cuentas cuenta
-    // cada transferencia dos veces. Acá se cuenta solo la pata de entrada, una vez por evento.
-    const transferPeriodTotal = useMemo(() => {
-        const { start, end } = getPeriodBounds(topPeriod, periodRef);
-        return transactions
-            .filter(tx => !tx.isCashless && tx.category === "Transferencia" && tx.type === "ingreso" && tx.fullDate >= start && tx.fullDate <= end)
-            .reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
+    // Ganancia real (todas las cuentas juntas) del período inmediatamente anterior al elegido
+    // arriba, para poder comparar "este mes vs el anterior" sin agregar un segundo selector.
+    // No aplica a "Todo" — no hay un "todo anterior" con el que comparar.
+    const previousPeriodGanancia = useMemo(() => {
+        if (topPeriod === "all") return null;
+        const prevRef = shiftPeriod(topPeriod, periodRef, -1);
+        const { start, end } = getPeriodBounds(topPeriod, prevRef);
+        const inPeriod = transactions.filter(tx => !tx.isCashless && tx.fullDate >= start && tx.fullDate <= end);
+        const ingresoReal = inPeriod.filter(tx => tx.type === "ingreso" && tx.category !== "Transferencia").reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
+        const gastoTotal = inPeriod.filter(tx => tx.type === "gasto").reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
+        const gastoTransferSaliente = inPeriod.filter(tx => tx.type === "gasto" && tx.category === "Transferencia").reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
+        return ingresoReal - (gastoTotal - gastoTransferSaliente);
     }, [transactions, topPeriod, periodRef]);
 
     const [isAddingAccount, setIsAddingAccount] = useState(false);
@@ -1006,8 +1025,8 @@ export const FinanzasDashboard = ({
                         justifyContent: movil ? "space-between" : undefined,
                     }}>
                         <div style={{ display: "flex", background: C.surfaceContainerLow, borderRadius: "999px", padding: "3px", border: `1px solid ${C.outlineVariant}`, overflowX: movil ? "auto" : undefined, minWidth: 0, flexShrink: movil ? 1 : undefined }}>
-                            {(["day", "week", "month", "year", "all"] as PeriodMode[]).map(mode => {
-                                const etiquetas: Record<PeriodMode, string> = { day: "Día", week: "Sem", month: "Mes", year: "Año", all: "Todo" };
+                            {(["day", "week", "month", "quarter", "year", "all"] as PeriodMode[]).map(mode => {
+                                const etiquetas: Record<PeriodMode, string> = { day: "Día", week: "Sem", month: "Mes", quarter: "Trim", year: "Año", all: "Todo" };
                                 const activo = topPeriod === mode;
                                 return (
                                     <button
@@ -1236,6 +1255,44 @@ export const FinanzasDashboard = ({
                         </span>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: movil ? "8px" : "8px" }}>
+                        {(() => {
+                            const ingresoTotal = accountsBudget.reduce((s, b) => s + b.ingresoReal, 0);
+                            const gastoRealTotal = accountsBudget.reduce((s, b) => s + b.gastoPuro, 0);
+                            const gananciaTotal = ingresoTotal - gastoRealTotal;
+                            const colorGananciaTotal = gananciaTotal >= 0 ? C.verde : C.rojo;
+                            const delta = previousPeriodGanancia === null ? null : gananciaTotal - previousPeriodGanancia;
+                            return (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "6px", padding: movil ? "0 10px 10px" : "0 12px 12px" }}>
+                                    <div style={{ display: "flex", flexDirection: movil ? "column" : "row", justifyContent: movil ? "flex-start" : "space-between", alignItems: movil ? "stretch" : "center", gap: movil ? "6px" : "8px" }}>
+                                        <span style={{ fontSize: "0.68rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.04em" }}>Total</span>
+                                        {movil ? (
+                                            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
+                                                <MoneyMini label="Ingreso" val={ingresoTotal} color={C.verde} prefix="+S/ " />
+                                                <MoneyMini label="Gasto Real" val={gastoRealTotal} color={C.rojo} prefix="−S/ " title="Gasto real: no incluye lo que salió como transferencia a otra cuenta" />
+                                                <MoneyMini label="Ganancia" val={Math.abs(gananciaTotal)} color={colorGananciaTotal} prefix={gananciaTotal >= 0 ? "+S/ " : "−S/ "} title="Ingreso Real menos Gasto Real" />
+                                            </div>
+                                        ) : (
+                                            <div style={{ display: "flex", gap: "14px", alignItems: "baseline" }}>
+                                                <span style={{ fontSize: "0.95rem", fontWeight: 900, color: C.verde }}>
+                                                    +S/ {ingresoTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                                </span>
+                                                <span style={{ fontSize: "0.95rem", fontWeight: 900, color: C.rojo }} title="Gasto real: no incluye lo que salió como transferencia a otra cuenta">
+                                                    −S/ {gastoRealTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                                </span>
+                                                <span style={{ fontSize: "0.95rem", fontWeight: 900, color: colorGananciaTotal }} title="Ingreso Real menos Gasto Real">
+                                                    {gananciaTotal >= 0 ? "+" : "−"}S/ {Math.abs(gananciaTotal).toLocaleString("en-US", { minimumFractionDigits: 2 })} ganancia
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {delta !== null && (
+                                        <span style={{ fontSize: "0.7rem", fontWeight: 700, color: delta >= 0 ? C.verde : C.rojo }}>
+                                            {delta >= 0 ? "▲" : "▼"} {delta >= 0 ? "+" : "−"}S/ {Math.abs(delta).toLocaleString("en-US", { minimumFractionDigits: 2 })} en ganancia vs. período anterior
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        })()}
                         {accountsWithBalance.map(acc => {
                             const b = accountsBudget.find(x => x.id === acc.id);
                             const ingreso = b?.ingresoReal ?? 0;
@@ -1282,45 +1339,6 @@ export const FinanzasDashboard = ({
                                 </div>
                             );
                         })}
-                        {(() => {
-                            const ingresoTotal = accountsBudget.reduce((s, b) => s + b.ingresoReal, 0);
-                            const gastoTotalSum = accountsBudget.reduce((s, b) => s + b.gastoTotal, 0);
-                            const gastoRealTotal = accountsBudget.reduce((s, b) => s + b.gastoPuro, 0);
-                            const gananciaTotal = ingresoTotal - gastoRealTotal;
-                            const colorGananciaTotal = gananciaTotal >= 0 ? C.verde : C.rojo;
-                            return (
-                                <div style={{ display: "flex", flexDirection: movil ? "column" : "row", justifyContent: movil ? "flex-start" : "space-between", alignItems: movil ? "stretch" : "center", padding: movil ? "8px 10px 0" : "8px 12px 0", marginTop: "2px", borderTop: `1px solid ${C.outlineVariant}`, gap: movil ? "6px" : "8px" }}>
-                                    <span style={{ fontSize: "0.68rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.04em" }}>Total</span>
-                                    {movil ? (
-                                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "6px" }}>
-                                            <MoneyMini label="Ingreso" val={ingresoTotal} color={C.verde} prefix="+S/ " />
-                                            <MoneyMini label="Gasto Total" val={gastoTotalSum} color={C.rojo} prefix="−S/ " title="Gasto total: incluye lo que salió como transferencia a otra cuenta" />
-                                            <MoneyMini label="Gasto Real" val={gastoRealTotal} color={C.rojo} prefix="−S/ " title="Gasto real: no incluye lo que salió como transferencia a otra cuenta" />
-                                            <MoneyMini label="Transf." val={transferPeriodTotal} color={C.outline} prefix="↔ S/ " title="Plata movida entre cuentas — no es ingreso ni gasto real" />
-                                            <MoneyMini label="Ganancia" val={Math.abs(gananciaTotal)} color={colorGananciaTotal} prefix={gananciaTotal >= 0 ? "+S/ " : "−S/ "} title="Ingreso Real menos Gasto Real" />
-                                        </div>
-                                    ) : (
-                                        <div style={{ display: "flex", gap: "14px", alignItems: "baseline" }}>
-                                            <span style={{ fontSize: "0.95rem", fontWeight: 900, color: C.verde }}>
-                                                +S/ {ingresoTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                            </span>
-                                            <span style={{ fontSize: "0.95rem", fontWeight: 900, color: C.rojo }} title="Gasto total: incluye lo que salió como transferencia a otra cuenta">
-                                                −S/ {gastoTotalSum.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                            </span>
-                                            <span style={{ fontSize: "0.95rem", fontWeight: 700, color: C.rojo }} title="Gasto real: no incluye lo que salió como transferencia a otra cuenta">
-                                                −S/ {gastoRealTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })} real
-                                            </span>
-                                            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: C.outline }} title="Plata movida entre cuentas — no es ingreso ni gasto real">
-                                                ↔ S/ {transferPeriodTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                            </span>
-                                            <span style={{ fontSize: "0.95rem", fontWeight: 900, color: colorGananciaTotal }} title="Ingreso Real menos Gasto Real">
-                                                {gananciaTotal >= 0 ? "+" : "−"}S/ {Math.abs(gananciaTotal).toLocaleString("en-US", { minimumFractionDigits: 2 })} ganancia
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })()}
                     </div>
                 </div>
             )}
