@@ -166,6 +166,18 @@ const StatCell = ({ label, val, dotColor, sub, checked, onToggle, opacity, borde
     </div>
 );
 
+// Celda chica con label arriba y monto abajo: en fila angosta (celular) tres montos
+// pegados uno al lado del otro se cortaban a la mitad del número. Apilar label+valor
+// en columna dentro de un grid de 3 evita ese corte sin sacrificar los tres datos.
+const MoneyMini = ({ label, val, color, prefix = "S/ ", title: tip }: { label: string; val: number; color: string; prefix?: string; title?: string }) => (
+    <div title={tip} style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <span style={{ fontSize: "0.56rem", fontWeight: 700, color: C.outline, textTransform: "uppercase", letterSpacing: "0.03em" }}>{label}</span>
+        <span style={{ fontSize: "0.75rem", fontWeight: 900, color, whiteSpace: "nowrap" }}>
+            {prefix}{val.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+        </span>
+    </div>
+);
+
 // Antes las 11 métricas vivían en una sola grilla plana, todas con el mismo peso
 // visual: no se distinguía "Ingresos" de "Deudas" de "Balance Neto" a simple vista.
 // Agruparlas por categoría (con su propio título) restaura esa jerarquía sin
@@ -679,19 +691,8 @@ export const FinanzasDashboard = ({
 
     // "Presupuesto real" por cuenta: ingreso genuino (sin transferencias que llegan de otra
     // cuenta, esas no son plata ganada) menos todo lo gastado (una transferencia SALIENTE sí
-    // cuenta como gasto real, porque esa cuenta sí perdió el dinero). Dos versiones, ambas
-    // visibles a la vez: el acumulado fijo de siempre (nunca se mueve, no depende de ningún
-    // selector) y una segunda atada al selector grande de arriba (Día/Sem/Mes/Año/Todo), el
-    // mismo que ya usa el resto de la página — sin agregar un selector nuevo aparte.
-    const accountsBudgetAllTime = useMemo(() => {
-        return accounts.map(acc => {
-            const all = transactions.filter(tx => tx.accountId === acc.id && !tx.isCashless);
-            const ingresoReal = all.filter(tx => tx.type === "ingreso" && tx.category !== "Transferencia").reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
-            const gastoTotal = all.filter(tx => tx.type === "gasto").reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
-            return { id: acc.id, remaining: ingresoReal - gastoTotal, ingresoReal, gastoTotal };
-        });
-    }, [accounts, transactions]);
-
+    // cuenta como gasto real, porque esa cuenta sí perdió el dinero). Atado al selector grande
+    // de arriba (Día/Sem/Mes/Año/Todo), el mismo que ya usa el resto de la página.
     const accountsBudget = useMemo(() => {
         const { start, end } = getPeriodBounds(topPeriod, periodRef);
         return accounts.map(acc => {
@@ -1211,28 +1212,6 @@ export const FinanzasDashboard = ({
                                 <div style={{ fontSize: movil ? "0.8rem" : "1.2rem", fontWeight: 900, marginTop: movil ? "3px" : "6px", color: C.onSurface, whiteSpace: "nowrap" }}>
                                     S/ {acc.balance.toLocaleString("en-US", { minimumFractionDigits: movil ? 0 : 2 })}
                                 </div>
-                                {(() => {
-                                    const allTime = accountsBudgetAllTime.find(x => x.id === acc.id);
-                                    const b = accountsBudget.find(x => x.id === acc.id);
-                                    if (!allTime || (allTime.ingresoReal === 0 && allTime.gastoTotal === 0)) return null;
-                                    const etiquetasPeriodo: Record<PeriodMode, string> = { day: "Hoy", week: "Esta sem.", month: "Este mes", year: "Este año", all: "Acumulado" };
-                                    const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 0 });
-                                    const linea = (label: string, v: { remaining: number; ingresoReal: number; gastoTotal: number }, tip: string) => (
-                                        <div title={tip} style={{ marginTop: "3px", whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.3 }}>
-                                            <span style={{ fontSize: movil ? "0.55rem" : "0.62rem", fontWeight: 800, color: v.remaining < 0 ? C.rojo : C.verde }}>
-                                                {label}: {v.remaining < 0 ? "-" : ""}S/ {Math.abs(v.remaining).toLocaleString("en-US", { minimumFractionDigits: movil ? 0 : 2 })}
-                                            </span>
-                                            <span style={{ fontSize: movil ? "0.5rem" : "0.56rem", color: C.outline, fontWeight: 600 }}> (+S/{fmt(v.ingresoReal)} −S/{fmt(v.gastoTotal)})</span>
-                                        </div>
-                                    );
-                                    return (
-                                        <>
-                                            {linea("Acumulado", allTime, "Ingreso real acumulado (sin transferencias recibidas) menos todo lo gastado, desde siempre. Nunca se reinicia.")}
-                                            {topPeriod !== "all" && b && (b.ingresoReal > 0 || b.gastoTotal > 0) &&
-                                                linea(etiquetasPeriodo[topPeriod], b, "Ingreso real menos gasto, solo del período elegido arriba (Día/Sem/Mes/Año/Todo).")}
-                                        </>
-                                    );
-                                })()}
                             </button>
                         ))}
                     </div>
@@ -1243,54 +1222,72 @@ export const FinanzasDashboard = ({
                 transferencias) y cuánto salió de cada cuenta en el período elegido arriba ─── */}
             {accountsWithBalance.length > 0 && (
                 <div style={{ ...CARD, padding: movil ? "1rem" : "1.5rem" }}>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: "6px", marginBottom: movil ? "0.7rem" : "1rem" }}>
-                        <TrendingUp size={16} color={C.verde} />
-                        <span style={{ fontSize: "0.85rem", fontWeight: 800 }}>Ingresos y Gastos por Cuenta</span>
+                    <div style={{ display: "flex", flexDirection: movil ? "column" : "row", alignItems: movil ? "flex-start" : "baseline", gap: movil ? "1px" : "6px", marginBottom: movil ? "0.7rem" : "1rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <TrendingUp size={16} color={C.verde} />
+                            <span style={{ fontSize: "0.85rem", fontWeight: 800 }}>Ingresos y Gastos por Cuenta</span>
+                        </div>
                         <span style={{ fontSize: "0.65rem", color: C.outline, textTransform: "capitalize" }}>
-                            · {periodLabel(topPeriod, periodRef)}
+                            {!movil && "· "}{periodLabel(topPeriod, periodRef)}
                         </span>
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: movil ? "6px" : "8px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: movil ? "8px" : "8px" }}>
                         {accountsWithBalance.map(acc => {
                             const b = accountsBudget.find(x => x.id === acc.id);
                             const ingreso = b?.ingresoReal ?? 0;
                             const gasto = b?.gastoTotal ?? 0;
                             const transfer = b?.transferTotal ?? 0;
                             return (
-                                <div key={acc.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: movil ? "8px 10px" : "10px 12px", borderRadius: "10px", background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, gap: "8px" }}>
+                                <div key={acc.id} style={{ display: "flex", flexDirection: movil ? "column" : "row", justifyContent: movil ? "flex-start" : "space-between", alignItems: movil ? "stretch" : "center", padding: movil ? "10px" : "10px 12px", borderRadius: "10px", background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, gap: movil ? "8px" : "8px" }}>
                                     <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
                                         <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: acc.color, flexShrink: 0 }} />
-                                        <span style={{ fontSize: movil ? "0.75rem" : "0.82rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={acc.name}>
+                                        <span style={{ fontSize: movil ? "0.78rem" : "0.82rem", fontWeight: 700, overflow: movil ? "visible" : "hidden", textOverflow: movil ? "clip" : "ellipsis", whiteSpace: movil ? "normal" : "nowrap" }} title={acc.name}>
                                             {acc.name}
                                         </span>
                                     </div>
-                                    <div style={{ display: "flex", gap: movil ? "8px" : "14px", flexShrink: 0, alignItems: "baseline" }}>
-                                        <span style={{ fontSize: movil ? "0.8rem" : "0.9rem", fontWeight: 900, color: C.verde }}>
-                                            +S/ {ingreso.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                        </span>
-                                        <span style={{ fontSize: movil ? "0.8rem" : "0.9rem", fontWeight: 900, color: C.rojo }}>
-                                            −S/ {gasto.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                        </span>
-                                        <span style={{ fontSize: movil ? "0.68rem" : "0.75rem", fontWeight: 700, color: C.outline }} title="Plata movida entre cuentas — no es ingreso ni gasto real">
-                                            ↔ S/ {transfer.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                        </span>
-                                    </div>
+                                    {movil ? (
+                                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
+                                            <MoneyMini label="Ingreso" val={ingreso} color={C.verde} prefix="+S/ " />
+                                            <MoneyMini label="Gasto" val={gasto} color={C.rojo} prefix="−S/ " />
+                                            <MoneyMini label="Transf." val={transfer} color={C.outline} prefix="↔ S/ " title="Plata movida entre cuentas — no es ingreso ni gasto real" />
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: "flex", gap: "14px", flexShrink: 0, alignItems: "baseline" }}>
+                                            <span style={{ fontSize: "0.9rem", fontWeight: 900, color: C.verde }}>
+                                                +S/ {ingreso.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                            </span>
+                                            <span style={{ fontSize: "0.9rem", fontWeight: 900, color: C.rojo }}>
+                                                −S/ {gasto.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                            </span>
+                                            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: C.outline }} title="Plata movida entre cuentas — no es ingreso ni gasto real">
+                                                ↔ S/ {transfer.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: movil ? "6px 10px 0" : "8px 12px 0", marginTop: "2px", borderTop: `1px solid ${C.outlineVariant}` }}>
+                        <div style={{ display: "flex", flexDirection: movil ? "column" : "row", justifyContent: movil ? "flex-start" : "space-between", alignItems: movil ? "stretch" : "center", padding: movil ? "8px 10px 0" : "8px 12px 0", marginTop: "2px", borderTop: `1px solid ${C.outlineVariant}`, gap: movil ? "6px" : "8px" }}>
                             <span style={{ fontSize: "0.68rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.04em" }}>Total</span>
-                            <div style={{ display: "flex", gap: movil ? "8px" : "14px", alignItems: "baseline" }}>
-                                <span style={{ fontSize: movil ? "0.85rem" : "0.95rem", fontWeight: 900, color: C.verde }}>
-                                    +S/ {accountsBudget.reduce((s, b) => s + b.ingresoReal, 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                </span>
-                                <span style={{ fontSize: movil ? "0.85rem" : "0.95rem", fontWeight: 900, color: C.rojo }}>
-                                    −S/ {accountsBudget.reduce((s, b) => s + b.gastoTotal, 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                </span>
-                                <span style={{ fontSize: movil ? "0.68rem" : "0.75rem", fontWeight: 700, color: C.outline }} title="Plata movida entre cuentas — no es ingreso ni gasto real">
-                                    ↔ S/ {transferPeriodTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                </span>
-                            </div>
+                            {movil ? (
+                                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
+                                    <MoneyMini label="Ingreso" val={accountsBudget.reduce((s, b) => s + b.ingresoReal, 0)} color={C.verde} prefix="+S/ " />
+                                    <MoneyMini label="Gasto" val={accountsBudget.reduce((s, b) => s + b.gastoTotal, 0)} color={C.rojo} prefix="−S/ " />
+                                    <MoneyMini label="Transf." val={transferPeriodTotal} color={C.outline} prefix="↔ S/ " title="Plata movida entre cuentas — no es ingreso ni gasto real" />
+                                </div>
+                            ) : (
+                                <div style={{ display: "flex", gap: "14px", alignItems: "baseline" }}>
+                                    <span style={{ fontSize: "0.95rem", fontWeight: 900, color: C.verde }}>
+                                        +S/ {accountsBudget.reduce((s, b) => s + b.ingresoReal, 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                    </span>
+                                    <span style={{ fontSize: "0.95rem", fontWeight: 900, color: C.rojo }}>
+                                        −S/ {accountsBudget.reduce((s, b) => s + b.gastoTotal, 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                    </span>
+                                    <span style={{ fontSize: "0.75rem", fontWeight: 700, color: C.outline }} title="Plata movida entre cuentas — no es ingreso ni gasto real">
+                                        ↔ S/ {transferPeriodTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
