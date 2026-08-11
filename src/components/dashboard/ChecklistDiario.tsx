@@ -190,6 +190,8 @@ interface ChecklistDiarioProps {
     incomeCategories?:  string[];
     expenseCategories?: string[];
     categoryAccountScope?: { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
+    categoryGroups?: { ingreso: Record<string, string>; gasto: Record<string, string> };
+    groupAccountScope?: { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
 }
 
 const SORT_STORAGE_KEY = 'aldia-checklist-custom-order';
@@ -197,7 +199,7 @@ const SORT_STORAGE_KEY = 'aldia-checklist-custom-order';
 export const ChecklistDiario = ({
     dailyBlocks, addDailyBlock, toggleDailyBlock, removeDailyBlock, updateDailyBlock, projects,
     addTransaction, accounts = [],
-    incomeCategories, expenseCategories, categoryAccountScope,
+    incomeCategories, expenseCategories, categoryAccountScope, categoryGroups, groupAccountScope,
 }: ChecklistDiarioProps) => {
     /* La fecha se recalcula sola: si la app queda abierta y pasa medianoche,
        el checklist salta al día nuevo sin necesidad de recargar. */
@@ -779,6 +781,7 @@ export const ChecklistDiario = ({
                             addTransaction={addTransaction} accounts={accounts}
                             incomeCategories={incomeCategories} expenseCategories={expenseCategories}
                             categoryAccountScope={categoryAccountScope}
+                            categoryGroups={categoryGroups} groupAccountScope={groupAccountScope}
                             compacto
                         />
                     </div>
@@ -943,6 +946,7 @@ export const ChecklistDiario = ({
                         addTransaction={addTransaction} accounts={accounts}
                         incomeCategories={incomeCategories} expenseCategories={expenseCategories}
                         categoryAccountScope={categoryAccountScope}
+                        categoryGroups={categoryGroups} groupAccountScope={groupAccountScope}
                     />
                 )}
 
@@ -1367,11 +1371,13 @@ interface RegistroRapidoProps {
     incomeCategories?: string[];
     expenseCategories?: string[];
     categoryAccountScope?: { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
+    categoryGroups?: { ingreso: Record<string, string>; gasto: Record<string, string> };
+    groupAccountScope?: { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
 }
 
 const RegistroRapido = ({
     addTransaction, accounts, compacto = false,
-    incomeCategories, expenseCategories, categoryAccountScope,
+    incomeCategories, expenseCategories, categoryAccountScope, categoryGroups, groupAccountScope,
 }: RegistroRapidoProps) => {
     const [tipo, setTipo] = useState<'gasto' | 'ingreso' | null>(null);
 
@@ -1417,6 +1423,8 @@ const RegistroRapido = ({
                 incomeCategories={incomeCategories}
                 expenseCategories={expenseCategories}
                 categoryAccountScope={categoryAccountScope}
+                categoryGroups={categoryGroups}
+                groupAccountScope={groupAccountScope}
             />
         </div>
     );

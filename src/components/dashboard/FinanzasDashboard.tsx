@@ -76,6 +76,8 @@ interface FinanzasProps {
     setCategoryGroup?: (type: "ingreso" | "gasto", name: string, groupName: string | null) => void;
     renameCategoryGroup?: (type: "ingreso" | "gasto", oldGroupName: string, newGroupName: string) => void;
     deleteCategoryGroup?: (type: "ingreso" | "gasto", groupName: string) => void;
+    groupAccountScope?: { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
+    setGroupAccounts?: (type: "ingreso" | "gasto", groupName: string, accountIds: number[]) => void;
 }
 
 export type PeriodMode = "day" | "week" | "month" | "quarter" | "year" | "all";
@@ -401,6 +403,7 @@ export const FinanzasDashboard = ({
     incomeCategories, expenseCategories, addCategory, removeCategory, renameCategory, mergeCategory,
     categoryAccountScope, setCategoryAccounts,
     categoryGroups, setCategoryGroup, renameCategoryGroup, deleteCategoryGroup,
+    groupAccountScope, setGroupAccounts,
 }: FinanzasProps) => {
 
     // Migración retroactiva: los pares gasto/ingreso que antes se anotaban a mano con
@@ -785,6 +788,7 @@ export const FinanzasDashboard = ({
     const [groupRenameDraft, setGroupRenameDraft] = useState("");
     const [confirmDeleteGroup, setConfirmDeleteGroup] = useState<string | null>(null);
     const [activeGroupMenu, setActiveGroupMenu] = useState<string | null>(null);
+    const [groupMenuMode, setGroupMenuMode] = useState<"root" | "accounts">("root");
     const [isAddingGroup, setIsAddingGroup] = useState(false);
     const [groupCategoryTarget, setGroupCategoryTarget] = useState("");
     const currentCategoriesForTab = useMemo(() => (categoryTab === "gasto" ? expenseCategories : incomeCategories) || [], [categoryTab, expenseCategories, incomeCategories]);
@@ -1189,6 +1193,8 @@ export const FinanzasDashboard = ({
                 incomeCategories={incomeCategories}
                 expenseCategories={expenseCategories}
                 categoryAccountScope={categoryAccountScope}
+                categoryGroups={categoryGroups}
+                groupAccountScope={groupAccountScope}
             />
 
             {/* ── Mis Cuentas: vista directa y siempre visible de cuánto hay en cada
@@ -1639,7 +1645,10 @@ export const FinanzasDashboard = ({
 
                                         return (
                                             <>
-                                                {groupOrder.map(g => (
+                                                {groupOrder.map(g => {
+                                                    const scopedAccountIds = groupAccountScope?.[categoryTab]?.[g] || [];
+                                                    const scopedAccounts = scopedAccountIds.map(id => accounts.find(a => a.id === id)).filter((a): a is typeof accounts[number] => !!a);
+                                                    return (
                                                     <div key={g}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
                                                             {editingGroupName === g ? (
@@ -1656,10 +1665,17 @@ export const FinanzasDashboard = ({
                                                                     <Layers size={11} style={{ verticalAlign: "-1px", marginRight: "4px" }} />{g}
                                                                 </span>
                                                             )}
-                                                            {editingGroupName !== g && (renameCategoryGroup || deleteCategoryGroup) && (
+                                                            {scopedAccounts.length > 0 && (
+                                                                <div title={`Solo en: ${scopedAccounts.map(a => a.name).join(", ")}`} style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+                                                                    {scopedAccounts.map(a => (
+                                                                        <span key={a.id} style={{ width: "7px", height: "7px", borderRadius: "50%", background: a.color, display: "inline-block" }} />
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            {editingGroupName !== g && (renameCategoryGroup || deleteCategoryGroup || setGroupAccounts) && (
                                                                 <div style={{ position: "relative" }}>
                                                                     <button
-                                                                        onClick={() => setActiveGroupMenu(activeGroupMenu === g ? null : g)}
+                                                                        onClick={() => { setActiveGroupMenu(activeGroupMenu === g ? null : g); setGroupMenuMode("root"); }}
                                                                         style={{ background: "none", border: "none", cursor: "pointer", color: C.outline, display: "flex", padding: "2px" }}
                                                                     >
                                                                         <MoreVertical size={12} />
@@ -1670,15 +1686,49 @@ export const FinanzasDashboard = ({
                                                                                 initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
                                                                                 style={{ position: "absolute", top: "22px", left: 0, background: "white", borderRadius: "12px", boxShadow: "0 8px 24px rgba(0,0,0,0.15)", border: `1px solid ${C.outlineVariant}`, overflow: "hidden", zIndex: 20, minWidth: "150px" }}
                                                                             >
-                                                                                {renameCategoryGroup && (
-                                                                                    <button onClick={() => { startRenameGroup(g); setActiveGroupMenu(null); }} style={menuItemStyle}>
-                                                                                        <Edit2 size={13} /> Renombrar
-                                                                                    </button>
-                                                                                )}
-                                                                                {deleteCategoryGroup && (
-                                                                                    <button onClick={() => { setConfirmDeleteGroup(g); setActiveGroupMenu(null); }} style={{ ...menuItemStyle, color: C.rojo, borderTop: `1px solid ${C.outlineVariant}` }}>
-                                                                                        <Trash2 size={13} /> Eliminar
-                                                                                    </button>
+                                                                                {groupMenuMode === "root" ? (
+                                                                                    <>
+                                                                                        {renameCategoryGroup && (
+                                                                                            <button onClick={() => { startRenameGroup(g); setActiveGroupMenu(null); }} style={menuItemStyle}>
+                                                                                                <Edit2 size={13} /> Renombrar
+                                                                                            </button>
+                                                                                        )}
+                                                                                        {setGroupAccounts && accounts.length > 1 && (
+                                                                                            <button onClick={() => setGroupMenuMode("accounts")} style={menuItemStyle}>
+                                                                                                <Wallet size={13} /> Cuentas...
+                                                                                            </button>
+                                                                                        )}
+                                                                                        {deleteCategoryGroup && (
+                                                                                            <button onClick={() => { setConfirmDeleteGroup(g); setActiveGroupMenu(null); }} style={{ ...menuItemStyle, color: C.rojo, borderTop: `1px solid ${C.outlineVariant}` }}>
+                                                                                                <Trash2 size={13} /> Eliminar
+                                                                                            </button>
+                                                                                        )}
+                                                                                    </>
+                                                                                ) : (
+                                                                                    <div style={{ maxHeight: "220px", overflowY: "auto", padding: "6px 4px" }}>
+                                                                                        <div style={{ fontSize: "0.62rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.04em", padding: "2px 10px 6px" }}>
+                                                                                            Aplica en
+                                                                                        </div>
+                                                                                        {accounts.map(acc => {
+                                                                                            const checked = scopedAccountIds.includes(acc.id);
+                                                                                            return (
+                                                                                                <label key={acc.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 10px", fontSize: "0.78rem", fontWeight: 600, color: C.onSurface, cursor: "pointer" }}>
+                                                                                                    <input
+                                                                                                        type="checkbox"
+                                                                                                        checked={checked}
+                                                                                                        onChange={() => {
+                                                                                                            const next = checked ? scopedAccountIds.filter(id => id !== acc.id) : [...scopedAccountIds, acc.id];
+                                                                                                            setGroupAccounts?.(categoryTab, g, next);
+                                                                                                        }}
+                                                                                                    />
+                                                                                                    {acc.name}
+                                                                                                </label>
+                                                                                            );
+                                                                                        })}
+                                                                                        <div style={{ fontSize: "0.62rem", color: C.outline, fontStyle: "italic", padding: "6px 10px 2px" }}>
+                                                                                            Ninguna marcada = aplica en todas.
+                                                                                        </div>
+                                                                                    </div>
                                                                                 )}
                                                                             </motion.div>
                                                                         )}
@@ -1690,7 +1740,8 @@ export const FinanzasDashboard = ({
                                                             {byGroup[g].map(renderChip)}
                                                         </div>
                                                     </div>
-                                                ))}
+                                                    );
+                                                })}
                                                 {ungrouped.length > 0 && (
                                                     <div>
                                                         {groupOrder.length > 0 && (

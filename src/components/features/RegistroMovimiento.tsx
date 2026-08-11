@@ -72,12 +72,14 @@ interface RegistroMovimientoProps {
     incomeCategories?: string[];
     expenseCategories?: string[];
     categoryAccountScope?: { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
+    categoryGroups?: { ingreso: Record<string, string>; gasto: Record<string, string> };
+    groupAccountScope?: { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
 }
 
 export const RegistroMovimiento = ({
     open, onClose, addTransaction, accounts, tipoInicial = 'gasto',
     incomeCategories = DEFAULT_INCOME_CATEGORIES, expenseCategories = DEFAULT_EXPENSE_CATEGORIES,
-    categoryAccountScope,
+    categoryAccountScope, categoryGroups, groupAccountScope,
 }: RegistroMovimientoProps) => {
     const [tipo, setTipo] = useState<'gasto' | 'ingreso'>(tipoInicial);
     const [texto, setTexto] = useState('');
@@ -117,14 +119,25 @@ export const RegistroMovimiento = ({
 
     const colorTipo = tipo === 'gasto' ? C.rojo : C.verde;
     // Solo se filtra cuando ya hay una cuenta elegida: una categoría sin entrada
-    // en el scope (o con array vacío) aplica a todas las cuentas por igual.
+    // en el scope (o con array vacío) aplica a todas las cuentas por igual. Si la
+    // categoría no tiene scope propio pero pertenece a un grupo que sí lo tiene,
+    // hereda el del grupo (así no hay que repetir "Cuentas..." en cada categoría).
     const categorias = useMemo(() => {
         const base = tipo === 'ingreso' ? incomeCategories : expenseCategories;
         const scope = categoryAccountScope?.[tipo];
-        if (!scope || !cuentaId) return base;
+        const groupMap = categoryGroups?.[tipo];
+        const groupScope = groupAccountScope?.[tipo];
+        if ((!scope && !groupScope) || !cuentaId) return base;
         const cid = Number(cuentaId);
-        return base.filter(cat => !scope[cat] || scope[cat].length === 0 || scope[cat].includes(cid));
-    }, [tipo, incomeCategories, expenseCategories, categoryAccountScope, cuentaId]);
+        return base.filter(cat => {
+            const own = scope?.[cat];
+            if (own && own.length > 0) return own.includes(cid);
+            const group = groupMap?.[cat];
+            const inherited = group ? groupScope?.[group] : undefined;
+            if (inherited && inherited.length > 0) return inherited.includes(cid);
+            return true;
+        });
+    }, [tipo, incomeCategories, expenseCategories, categoryAccountScope, categoryGroups, groupAccountScope, cuentaId]);
 
     // Si cambiar de cuenta deja la categoría elegida fuera de su alcance, se limpia
     // para no dejar seleccionado algo que ya no está entre las opciones visibles.

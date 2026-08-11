@@ -224,6 +224,11 @@ export interface UserPreferences {
     // JSON: { ingreso: Record<categoria, grupo>, gasto: Record<categoria, grupo> }.
     // Una categoria sin entrada no pertenece a ningun grupo ("Sin grupo").
     categoryGroups: string;
+    // JSON: { ingreso: Record<grupo, accountId[]>, gasto: Record<grupo, accountId[]> }.
+    // Mismo mecanismo que categoryAccountScope pero a nivel de grupo: vincula TODAS
+    // las categorias de ese grupo a esas cuentas de una sola vez, en vez de repetir
+    // "Cuentas..." categoria por categoria.
+    groupAccountScope: string;
     notionSyncEnabled: boolean; // Si esta en false, el script de sync con Notion no escribe nada
     blockOrder: string; // JSON: Record<period, string[]> -- orden manual (drag) de las tarjetas de Bloques por franja
 }
@@ -233,6 +238,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
     fixedIncomes: "[]",
     categoryAccountScope: '{"ingreso":{},"gasto":{}}',
     categoryGroups: '{"ingreso":{},"gasto":{}}',
+    groupAccountScope: '{"ingreso":{},"gasto":{}}',
     blockOrder: '{}',
     notionSyncEnabled: true
 };
@@ -938,6 +944,11 @@ export const useAlDiaState = () => {
             Object.keys(next[type]).forEach(cat => { if (next[type][cat] === oldGroupName) next[type][cat] = trimmed; });
             return { ...prev, categoryGroups: JSON.stringify(next) };
         });
+        const carriedAccounts = groupAccountScope[type][oldGroupName];
+        if (carriedAccounts) {
+            setGroupAccounts(type, oldGroupName, []);
+            setGroupAccounts(type, trimmed, carriedAccounts);
+        }
     };
 
     const deleteCategoryGroup = (type: 'ingreso' | 'gasto', groupName: string) => {
@@ -950,6 +961,31 @@ export const useAlDiaState = () => {
             const next = { ...current, [type]: { ...current[type] } };
             Object.keys(next[type]).forEach(cat => { if (next[type][cat] === groupName) delete next[type][cat]; });
             return { ...prev, categoryGroups: JSON.stringify(next) };
+        });
+        setGroupAccounts(type, groupName, []);
+    };
+
+    // Cuentas a las que un GRUPO entero está vinculado (a diferencia de
+    // categoryAccountScope, que es por categoría suelta). Mismo mecanismo,
+    // guardado aparte en preferences para no pisar categoryAccountScope.
+    const groupAccountScope: CategoryAccountScope = useMemo(() => {
+        try {
+            const parsed = JSON.parse(preferences.groupAccountScope || '{"ingreso":{},"gasto":{}}');
+            return { ingreso: parsed.ingreso || {}, gasto: parsed.gasto || {} };
+        } catch { return { ingreso: {}, gasto: {} }; }
+    }, [preferences.groupAccountScope]);
+
+    const setGroupAccounts = (type: 'ingreso' | 'gasto', groupName: string, accountIds: number[]) => {
+        setPreferences(prev => {
+            let current: CategoryAccountScope;
+            try {
+                const parsed = JSON.parse(prev.groupAccountScope || '{"ingreso":{},"gasto":{}}');
+                current = { ingreso: parsed.ingreso || {}, gasto: parsed.gasto || {} };
+            } catch { current = { ingreso: {}, gasto: {} }; }
+            const next = { ...current, [type]: { ...current[type] } };
+            if (accountIds.length === 0) delete next[type][groupName];
+            else next[type][groupName] = accountIds;
+            return { ...prev, groupAccountScope: JSON.stringify(next) };
         });
     };
 
@@ -1211,6 +1247,7 @@ export const useAlDiaState = () => {
         categoryAccountScope, setCategoryAccounts: lw(setCategoryAccounts),
         categoryGroups, setCategoryGroup: lw(setCategoryGroup),
         renameCategoryGroup: lw(renameCategoryGroup), deleteCategoryGroup: lw(deleteCategoryGroup),
+        groupAccountScope, setGroupAccounts: lw(setGroupAccounts),
         // Bloques Diarios
         dailyBlocks, addDailyBlock: lw(addDailyBlock), toggleDailyBlock: lw(toggleDailyBlock), removeDailyBlock: lw(removeDailyBlock), updateDailyBlock: lw(updateDailyBlock),
         // Lista de compras
