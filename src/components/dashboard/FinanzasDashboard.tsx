@@ -1,10 +1,10 @@
-import { useState, useMemo, useEffect } from "react";
+﻿import { useState, useMemo, useEffect } from "react";
 import {
     Wallet, Plus, TrendingUp, TrendingDown,
     Trash2, Edit2, PieChart, X,
     Check, PiggyBank, ArrowDownCircle,
     BarChart3, Tag, MoreVertical, Merge, ArrowLeftRight,
-    ChevronLeft, ChevronRight
+    ChevronLeft, ChevronRight, Layers
 } from "lucide-react";
 import { AnalyticsView } from "./AnalyticsView";
 import { motion, AnimatePresence } from "framer-motion";
@@ -72,6 +72,10 @@ interface FinanzasProps {
     mergeCategory?: (type: "ingreso" | "gasto", sourceName: string, targetName: string) => void;
     categoryAccountScope?: { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
     setCategoryAccounts?: (type: "ingreso" | "gasto", name: string, accountIds: number[]) => void;
+    categoryGroups?: { ingreso: Record<string, string>; gasto: Record<string, string> };
+    setCategoryGroup?: (type: "ingreso" | "gasto", name: string, groupName: string | null) => void;
+    renameCategoryGroup?: (type: "ingreso" | "gasto", oldGroupName: string, newGroupName: string) => void;
+    deleteCategoryGroup?: (type: "ingreso" | "gasto", groupName: string) => void;
 }
 
 export type PeriodMode = "day" | "week" | "month" | "quarter" | "year" | "all";
@@ -396,6 +400,7 @@ export const FinanzasDashboard = ({
     onNavigate,
     incomeCategories, expenseCategories, addCategory, removeCategory, renameCategory, mergeCategory,
     categoryAccountScope, setCategoryAccounts,
+    categoryGroups, setCategoryGroup, renameCategoryGroup, deleteCategoryGroup,
 }: FinanzasProps) => {
 
     // Migración retroactiva: los pares gasto/ingreso que antes se anotaban a mano con
@@ -762,13 +767,27 @@ export const FinanzasDashboard = ({
 
     // ── Categorías ────────────────────────────────────────────────────────
     const [isCategoriesVisible, setIsCategoriesVisible] = useState(false);
+    // El acordeón necesita overflow:hidden mientras anima su alto (si no, el contenido
+    // se ve "saltar" fuera de la caja durante la transición) pero eso mismo recorta
+    // cualquier menú desplegable (⋮) que quiera salir del cuadro una vez ya abierto.
+    // Se guarda aparte de isCategoriesVisible para poder tener hidden durante la
+    // animación y visible solo cuando ya terminó de abrirse.
+    const [categoriesOverflowVisible, setCategoriesOverflowVisible] = useState(false);
     const [categoryTab, setCategoryTab] = useState<"gasto" | "ingreso">("gasto");
     const [newCategoryName, setNewCategoryName] = useState("");
     const [activeMenuCategory, setActiveMenuCategory] = useState<string | null>(null);
-    const [categoryMenuMode, setCategoryMenuMode] = useState<"root" | "merge" | "accounts">("root");
+    const [categoryMenuMode, setCategoryMenuMode] = useState<"root" | "merge" | "accounts" | "group">("root");
     const [renamingCategory, setRenamingCategory] = useState<string | null>(null);
     const [renameDraft, setRenameDraft] = useState("");
     const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<string | null>(null);
+    const [groupDraft, setGroupDraft] = useState("");
+    const [editingGroupName, setEditingGroupName] = useState<string | null>(null);
+    const [groupRenameDraft, setGroupRenameDraft] = useState("");
+    const [confirmDeleteGroup, setConfirmDeleteGroup] = useState<string | null>(null);
+    const [activeGroupMenu, setActiveGroupMenu] = useState<string | null>(null);
+    const [isAddingGroup, setIsAddingGroup] = useState(false);
+    const [groupCategoryTarget, setGroupCategoryTarget] = useState("");
+    const currentCategoriesForTab = useMemo(() => (categoryTab === "gasto" ? expenseCategories : incomeCategories) || [], [categoryTab, expenseCategories, incomeCategories]);
 
     const handleAddCategory = () => {
         if (!newCategoryName.trim() || !addCategory) return;
@@ -776,7 +795,51 @@ export const FinanzasDashboard = ({
         setNewCategoryName("");
     };
 
-    const closeCategoryMenu = () => { setActiveMenuCategory(null); setCategoryMenuMode("root"); };
+    const closeCategoryMenu = () => { setActiveMenuCategory(null); setCategoryMenuMode("root"); setGroupDraft(""); };
+
+    const handleAssignGroup = (cat: string, groupName: string) => {
+        setCategoryGroup?.(categoryTab, cat, groupName);
+        closeCategoryMenu();
+    };
+
+    const handleCreateGroupForCategory = (cat: string) => {
+        const trimmed = groupDraft.trim();
+        if (!trimmed) return;
+        setCategoryGroup?.(categoryTab, cat, trimmed);
+        setGroupDraft("");
+        closeCategoryMenu();
+    };
+
+    const handleRemoveFromGroup = (cat: string) => {
+        setCategoryGroup?.(categoryTab, cat, null);
+        closeCategoryMenu();
+    };
+
+    // Botón "+ Grupo" suelto (no colgado del menú de una categoría puntual): pide
+    // qué categoría mover y el nombre del grupo en la misma línea compacta.
+    const handleCreateStandaloneGroup = () => {
+        const trimmed = groupDraft.trim();
+        if (!trimmed || !groupCategoryTarget || !setCategoryGroup) return;
+        setCategoryGroup(categoryTab, groupCategoryTarget, trimmed);
+        setGroupDraft("");
+        setGroupCategoryTarget("");
+        setIsAddingGroup(false);
+    };
+
+    const startRenameGroup = (name: string) => { setGroupRenameDraft(name); setEditingGroupName(name); };
+
+    const saveRenameGroup = () => {
+        const trimmed = groupRenameDraft.trim();
+        if (editingGroupName && renameCategoryGroup && trimmed && trimmed !== editingGroupName) {
+            renameCategoryGroup(categoryTab, editingGroupName, trimmed);
+        }
+        setEditingGroupName(null);
+    };
+
+    const handleConfirmDeleteGroup = () => {
+        if (confirmDeleteGroup) deleteCategoryGroup?.(categoryTab, confirmDeleteGroup);
+        setConfirmDeleteGroup(null);
+    };
 
     const startRenameCategory = (cat: string) => {
         setRenameDraft(cat);
@@ -1243,73 +1306,88 @@ export const FinanzasDashboard = ({
 
             {/* ── Ingresos y Gastos por Cuenta: lista directa de cuánto entró (sin
                 transferencias) y cuánto salió de cada cuenta en el período elegido arriba ─── */}
-            {accountsWithBalance.length > 0 && (
-                <div style={{ ...CARD, padding: movil ? "1rem" : "1.5rem" }}>
-                    <div style={{ display: "flex", flexDirection: movil ? "column" : "row", alignItems: movil ? "flex-start" : "baseline", gap: movil ? "1px" : "6px", marginBottom: movil ? "0.7rem" : "1rem" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <TrendingUp size={16} color={C.verde} />
-                            <span style={{ fontSize: "0.85rem", fontWeight: 800 }}>Ingresos y Gastos por Cuenta</span>
+            {accountsWithBalance.length > 0 && (() => {
+                const desktopCols = "minmax(150px,1.5fr) repeat(5, minmax(85px,1fr))";
+                const colHeaderStyle: React.CSSProperties = { fontSize: "0.62rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.04em" };
+                return (
+                    <div style={{ ...CARD, padding: movil ? "1rem" : "1.5rem" }}>
+                        <div style={{ display: "flex", flexDirection: movil ? "column" : "row", alignItems: movil ? "flex-start" : "baseline", gap: movil ? "1px" : "6px", marginBottom: movil ? "0.7rem" : "1rem" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <TrendingUp size={16} color={C.verde} />
+                                <span style={{ fontSize: "0.85rem", fontWeight: 800 }}>Ingresos y Gastos por Cuenta</span>
+                            </div>
+                            <span style={{ fontSize: "0.65rem", color: C.outline, textTransform: "capitalize" }}>
+                                {!movil && "· "}{periodLabel(topPeriod, periodRef)}
+                            </span>
                         </div>
-                        <span style={{ fontSize: "0.65rem", color: C.outline, textTransform: "capitalize" }}>
-                            {!movil && "· "}{periodLabel(topPeriod, periodRef)}
-                        </span>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: movil ? "8px" : "8px" }}>
-                        {(() => {
-                            const ingresoTotal = accountsBudget.reduce((s, b) => s + b.ingresoReal, 0);
-                            const gastoRealTotal = accountsBudget.reduce((s, b) => s + b.gastoPuro, 0);
-                            const gananciaTotal = ingresoTotal - gastoRealTotal;
-                            const colorGananciaTotal = gananciaTotal >= 0 ? C.verde : C.rojo;
-                            const delta = previousPeriodGanancia === null ? null : gananciaTotal - previousPeriodGanancia;
-                            return (
-                                <div style={{ display: "flex", flexDirection: "column", gap: "6px", padding: movil ? "0 10px 10px" : "0 12px 12px" }}>
-                                    <div style={{ display: "flex", flexDirection: movil ? "column" : "row", justifyContent: movil ? "flex-start" : "space-between", alignItems: movil ? "stretch" : "center", gap: movil ? "6px" : "8px" }}>
-                                        <span style={{ fontSize: "0.68rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.04em" }}>Total</span>
-                                        {movil ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: movil ? "8px" : "6px" }}>
+                            {!movil && (
+                                <div style={{ display: "grid", gridTemplateColumns: desktopCols, gap: "12px", padding: "0 12px" }}>
+                                    <span />
+                                    <span style={colHeaderStyle}>Ingreso</span>
+                                    <span style={colHeaderStyle}>Gasto Total</span>
+                                    <span style={colHeaderStyle}>Gasto Real</span>
+                                    <span style={colHeaderStyle}>Transf.</span>
+                                    <span style={colHeaderStyle}>Ganancia</span>
+                                </div>
+                            )}
+                            {(() => {
+                                const ingresoTotal = accountsBudget.reduce((s, b) => s + b.ingresoReal, 0);
+                                const gastoRealTotal = accountsBudget.reduce((s, b) => s + b.gastoPuro, 0);
+                                const gananciaTotal = ingresoTotal - gastoRealTotal;
+                                const colorGananciaTotal = gananciaTotal >= 0 ? C.verde : C.rojo;
+                                const delta = previousPeriodGanancia === null ? null : gananciaTotal - previousPeriodGanancia;
+                                if (movil) return (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "6px", padding: "0 10px 10px" }}>
+                                        <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: "6px" }}>
+                                            <span style={{ fontSize: "0.68rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.04em" }}>Total</span>
                                             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
                                                 <MoneyMini label="Ingreso" val={ingresoTotal} color={C.verde} prefix="+S/ " />
                                                 <MoneyMini label="Gasto Real" val={gastoRealTotal} color={C.rojo} prefix="−S/ " title="Gasto real: no incluye lo que salió como transferencia a otra cuenta" />
                                                 <MoneyMini label="Ganancia" val={Math.abs(gananciaTotal)} color={colorGananciaTotal} prefix={gananciaTotal >= 0 ? "+S/ " : "−S/ "} title="Ingreso Real menos Gasto Real" />
                                             </div>
-                                        ) : (
-                                            <div style={{ display: "flex", gap: "14px", alignItems: "baseline" }}>
-                                                <span style={{ fontSize: "0.95rem", fontWeight: 900, color: C.verde }}>
-                                                    +S/ {ingresoTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                                </span>
-                                                <span style={{ fontSize: "0.95rem", fontWeight: 900, color: C.rojo }} title="Gasto real: no incluye lo que salió como transferencia a otra cuenta">
-                                                    −S/ {gastoRealTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                                </span>
-                                                <span style={{ fontSize: "0.95rem", fontWeight: 900, color: colorGananciaTotal }} title="Ingreso Real menos Gasto Real">
-                                                    {gananciaTotal >= 0 ? "+" : "−"}S/ {Math.abs(gananciaTotal).toLocaleString("en-US", { minimumFractionDigits: 2 })} ganancia
-                                                </span>
-                                            </div>
+                                        </div>
+                                        {delta !== null && (
+                                            <span style={{ fontSize: "0.7rem", fontWeight: 700, color: delta >= 0 ? C.verde : C.rojo }}>
+                                                {delta >= 0 ? "▲" : "▼"} {delta >= 0 ? "+" : "−"}S/ {Math.abs(delta).toLocaleString("en-US", { minimumFractionDigits: 2 })} en ganancia vs. período anterior
+                                            </span>
                                         )}
                                     </div>
-                                    {delta !== null && (
-                                        <span style={{ fontSize: "0.7rem", fontWeight: 700, color: delta >= 0 ? C.verde : C.rojo }}>
-                                            {delta >= 0 ? "▲" : "▼"} {delta >= 0 ? "+" : "−"}S/ {Math.abs(delta).toLocaleString("en-US", { minimumFractionDigits: 2 })} en ganancia vs. período anterior
-                                        </span>
-                                    )}
-                                </div>
-                            );
-                        })()}
-                        {accountsWithBalance.map(acc => {
-                            const b = accountsBudget.find(x => x.id === acc.id);
-                            const ingreso = b?.ingresoReal ?? 0;
-                            const gastoTotalAcc = b?.gastoTotal ?? 0;
-                            const gastoReal = b?.gastoPuro ?? 0;
-                            const transfer = b?.transferTotal ?? 0;
-                            const ganancia = ingreso - gastoReal;
-                            const colorGanancia = ganancia >= 0 ? C.verde : C.rojo;
-                            return (
-                                <div key={acc.id} style={{ display: "flex", flexDirection: movil ? "column" : "row", justifyContent: movil ? "flex-start" : "space-between", alignItems: movil ? "stretch" : "center", padding: movil ? "10px" : "10px 12px", borderRadius: "10px", background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, gap: movil ? "8px" : "8px" }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
-                                        <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: acc.color, flexShrink: 0 }} />
-                                        <span style={{ fontSize: movil ? "0.78rem" : "0.82rem", fontWeight: 700, overflow: movil ? "visible" : "hidden", textOverflow: movil ? "clip" : "ellipsis", whiteSpace: movil ? "normal" : "nowrap" }} title={acc.name}>
-                                            {acc.name}
-                                        </span>
+                                );
+                                return (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                        <div style={{ display: "grid", gridTemplateColumns: desktopCols, gap: "12px", alignItems: "center", padding: "10px 12px", borderRadius: "10px", background: C.surfaceContainerLow }}>
+                                            <span style={{ fontSize: "0.78rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.03em" }}>Total</span>
+                                            <span style={{ fontSize: "0.88rem", fontWeight: 900, color: C.verde }}>+S/ {ingresoTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                            <span />
+                                            <span style={{ fontSize: "0.88rem", fontWeight: 900, color: C.rojo }} title="Gasto real: no incluye lo que salió como transferencia a otra cuenta">−S/ {gastoRealTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                            <span />
+                                            <span style={{ fontSize: "0.88rem", fontWeight: 900, color: colorGananciaTotal }} title="Ingreso Real menos Gasto Real">{gananciaTotal >= 0 ? "+" : "−"}S/ {Math.abs(gananciaTotal).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                        </div>
+                                        {delta !== null && (
+                                            <span style={{ fontSize: "0.7rem", fontWeight: 700, color: delta >= 0 ? C.verde : C.rojo, padding: "0 12px" }}>
+                                                {delta >= 0 ? "▲" : "▼"} {delta >= 0 ? "+" : "−"}S/ {Math.abs(delta).toLocaleString("en-US", { minimumFractionDigits: 2 })} en ganancia vs. período anterior
+                                            </span>
+                                        )}
                                     </div>
-                                    {movil ? (
+                                );
+                            })()}
+                            {accountsWithBalance.map(acc => {
+                                const b = accountsBudget.find(x => x.id === acc.id);
+                                const ingreso = b?.ingresoReal ?? 0;
+                                const gastoTotalAcc = b?.gastoTotal ?? 0;
+                                const gastoReal = b?.gastoPuro ?? 0;
+                                const transfer = b?.transferTotal ?? 0;
+                                const ganancia = ingreso - gastoReal;
+                                const colorGanancia = ganancia >= 0 ? C.verde : C.rojo;
+                                if (movil) return (
+                                    <div key={acc.id} style={{ display: "flex", flexDirection: "column", padding: "10px", borderRadius: "10px", background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, gap: "8px" }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                                            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: acc.color, flexShrink: 0 }} />
+                                            <span style={{ fontSize: "0.78rem", fontWeight: 700, whiteSpace: "normal" }} title={acc.name}>
+                                                {acc.name}
+                                            </span>
+                                        </div>
                                         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "6px" }}>
                                             <MoneyMini label="Ingreso" val={ingreso} color={C.verde} prefix="+S/ " />
                                             <MoneyMini label="Gasto Total" val={gastoTotalAcc} color={C.rojo} prefix="−S/ " title="Gasto total: incluye lo que salió como transferencia a otra cuenta" />
@@ -1317,31 +1395,360 @@ export const FinanzasDashboard = ({
                                             <MoneyMini label="Transf." val={transfer} color={C.outline} prefix="↔ S/ " title="Plata movida entre cuentas — no es ingreso ni gasto real" />
                                             <MoneyMini label="Ganancia" val={Math.abs(ganancia)} color={colorGanancia} prefix={ganancia >= 0 ? "+S/ " : "−S/ "} title="Ingreso Real menos Gasto Real" />
                                         </div>
+                                    </div>
+                                );
+                                return (
+                                    <div key={acc.id} style={{ display: "grid", gridTemplateColumns: desktopCols, gap: "12px", alignItems: "center", padding: "10px 12px", borderRadius: "10px", background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}` }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                                            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: acc.color, flexShrink: 0 }} />
+                                            <span style={{ fontSize: "0.82rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={acc.name}>
+                                                {acc.name}
+                                            </span>
+                                        </div>
+                                        <span style={{ fontSize: "0.88rem", fontWeight: 900, color: C.verde }}>+S/ {ingreso.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                        <span style={{ fontSize: "0.88rem", fontWeight: 900, color: C.rojo }} title="Gasto total: incluye lo que salió como transferencia a otra cuenta">−S/ {gastoTotalAcc.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                        <span style={{ fontSize: "0.88rem", fontWeight: 700, color: C.rojo }} title="Gasto real: no incluye lo que salió como transferencia a otra cuenta">−S/ {gastoReal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                        <span style={{ fontSize: "0.8rem", fontWeight: 700, color: C.outline }} title="Plata movida entre cuentas — no es ingreso ni gasto real">↔ S/ {transfer.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                        <span style={{ fontSize: "0.88rem", fontWeight: 900, color: colorGanancia }} title="Ingreso Real menos Gasto Real">{ganancia >= 0 ? "+" : "−"}S/ {Math.abs(ganancia).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* ── Categories accordion ─── */}
+            <div style={{ ...CARD, padding: 0, overflow: categoriesOverflowVisible ? "visible" : "hidden" }}>
+                <button onClick={() => setIsCategoriesVisible(v => !v)} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", background: C.surface, border: "none", padding: "15px 20px", cursor: "pointer" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <Tag size={17} color={C.secondary} />
+                        <span style={{ fontSize: "0.9rem", fontWeight: 800 }}>Categorías</span>
+                    </div>
+                    <motion.div animate={{ rotate: isCategoriesVisible ? 180 : 0 }}><ArrowDownCircle size={15} /></motion.div>
+                </button>
+                <AnimatePresence>
+                    {isCategoriesVisible && (
+                        <motion.div
+                            initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }}
+                            onAnimationStart={() => setCategoriesOverflowVisible(false)}
+                            onAnimationComplete={() => setCategoriesOverflowVisible(isCategoriesVisible)}
+                            style={{ overflow: categoriesOverflowVisible ? "visible" : "hidden" }}
+                        >
+                            <div style={{ padding: "16px 20px" }}>
+                                <div style={{ marginBottom: "14px" }}>
+                                    <PillToggle
+                                        options={["gasto", "ingreso"]}
+                                        labels={["Gasto", "Ingreso"]}
+                                        value={categoryTab}
+                                        onChange={(v) => setCategoryTab(v as "gasto" | "ingreso")}
+                                    />
+                                </div>
+                                <div style={{ marginBottom: "14px" }}>
+                                    {!isAddingGroup ? (
+                                        <button
+                                            onClick={() => setIsAddingGroup(true)}
+                                            style={{ display: "inline-flex", alignItems: "center", gap: "4px", background: "none", border: `1px dashed ${C.outlineVariant}`, borderRadius: "999px", padding: "5px 12px", fontSize: "0.74rem", fontWeight: 700, color: C.secondary, cursor: "pointer", fontFamily: "inherit" }}
+                                        >
+                                            <Plus size={12} /> Crear grupo
+                                        </button>
                                     ) : (
-                                        <div style={{ display: "flex", gap: "14px", flexShrink: 0, alignItems: "baseline" }}>
-                                            <span style={{ fontSize: "0.9rem", fontWeight: 900, color: C.verde }}>
-                                                +S/ {ingreso.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                            </span>
-                                            <span style={{ fontSize: "0.9rem", fontWeight: 900, color: C.rojo }} title="Gasto total: incluye lo que salió como transferencia a otra cuenta">
-                                                −S/ {gastoTotalAcc.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                            </span>
-                                            <span style={{ fontSize: "0.9rem", fontWeight: 700, color: C.rojo }} title="Gasto real: no incluye lo que salió como transferencia a otra cuenta">
-                                                −S/ {gastoReal.toLocaleString("en-US", { minimumFractionDigits: 2 })} real
-                                            </span>
-                                            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: C.outline }} title="Plata movida entre cuentas — no es ingreso ni gasto real">
-                                                ↔ S/ {transfer.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                            </span>
-                                            <span style={{ fontSize: "0.9rem", fontWeight: 900, color: colorGanancia }} title="Ingreso Real menos Gasto Real">
-                                                {ganancia >= 0 ? "+" : "−"}S/ {Math.abs(ganancia).toLocaleString("en-US", { minimumFractionDigits: 2 })} ganancia
-                                            </span>
+                                        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
+                                            <select
+                                                value={groupCategoryTarget}
+                                                onChange={e => setGroupCategoryTarget(e.target.value)}
+                                                style={{ padding: "6px 8px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", outline: "none", background: C.surfaceLowest, color: C.onSurface, fontFamily: "inherit" }}
+                                            >
+                                                <option value="">Categoría...</option>
+                                                {currentCategoriesForTab.map(c => <option key={c} value={c}>{c}</option>)}
+                                            </select>
+                                            <input
+                                                autoFocus
+                                                placeholder="Nombre del grupo..."
+                                                value={groupDraft}
+                                                onChange={e => setGroupDraft(e.target.value)}
+                                                onKeyDown={e => e.key === "Enter" && handleCreateStandaloneGroup()}
+                                                style={{ flex: "1 1 140px", minWidth: 0, padding: "6px 10px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", outline: "none" }}
+                                            />
+                                            <button onClick={handleCreateStandaloneGroup} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "8px", padding: "6px 10px", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center" }}>
+                                                <Plus size={14} />
+                                            </button>
+                                            <button onClick={() => { setIsAddingGroup(false); setGroupDraft(""); setGroupCategoryTarget(""); }} style={{ background: "none", border: "none", cursor: "pointer", color: C.outline, padding: "4px", display: "flex" }}>
+                                                <X size={16} />
+                                            </button>
                                         </div>
                                     )}
                                 </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
+                                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "14px" }}>
+                                    {(() => {
+                                        const currentCategories = currentCategoriesForTab;
+                                        const groupMap = categoryGroups?.[categoryTab] || {};
+                                        const existingGroupNames = Array.from(new Set(Object.values(groupMap))).sort((a, b) => a.localeCompare(b));
+                                        const menuItemStyle: React.CSSProperties = { width: "100%", display: "flex", alignItems: "center", gap: "8px", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", fontSize: "0.78rem", fontWeight: 600, color: C.onSurface, textAlign: "left", fontFamily: "inherit" };
+
+                                        const renderChip = (cat: string) => {
+                                            const isRenaming = renamingCategory === cat;
+                                            const isMenuOpen = activeMenuCategory === cat;
+                                            const otherCategories = currentCategories.filter(c => c !== cat);
+                                            const currentGroup = groupMap[cat];
+                                            return (
+                                                <div key={cat} style={{
+                                                    display: "flex", alignItems: "center", gap: "4px",
+                                                    background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`,
+                                                    borderRadius: "999px", padding: isRenaming ? "4px 8px" : "6px 4px 6px 12px",
+                                                }}>
+                                                    {isRenaming ? (
+                                                        <input
+                                                            autoFocus
+                                                            value={renameDraft}
+                                                            onChange={e => setRenameDraft(e.target.value)}
+                                                            onKeyDown={e => { if (e.key === "Enter") saveRenameCategory(); if (e.key === "Escape") setRenamingCategory(null); }}
+                                                            onBlur={saveRenameCategory}
+                                                            style={{ fontSize: "0.78rem", fontWeight: 700, color: C.onSurfaceVariant, border: "none", borderBottom: `2px solid ${C.secondary}`, outline: "none", padding: "2px 0", width: `${Math.max(renameDraft.length, 4)}ch`, fontFamily: "inherit", background: "transparent" }}
+                                                        />
+                                                    ) : (
+                                                        <span style={{ fontSize: "0.78rem", fontWeight: 700, color: C.onSurfaceVariant }}>{cat}</span>
+                                                    )}
+                                                    {!isRenaming && (renameCategory || removeCategory || mergeCategory || setCategoryGroup) && (
+                                                        <div style={{ position: "relative" }}>
+                                                            <button
+                                                                onClick={() => { setActiveMenuCategory(isMenuOpen ? null : cat); setCategoryMenuMode("root"); }}
+                                                                style={{ background: "none", border: "none", cursor: "pointer", color: C.outline, display: "flex", padding: "4px" }}
+                                                            >
+                                                                <MoreVertical size={14} />
+                                                            </button>
+                                                            <AnimatePresence>
+                                                                {isMenuOpen && (
+                                                                    <motion.div
+                                                                        initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                                                                        style={{ position: "absolute", top: "26px", right: 0, background: "white", borderRadius: "12px", boxShadow: "0 8px 24px rgba(0,0,0,0.15)", border: `1px solid ${C.outlineVariant}`, overflow: "hidden", zIndex: 20, minWidth: "170px" }}
+                                                                    >
+                                                                        {categoryMenuMode === "root" ? (
+                                                                            <>
+                                                                                {renameCategory && (
+                                                                                    <button onClick={() => startRenameCategory(cat)} style={menuItemStyle}>
+                                                                                        <Edit2 size={13} /> Renombrar
+                                                                                    </button>
+                                                                                )}
+                                                                                {mergeCategory && otherCategories.length > 0 && (
+                                                                                    <button onClick={() => setCategoryMenuMode("merge")} style={menuItemStyle}>
+                                                                                        <Merge size={13} /> Fusionar con...
+                                                                                    </button>
+                                                                                )}
+                                                                                {setCategoryGroup && (
+                                                                                    <button onClick={() => setCategoryMenuMode("group")} style={menuItemStyle}>
+                                                                                        <Layers size={13} /> Grupo...
+                                                                                    </button>
+                                                                                )}
+                                                                                {setCategoryAccounts && accounts.length > 1 && (
+                                                                                    <button onClick={() => setCategoryMenuMode("accounts")} style={menuItemStyle}>
+                                                                                        <Wallet size={13} /> Cuentas...
+                                                                                    </button>
+                                                                                )}
+                                                                                {removeCategory && (
+                                                                                    <button onClick={() => { setConfirmDeleteCategory(cat); closeCategoryMenu(); }} style={{ ...menuItemStyle, color: C.rojo, borderTop: `1px solid ${C.outlineVariant}` }}>
+                                                                                        <Trash2 size={13} /> Eliminar
+                                                                                    </button>
+                                                                                )}
+                                                                            </>
+                                                                        ) : categoryMenuMode === "merge" ? (
+                                                                            <div style={{ maxHeight: "180px", overflowY: "auto" }}>
+                                                                                {otherCategories.map(other => (
+                                                                                    <button key={other} onClick={() => handleMergeCategory(cat, other)} style={menuItemStyle}>
+                                                                                        {other}
+                                                                                    </button>
+                                                                                ))}
+                                                                            </div>
+                                                                        ) : categoryMenuMode === "group" ? (
+                                                                            <div style={{ maxHeight: "220px", overflowY: "auto", padding: "6px 4px" }}>
+                                                                                <div style={{ fontSize: "0.62rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.04em", padding: "2px 10px 6px" }}>
+                                                                                    Grupo
+                                                                                </div>
+                                                                                {currentGroup && (
+                                                                                    <button onClick={() => handleRemoveFromGroup(cat)} style={{ ...menuItemStyle, color: C.rojo }}>
+                                                                                        <X size={13} /> Quitar de "{currentGroup}"
+                                                                                    </button>
+                                                                                )}
+                                                                                {existingGroupNames.filter(g => g !== currentGroup).map(g => (
+                                                                                    <button key={g} onClick={() => handleAssignGroup(cat, g)} style={menuItemStyle}>
+                                                                                        <Layers size={13} /> {g}
+                                                                                    </button>
+                                                                                ))}
+                                                                                <div style={{ display: "flex", gap: "4px", padding: "6px 10px 2px" }}>
+                                                                                    <input
+                                                                                        autoFocus
+                                                                                        placeholder="Nuevo grupo..."
+                                                                                        value={groupDraft}
+                                                                                        onChange={e => setGroupDraft(e.target.value)}
+                                                                                        onKeyDown={e => e.key === "Enter" && handleCreateGroupForCategory(cat)}
+                                                                                        style={{ flex: 1, minWidth: 0, padding: "5px 8px", borderRadius: "6px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.74rem", outline: "none" }}
+                                                                                    />
+                                                                                    <button onClick={() => handleCreateGroupForCategory(cat)} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "6px", padding: "0 10px", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center" }}>
+                                                                                        <Plus size={13} />
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div style={{ maxHeight: "220px", overflowY: "auto", padding: "6px 4px" }}>
+                                                                                <div style={{ fontSize: "0.62rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.04em", padding: "2px 10px 6px" }}>
+                                                                                    Aplica en
+                                                                                </div>
+                                                                                {accounts.map(acc => {
+                                                                                    const scoped = categoryAccountScope?.[categoryTab]?.[cat] || [];
+                                                                                    const checked = scoped.includes(acc.id);
+                                                                                    return (
+                                                                                        <label key={acc.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 10px", fontSize: "0.78rem", fontWeight: 600, color: C.onSurface, cursor: "pointer" }}>
+                                                                                            <input
+                                                                                                type="checkbox"
+                                                                                                checked={checked}
+                                                                                                onChange={() => {
+                                                                                                    const next = checked ? scoped.filter(id => id !== acc.id) : [...scoped, acc.id];
+                                                                                                    setCategoryAccounts?.(categoryTab, cat, next);
+                                                                                                }}
+                                                                                            />
+                                                                                            {acc.name}
+                                                                                        </label>
+                                                                                    );
+                                                                                })}
+                                                                                <div style={{ fontSize: "0.62rem", color: C.outline, fontStyle: "italic", padding: "6px 10px 2px" }}>
+                                                                                    Ninguna marcada = aplica en todas.
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                    </motion.div>
+                                                                )}
+                                                            </AnimatePresence>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        };
+
+                                        const groupOrder: string[] = [];
+                                        const byGroup: Record<string, string[]> = {};
+                                        const ungrouped: string[] = [];
+                                        currentCategories.forEach(cat => {
+                                            const g = groupMap[cat];
+                                            if (g) {
+                                                if (!byGroup[g]) { byGroup[g] = []; groupOrder.push(g); }
+                                                byGroup[g].push(cat);
+                                            } else {
+                                                ungrouped.push(cat);
+                                            }
+                                        });
+
+                                        return (
+                                            <>
+                                                {groupOrder.map(g => (
+                                                    <div key={g}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+                                                            {editingGroupName === g ? (
+                                                                <input
+                                                                    autoFocus
+                                                                    value={groupRenameDraft}
+                                                                    onChange={e => setGroupRenameDraft(e.target.value)}
+                                                                    onKeyDown={e => { if (e.key === "Enter") saveRenameGroup(); if (e.key === "Escape") setEditingGroupName(null); }}
+                                                                    onBlur={saveRenameGroup}
+                                                                    style={{ fontSize: "0.68rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.04em", border: "none", borderBottom: `2px solid ${C.secondary}`, outline: "none", background: "transparent", padding: "1px 0" }}
+                                                                />
+                                                            ) : (
+                                                                <span style={{ fontSize: "0.68rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                                                                    <Layers size={11} style={{ verticalAlign: "-1px", marginRight: "4px" }} />{g}
+                                                                </span>
+                                                            )}
+                                                            {editingGroupName !== g && (renameCategoryGroup || deleteCategoryGroup) && (
+                                                                <div style={{ position: "relative" }}>
+                                                                    <button
+                                                                        onClick={() => setActiveGroupMenu(activeGroupMenu === g ? null : g)}
+                                                                        style={{ background: "none", border: "none", cursor: "pointer", color: C.outline, display: "flex", padding: "2px" }}
+                                                                    >
+                                                                        <MoreVertical size={12} />
+                                                                    </button>
+                                                                    <AnimatePresence>
+                                                                        {activeGroupMenu === g && (
+                                                                            <motion.div
+                                                                                initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                                                                                style={{ position: "absolute", top: "22px", left: 0, background: "white", borderRadius: "12px", boxShadow: "0 8px 24px rgba(0,0,0,0.15)", border: `1px solid ${C.outlineVariant}`, overflow: "hidden", zIndex: 20, minWidth: "150px" }}
+                                                                            >
+                                                                                {renameCategoryGroup && (
+                                                                                    <button onClick={() => { startRenameGroup(g); setActiveGroupMenu(null); }} style={menuItemStyle}>
+                                                                                        <Edit2 size={13} /> Renombrar
+                                                                                    </button>
+                                                                                )}
+                                                                                {deleteCategoryGroup && (
+                                                                                    <button onClick={() => { setConfirmDeleteGroup(g); setActiveGroupMenu(null); }} style={{ ...menuItemStyle, color: C.rojo, borderTop: `1px solid ${C.outlineVariant}` }}>
+                                                                                        <Trash2 size={13} /> Eliminar
+                                                                                    </button>
+                                                                                )}
+                                                                            </motion.div>
+                                                                        )}
+                                                                    </AnimatePresence>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                                                            {byGroup[g].map(renderChip)}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {ungrouped.length > 0 && (
+                                                    <div>
+                                                        {groupOrder.length > 0 && (
+                                                            <div style={{ fontSize: "0.68rem", fontWeight: 800, color: C.outline, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "6px" }}>
+                                                                Sin grupo
+                                                            </div>
+                                                        )}
+                                                        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                                                            {ungrouped.map(renderChip)}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {currentCategories.length === 0 && (
+                                                    <p style={{ fontSize: "0.78rem", color: C.outline, fontStyle: "italic", margin: 0 }}>
+                                                        Sin categorías de {categoryTab}.
+                                                    </p>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
+                                </div>
+                                <ConfirmDialog
+                                    open={!!confirmDeleteCategory}
+                                    title="Eliminar categoría"
+                                    message={`¿Eliminar la categoría "${confirmDeleteCategory}"? Los movimientos ya registrados con esta categoría no cambiarán.`}
+                                    confirmLabel="Eliminar"
+                                    cancelLabel="Cancelar"
+                                    onConfirm={handleConfirmDeleteCategory}
+                                    onCancel={() => setConfirmDeleteCategory(null)}
+                                />
+                                <ConfirmDialog
+                                    open={!!confirmDeleteGroup}
+                                    title="Eliminar grupo"
+                                    message={`¿Eliminar el grupo "${confirmDeleteGroup}"? Las categorías no se eliminan, solo dejan de estar agrupadas.`}
+                                    confirmLabel="Eliminar"
+                                    cancelLabel="Cancelar"
+                                    onConfirm={handleConfirmDeleteGroup}
+                                    onCancel={() => setConfirmDeleteGroup(null)}
+                                />
+                                {addCategory && (
+                                    <div style={{ display: "flex", gap: "6px" }}>
+                                        <input
+                                            placeholder="Nueva categoría..."
+                                            value={newCategoryName}
+                                            onChange={e => setNewCategoryName(e.target.value)}
+                                            onKeyDown={e => e.key === "Enter" && handleAddCategory()}
+                                            style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.82rem", outline: "none" }}
+                                        />
+                                        <button onClick={handleAddCategory} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "8px", padding: "0 16px", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center" }}>
+                                            <Plus size={16} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
 
             {/* ── Selector de vista + Ver todo: en móvil las 3 vistas + el botón
                 comparten una sola fila (antes "Ver todo" se iba a su propia fila
@@ -1604,168 +2011,6 @@ export const FinanzasDashboard = ({
 
             </div>
 
-            {/* ── Categories accordion ─── */}
-            <div style={{ ...CARD, padding: 0, overflow: "hidden" }}>
-                <button onClick={() => setIsCategoriesVisible(v => !v)} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", background: C.surface, border: "none", padding: "15px 20px", cursor: "pointer" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <Tag size={17} color={C.secondary} />
-                        <span style={{ fontSize: "0.9rem", fontWeight: 800 }}>Categorías</span>
-                    </div>
-                    <motion.div animate={{ rotate: isCategoriesVisible ? 180 : 0 }}><ArrowDownCircle size={15} /></motion.div>
-                </button>
-                <AnimatePresence>
-                    {isCategoriesVisible && (
-                        <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} style={{ overflow: "hidden" }}>
-                            <div style={{ padding: "16px 20px" }}>
-                                <div style={{ marginBottom: "14px" }}>
-                                    <PillToggle
-                                        options={["gasto", "ingreso"]}
-                                        labels={["Gasto", "Ingreso"]}
-                                        value={categoryTab}
-                                        onChange={(v) => setCategoryTab(v as "gasto" | "ingreso")}
-                                    />
-                                </div>
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "14px" }}>
-                                    {(() => {
-                                        const currentCategories = (categoryTab === "gasto" ? expenseCategories : incomeCategories) || [];
-                                        const menuItemStyle: React.CSSProperties = { width: "100%", display: "flex", alignItems: "center", gap: "8px", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", fontSize: "0.78rem", fontWeight: 600, color: C.onSurface, textAlign: "left", fontFamily: "inherit" };
-                                        return currentCategories.map(cat => {
-                                            const isRenaming = renamingCategory === cat;
-                                            const isMenuOpen = activeMenuCategory === cat;
-                                            const otherCategories = currentCategories.filter(c => c !== cat);
-                                            return (
-                                                <div key={cat} style={{
-                                                    display: "flex", alignItems: "center", gap: "4px",
-                                                    background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`,
-                                                    borderRadius: "999px", padding: isRenaming ? "4px 8px" : "6px 4px 6px 12px",
-                                                }}>
-                                                    {isRenaming ? (
-                                                        <input
-                                                            autoFocus
-                                                            value={renameDraft}
-                                                            onChange={e => setRenameDraft(e.target.value)}
-                                                            onKeyDown={e => { if (e.key === "Enter") saveRenameCategory(); if (e.key === "Escape") setRenamingCategory(null); }}
-                                                            onBlur={saveRenameCategory}
-                                                            style={{ fontSize: "0.78rem", fontWeight: 700, color: C.onSurfaceVariant, border: "none", borderBottom: `2px solid ${C.secondary}`, outline: "none", padding: "2px 0", width: `${Math.max(renameDraft.length, 4)}ch`, fontFamily: "inherit", background: "transparent" }}
-                                                        />
-                                                    ) : (
-                                                        <span style={{ fontSize: "0.78rem", fontWeight: 700, color: C.onSurfaceVariant }}>{cat}</span>
-                                                    )}
-                                                    {!isRenaming && (renameCategory || removeCategory || mergeCategory) && (
-                                                        <div style={{ position: "relative" }}>
-                                                            <button
-                                                                onClick={() => { setActiveMenuCategory(isMenuOpen ? null : cat); setCategoryMenuMode("root"); }}
-                                                                style={{ background: "none", border: "none", cursor: "pointer", color: C.outline, display: "flex", padding: "4px" }}
-                                                            >
-                                                                <MoreVertical size={14} />
-                                                            </button>
-                                                            <AnimatePresence>
-                                                                {isMenuOpen && (
-                                                                    <motion.div
-                                                                        initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                                                                        style={{ position: "absolute", top: "26px", right: 0, background: "white", borderRadius: "12px", boxShadow: "0 8px 24px rgba(0,0,0,0.15)", border: `1px solid ${C.outlineVariant}`, overflow: "hidden", zIndex: 20, minWidth: "170px" }}
-                                                                    >
-                                                                        {categoryMenuMode === "root" ? (
-                                                                            <>
-                                                                                {renameCategory && (
-                                                                                    <button onClick={() => startRenameCategory(cat)} style={menuItemStyle}>
-                                                                                        <Edit2 size={13} /> Renombrar
-                                                                                    </button>
-                                                                                )}
-                                                                                {mergeCategory && otherCategories.length > 0 && (
-                                                                                    <button onClick={() => setCategoryMenuMode("merge")} style={menuItemStyle}>
-                                                                                        <Merge size={13} /> Fusionar con...
-                                                                                    </button>
-                                                                                )}
-                                                                                {setCategoryAccounts && accounts.length > 1 && (
-                                                                                    <button onClick={() => setCategoryMenuMode("accounts")} style={menuItemStyle}>
-                                                                                        <Wallet size={13} /> Cuentas...
-                                                                                    </button>
-                                                                                )}
-                                                                                {removeCategory && (
-                                                                                    <button onClick={() => { setConfirmDeleteCategory(cat); closeCategoryMenu(); }} style={{ ...menuItemStyle, color: C.rojo, borderTop: `1px solid ${C.outlineVariant}` }}>
-                                                                                        <Trash2 size={13} /> Eliminar
-                                                                                    </button>
-                                                                                )}
-                                                                            </>
-                                                                        ) : categoryMenuMode === "merge" ? (
-                                                                            <div style={{ maxHeight: "180px", overflowY: "auto" }}>
-                                                                                {otherCategories.map(other => (
-                                                                                    <button key={other} onClick={() => handleMergeCategory(cat, other)} style={menuItemStyle}>
-                                                                                        {other}
-                                                                                    </button>
-                                                                                ))}
-                                                                            </div>
-                                                                        ) : (
-                                                                            <div style={{ maxHeight: "220px", overflowY: "auto", padding: "6px 4px" }}>
-                                                                                <div style={{ fontSize: "0.62rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.04em", padding: "2px 10px 6px" }}>
-                                                                                    Aplica en
-                                                                                </div>
-                                                                                {accounts.map(acc => {
-                                                                                    const scoped = categoryAccountScope?.[categoryTab]?.[cat] || [];
-                                                                                    const checked = scoped.includes(acc.id);
-                                                                                    return (
-                                                                                        <label key={acc.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 10px", fontSize: "0.78rem", fontWeight: 600, color: C.onSurface, cursor: "pointer" }}>
-                                                                                            <input
-                                                                                                type="checkbox"
-                                                                                                checked={checked}
-                                                                                                onChange={() => {
-                                                                                                    const next = checked ? scoped.filter(id => id !== acc.id) : [...scoped, acc.id];
-                                                                                                    setCategoryAccounts?.(categoryTab, cat, next);
-                                                                                                }}
-                                                                                            />
-                                                                                            {acc.name}
-                                                                                        </label>
-                                                                                    );
-                                                                                })}
-                                                                                <div style={{ fontSize: "0.62rem", color: C.outline, fontStyle: "italic", padding: "6px 10px 2px" }}>
-                                                                                    Ninguna marcada = aplica en todas.
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
-                                                                    </motion.div>
-                                                                )}
-                                                            </AnimatePresence>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        });
-                                    })()}
-                                    {(categoryTab === "gasto" ? expenseCategories : incomeCategories)?.length === 0 && (
-                                        <p style={{ fontSize: "0.78rem", color: C.outline, fontStyle: "italic", margin: 0 }}>
-                                            Sin categorías de {categoryTab}.
-                                        </p>
-                                    )}
-                                </div>
-                                <ConfirmDialog
-                                    open={!!confirmDeleteCategory}
-                                    title="Eliminar categoría"
-                                    message={`¿Eliminar la categoría "${confirmDeleteCategory}"? Los movimientos ya registrados con esta categoría no cambiarán.`}
-                                    confirmLabel="Eliminar"
-                                    cancelLabel="Cancelar"
-                                    onConfirm={handleConfirmDeleteCategory}
-                                    onCancel={() => setConfirmDeleteCategory(null)}
-                                />
-                                {addCategory && (
-                                    <div style={{ display: "flex", gap: "6px" }}>
-                                        <input
-                                            placeholder="Nueva categoría..."
-                                            value={newCategoryName}
-                                            onChange={e => setNewCategoryName(e.target.value)}
-                                            onKeyDown={e => e.key === "Enter" && handleAddCategory()}
-                                            style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.82rem", outline: "none" }}
-                                        />
-                                        <button onClick={handleAddCategory} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "8px", padding: "0 16px", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center" }}>
-                                            <Plus size={16} />
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
 
             {/* ── Modals ─── */}
             <AnimatePresence>

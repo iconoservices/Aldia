@@ -16,7 +16,7 @@ export const useFinanzasState = () => {
             .reduce((acc, t) => acc + (Number(t?.amount) || 0), 0);
     }, [txArr]);
 
-    const addTransaction = (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string, dueDate?: string) => {
+    const addTransaction = (text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string, dueDate?: string, notes?: string) => {
         const value = Math.abs(amount);
 
         const newTx: Transaction = {
@@ -32,7 +32,8 @@ export const useFinanzasState = () => {
             accountId,
             category,
             contact,
-            dueDate
+            dueDate,
+            notes
         };
         setTransactions(prev => [newTx, ...prev]);
     };

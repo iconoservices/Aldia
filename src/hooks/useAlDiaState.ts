@@ -66,6 +66,7 @@ export interface Transaction {
     category?: string;
     contact?: string;
     dueDate?: string; // YYYY-MM-DD, opcional — usado por deudas/préstamos
+    notes?: string; // Detalle libre, separado del concepto (text) y de quién (contact)
 }
 
 export interface Account {
@@ -73,6 +74,16 @@ export interface Account {
     name: string;
     color: string;
     projectIds?: number[];
+}
+
+// Registro liviano de a quién le debo / quién me debe. Transaction.contact sigue
+// guardando el nombre como string (no contactId) para no migrar datos viejos: este
+// registro es solo el lugar donde vive el dato extra (teléfono, notas) de ese nombre.
+export interface Contact {
+    id: number;
+    name: string;
+    phone?: string;
+    notes?: string;
 }
 
 export interface FixedExpense {
@@ -210,6 +221,9 @@ export interface UserPreferences {
     // JSON: { ingreso: Record<categoria, accountId[]>, gasto: Record<categoria, accountId[]> }.
     // Una categoria sin entrada (o con array vacio) aplica a todas las cuentas.
     categoryAccountScope: string;
+    // JSON: { ingreso: Record<categoria, grupo>, gasto: Record<categoria, grupo> }.
+    // Una categoria sin entrada no pertenece a ningun grupo ("Sin grupo").
+    categoryGroups: string;
     notionSyncEnabled: boolean; // Si esta en false, el script de sync con Notion no escribe nada
     blockOrder: string; // JSON: Record<period, string[]> -- orden manual (drag) de las tarjetas de Bloques por franja
 }
@@ -218,11 +232,13 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
     isBudgetFixed: false,
     fixedIncomes: "[]",
     categoryAccountScope: '{"ingreso":{},"gasto":{}}',
+    categoryGroups: '{"ingreso":{},"gasto":{}}',
     blockOrder: '{}',
     notionSyncEnabled: true
 };
 
 export type CategoryAccountScope = { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
+export type CategoryGroupMap = { ingreso: Record<string, string>; gasto: Record<string, string> };
 
 export interface ProjectNode {
     id: number;
@@ -346,6 +362,7 @@ export const useAlDiaState = () => {
     } = useNegocioState();
 
     const [accounts, setAccounts] = useState<Account[]>([]);
+    const [contacts, setContacts] = useState<Contact[]>([]);
     const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
     const [incomeCategories, setIncomeCategories] = useState<string[]>(DEFAULT_INCOME_CATEGORIES);
     const [expenseCategories, setExpenseCategories] = useState<string[]>(DEFAULT_EXPENSE_CATEGORIES);
@@ -381,6 +398,7 @@ export const useAlDiaState = () => {
                 budget: parseFloat(localStorage.getItem('aldia_monthly_budget') || '0'),
                 fixed: JSON.parse(localStorage.getItem('aldia_fixed_expenses') || '[]'),
                 accounts: JSON.parse(localStorage.getItem('aldia_accounts') || '[]'),
+                contacts: JSON.parse(localStorage.getItem('aldia_contacts') || '[]'),
                 preferences: JSON.parse(localStorage.getItem('aldia_preferences') || JSON.stringify(DEFAULT_PREFERENCES)),
                 incomeCategories: JSON.parse(localStorage.getItem('aldia_income_categories') || JSON.stringify(DEFAULT_INCOME_CATEGORIES)),
                 expenseCategories: JSON.parse(localStorage.getItem('aldia_expense_categories') || JSON.stringify(DEFAULT_EXPENSE_CATEGORIES)),
@@ -404,6 +422,7 @@ export const useAlDiaState = () => {
             setMonthlyBudget(data.budget);
             setFixedExpenses(data.fixed);
             setAccounts(data.accounts);
+            setContacts(data.contacts);
             setPreferences(data.preferences);
             setIncomeCategories(data.incomeCategories);
             setExpenseCategories(data.expenseCategories);
@@ -487,6 +506,7 @@ export const useAlDiaState = () => {
                 sync(cloud.fixedExpenses, setFixedExpenses);
                 sync(cloud.timeBlocks, setTimeBlocks);
                 sync(cloud.accounts, setAccounts);
+                sync(cloud.contacts, setContacts);
                 sync(cloud.preferences, setPreferences);
                 sync(cloud.incomeCategories, setIncomeCategories);
                 sync(cloud.expenseCategories, setExpenseCategories);
@@ -522,10 +542,10 @@ export const useAlDiaState = () => {
     // Esto previene "stale closures" en el setTimeout del debounced save,
     // donde un array viejo de transactions podía enviarse a Firestore y causar un rollback visual.
     const latestStateRef = useRef({
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, trash
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, trash
     });
     latestStateRef.current = {
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, trash
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, trash
     };
 
     // 3. Persistencia Cloud (Debounced) y Local (Immediate)
@@ -545,6 +565,7 @@ export const useAlDiaState = () => {
         localStorage.setItem('aldia_monthly_budget', JSON.stringify(monthlyBudget));
         localStorage.setItem('aldia_fixed_expenses', JSON.stringify(fixedExpenses));
         localStorage.setItem('aldia_accounts', JSON.stringify(accounts));
+        localStorage.setItem('aldia_contacts', JSON.stringify(contacts));
         localStorage.setItem('aldia_preferences', JSON.stringify(preferences));
         localStorage.setItem('aldia_income_categories', JSON.stringify(incomeCategories));
         localStorage.setItem('aldia_expense_categories', JSON.stringify(expenseCategories));
@@ -580,7 +601,7 @@ export const useAlDiaState = () => {
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, trash]);
+    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, trash]);
 
     // 4. Migraciones y Lógica Derivada
     useEffect(() => {
@@ -821,6 +842,7 @@ export const useAlDiaState = () => {
         const setter = type === 'ingreso' ? setIncomeCategories : setExpenseCategories;
         setter(prev => prev.filter(c => c !== name));
         setCategoryAccounts(type, name, []);
+        setCategoryGroup(type, name, null);
     };
 
     // Renombrar reasigna también los movimientos ya existentes con esa categoría,
@@ -837,6 +859,11 @@ export const useAlDiaState = () => {
             setCategoryAccounts(type, oldName, []);
             setCategoryAccounts(type, trimmed, carriedScope);
         }
+        const carriedGroup = categoryGroups[type][oldName];
+        if (carriedGroup) {
+            setCategoryGroup(type, oldName, null);
+            setCategoryGroup(type, trimmed, carriedGroup);
+        }
     };
 
     const mergeCategory = (type: 'ingreso' | 'gasto', sourceName: string, targetName: string) => {
@@ -845,6 +872,7 @@ export const useAlDiaState = () => {
         setter(prev => prev.filter(c => c !== sourceName));
         setTransactions(prev => prev.map(t => t.type === type && t.category === sourceName ? { ...t, category: targetName } : t));
         setCategoryAccounts(type, sourceName, []);
+        setCategoryGroup(type, sourceName, null);
     };
 
     // Categorías con alcance por cuenta: sin entrada (o array vacío) = aplica en
@@ -868,6 +896,60 @@ export const useAlDiaState = () => {
             if (accountIds.length === 0) delete next[type][name];
             else next[type][name] = accountIds;
             return { ...prev, categoryAccountScope: JSON.stringify(next) };
+        });
+    };
+
+    // Grupos de categorías (ej: "Golosinas" y "Compras" dentro del grupo "Bodega").
+    // Cada categoría pertenece a lo sumo a un grupo; no hay una lista separada de
+    // grupos, existen implícitamente mientras alguna categoría los referencie.
+    // Guardado dentro de preferences, mismo mecanismo que categoryAccountScope.
+    const categoryGroups: CategoryGroupMap = useMemo(() => {
+        try {
+            const parsed = JSON.parse(preferences.categoryGroups || '{"ingreso":{},"gasto":{}}');
+            return { ingreso: parsed.ingreso || {}, gasto: parsed.gasto || {} };
+        } catch { return { ingreso: {}, gasto: {} }; }
+    }, [preferences.categoryGroups]);
+
+    const setCategoryGroup = (type: 'ingreso' | 'gasto', name: string, groupName: string | null) => {
+        setPreferences(prev => {
+            let current: CategoryGroupMap;
+            try {
+                const parsed = JSON.parse(prev.categoryGroups || '{"ingreso":{},"gasto":{}}');
+                current = { ingreso: parsed.ingreso || {}, gasto: parsed.gasto || {} };
+            } catch { current = { ingreso: {}, gasto: {} }; }
+            const next = { ...current, [type]: { ...current[type] } };
+            const trimmed = groupName?.trim();
+            if (!trimmed) delete next[type][name];
+            else next[type][name] = trimmed;
+            return { ...prev, categoryGroups: JSON.stringify(next) };
+        });
+    };
+
+    const renameCategoryGroup = (type: 'ingreso' | 'gasto', oldGroupName: string, newGroupName: string) => {
+        const trimmed = newGroupName.trim();
+        if (!trimmed || trimmed === oldGroupName) return;
+        setPreferences(prev => {
+            let current: CategoryGroupMap;
+            try {
+                const parsed = JSON.parse(prev.categoryGroups || '{"ingreso":{},"gasto":{}}');
+                current = { ingreso: parsed.ingreso || {}, gasto: parsed.gasto || {} };
+            } catch { current = { ingreso: {}, gasto: {} }; }
+            const next = { ...current, [type]: { ...current[type] } };
+            Object.keys(next[type]).forEach(cat => { if (next[type][cat] === oldGroupName) next[type][cat] = trimmed; });
+            return { ...prev, categoryGroups: JSON.stringify(next) };
+        });
+    };
+
+    const deleteCategoryGroup = (type: 'ingreso' | 'gasto', groupName: string) => {
+        setPreferences(prev => {
+            let current: CategoryGroupMap;
+            try {
+                const parsed = JSON.parse(prev.categoryGroups || '{"ingreso":{},"gasto":{}}');
+                current = { ingreso: parsed.ingreso || {}, gasto: parsed.gasto || {} };
+            } catch { current = { ingreso: {}, gasto: {} }; }
+            const next = { ...current, [type]: { ...current[type] } };
+            Object.keys(next[type]).forEach(cat => { if (next[type][cat] === groupName) delete next[type][cat]; });
+            return { ...prev, categoryGroups: JSON.stringify(next) };
         });
     };
 
@@ -1092,8 +1174,8 @@ export const useAlDiaState = () => {
         markFixedExpensePaid: lw(markFixedExpensePaid), payFixedExpensePartial: lw(payFixedExpensePartial), unmarkFixedExpensePaid: lw(unmarkFixedExpensePaid),
         rolloverFixedExpenses: lw(rolloverFixedExpenses), payPendingPeriod: lw(payPendingPeriod), unmarkPendingPeriod: lw(unmarkPendingPeriod),
         repayDebt: lw(repayDebtBase),
-        addTransaction: lw((text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projId?: number, accId?: number, isCashless?: boolean, cat?: string, contact?: string, dueDate?: string) => {
-            addTransaction(text, amount, type, isDebt, projId, accId, isCashless, cat, contact, dueDate);
+        addTransaction: lw((text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projId?: number, accId?: number, isCashless?: boolean, cat?: string, contact?: string, dueDate?: string, notes?: string) => {
+            addTransaction(text, amount, type, isDebt, projId, accId, isCashless, cat, contact, dueDate, notes);
             if (projId && accId) {
                 setAccounts(prev => prev.map(acc => {
                     if (acc.id === accId && !acc.projectIds?.includes(projId)) {
@@ -1122,10 +1204,13 @@ export const useAlDiaState = () => {
         // Otros
         notes, addNote: lw(addNote), removeNote: lw(removeNote), toggleNoteItem: lw(toggleNoteItem), updateNote: lw(updateNote),
         accounts, setAccounts: lw(setAccounts),
+        contacts, setContacts: lw(setContacts),
         preferences, updatePreference: lw((key: keyof UserPreferences, value: any) => setPreferences(prev => ({ ...prev, [key]: value }))),
         incomeCategories, expenseCategories, addCategory: lw(addCategory), removeCategory: lw(removeCategory),
         renameCategory: lw(renameCategory), mergeCategory: lw(mergeCategory),
         categoryAccountScope, setCategoryAccounts: lw(setCategoryAccounts),
+        categoryGroups, setCategoryGroup: lw(setCategoryGroup),
+        renameCategoryGroup: lw(renameCategoryGroup), deleteCategoryGroup: lw(deleteCategoryGroup),
         // Bloques Diarios
         dailyBlocks, addDailyBlock: lw(addDailyBlock), toggleDailyBlock: lw(toggleDailyBlock), removeDailyBlock: lw(removeDailyBlock), updateDailyBlock: lw(updateDailyBlock),
         // Lista de compras

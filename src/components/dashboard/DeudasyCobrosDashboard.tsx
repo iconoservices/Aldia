@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Fragment } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Transaction } from "../../hooks/useAlDiaState";
+import type { Transaction, Contact } from "../../hooks/useAlDiaState";
 import { useIsMobile } from "../../theme";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 
@@ -9,12 +9,14 @@ interface DeudasyCobrosDashboardProps {
     addTransaction: (
         text: string, amount: number, type: "ingreso" | "gasto",
         isDebt: boolean, projectId?: number, accountId?: number,
-        isCashless?: boolean, category?: string, contact?: string, dueDate?: string
+        isCashless?: boolean, category?: string, contact?: string, dueDate?: string, notes?: string
     ) => void;
     removeTransaction: (id: number) => void;
     repayDebt: (originalTx: Transaction, amount: number, accountId: number) => void;
     updateTransaction: (id: number, updates: Partial<Transaction>) => void;
     accounts: { id: number; name: string; color: string }[];
+    contacts?: Contact[];
+    setContacts?: React.Dispatch<React.SetStateAction<Contact[]>>;
 }
 
 // Antes registrar una deuda no tocaba ninguna cuenta: si te prestaban plata, "Debo"
@@ -164,6 +166,8 @@ export const DeudasyCobrosDashboard = ({
     removeTransaction,
     updateTransaction,
     accounts,
+    contacts = [],
+    setContacts,
 }: DeudasyCobrosDashboardProps) => {
     const movil = useIsMobile();
 
@@ -177,11 +181,14 @@ export const DeudasyCobrosDashboard = ({
 
     const [filterType, setFilterType] = useState<FilterType>("todos");
     const [filterEstado, setFilterEstado] = useState<FilterEstado>("todos");
-    const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+    const [viewMode, setViewMode] = useState<"list" | "grid" | "contacto">("list");
+    const [expandedContacts, setExpandedContacts] = useState<Set<string>>(new Set());
     const [showAddModal, setShowAddModal] = useState(false);
     const [newType, setNewType] = useState<"gasto" | "ingreso">("gasto");
     const [newText, setNewText] = useState("");
     const [newContact, setNewContact] = useState("");
+    const [newPhone, setNewPhone] = useState("");
+    const [newNotes, setNewNotes] = useState("");
     const [newAmount, setNewAmount] = useState("");
     const [newAccountId, setNewAccountId] = useState<string>("");
     const [newDueDate, setNewDueDate] = useState<string>("");
@@ -191,6 +198,9 @@ export const DeudasyCobrosDashboard = ({
     const [abonarAmount, setAbonarAmount] = useState<Record<number, string>>({});
     const [abonarAccountId, setAbonarAccountId] = useState<Record<number, string>>({});
     const [confirmDeleteItem, setConfirmDeleteItem] = useState<DebtGroup | null>(null);
+    const [editingContact, setEditingContact] = useState<Contact | null>(null);
+    const [editContactPhone, setEditContactPhone] = useState("");
+    const [editContactNotes, setEditContactNotes] = useState("");
 
     // Agrupa cada deuda/cobro con sus abonos ("Pago: X") en un solo saldo neto —
     // misma lógica que activeDebtsAndCollections en FinanzasDashboard, para que
@@ -226,6 +236,76 @@ export const DeudasyCobrosDashboard = ({
 
     const debtItems = useMemo(() => debtGroups.filter(g => g.isOwe), [debtGroups]);
     const cobroItems = useMemo(() => debtGroups.filter(g => !g.isOwe), [debtGroups]);
+
+    // Nombres de contacto ya usados, para sugerir con datalist al escribir uno nuevo
+    // y evitar que "Carlos" y "carlos " terminen como dos contactos distintos. Junta
+    // los nombres del registro de Contactos con los que ya aparecen en deudas viejas
+    // que todavía no tienen un Contact asociado.
+    const uniqueContacts = useMemo(() => {
+        const set = new Set<string>();
+        contacts.forEach(c => set.add(c.name));
+        debtGroups.forEach(g => { if (g.contact) set.add(g.contact); });
+        return Array.from(set).sort((a, b) => a.localeCompare(b));
+    }, [debtGroups, contacts]);
+
+    const findContactByName = (name: string) =>
+        contacts.find(c => c.name.trim().toLowerCase() === name.trim().toLowerCase());
+
+    // Guarda o actualiza el contacto por nombre (sin id, porque el campo de texto solo
+    // conoce el nombre). Si ya existe, solo pisa el teléfono cuando viene uno nuevo —
+    // así una deuda futura sin teléfono no borra el que ya se había guardado.
+    const upsertContactByName = (name: string, phone: string) => {
+        const trimmed = name.trim();
+        if (!trimmed || !setContacts) return;
+        setContacts(prev => {
+            const existing = prev.find(c => c.name.trim().toLowerCase() === trimmed.toLowerCase());
+            if (existing) {
+                if (!phone.trim()) return prev;
+                return prev.map(c => c.id === existing.id ? { ...c, phone: phone.trim() } : c);
+            }
+            return [...prev, { id: Date.now(), name: trimmed, phone: phone.trim() || undefined }];
+        });
+    };
+
+    // Mismos DebtGroup de siempre, pero reagrupados por contacto en vez de por
+    // contacto+concepto: así "Juan" junta su préstamo de la cuota 1, 2 y 3 en una
+    // sola vista con el total, en vez de tres tarjetas sueltas con el mismo nombre.
+    const contactGroups = useMemo(() => {
+        const map: Record<string, { contact: string; totalDebo: number; totalMeDeben: number; items: DebtGroup[] }> = {};
+        debtGroups.forEach(g => {
+            const key = g.contact || "";
+            if (!map[key]) map[key] = { contact: key, totalDebo: 0, totalMeDeben: 0, items: [] };
+            if (g.isOwe) map[key].totalDebo += g.amount; else map[key].totalMeDeben += g.amount;
+            map[key].items.push(g);
+        });
+        return Object.values(map).sort((a, b) => {
+            if (!a.contact) return 1;
+            if (!b.contact) return -1;
+            return a.contact.localeCompare(b.contact);
+        });
+    }, [debtGroups]);
+
+    const toggleContactExpanded = (key: string) => {
+        setExpandedContacts(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key); else next.add(key);
+            return next;
+        });
+    };
+
+    const openEditContact = (name: string) => {
+        const existing = findContactByName(name);
+        setEditingContact(existing || { id: Date.now(), name });
+        setEditContactPhone(existing?.phone || "");
+        setEditContactNotes(existing?.notes || "");
+    };
+
+    const saveEditContact = () => {
+        if (!editingContact || !setContacts) return;
+        const updated: Contact = { ...editingContact, phone: editContactPhone.trim() || undefined, notes: editContactNotes.trim() || undefined };
+        setContacts(prev => prev.some(c => c.id === updated.id) ? prev.map(c => c.id === updated.id ? updated : c) : [...prev, updated]);
+        setEditingContact(null);
+    };
 
     const handleAbonar = (item: DebtGroup, amount: number, accountId?: number) => {
         if (amount <= 0) return;
@@ -282,6 +362,8 @@ export const DeudasyCobrosDashboard = ({
         setEditingTx(item.originalTx);
         setNewText(item.name);
         setNewContact(item.contact);
+        setNewPhone(findContactByName(item.contact)?.phone || "");
+        setNewNotes(item.originalTx.notes || "");
         setNewAmount(String(Math.abs(item.originalTx.amount)));
         setNewType(item.originalTx.type);
         setNewAccountId(item.originalTx.accountId ? String(item.originalTx.accountId) : "");
@@ -307,12 +389,16 @@ export const DeudasyCobrosDashboard = ({
             true,
             "Deudas",
             newContact.trim() || undefined,
-            newDueDate || undefined
+            newDueDate || undefined,
+            newNotes.trim() || undefined
         );
+        if (newContact.trim()) upsertContactByName(newContact, newPhone);
         setEditingTx(null);
         setShowAddModal(false);
         setNewText("");
         setNewContact("");
+        setNewPhone("");
+        setNewNotes("");
         setNewAmount("");
         setNewAccountId("");
         setNewDueDate("");
@@ -330,15 +416,51 @@ export const DeudasyCobrosDashboard = ({
 
     const balanceNeto = totalCobrar - totalPagar;
 
+    // Mismo contacto, filas juntas: antes el orden era por fecha de creación, así que
+    // dos deudas de "Mirka" podían quedar separadas por una de "Roy" en medio. El sort
+    // es estable (ES2019+), así que dentro de un mismo contacto no se pierde el orden
+    // relativo, y los que no tienen contacto quedan al final tal como estaban entre sí.
+    const sortByContact = (items: DebtGroup[]) => [...items].sort((a, b) => {
+        if (a.contact === b.contact) return 0;
+        if (!a.contact) return 1;
+        if (!b.contact) return -1;
+        return a.contact.localeCompare(b.contact);
+    });
+
     const filteredDebts = useMemo(() => {
-        if (filterEstado === "todos") return debtItems;
-        return debtItems.filter(d => getEstadoBadge(d.originalTx).label.toLowerCase() === filterEstado);
+        const base = filterEstado === "todos" ? debtItems : debtItems.filter(d => getEstadoBadge(d.originalTx).label.toLowerCase() === filterEstado);
+        return sortByContact(base);
     }, [debtItems, filterEstado]);
 
     const filteredCobros = useMemo(() => {
-        if (filterEstado === "todos") return cobroItems;
-        return cobroItems.filter(d => getEstadoBadge(d.originalTx).label.toLowerCase() === filterEstado);
+        const base = filterEstado === "todos" ? cobroItems : cobroItems.filter(d => getEstadoBadge(d.originalTx).label.toLowerCase() === filterEstado);
+        return sortByContact(base);
     }, [cobroItems, filterEstado]);
+
+    // Anota cada fila con si es la primera/última de su racha de mismo contacto (ya
+    // vienen juntas gracias a sortByContact) y el conteo/total del grupo, para poder
+    // no repetir el avatar y mostrar un subtotal al cerrar el grupo.
+    const annotateGroups = (items: DebtGroup[]) => {
+        const counts: Record<string, { count: number; total: number }> = {};
+        items.forEach(i => {
+            if (!i.contact) return;
+            if (!counts[i.contact]) counts[i.contact] = { count: 0, total: 0 };
+            counts[i.contact].count++;
+            counts[i.contact].total += i.amount;
+        });
+        return items.map((item, idx) => {
+            const sameAsPrev = idx > 0 && !!item.contact && items[idx - 1].contact === item.contact;
+            const sameAsNext = idx < items.length - 1 && !!item.contact && items[idx + 1].contact === item.contact;
+            const g = item.contact ? counts[item.contact] : undefined;
+            return {
+                item,
+                groupCount: g?.count ?? 1,
+                groupTotal: g?.total ?? item.amount,
+                isFirstOfGroup: !sameAsPrev,
+                isLastOfGroup: !sameAsNext,
+            };
+        });
+    };
 
     const handleAdd = () => {
         if (!newText.trim() || !newAmount) return;
@@ -360,7 +482,8 @@ export const DeudasyCobrosDashboard = ({
             true,
             undefined,
             newContact.trim() || undefined,
-            newDueDate || undefined
+            newDueDate || undefined,
+            newNotes.trim() || undefined
         );
         // Si se eligió cuenta, el efectivo también se mueve de verdad:
         // "Debo" (gasto) = me prestaron, entra plata a la cuenta.
@@ -378,7 +501,8 @@ export const DeudasyCobrosDashboard = ({
                 newContact.trim() || undefined
             );
         }
-        setNewText(""); setNewContact(""); setNewAmount(""); setNewAccountId(""); setNewDueDate("");
+        if (newContact.trim()) upsertContactByName(newContact, newPhone);
+        setNewText(""); setNewContact(""); setNewPhone(""); setNewNotes(""); setNewAmount(""); setNewAccountId(""); setNewDueDate("");
         setShowAddModal(false);
     };
 
@@ -407,68 +531,90 @@ export const DeudasyCobrosDashboard = ({
                             </td>
                         </tr>
                     )}
-                    {items.map(item => {
+                    {annotateGroups(items).map(({ item, groupCount, groupTotal, isFirstOfGroup, isLastOfGroup }) => {
                         const badge = getEstadoBadge(item.originalTx);
                         const iconC = getIconColor(badge);
                         const icon = getContactIcon(item.contact || item.name, "gasto");
                         const id = item.originalTx.id;
                         return (
-                            <tr
-                                key={item.key}
-                                style={{ transition: "background 0.15s" }}
-                                onMouseEnter={e => (e.currentTarget.style.background = "#F2F3FD")}
-                                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                            >
-                                <td style={TD}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                                        <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: iconC.bg, color: iconC.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                            <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>{icon}</span>
-                                        </div>
-                                        <div>
-                                            <div style={{ fontWeight: 600 }}>{item.contact || item.name}</div>
-                                            {item.contact && <div style={{ fontSize: "0.72rem", color: "#727785" }}>{item.name}</div>}
-                                        </div>
-                                    </div>
-                                </td>
-                                <td style={{ ...TD, fontWeight: 700, color: "#BA1A1A", fontVariantNumeric: "tabular-nums" }}>
-                                    {formatCurrency(item.amount)}
-                                </td>
-                                <td style={{ ...TD, color: "#424754", fontSize: "0.82rem" }}>{formatDate(item.originalTx.dueDate || item.originalTx.fullDate)}</td>
-                                <td style={TD}>
-                                    <span style={{ padding: "3px 10px", borderRadius: "999px", background: badge.bg, color: badge.text, fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
-                                        {badge.label}
-                                    </span>
-                                </td>
-                                <td style={TD}>
-                                    <div style={{ display: "flex", gap: "4px" }}>
-                                        {abonarId === id ? (
-                                            <div style={ABONO_PANEL}>
-                                                <select value={abonarAccountId[id] ?? ""} onChange={e => setAbonarAccountId(m => ({ ...m, [id]: e.target.value }))} style={SELECT_MINI} title="¿De qué cuenta sale?">
-                                                    <option value="">Sin cuenta</option>
-                                                    {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                                                </select>
-                                                <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-                                                    <input type="number" value={abonarAmount[id] ?? item.amount.toFixed(2)} onChange={e => setAbonarAmount(m => ({ ...m, [id]: e.target.value }))}
-                                                        style={{ width: "56px", padding: "5px 6px", borderRadius: "6px", border: "1px solid #E2E8F0", fontSize: "0.68rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
-                                                    <button onClick={() => handleAbonar(item, parseFloat(abonarAmount[id] || String(item.amount)), abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#10B981", color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.64rem", cursor: "pointer" }}>Abonar</button>
-                                                    <button onClick={() => handleAbonar(item, item.amount, abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#059669", color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.64rem", cursor: "pointer" }}>Todo</button>
-                                                    <button onClick={() => closeAbonar(id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", padding: "2px", fontSize: "0.75rem", fontWeight: 800 }}>✕</button>
+                            <Fragment key={item.key}>
+                                <tr
+                                    style={{ transition: "background 0.15s" }}
+                                    onMouseEnter={e => (e.currentTarget.style.background = "#F2F3FD")}
+                                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                                >
+                                    <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent" }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                            {isFirstOfGroup ? (
+                                                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: iconC.bg, color: iconC.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                                    <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>{icon}</span>
                                                 </div>
+                                            ) : (
+                                                <div style={{ width: "32px", display: "flex", justifyContent: "center", flexShrink: 0 }}>
+                                                    <div style={{ width: "2px", alignSelf: "stretch", minHeight: "18px", background: "#DAE2FD" }} />
+                                                </div>
+                                            )}
+                                            <div>
+                                                {isFirstOfGroup ? (
+                                                    <div style={{ fontWeight: 600 }}>{item.contact || item.name}{groupCount > 1 ? ` (${groupCount})` : ""}</div>
+                                                ) : (
+                                                    <div style={{ fontSize: "0.72rem", color: "#94A3B8", fontWeight: 600 }}>↳ mismo contacto</div>
+                                                )}
+                                                {item.contact && <div style={{ fontSize: "0.72rem", color: "#727785" }}>{item.name}</div>}
+                                                {item.originalTx.notes && <div style={{ fontSize: "0.7rem", color: "#94A3B8", fontStyle: "italic" }}>{item.originalTx.notes}</div>}
                                             </div>
-                                        ) : (
-                                            <>
-                                                <button onClick={() => openAbonar(item)} title="Abonar" style={{ background: "#E2E8F0", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#475569" }}>Abonar</button>
-                                                <button onClick={() => handleEdit(item)} title="Editar" style={{ background: "none", border: "1px solid #0058BE", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#0058BE" }}>
-                                                    <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>edit</span>
-                                                </button>
-                                                <button onClick={() => handleDelete(item)} title="Eliminar" style={{ background: "none", border: "1px solid #BA1A1A", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#BA1A1A" }}>
-                                                    <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>delete</span>
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
-                                </td>
-                            </tr>
+                                        </div>
+                                    </td>
+                                    <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent", fontWeight: 700, color: "#BA1A1A", fontVariantNumeric: "tabular-nums" }}>
+                                        {formatCurrency(item.amount)}
+                                    </td>
+                                    <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent", color: "#424754", fontSize: "0.82rem" }}>{formatDate(item.originalTx.dueDate || item.originalTx.fullDate)}</td>
+                                    <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent" }}>
+                                        <span style={{ padding: "3px 10px", borderRadius: "999px", background: badge.bg, color: badge.text, fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
+                                            {badge.label}
+                                        </span>
+                                    </td>
+                                    <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent" }}>
+                                        <div style={{ display: "flex", gap: "4px" }}>
+                                            {abonarId === id ? (
+                                                <div style={ABONO_PANEL}>
+                                                    <select value={abonarAccountId[id] ?? ""} onChange={e => setAbonarAccountId(m => ({ ...m, [id]: e.target.value }))} style={SELECT_MINI} title="¿De qué cuenta sale?">
+                                                        <option value="">Sin cuenta</option>
+                                                        {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                                    </select>
+                                                    <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                                                        <input type="number" value={abonarAmount[id] ?? item.amount.toFixed(2)} onChange={e => setAbonarAmount(m => ({ ...m, [id]: e.target.value }))}
+                                                            style={{ width: "56px", padding: "5px 6px", borderRadius: "6px", border: "1px solid #E2E8F0", fontSize: "0.68rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
+                                                        <button onClick={() => handleAbonar(item, parseFloat(abonarAmount[id] || String(item.amount)), abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#10B981", color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.64rem", cursor: "pointer" }}>Abonar</button>
+                                                        <button onClick={() => handleAbonar(item, item.amount, abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#059669", color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.64rem", cursor: "pointer" }}>Todo</button>
+                                                        <button onClick={() => closeAbonar(id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", padding: "2px", fontSize: "0.75rem", fontWeight: 800 }}>✕</button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <button onClick={() => openAbonar(item)} title="Abonar" style={{ background: "#E2E8F0", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#475569" }}>Abonar</button>
+                                                    <button onClick={() => handleEdit(item)} title="Editar" style={{ background: "none", border: "1px solid #0058BE", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#0058BE" }}>
+                                                        <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>edit</span>
+                                                    </button>
+                                                    <button onClick={() => handleDelete(item)} title="Eliminar" style={{ background: "none", border: "1px solid #BA1A1A", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#BA1A1A" }}>
+                                                        <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>delete</span>
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {isLastOfGroup && groupCount > 1 && (
+                                    <tr style={{ background: "#F8FAFC" }}>
+                                        <td colSpan={5} style={{ ...TD, padding: "6px 16px 6px 52px", fontSize: "0.74rem" }}>
+                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                <span style={{ color: "#727785", fontWeight: 700 }}>Subtotal {item.contact} · {groupCount} deudas</span>
+                                                <span style={{ fontWeight: 800, color: "#BA1A1A" }}>{formatCurrency(groupTotal)}</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                            </Fragment>
                         );
                     })}
                 </tbody>
@@ -496,39 +642,50 @@ export const DeudasyCobrosDashboard = ({
                             </td>
                         </tr>
                     )}
-                    {items.map(item => {
+                    {annotateGroups(items).map(({ item, groupCount, groupTotal, isFirstOfGroup, isLastOfGroup }) => {
                         const badge = getEstadoBadge(item.originalTx);
                         const iconC = getIconColor(badge);
                         const icon = getContactIcon(item.contact || item.name, "ingreso");
                         const id = item.originalTx.id;
                         return (
+                            <Fragment key={item.key}>
                             <tr
-                                key={item.key}
                                 style={{ transition: "background 0.15s" }}
                                 onMouseEnter={e => (e.currentTarget.style.background = "#F2F3FD")}
                                 onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                             >
-                                <td style={TD}>
+                                <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent" }}>
                                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                                        <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: iconC.bg, color: iconC.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                            <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>{icon}</span>
-                                        </div>
+                                        {isFirstOfGroup ? (
+                                            <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: iconC.bg, color: iconC.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>{icon}</span>
+                                            </div>
+                                        ) : (
+                                            <div style={{ width: "32px", display: "flex", justifyContent: "center", flexShrink: 0 }}>
+                                                <div style={{ width: "2px", alignSelf: "stretch", minHeight: "18px", background: "#D1FAE5" }} />
+                                            </div>
+                                        )}
                                         <div>
-                                            <div style={{ fontWeight: 600 }}>{item.contact || item.name}</div>
+                                            {isFirstOfGroup ? (
+                                                <div style={{ fontWeight: 600 }}>{item.contact || item.name}{groupCount > 1 ? ` (${groupCount})` : ""}</div>
+                                            ) : (
+                                                <div style={{ fontSize: "0.72rem", color: "#94A3B8", fontWeight: 600 }}>↳ mismo contacto</div>
+                                            )}
                                             {item.contact && <div style={{ fontSize: "0.72rem", color: "#727785" }}>{item.name}</div>}
+                                            {item.originalTx.notes && <div style={{ fontSize: "0.7rem", color: "#94A3B8", fontStyle: "italic" }}>{item.originalTx.notes}</div>}
                                         </div>
                                     </div>
                                 </td>
-                                <td style={{ ...TD, fontWeight: 700, color: "#10B981", fontVariantNumeric: "tabular-nums" }}>
+                                <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent", fontWeight: 700, color: "#10B981", fontVariantNumeric: "tabular-nums" }}>
                                     {formatCurrency(item.amount)}
                                 </td>
-                                <td style={{ ...TD, color: "#424754", fontSize: "0.82rem" }}>{formatDate(item.originalTx.dueDate || item.originalTx.fullDate)}</td>
-                                <td style={TD}>
+                                <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent", color: "#424754", fontSize: "0.82rem" }}>{formatDate(item.originalTx.dueDate || item.originalTx.fullDate)}</td>
+                                <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent" }}>
                                     <span style={{ padding: "3px 10px", borderRadius: "999px", background: badge.bg, color: badge.text, fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
                                         {badge.label}
                                     </span>
                                 </td>
-<td style={TD}>
+<td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent" }}>
                                     {confirmPayId === id ? (
                                         <div style={{ display: "flex", gap: "4px" }}>
                                             <button onClick={() => handleMarkPaid(item)} style={{ ...BTN_PRIMARY, padding: "4px 10px", fontSize: "0.72rem", boxShadow: "none" }}>✓ Confirmar</button>
@@ -568,6 +725,17 @@ export const DeudasyCobrosDashboard = ({
                                     )}
                                 </td>
                             </tr>
+                            {isLastOfGroup && groupCount > 1 && (
+                                <tr style={{ background: "#F8FAFC" }}>
+                                    <td colSpan={5} style={{ ...TD, padding: "6px 16px 6px 52px", fontSize: "0.74rem" }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                            <span style={{ color: "#727785", fontWeight: 700 }}>Subtotal {item.contact} · {groupCount} cobros</span>
+                                            <span style={{ fontWeight: 800, color: "#10B981" }}>{formatCurrency(groupTotal)}</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                            </Fragment>
                         );
                     })}
                 </tbody>
@@ -582,20 +750,26 @@ export const DeudasyCobrosDashboard = ({
             {items.length === 0 && (
                 <p style={{ textAlign: "center", color: "#727785", padding: "2rem 0", margin: 0, fontSize: "0.85rem" }}>Sin deudas registradas 🎉</p>
             )}
-            {items.map(item => {
+            {annotateGroups(items).map(({ item, groupCount, groupTotal, isFirstOfGroup, isLastOfGroup }) => {
                 const badge = getEstadoBadge(item.originalTx);
                 const iconC = getIconColor(badge);
                 const icon = getContactIcon(item.contact || item.name, "gasto");
                 const id = item.originalTx.id;
                 return (
-                    <div key={item.key} style={{ background: "#fff", border: "1px solid #E6E7F2", borderRadius: "12px", padding: "10px 12px" }}>
+                    <Fragment key={item.key}>
+                    <div style={{ background: "#fff", border: "1px solid #E6E7F2", borderLeft: isFirstOfGroup ? "1px solid #E6E7F2" : "3px solid #DAE2FD", borderRadius: "12px", padding: "10px 12px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                             <div style={{ width: "30px", height: "30px", borderRadius: "50%", background: iconC.bg, color: iconC.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                 <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>{icon}</span>
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontWeight: 700, fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.contact || item.name}</div>
+                                {isFirstOfGroup ? (
+                                    <div style={{ fontWeight: 700, fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.contact || item.name}{groupCount > 1 ? ` (${groupCount})` : ""}</div>
+                                ) : (
+                                    <div style={{ fontSize: "0.7rem", color: "#94A3B8", fontWeight: 700 }}>↳ mismo contacto</div>
+                                )}
                                 {item.contact && <div style={{ fontSize: "0.66rem", color: "#727785", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>}
+                                {item.originalTx.notes && <div style={{ fontSize: "0.64rem", color: "#94A3B8", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.originalTx.notes}</div>}
                             </div>
                             <div style={{ textAlign: "right", flexShrink: 0 }}>
                                 <div style={{ fontWeight: 700, color: "#BA1A1A", fontSize: "0.82rem", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(item.amount)}</div>
@@ -632,6 +806,13 @@ export const DeudasyCobrosDashboard = ({
                             )}
                         </div>
                     </div>
+                    {isLastOfGroup && groupCount > 1 && (
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F8FAFC", border: "1px dashed #C2C6D6", borderRadius: "8px", padding: "5px 10px", fontSize: "0.68rem", marginTop: "-0.3rem" }}>
+                            <span style={{ color: "#727785", fontWeight: 700 }}>Subtotal {item.contact} · {groupCount} deudas</span>
+                            <span style={{ fontWeight: 800, color: "#BA1A1A" }}>{formatCurrency(groupTotal)}</span>
+                        </div>
+                    )}
+                    </Fragment>
                 );
             })}
         </div>
@@ -642,20 +823,26 @@ export const DeudasyCobrosDashboard = ({
             {items.length === 0 && (
                 <p style={{ textAlign: "center", color: "#727785", padding: "2rem 0", margin: 0, fontSize: "0.85rem" }}>Sin cobros registrados</p>
             )}
-            {items.map(item => {
+            {annotateGroups(items).map(({ item, groupCount, groupTotal, isFirstOfGroup, isLastOfGroup }) => {
                 const badge = getEstadoBadge(item.originalTx);
                 const iconC = getIconColor(badge);
                 const icon = getContactIcon(item.contact || item.name, "ingreso");
                 const id = item.originalTx.id;
                 return (
-                    <div key={item.key} style={{ background: "#fff", border: "1px solid #E6E7F2", borderRadius: "12px", padding: "10px 12px" }}>
+                    <Fragment key={item.key}>
+                    <div style={{ background: "#fff", border: "1px solid #E6E7F2", borderLeft: isFirstOfGroup ? "1px solid #E6E7F2" : "3px solid #D1FAE5", borderRadius: "12px", padding: "10px 12px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                             <div style={{ width: "30px", height: "30px", borderRadius: "50%", background: iconC.bg, color: iconC.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                 <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>{icon}</span>
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontWeight: 700, fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.contact || item.name}</div>
+                                {isFirstOfGroup ? (
+                                    <div style={{ fontWeight: 700, fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.contact || item.name}{groupCount > 1 ? ` (${groupCount})` : ""}</div>
+                                ) : (
+                                    <div style={{ fontSize: "0.7rem", color: "#94A3B8", fontWeight: 700 }}>↳ mismo contacto</div>
+                                )}
                                 {item.contact && <div style={{ fontSize: "0.66rem", color: "#727785", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>}
+                                {item.originalTx.notes && <div style={{ fontSize: "0.64rem", color: "#94A3B8", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.originalTx.notes}</div>}
                             </div>
                             <div style={{ textAlign: "right", flexShrink: 0 }}>
                                 <div style={{ fontWeight: 700, color: "#10B981", fontSize: "0.82rem", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(item.amount)}</div>
@@ -699,6 +886,81 @@ export const DeudasyCobrosDashboard = ({
                                 </div>
                             )}
                         </div>
+                    </div>
+                    {isLastOfGroup && groupCount > 1 && (
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F8FAFC", border: "1px dashed #C2C6D6", borderRadius: "8px", padding: "5px 10px", fontSize: "0.68rem", marginTop: "-0.3rem" }}>
+                            <span style={{ color: "#727785", fontWeight: 700 }}>Subtotal {item.contact} · {groupCount} cobros</span>
+                            <span style={{ fontWeight: 800, color: "#10B981" }}>{formatCurrency(groupTotal)}</span>
+                        </div>
+                    )}
+                    </Fragment>
+                );
+            })}
+        </div>
+    );
+
+    // Vista "Por contacto": una tarjeta por persona/entidad con el total Debo/Me deben
+    // arriba (colapsada) y el detalle de cada deuda o cobro suyo al expandir — reusa
+    // las mismas tarjetas de arriba, solo cambia el agrupamiento.
+    const renderContactView = () => (
+        <div style={{ display: "flex", flexDirection: "column", gap: movil ? "0.6rem" : "0.85rem" }}>
+            {contactGroups.length === 0 && (
+                <p style={{ textAlign: "center", color: "#727785", padding: "2.5rem 0", margin: 0, fontSize: "0.85rem" }}>Sin deudas o cobros registrados 🎉</p>
+            )}
+            {contactGroups.map(cg => {
+                const key = cg.contact || "__sin_contacto__";
+                const isOpen = expandedContacts.has(key);
+                const debtos = cg.items.filter(i => i.isOwe);
+                const cobros = cg.items.filter(i => !i.isOwe);
+                const contactPhone = cg.contact ? findContactByName(cg.contact)?.phone : undefined;
+                return (
+                    <div key={key} style={CARD}>
+                        <div style={{ width: "100%", display: "flex", alignItems: "stretch", background: "#F2F3FD" }}>
+                            <button
+                                onClick={() => toggleContactExpanded(key)}
+                                style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: movil ? "0.85rem 1rem" : "1rem 1.25rem", background: "none", border: "none", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}
+                            >
+                                <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+                                    <div style={{ width: "34px", height: "34px", borderRadius: "50%", background: "#DAE2FD", color: "#0058BE", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>{cg.contact ? "person" : "help_outline"}</span>
+                                    </div>
+                                    <div style={{ minWidth: 0 }}>
+                                        <div style={{ fontWeight: 700, fontSize: movil ? "0.85rem" : "0.95rem", color: "#191B23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                            {cg.contact || "Sin contacto"}
+                                        </div>
+                                        <div style={{ fontSize: "0.68rem", color: "#727785" }}>
+                                            {cg.items.length} registro{cg.items.length !== 1 ? "s" : ""}{contactPhone ? ` · ${contactPhone}` : ""}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: movil ? "8px" : "14px", flexShrink: 0 }}>
+                                    {cg.totalDebo > 0 && (
+                                        <div style={{ textAlign: "right" }}>
+                                            <div style={{ fontSize: "0.6rem", fontWeight: 700, color: "#BA1A1A", textTransform: "uppercase" as const }}>Debo</div>
+                                            <div style={{ fontWeight: 700, color: "#BA1A1A", fontSize: movil ? "0.78rem" : "0.85rem", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(cg.totalDebo)}</div>
+                                        </div>
+                                    )}
+                                    {cg.totalMeDeben > 0 && (
+                                        <div style={{ textAlign: "right" }}>
+                                            <div style={{ fontSize: "0.6rem", fontWeight: 700, color: "#10B981", textTransform: "uppercase" as const }}>Me deben</div>
+                                            <div style={{ fontWeight: 700, color: "#10B981", fontSize: movil ? "0.78rem" : "0.85rem", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(cg.totalMeDeben)}</div>
+                                        </div>
+                                    )}
+                                    <span className="material-symbols-outlined" style={{ fontSize: "20px", color: "#727785", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>expand_more</span>
+                                </div>
+                            </button>
+                            {cg.contact && setContacts && (
+                                <button onClick={() => openEditContact(cg.contact)} title="Editar contacto" style={{ background: "none", border: "none", borderLeft: "1px solid #C2C6D6", cursor: "pointer", color: "#727785", padding: "0 14px", display: "flex", alignItems: "center", flexShrink: 0 }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>edit</span>
+                                </button>
+                            )}
+                        </div>
+                        {isOpen && (
+                            <div>
+                                {debtos.length > 0 && renderDebtCards(debtos)}
+                                {cobros.length > 0 && renderCobroCards(cobros)}
+                            </div>
+                        )}
                     </div>
                 );
             })}
@@ -785,44 +1047,54 @@ export const DeudasyCobrosDashboard = ({
                         <option value="atrasado">Atrasado</option>
                         <option value="programado">Programado</option>
                     </select>
-                    {!movil && (
-                        <div style={{ marginLeft: "auto", display: "flex", gap: "6px" }}>
-                            {(["grid", "list"] as const).map(m => (
-                                <button key={m} onClick={() => setViewMode(m)} style={{ padding: "6px 10px", borderRadius: "8px", border: "none", background: viewMode === m ? "#fff" : "transparent", boxShadow: viewMode === m ? "0 1px 4px rgba(0,0,0,0.08)" : "none", cursor: "pointer", color: viewMode === m ? "#0058BE" : "#424754" }}>
-                                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>{m === "grid" ? "grid_view" : "list"}</span>
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                    <div style={{ marginLeft: movil ? undefined : "auto", display: "flex", gap: "6px", width: movil ? "100%" : undefined }}>
+                        <button
+                            onClick={() => setViewMode(v => v === "contacto" ? "list" : "contacto")}
+                            style={{ padding: "6px 10px", borderRadius: "8px", border: "none", background: viewMode === "contacto" ? "#fff" : "transparent", boxShadow: viewMode === "contacto" ? "0 1px 4px rgba(0,0,0,0.08)" : "none", cursor: "pointer", color: viewMode === "contacto" ? "#0058BE" : "#424754", display: "flex", alignItems: "center", gap: "5px", fontSize: movil ? "0.75rem" : "0.8rem", fontWeight: 700, flex: movil ? 1 : undefined, justifyContent: "center", fontFamily: "inherit" }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>group</span>
+                            Por contacto
+                        </button>
+                        {!movil && (
+                            <>
+                                {(["grid", "list"] as const).map(m => (
+                                    <button key={m} onClick={() => setViewMode(m)} style={{ padding: "6px 10px", borderRadius: "8px", border: "none", background: viewMode === m ? "#fff" : "transparent", boxShadow: viewMode === m ? "0 1px 4px rgba(0,0,0,0.08)" : "none", cursor: "pointer", color: viewMode === m ? "#0058BE" : "#424754" }}>
+                                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>{m === "grid" ? "grid_view" : "list"}</span>
+                                    </button>
+                                ))}
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {/* ── TABLES ── */}
-            <div style={{ display: "grid", gridTemplateColumns: movil ? "1fr" : "repeat(auto-fit, minmax(380px, 1fr))", gap: movil ? "1.25rem" : "2rem" }}>
-                {filterType !== "cobro" && (
-                    <section style={CARD}>
-                        <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
-                            <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
-                                <span className="material-symbols-outlined" style={{ color: "#BA1A1A", fontSize: "20px" }}>outbox</span>
-                                Deudas (Cuentas por Pagar)
-                            </h3>
-                        </div>
-                        {movil ? renderDebtCards(filteredDebts) : renderDebtTable(filteredDebts)}
-                    </section>
-                )}
+            {viewMode === "contacto" ? renderContactView() : (
+                <div style={{ display: "grid", gridTemplateColumns: movil ? "1fr" : "repeat(auto-fit, minmax(380px, 1fr))", gap: movil ? "1.25rem" : "2rem" }}>
+                    {filterType !== "cobro" && (
+                        <section style={CARD}>
+                            <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
+                                <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
+                                    <span className="material-symbols-outlined" style={{ color: "#BA1A1A", fontSize: "20px" }}>outbox</span>
+                                    Deudas (Cuentas por Pagar)
+                                </h3>
+                            </div>
+                            {movil ? renderDebtCards(filteredDebts) : renderDebtTable(filteredDebts)}
+                        </section>
+                    )}
 
-                {filterType !== "deuda" && (
-                    <section style={CARD}>
-                        <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
-                            <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
-                                <span className="material-symbols-outlined" style={{ color: "#10B981", fontSize: "20px" }}>move_to_inbox</span>
-                                Cobros (Cuentas por Cobrar)
-                            </h3>
-                        </div>
-                        {movil ? renderCobroCards(filteredCobros) : renderCobroTable(filteredCobros)}
-                    </section>
-                )}
-            </div>
+                    {filterType !== "deuda" && (
+                        <section style={CARD}>
+                            <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
+                                <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
+                                    <span className="material-symbols-outlined" style={{ color: "#10B981", fontSize: "20px" }}>move_to_inbox</span>
+                                    Cobros (Cuentas por Cobrar)
+                                </h3>
+                            </div>
+                            {movil ? renderCobroCards(filteredCobros) : renderCobroTable(filteredCobros)}
+                        </section>
+                    )}
+                </div>
+            )}
 
             {/* ── ADD MODAL ── */}
             <AnimatePresence>
@@ -861,8 +1133,8 @@ export const DeudasyCobrosDashboard = ({
                             </div>
 
                             {[
-                                { label: newType === "gasto" ? "Acreedor / Descripción" : "Deudor / Descripción", value: newText, setter: setNewText, placeholder: "Ej: Banco Nacional, Préstamo..." },
-                                { label: "Contacto (opcional)", value: newContact, setter: setNewContact, placeholder: "Ej: Carlos M., Tech Corp..." },
+                                { label: "Concepto / Motivo", value: newText, setter: setNewText, placeholder: "Ej: Préstamo, Evento, Factura #123..." },
+                                { label: newType === "gasto" ? "Acreedor (opcional)" : "Cliente / Deudor (opcional)", value: newContact, setter: setNewContact, placeholder: "Ej: Carlos M., Mirka...", listId: "aldia-contactos-existentes" },
                                 { label: "Monto (S/)", value: newAmount, setter: setNewAmount, placeholder: "0.00" },
                             ].map(field => (
                                 <div key={field.label} style={{ marginBottom: "1rem" }}>
@@ -872,14 +1144,54 @@ export const DeudasyCobrosDashboard = ({
                                     <input
                                         type={field.label.includes("Monto") ? "number" : "text"}
                                         value={field.value}
-                                        onChange={e => field.setter(e.target.value)}
+                                        onChange={e => {
+                                            field.setter(e.target.value);
+                                            // Al elegir un contacto ya conocido (del datalist o tipeado igual),
+                                            // se trae su teléfono guardado en vez de dejarlo en blanco.
+                                            if (field.listId) {
+                                                const match = findContactByName(e.target.value);
+                                                if (match) setNewPhone(match.phone || "");
+                                            }
+                                        }}
                                         placeholder={field.placeholder}
+                                        list={field.listId}
                                         style={{ width: "100%", padding: "10px 12px", border: "1px solid #C2C6D6", borderRadius: "8px", fontFamily: "'Inter',sans-serif", fontSize: "0.9rem", color: "#191B23", boxSizing: "border-box" as const, outline: "none" }}
                                         onFocus={e => (e.target.style.borderColor = "#0058BE")}
                                         onBlur={e => (e.target.style.borderColor = "#C2C6D6")}
                                     />
+                                    {field.listId && (
+                                        <datalist id={field.listId}>
+                                            {uniqueContacts.map(c => <option key={c} value={c} />)}
+                                        </datalist>
+                                    )}
+                                    {field.listId && newContact.trim() && (
+                                        <input
+                                            type="tel"
+                                            value={newPhone}
+                                            onChange={e => setNewPhone(e.target.value)}
+                                            placeholder="Teléfono de este contacto (opcional)"
+                                            style={{ width: "100%", marginTop: "6px", padding: "8px 12px", border: "1px solid #C2C6D6", borderRadius: "8px", fontFamily: "'Inter',sans-serif", fontSize: "0.8rem", color: "#191B23", boxSizing: "border-box" as const, outline: "none" }}
+                                            onFocus={e => (e.target.style.borderColor = "#0058BE")}
+                                            onBlur={e => (e.target.style.borderColor = "#C2C6D6")}
+                                        />
+                                    )}
                                 </div>
                             ))}
+
+                            <div style={{ marginBottom: "1rem" }}>
+                                <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#424754", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Inter',sans-serif" }}>
+                                    Detalle (opcional)
+                                </label>
+                                <textarea
+                                    value={newNotes}
+                                    onChange={e => setNewNotes(e.target.value)}
+                                    placeholder="Ej: quedamos en pagar en 3 partes, primera el 15..."
+                                    rows={2}
+                                    style={{ width: "100%", padding: "10px 12px", border: "1px solid #C2C6D6", borderRadius: "8px", fontFamily: "'Inter',sans-serif", fontSize: "0.85rem", color: "#191B23", boxSizing: "border-box" as const, outline: "none", resize: "vertical" }}
+                                    onFocus={e => (e.target.style.borderColor = "#0058BE")}
+                                    onBlur={e => (e.target.style.borderColor = "#C2C6D6")}
+                                />
+                            </div>
 
                             <div style={{ marginBottom: "1rem" }}>
                                 <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#424754", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Inter',sans-serif" }}>
@@ -943,6 +1255,67 @@ export const DeudasyCobrosDashboard = ({
                                 <button onClick={() => { setShowAddModal(false); setEditingTx(null); setNewAccountId(""); setNewDueDate(""); }} style={{ ...BTN_SECONDARY, flex: 1, justifyContent: "center" }}>Cancelar</button>
                                 <button onClick={editingTx ? handleSaveEdit : handleAdd} style={{ ...BTN_PRIMARY, flex: 1, justifyContent: "center" }}>{editingTx ? "Guardar Cambios" : "Guardar"}</button>
                             </div>
+                            </motion.div>
+                        </div>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* ── EDIT CONTACT MODAL ── */}
+            <AnimatePresence>
+                {editingContact && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            style={{ position: "fixed", inset: 0, background: "rgba(25,27,35,0.45)", backdropFilter: "blur(4px)", zIndex: 200 }}
+                            onClick={() => setEditingContact(null)}
+                        />
+                        <div style={{ position: "fixed", inset: 0, zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", pointerEvents: "none" }}>
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                                transition={{ type: "spring", stiffness: 380, damping: 28 }}
+                                style={{ background: "#fff", borderRadius: "16px", padding: movil ? "1.25rem" : "1.75rem", width: movil ? "92vw" : "min(380px, 90vw)", boxShadow: "0px 12px 24px rgba(15,23,42,0.12)", pointerEvents: "auto" }}
+                            >
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+                                    <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", fontFamily: "'Inter',sans-serif" }}>{editingContact.name}</h3>
+                                    <button onClick={() => setEditingContact(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#727785", padding: "4px" }}>
+                                        <span className="material-symbols-outlined">close</span>
+                                    </button>
+                                </div>
+                                <div style={{ marginBottom: "1rem" }}>
+                                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#424754", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Inter',sans-serif" }}>
+                                        Teléfono
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        value={editContactPhone}
+                                        onChange={e => setEditContactPhone(e.target.value)}
+                                        placeholder="Ej: 987 654 321"
+                                        style={{ width: "100%", padding: "10px 12px", border: "1px solid #C2C6D6", borderRadius: "8px", fontFamily: "'Inter',sans-serif", fontSize: "0.9rem", color: "#191B23", boxSizing: "border-box" as const, outline: "none" }}
+                                        onFocus={e => (e.target.style.borderColor = "#0058BE")}
+                                        onBlur={e => (e.target.style.borderColor = "#C2C6D6")}
+                                    />
+                                </div>
+                                <div style={{ marginBottom: "1rem" }}>
+                                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#424754", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Inter',sans-serif" }}>
+                                        Notas (opcional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={editContactNotes}
+                                        onChange={e => setEditContactNotes(e.target.value)}
+                                        placeholder="Ej: compañero de trabajo"
+                                        style={{ width: "100%", padding: "10px 12px", border: "1px solid #C2C6D6", borderRadius: "8px", fontFamily: "'Inter',sans-serif", fontSize: "0.9rem", color: "#191B23", boxSizing: "border-box" as const, outline: "none" }}
+                                        onFocus={e => (e.target.style.borderColor = "#0058BE")}
+                                        onBlur={e => (e.target.style.borderColor = "#C2C6D6")}
+                                    />
+                                </div>
+                                <div style={{ display: "flex", gap: "8px", marginTop: "1.5rem" }}>
+                                    <button onClick={() => setEditingContact(null)} style={{ ...BTN_SECONDARY, flex: 1, justifyContent: "center" }}>Cancelar</button>
+                                    <button onClick={saveEditContact} style={{ ...BTN_PRIMARY, flex: 1, justifyContent: "center" }}>Guardar</button>
+                                </div>
                             </motion.div>
                         </div>
                     </>

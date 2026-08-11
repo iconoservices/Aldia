@@ -347,6 +347,8 @@ function App() {
                 repayDebt={state.repayDebt}
                 updateTransaction={state.updateTransaction}
                 accounts={state.accounts}
+                contacts={state.contacts}
+                setContacts={state.setContacts}
               />
             ) : activeTab === 'Finanzas' ? (
               <FinanzasDashboard
@@ -407,6 +409,10 @@ function App() {
                 mergeCategory={state.mergeCategory}
                 categoryAccountScope={state.categoryAccountScope}
                 setCategoryAccounts={state.setCategoryAccounts}
+                categoryGroups={state.categoryGroups}
+                setCategoryGroup={state.setCategoryGroup}
+                renameCategoryGroup={state.renameCategoryGroup}
+                deleteCategoryGroup={state.deleteCategoryGroup}
               />
             ) : activeTab === 'Movimientos' ? (
               <MovimientosDashboard
