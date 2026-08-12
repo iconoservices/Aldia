@@ -118,16 +118,20 @@ export const RegistroMovimiento = ({
     };
 
     const colorTipo = tipo === 'gasto' ? C.rojo : C.verde;
-    // Solo se filtra cuando ya hay una cuenta elegida: una categoría sin entrada
-    // en el scope (o con array vacío) aplica a todas las cuentas por igual. Si la
-    // categoría no tiene scope propio pero pertenece a un grupo que sí lo tiene,
-    // hereda el del grupo (así no hay que repetir "Cuentas..." en cada categoría).
+    // Si hay cuentas para elegir, las categorías no aparecen hasta elegir una —
+    // mostrarlas antes era engañoso, porque algunas iban a desaparecer apenas se
+    // eligiera la cuenta (scope por categoría o por grupo). Sin cuentas creadas
+    // no hay nada que elegir, así que ahí sí se muestran todas de entrada.
+    // Si la categoría no tiene scope propio pero pertenece a un grupo que sí lo
+    // tiene, hereda el del grupo (así no hay que repetir "Cuentas..." en cada categoría).
     const categorias = useMemo(() => {
         const base = tipo === 'ingreso' ? incomeCategories : expenseCategories;
+        if (accounts.length > 0 && !cuentaId) return [];
         const scope = categoryAccountScope?.[tipo];
         const groupMap = categoryGroups?.[tipo];
         const groupScope = groupAccountScope?.[tipo];
-        if ((!scope && !groupScope) || !cuentaId) return base;
+        if (!scope && !groupScope) return base;
+        if (!cuentaId) return base;
         const cid = Number(cuentaId);
         return base.filter(cat => {
             const own = scope?.[cat];
@@ -137,7 +141,7 @@ export const RegistroMovimiento = ({
             if (inherited && inherited.length > 0) return inherited.includes(cid);
             return true;
         });
-    }, [tipo, incomeCategories, expenseCategories, categoryAccountScope, categoryGroups, groupAccountScope, cuentaId]);
+    }, [tipo, incomeCategories, expenseCategories, categoryAccountScope, categoryGroups, groupAccountScope, cuentaId, accounts.length]);
 
     // Si cambiar de cuenta deja la categoría elegida fuera de su alcance, se limpia
     // para no dejar seleccionado algo que ya no está entre las opciones visibles.
@@ -282,8 +286,12 @@ export const RegistroMovimiento = ({
                                     }}>
                                         Categoría *
                                     </p>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                        {categorias.map(cat => (
+                                    {accounts.length > 0 && !cuentaId ? (
+                                        <p style={{ margin: 0, fontSize: '0.8rem', color: C.outline, fontStyle: 'italic' }}>
+                                            Elige una cuenta para ver las categorías.
+                                        </p>
+                                    ) : (() => {
+                                        const catButton = (cat: string) => (
                                             <button
                                                 key={cat}
                                                 type="button"
@@ -299,8 +307,55 @@ export const RegistroMovimiento = ({
                                             >
                                                 {cat}
                                             </button>
-                                        ))}
-                                    </div>
+                                        );
+
+                                        const groupMap = categoryGroups?.[tipo] || {};
+                                        const groupOrder: string[] = [];
+                                        const byGroup: Record<string, string[]> = {};
+                                        const ungrouped: string[] = [];
+                                        categorias.forEach(cat => {
+                                            const g = groupMap[cat];
+                                            if (g) {
+                                                if (!byGroup[g]) { byGroup[g] = []; groupOrder.push(g); }
+                                                byGroup[g].push(cat);
+                                            } else {
+                                                ungrouped.push(cat);
+                                            }
+                                        });
+
+                                        if (groupOrder.length === 0) {
+                                            return (
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                    {categorias.map(catButton)}
+                                                </div>
+                                            );
+                                        }
+
+                                        return (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                {groupOrder.map(g => (
+                                                    <div key={g}>
+                                                        <div style={{ fontSize: '0.66rem', fontWeight: 800, color: C.outline, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>
+                                                            {g}
+                                                        </div>
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                            {byGroup[g].map(catButton)}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {ungrouped.length > 0 && (
+                                                    <div>
+                                                        <div style={{ fontSize: '0.66rem', fontWeight: 800, color: C.outline, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>
+                                                            Sin grupo
+                                                        </div>
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                            {ungrouped.map(catButton)}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
 
                                 <input

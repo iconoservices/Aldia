@@ -791,6 +791,8 @@ export const FinanzasDashboard = ({
     const [groupMenuMode, setGroupMenuMode] = useState<"root" | "accounts">("root");
     const [isAddingGroup, setIsAddingGroup] = useState(false);
     const [groupCategoryTarget, setGroupCategoryTarget] = useState("");
+    const [addingCategoryToGroup, setAddingCategoryToGroup] = useState<string | null>(null);
+    const [newCategoryForGroupDraft, setNewCategoryForGroupDraft] = useState("");
     const currentCategoriesForTab = useMemo(() => (categoryTab === "gasto" ? expenseCategories : incomeCategories) || [], [categoryTab, expenseCategories, incomeCategories]);
 
     const handleAddCategory = () => {
@@ -828,6 +830,18 @@ export const FinanzasDashboard = ({
         setGroupDraft("");
         setGroupCategoryTarget("");
         setIsAddingGroup(false);
+    };
+
+    // Un grupo es, ante todo, un conjunto de categorías: además de mover una
+    // categoría ya existente hacia él, cada grupo tiene su propio "+" para crear
+    // una categoría nueva que nace directamente adentro.
+    const handleAddCategoryToGroup = (group: string) => {
+        const trimmed = newCategoryForGroupDraft.trim();
+        if (!trimmed || !addCategory) return;
+        addCategory(categoryTab, trimmed);
+        setCategoryGroup?.(categoryTab, trimmed, group);
+        setNewCategoryForGroupDraft("");
+        setAddingCategoryToGroup(null);
     };
 
     const startRenameGroup = (name: string) => { setGroupRenameDraft(name); setEditingGroupName(name); };
@@ -1736,8 +1750,36 @@ export const FinanzasDashboard = ({
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                                                        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
                                                             {byGroup[g].map(renderChip)}
+                                                            {addCategory && (
+                                                                addingCategoryToGroup === g ? (
+                                                                    <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                                                                        <input
+                                                                            autoFocus
+                                                                            placeholder="Nueva categoría..."
+                                                                            value={newCategoryForGroupDraft}
+                                                                            onChange={e => setNewCategoryForGroupDraft(e.target.value)}
+                                                                            onKeyDown={e => { if (e.key === "Enter") handleAddCategoryToGroup(g); if (e.key === "Escape") { setAddingCategoryToGroup(null); setNewCategoryForGroupDraft(""); } }}
+                                                                            style={{ padding: "6px 10px", borderRadius: "999px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", outline: "none", width: "140px" }}
+                                                                        />
+                                                                        <button onClick={() => handleAddCategoryToGroup(g)} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "50%", width: "26px", height: "26px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                                                            <Plus size={13} />
+                                                                        </button>
+                                                                        <button onClick={() => { setAddingCategoryToGroup(null); setNewCategoryForGroupDraft(""); }} style={{ background: "none", border: "none", cursor: "pointer", color: C.outline, padding: "2px", display: "flex" }}>
+                                                                            <X size={14} />
+                                                                        </button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={() => setAddingCategoryToGroup(g)}
+                                                                        title={`Nueva categoría en ${g}`}
+                                                                        style={{ width: "26px", height: "26px", borderRadius: "50%", border: `1px dashed ${C.outlineVariant}`, background: "none", color: C.secondary, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                                                                    >
+                                                                        <Plus size={13} />
+                                                                    </button>
+                                                                )
+                                                            )}
                                                         </div>
                                                     </div>
                                                     );

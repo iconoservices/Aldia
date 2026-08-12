@@ -4,6 +4,34 @@ import type { Transaction, Contact } from "../../hooks/useAlDiaState";
 import { useIsMobile } from "../../theme";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 
+// En iOS Safari, `position: fixed` no se reacomoda cuando aparece el teclado: el
+// modal se centra contra el alto de pantalla COMPLETO (sin teclado), así que su
+// mitad de abajo (el botón "Guardar") termina detrás del teclado y el scroll
+// interno del modal no alcanza a mostrarlo porque el propio contenedor ya quedó
+// mal posicionado. `visualViewport` reporta el alto real visible y se actualiza
+// en vivo — mismo fix que ya usa RegistroMovimiento para este problema.
+const useVisualViewport = () => {
+    const [vp, setVp] = useState(() => ({
+        height: typeof window !== 'undefined' ? window.innerHeight : 0,
+        offsetTop: 0,
+    }));
+
+    useEffect(() => {
+        const vv = window.visualViewport;
+        if (!vv) return;
+        const actualizar = () => setVp({ height: vv.height, offsetTop: vv.offsetTop });
+        actualizar();
+        vv.addEventListener('resize', actualizar);
+        vv.addEventListener('scroll', actualizar);
+        return () => {
+            vv.removeEventListener('resize', actualizar);
+            vv.removeEventListener('scroll', actualizar);
+        };
+    }, []);
+
+    return vp;
+};
+
 interface DeudasyCobrosDashboardProps {
     transactions: Transaction[];
     addTransaction: (
@@ -170,6 +198,7 @@ export const DeudasyCobrosDashboard = ({
     setContacts,
 }: DeudasyCobrosDashboardProps) => {
     const movil = useIsMobile();
+    const visualViewport = useVisualViewport();
 
     // Corrección retroactiva: las deudas creadas antes de este cambio restaban/sumaban
     // el doble en Balance/Patrimonio Neto (isCashless quedaba en false). Se corrige una
@@ -1105,13 +1134,13 @@ export const DeudasyCobrosDashboard = ({
                             style={{ position: "fixed", inset: 0, background: "rgba(25,27,35,0.45)", backdropFilter: "blur(4px)", zIndex: 200 }}
                             onClick={() => setShowAddModal(false)}
                         />
-                        <div style={{ position: "fixed", inset: 0, zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", pointerEvents: "none" }}>
+                        <div style={{ position: "fixed", top: `${visualViewport.offsetTop}px`, left: 0, right: 0, height: `${visualViewport.height}px`, zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", boxSizing: "border-box", pointerEvents: "none" }}>
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                                 transition={{ type: "spring", stiffness: 380, damping: 28 }}
-                                style={{ background: "#fff", borderRadius: "16px", padding: movil ? "1.25rem" : "2rem", width: movil ? "92vw" : "min(480px, 90vw)", maxHeight: "88vh", overflowY: "auto", boxShadow: "0px 12px 24px rgba(15,23,42,0.12)", pointerEvents: "auto" }}
+                                style={{ background: "#fff", borderRadius: "16px", padding: movil ? "1.25rem" : "2rem", width: movil ? "92vw" : "min(480px, 90vw)", maxHeight: "100%", overflowY: "auto", boxShadow: "0px 12px 24px rgba(15,23,42,0.12)", pointerEvents: "auto" }}
                             >
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
                             <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#191B23", fontFamily: "'Inter',sans-serif" }}>{editingTx ? "Editar Deuda / Cobro" : "Agregar Deuda / Cobro"}</h3>
@@ -1270,13 +1299,13 @@ export const DeudasyCobrosDashboard = ({
                             style={{ position: "fixed", inset: 0, background: "rgba(25,27,35,0.45)", backdropFilter: "blur(4px)", zIndex: 200 }}
                             onClick={() => setEditingContact(null)}
                         />
-                        <div style={{ position: "fixed", inset: 0, zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", pointerEvents: "none" }}>
+                        <div style={{ position: "fixed", top: `${visualViewport.offsetTop}px`, left: 0, right: 0, height: `${visualViewport.height}px`, zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", boxSizing: "border-box", pointerEvents: "none" }}>
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                                 transition={{ type: "spring", stiffness: 380, damping: 28 }}
-                                style={{ background: "#fff", borderRadius: "16px", padding: movil ? "1.25rem" : "1.75rem", width: movil ? "92vw" : "min(380px, 90vw)", boxShadow: "0px 12px 24px rgba(15,23,42,0.12)", pointerEvents: "auto" }}
+                                style={{ background: "#fff", borderRadius: "16px", padding: movil ? "1.25rem" : "1.75rem", width: movil ? "92vw" : "min(380px, 90vw)", maxHeight: "100%", overflowY: "auto", boxShadow: "0px 12px 24px rgba(15,23,42,0.12)", pointerEvents: "auto" }}
                             >
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
                                     <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", fontFamily: "'Inter',sans-serif" }}>{editingContact.name}</h3>
