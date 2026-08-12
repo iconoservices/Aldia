@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, Fragment } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Transaction, Contact } from "../../hooks/useAlDiaState";
 import { useIsMobile } from "../../theme";
@@ -1126,15 +1127,21 @@ export const DeudasyCobrosDashboard = ({
             )}
 
             {/* ── ADD MODAL ── */}
+            {/* Portal a <body> + z-index bien por encima de la barra inferior (z-index:999
+                en Header.tsx): renderizado inline, esta tarjeta quedaba "atrapada" dentro
+                del stacking context del dashboard y la barra de navegación (que sí vive
+                cerca de la raíz) terminaba tapando el botón Guardar aunque el modal
+                estuviera técnicamente "encima" en el árbol React. */}
+            {createPortal(
             <AnimatePresence>
                 {showAddModal && (
                     <>
                         <motion.div
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            style={{ position: "fixed", inset: 0, background: "rgba(25,27,35,0.45)", backdropFilter: "blur(4px)", zIndex: 200 }}
+                            style={{ position: "fixed", inset: 0, background: "rgba(25,27,35,0.45)", backdropFilter: "blur(4px)", zIndex: 2000 }}
                             onClick={() => setShowAddModal(false)}
                         />
-                        <div style={{ position: "fixed", top: `${visualViewport.offsetTop}px`, left: 0, right: 0, height: `${visualViewport.height}px`, zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", boxSizing: "border-box", pointerEvents: "none" }}>
+                        <div style={{ position: "fixed", top: `${visualViewport.offsetTop}px`, left: 0, right: 0, height: `${visualViewport.height}px`, zIndex: 2001, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", boxSizing: "border-box", pointerEvents: "none" }}>
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1288,18 +1295,21 @@ export const DeudasyCobrosDashboard = ({
                         </div>
                     </>
                 )}
-            </AnimatePresence>
+            </AnimatePresence>,
+            document.body
+            )}
 
             {/* ── EDIT CONTACT MODAL ── */}
+            {createPortal(
             <AnimatePresence>
                 {editingContact && (
                     <>
                         <motion.div
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            style={{ position: "fixed", inset: 0, background: "rgba(25,27,35,0.45)", backdropFilter: "blur(4px)", zIndex: 200 }}
+                            style={{ position: "fixed", inset: 0, background: "rgba(25,27,35,0.45)", backdropFilter: "blur(4px)", zIndex: 2000 }}
                             onClick={() => setEditingContact(null)}
                         />
-                        <div style={{ position: "fixed", top: `${visualViewport.offsetTop}px`, left: 0, right: 0, height: `${visualViewport.height}px`, zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", boxSizing: "border-box", pointerEvents: "none" }}>
+                        <div style={{ position: "fixed", top: `${visualViewport.offsetTop}px`, left: 0, right: 0, height: `${visualViewport.height}px`, zIndex: 2001, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", boxSizing: "border-box", pointerEvents: "none" }}>
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1349,7 +1359,9 @@ export const DeudasyCobrosDashboard = ({
                         </div>
                     </>
                 )}
-            </AnimatePresence>
+            </AnimatePresence>,
+            document.body
+            )}
 
             <ConfirmDialog
                 open={!!confirmDeleteItem}
