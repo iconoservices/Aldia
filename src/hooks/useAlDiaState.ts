@@ -234,6 +234,7 @@ export interface SporadicWorkLog {
     id: number;
     date: string;  // YYYY-MM-DD
     hours: number;
+    stage?: string; // Estado de Notion (o status local) activo cuando arrancó esta sesión — para el desglose "cuánto tiempo se va en cada etapa"
 }
 
 export interface SporadicProject {
@@ -246,6 +247,7 @@ export interface SporadicProject {
     workedHours: number;     // horas acumuladas (suma de logs)
     logs: SporadicWorkLog[];
     activeSince?: number;    // timestamp ms si el cronómetro está corriendo ahora
+    activeStage?: string;    // etapa (Estado de Notion) que estaba activa al darle Play
     color?: string;
     notionId?: string;       // vincula esta tarjeta a una página de la base "Agenda" de Notion
 }
@@ -1205,18 +1207,20 @@ export const useAlDiaState = () => {
         setSporadicProjects(prev => prev.filter(p => p.id !== id));
     };
 
-    // Cronómetro simple: arranca guardando el timestamp, y al parar calcula las
-    // horas transcurridas y las suma como un log del día de hoy (para la racha).
-    const startSporadicTimer = (id: number) => {
-        setSporadicProjects(prev => prev.map(p => p.id === id ? { ...p, activeSince: Date.now(), status: p.status === 'pendiente' ? 'en-progreso' : p.status } : p));
+    // Cronómetro simple: arranca guardando el timestamp (y en qué etapa/Estado
+    // estaba en ese momento), y al parar calcula las horas transcurridas y las
+    // suma como un log del día de hoy, etiquetado con esa etapa — así después
+    // se puede ver cuánto tiempo real se va en cada paso (Edición, Entrega, etc).
+    const startSporadicTimer = (id: number, stage?: string) => {
+        setSporadicProjects(prev => prev.map(p => p.id === id ? { ...p, activeSince: Date.now(), activeStage: stage, status: p.status === 'pendiente' ? 'en-progreso' : p.status } : p));
     };
 
     const stopSporadicTimer = (id: number) => {
         setSporadicProjects(prev => prev.map(p => {
             if (p.id !== id || !p.activeSince) return p;
             const hours = Math.max((Date.now() - p.activeSince) / (1000 * 60 * 60), 0);
-            const log: SporadicWorkLog = { id: nextBlockId(), date: new Date().toLocaleDateString('en-CA'), hours };
-            return { ...p, activeSince: undefined, workedHours: p.workedHours + hours, logs: [log, ...p.logs] };
+            const log: SporadicWorkLog = { id: nextBlockId(), date: new Date().toLocaleDateString('en-CA'), hours, stage: p.activeStage };
+            return { ...p, activeSince: undefined, activeStage: undefined, workedHours: p.workedHours + hours, logs: [log, ...p.logs] };
         }));
     };
 

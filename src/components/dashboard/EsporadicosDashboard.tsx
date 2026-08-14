@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, X, Trash2, MoreVertical, Play, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown } from "lucide-react";
+import { Plus, X, Trash2, MoreVertical, Play, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart } from "lucide-react";
 import {
     DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
@@ -48,7 +48,7 @@ interface EsporadicosProps {
     addSporadicProject: (title: string, dueDate: string, complexityHours: number, startDate?: string) => number;
     updateSporadicProject: (id: number, updates: Partial<SporadicProject>) => void;
     removeSporadicProject: (id: number) => void;
-    startSporadicTimer: (id: number) => void;
+    startSporadicTimer: (id: number, stage?: string) => void;
     stopSporadicTimer: (id: number) => void;
     calendarEvents: CalendarEvent[];
     updateCalendarEvent: (id: number, updates: Partial<CalendarEvent>) => void;
@@ -56,6 +56,22 @@ interface EsporadicosProps {
 
 const todayStr = () => new Date().toLocaleDateString('en-CA');
 const daysBetween = (a: string, b: string) => Math.round((new Date(b + 'T00:00:00').getTime() - new Date(a + 'T00:00:00').getTime()) / 86400000);
+
+const formatElapsed = (ms: number) => {
+    const totalSec = Math.max(Math.floor(ms / 1000), 0);
+    const h = Math.floor(totalSec / 3600), m = Math.floor((totalSec % 3600) / 60), s = totalSec % 60;
+    return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
+};
+
+/** Reloj vivo: mientras el cronómetro corre, muestra cuánto tiempo lleva esta sesión (se actualiza cada segundo). */
+const LiveElapsed = ({ activeSince }: { activeSince: number }) => {
+    const [now, setNow] = useState(() => Date.now());
+    useEffect(() => {
+        const id = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(id);
+    }, []);
+    return <>{formatElapsed(now - activeSince)}</>;
+};
 
 const priorityOf = (p: SporadicProject) => {
     if (p.status === 'completado') return -9999;
@@ -146,14 +162,18 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
         try { localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(order)); } catch { /* ignore */ }
     };
     const applyOrder = useCallback((list: SporadicProject[]) => {
-        if (customOrder.length === 0) return [...list].sort((a, b) => priorityOf(b) - priorityOf(a));
-        return [...list].sort((a, b) => {
-            const ia = customOrder.indexOf(a.id), ib = customOrder.indexOf(b.id);
-            if (ia === -1 && ib === -1) return priorityOf(b) - priorityOf(a);
-            if (ia === -1) return 1;
-            if (ib === -1) return -1;
-            return ia - ib;
-        });
+        const sorted = customOrder.length === 0
+            ? [...list].sort((a, b) => priorityOf(b) - priorityOf(a))
+            : [...list].sort((a, b) => {
+                const ia = customOrder.indexOf(a.id), ib = customOrder.indexOf(b.id);
+                if (ia === -1 && ib === -1) return priorityOf(b) - priorityOf(a);
+                if (ia === -1) return 1;
+                if (ib === -1) return -1;
+                return ia - ib;
+            });
+        // Lo que está en curso (cronómetro corriendo) siempre sube al principio,
+        // manual o automático: es en lo que estás trabajando ahora mismo.
+        return sorted.sort((a, b) => Number(!!b.activeSince) - Number(!!a.activeSince));
     }, [customOrder]);
 
     const pendientes = useMemo(
@@ -174,6 +194,19 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
         [pendientes, listosParaEntregar, applyOrder]
     );
     const completados = useMemo(() => sporadicProjects.filter(p => p.status === 'completado'), [sporadicProjects]);
+
+    // Cuánto tiempo real se va en cada etapa (Agendado/Realizado/En Edición/...), sumando
+    // los logs de todos los proyectos. Sirve para detectar el cuello de botella real
+    // (ej. "80% del tiempo se va en Edición") en vez de adivinarlo.
+    const timeByStage = useMemo(() => {
+        const totals = new Map<string, number>();
+        sporadicProjects.forEach(p => p.logs.forEach(l => {
+            const stage = l.stage || 'Sin etapa';
+            totals.set(stage, (totals.get(stage) || 0) + l.hours);
+        }));
+        return [...totals.entries()].map(([stage, hours]) => ({ stage, hours })).sort((a, b) => b.hours - a.hours);
+    }, [sporadicProjects]);
+    const totalHoursLogged = useMemo(() => timeByStage.reduce((s, t) => s + t.hours, 0), [timeByStage]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -249,8 +282,53 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                         n={7} title="Datos desde Notion" done
                         body="Las sesiones de tu Agenda de Notion aparecen acá solas (fecha de entrega real), y 'Empezar a trabajar' pone el Estado en 'En Edición' allá también."
                     />
+                    <SpecItem
+                        n={8} title="Orden manual por arrastre" done
+                        body="Cada columna se puede reordenar arrastrando las tarjetas; sustituye al orden automático hasta que lo reinicies."
+                    />
+                    <SpecItem
+                        n={9} title="Cronómetro en vivo + desglose por etapa" done
+                        body="Mientras corre, muestra el tiempo transcurrido de esa sesión en vivo. Cada sesión queda etiquetada con el Estado (Agendado/En Edición/etc.) que tenías activo al darle Play, para ver después en qué etapa se te va más tiempo."
+                    />
+                    <SpecItem
+                        n={10} title="Barra de progreso por horas trabajadas" done={false}
+                        body="Pendiente: colorear la barra según horas trabajadas vs. estimadas (si estimas 10h y llevas 5, que se vea a la mitad), separado de la barra de días que ya existe."
+                    />
+                    <SpecItem
+                        n={11} title="Botón de Pausa" done={false}
+                        body="Pendiente: pausar el cronómetro sin cerrar la sesión (para una llamada, un café) y poder reanudarlo, sin que cuente como tiempo trabajado."
+                    />
+                    <SpecItem
+                        n={12} title="Tiempo real vs. estimado + proyección" done={false}
+                        body="Pendiente: con las horas ya trabajadas y las estimadas, calcular cuánto falta y a qué hora terminarías al ritmo de hoy; si vas atrasado, cuántas horas diarias necesitas para ponerte al día."
+                    />
+                    <SpecItem
+                        n={13} title="Pomodoro integrado" done={false}
+                        body="Pendiente: al dar Play, ciclos de 25 min de trabajo + 5 de descanso con aviso (sonido o notificación)."
+                    />
                 </div>
             </details>
+
+            {timeByStage.length > 0 && (
+                <details style={{ ...bento, padding: "0.9rem 1rem" }}>
+                    <summary style={{ ...etiqueta, cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
+                        <PieChart size={13} /> Tiempo por etapa ({totalHoursLogged.toFixed(1)}h en total)
+                    </summary>
+                    <div style={{ marginTop: "0.7rem", display: "flex", flexDirection: "column", gap: "8px" }}>
+                        {timeByStage.map(({ stage, hours }) => (
+                            <div key={stage} style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem" }}>
+                                    <span style={{ fontWeight: 700, color: C.onSurface }}>{stage}</span>
+                                    <span style={{ fontWeight: 800, color: C.onSurfaceVariant }}>{hours.toFixed(1)}h · {totalHoursLogged > 0 ? Math.round((hours / totalHoursLogged) * 100) : 0}%</span>
+                                </div>
+                                <div style={{ height: "6px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
+                                    <div style={{ height: "100%", borderRadius: "999px", width: `${totalHoursLogged > 0 ? (hours / totalHoursLogged) * 100 : 0}%`, background: ESTADO_COLOR[stage as NotionEstado] || C.secondary }} />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </details>
+            )}
 
             {addingOpen ? (
                 <div style={{ ...bento, padding: "1rem", display: "flex", flexDirection: movil ? "column" : "row", gap: "8px", alignItems: movil ? "stretch" : "center" }}>
@@ -325,7 +403,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     p: SporadicProject;
     updateSporadicProject: (id: number, updates: Partial<SporadicProject>) => void;
     removeSporadicProject: (id: number) => void;
-    startSporadicTimer: (id: number) => void;
+    startSporadicTimer: (id: number, stage?: string) => void;
     stopSporadicTimer: (id: number) => void;
     calendarEvents: CalendarEvent[];
     updateCalendarEvent: (id: number, updates: Partial<CalendarEvent>) => void;
@@ -359,6 +437,12 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                         {p.notionId && <span title="Sincronizado desde Notion" style={{ display: "flex" }}><Sparkles size={12} color={C.secondary} /></span>}
                         <span style={{ fontWeight: 800, fontSize: "0.95rem", color: C.onSurface, textDecoration: p.status === 'completado' ? "line-through" : "none" }}>{p.title}</span>
+                        {running && (
+                            <span style={{ display: "flex", alignItems: "center", gap: "4px", background: C.rojo, color: "white", borderRadius: "999px", padding: "2px 8px", fontSize: "0.6rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.02em" }}>
+                                <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "white", animation: "esporadico-blink 1.1s ease-in-out infinite" }} />
+                                Trabajando
+                            </span>
+                        )}
                     </div>
                     <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "3px", fontSize: "0.72rem", color: C.onSurfaceVariant, fontWeight: 700 }}>
                         <span style={{ color }}>{label}</span>
@@ -403,6 +487,14 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                 </div>
             )}
 
+            {running && p.activeSince && (
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", fontWeight: 800, color: C.rojo }}>
+                    <Timer size={13} />
+                    <LiveElapsed activeSince={p.activeSince} />
+                    {p.activeStage && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en {p.activeStage}</span>}
+                </div>
+            )}
+
             <div style={{ height: "8px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
                 <div style={{
                     height: "100%", borderRadius: "999px", width: `${pctElapsed}%`,
@@ -416,7 +508,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                 <button
                     onClick={() => {
                         if (running) { stopSporadicTimer(p.id); }
-                        else { startSporadicTimer(p.id); setNotionEstado('En Edición'); }
+                        else { startSporadicTimer(p.id, linkedEvent?.notionEstado); setNotionEstado('En Edición'); }
                     }}
                     style={{
                         display: "flex", alignItems: "center", justifyContent: "center", gap: "7px",
