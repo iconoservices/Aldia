@@ -37,7 +37,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     const PRIMARY_ITEMS = [
         { label: 'Checklist', tab: 'Checklist', icon: 'task_alt' },
         { label: 'Finanzas',  tab: 'Finanzas',  icon: 'payments'      },
-        { label: 'Esporádicos', tab: 'Esporádicos', icon: 'local_fire_department' },
+        { label: 'Entregas', tab: 'Entregas', icon: 'local_fire_department' },
         { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
         { label: 'Deudas',     tab: 'Deudas',     icon: 'receipt_long'  },
         { label: 'Bloques', tab: 'Bloques',   icon: 'history_edu'    },

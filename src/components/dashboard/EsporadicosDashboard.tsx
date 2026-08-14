@@ -258,7 +258,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
         <div style={{ display: "flex", flexDirection: "column", gap: movil ? "1rem" : "1.5rem", ...paddingPagina(movil), color: "var(--text-carbon)" }}>
             <div style={cabecera(movil)}>
                 <div>
-                    <h2 style={tituloPagina}>Esporádicos</h2>
+                    <h2 style={tituloPagina}>Entregas</h2>
                     <p style={subtituloPagina}>Entregas puntuales — ordenadas solas por qué tan urgentes están.</p>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>

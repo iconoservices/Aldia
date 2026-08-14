@@ -49,7 +49,7 @@ function App() {
     if (path.includes('/stats')) return 'Stats';
     if (path.includes('/finanzas')) return 'Finanzas';
     if (path.includes('/proyectos')) return 'Proyectos';
-    if (path.includes('/esporadicos')) return 'Esporádicos';
+    if (path.includes('/entregas')) return 'Entregas';
     if (path.includes('/notion')) return 'Notion';
     if (path.includes('/tranqueo')) return 'Tranqueo de Vida';
     if (path.includes('/movimientos')) return 'Movimientos';
@@ -96,8 +96,6 @@ function App() {
       path = '/lienzo-ops';
     } else if (activeTab === 'Buscador') {
       path = '/buscador';
-    } else if (activeTab === 'Esporádicos') {
-      path = '/esporadicos';
     }
     if (window.location.pathname !== path) {
       window.history.pushState(null, '', path);
@@ -111,7 +109,7 @@ function App() {
       else if (path.includes('/stats')) setActiveTab('Stats');
       else if (path.includes('/finanzas')) setActiveTab('Finanzas');
       else if (path.includes('/proyectos')) setActiveTab('Proyectos');
-      else if (path.includes('/esporadicos')) setActiveTab('Esporádicos');
+      else if (path.includes('/entregas')) setActiveTab('Entregas');
       else if (path.includes('/notion')) setActiveTab('Notion');
       else if (path.includes('/tranqueo')) setActiveTab('Tranqueo de Vida');
       else if (path.includes('/movimientos')) setActiveTab('Movimientos');
@@ -484,7 +482,7 @@ function App() {
                 onOpenDetail={(id: number) => setSelectedProjectDetailId(id)}
                 reorderProjects={state.reorderProjects}
               />
-            ) : activeTab === 'Esporádicos' ? (
+            ) : activeTab === 'Entregas' ? (
               <EsporadicosDashboard
                 sporadicProjects={state.sporadicProjects}
                 addSporadicProject={state.addSporadicProject}

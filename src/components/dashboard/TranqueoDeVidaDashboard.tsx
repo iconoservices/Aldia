@@ -1,8 +1,25 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, X, Trash2, BookOpen } from "lucide-react";
+import { Plus, X, Trash2, BookOpen, Circle } from "lucide-react";
 import type { Note } from "../../hooks/useAlDiaState";
-import { C, bento, campo, botonPrimario, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina } from "../../theme";
+import { C, bento, campo, botonPrimario, etiqueta, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina } from "../../theme";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
+
+// Ideas para módulos futuros de esta pestaña — anotadas para no perderlas,
+// mismo patrón que el "Spec original" de Entregas: todavía sin construir.
+const PENDING_IDEAS = [
+    {
+        title: "Inventario del tiempo",
+        body: "Igual que un gasto en soles, anotar el tiempo como \"gasto\" (scroll infinito) o \"inversión\" (editar el video de un cliente). Al final de la semana: \"gastaste 40% de tu tiempo, invertiste 60%\".",
+    },
+    {
+        title: "Log de presencia consciente",
+        body: "Un botón de un solo toque, \"Momento de consciencia\", que guarda lugar y hora cada vez que te detienes a notar que estás vivo. Con el tiempo arma un mapa de cuándo y dónde estuviste más presente.",
+    },
+    {
+        title: "Contador de vida restante (memento mori)",
+        body: "Una barra que se llena muy lentamente, basada en la esperanza de vida promedio. No para dar miedo, sino enfoque — recordar que el tiempo es finito para no perderlo en lo que no importa.",
+    },
+];
 
 /* ══════════════════════════════════════════════════════════════════
    TranqueoDeVidaDashboard — reflexiones tipo diario, más largas y
@@ -80,6 +97,21 @@ export const TranqueoDeVidaDashboard = ({ notes, addNote, removeNote }: Tranqueo
                     <p style={subtituloPagina}>Reflexiones más largas — para leer con calma, no para escanear rápido.</p>
                 </div>
             </div>
+
+            <details style={{ ...bento, padding: "0.9rem 1rem" }}>
+                <summary style={{ ...etiqueta, cursor: "pointer" }}>Ideas pendientes para esta pestaña</summary>
+                <div style={{ marginTop: "0.8rem", display: "flex", flexDirection: "column", gap: "0.7rem", fontSize: "0.8rem", color: C.onSurfaceVariant, lineHeight: 1.5 }}>
+                    {PENDING_IDEAS.map(({ title: ideaTitle, body }) => (
+                        <div key={ideaTitle} style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
+                            <Circle size={15} color={C.outlineVariant} style={{ flexShrink: 0, marginTop: "1px" }} />
+                            <div>
+                                <span style={{ fontWeight: 800, color: C.onSurface }}>{ideaTitle}</span>
+                                {" — "}{body}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </details>
 
             {addingOpen ? (
                 <div style={{ ...bento, padding: "1rem", display: "flex", flexDirection: "column", gap: "8px" }}>
