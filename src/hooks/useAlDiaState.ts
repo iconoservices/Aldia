@@ -262,6 +262,7 @@ export interface SporadicProject {
     color?: string;
     notionId?: string;       // vincula esta tarjeta a una página de la base "Agenda" de Notion
     photoActiveSince?: number;  // timestamp ms si hay una foto individual en edición ahora mismo
+    photoPausedAccumSeconds?: number; // segundos ya acumulados de la foto actual, de tramos previos a una pausa (mismo patrón que pausedAccumHours pero en segundos)
     photoLogs?: SporadicPhotoLog[]; // duración de cada foto ya editada (proyectos viejos no traen este campo)
     sessionStartedAt?: number;  // timestamp ms de cuando se le dio Play por primera vez a la sesión abierta actual (sobrevive pausas, se limpia al Terminar) -- reloj de pared, a diferencia de las horas trabajadas reales que sí descuentan las pausas
     firstStartedAt?: number;    // timestamp ms de la PRIMERA vez que se le dio Play a este proyecto en su vida -- nunca se limpia con pausas ni al Terminar sesión, solo se resetea a mano; mide "cuánto llevo metido en esto sin entregarlo"
@@ -1271,15 +1272,28 @@ export const useAlDiaState = () => {
         setSporadicProjects(prev => prev.map(p => p.id === id ? { ...p, photoActiveSince: Date.now() } : p));
     };
 
-    const finishPhotoTimer = (id: number) => {
+    // Pausa el cronómetro de la foto actual sin cerrarla (mismo patrón que
+    // pauseSporadicTimer): guarda lo corrido en photoPausedAccumSeconds y para
+    // de contar hasta que le den Iniciar de nuevo (que reanuda) o Foto lista.
+    const pausePhotoTimer = (id: number) => {
         setSporadicProjects(prev => prev.map(p => {
             if (p.id !== id || !p.photoActiveSince) return p;
             const seconds = Math.max(Math.round((Date.now() - p.photoActiveSince) / 1000), 0);
+            return { ...p, photoActiveSince: undefined, photoPausedAccumSeconds: (p.photoPausedAccumSeconds || 0) + seconds };
+        }));
+    };
+
+    const finishPhotoTimer = (id: number) => {
+        setSporadicProjects(prev => prev.map(p => {
+            if (p.id !== id || (!p.photoActiveSince && !p.photoPausedAccumSeconds)) return p;
+            const liveSeconds = p.photoActiveSince ? Math.max(Math.round((Date.now() - p.photoActiveSince) / 1000), 0) : 0;
+            const seconds = liveSeconds + (p.photoPausedAccumSeconds || 0);
             const log: SporadicPhotoLog = { id: nextBlockId(), date: new Date().toLocaleDateString('en-CA'), seconds };
             const addToWorked = !p.activeSince;
             return {
                 ...p,
                 photoActiveSince: undefined,
+                photoPausedAccumSeconds: undefined,
                 photoLogs: [log, ...(p.photoLogs || [])],
                 workedHours: addToWorked ? p.workedHours + seconds / 3600 : p.workedHours,
                 status: addToWorked && p.status === 'pendiente' ? 'en-progreso' : p.status,
@@ -1288,7 +1302,15 @@ export const useAlDiaState = () => {
     };
 
     const cancelPhotoTimer = (id: number) => {
-        setSporadicProjects(prev => prev.map(p => p.id === id ? { ...p, photoActiveSince: undefined } : p));
+        setSporadicProjects(prev => prev.map(p => p.id === id ? { ...p, photoActiveSince: undefined, photoPausedAccumSeconds: undefined } : p));
+    };
+
+    // Reinicia solo el contador de fotos (conteo/promedio/total) sin tocar las
+    // horas de sesión ni lo demás -- para corregir pruebas del cronómetro por foto.
+    const resetSporadicPhotoLog = (id: number) => {
+        setSporadicProjects(prev => prev.map(p => p.id === id ? {
+            ...p, photoLogs: [], photoActiveSince: undefined, photoPausedAccumSeconds: undefined,
+        } : p));
     };
 
     // Reinicia solo el registro de tiempo trabajado (sesiones + fotos) sin borrar
@@ -1303,6 +1325,7 @@ export const useAlDiaState = () => {
             activeStage: undefined,
             pausedAccumHours: undefined,
             photoActiveSince: undefined,
+            photoPausedAccumSeconds: undefined,
             sessionStartedAt: undefined,
             firstStartedAt: undefined,
         } : p));
@@ -1427,8 +1450,8 @@ export const useAlDiaState = () => {
         addSporadicProject: lw(addSporadicProject), updateSporadicProject: lw(updateSporadicProject),
         removeSporadicProject: lw(removeSporadicProject),
         startSporadicTimer: lw(startSporadicTimer), pauseSporadicTimer: lw(pauseSporadicTimer), stopSporadicTimer: lw(stopSporadicTimer),
-        startPhotoTimer: lw(startPhotoTimer), finishPhotoTimer: lw(finishPhotoTimer), cancelPhotoTimer: lw(cancelPhotoTimer),
-        resetSporadicWorkedTime: lw(resetSporadicWorkedTime),
+        startPhotoTimer: lw(startPhotoTimer), pausePhotoTimer: lw(pausePhotoTimer), finishPhotoTimer: lw(finishPhotoTimer), cancelPhotoTimer: lw(cancelPhotoTimer),
+        resetSporadicWorkedTime: lw(resetSporadicWorkedTime), resetSporadicPhotoLog: lw(resetSporadicPhotoLog),
         markShoppingItemPurchased: lw(markShoppingItemPurchased),
         unmarkShoppingItemPurchased: lw(unmarkShoppingItemPurchased),
         // Calendario de comidas

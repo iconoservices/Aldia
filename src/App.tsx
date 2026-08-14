@@ -492,9 +492,11 @@ function App() {
                 pauseSporadicTimer={state.pauseSporadicTimer}
                 stopSporadicTimer={state.stopSporadicTimer}
                 startPhotoTimer={state.startPhotoTimer}
+                pausePhotoTimer={state.pausePhotoTimer}
                 finishPhotoTimer={state.finishPhotoTimer}
                 cancelPhotoTimer={state.cancelPhotoTimer}
                 resetSporadicWorkedTime={state.resetSporadicWorkedTime}
+                resetSporadicPhotoLog={state.resetSporadicPhotoLog}
                 calendarEvents={state.agenda}
                 updateCalendarEvent={state.updateCalendarEvent}
               />
