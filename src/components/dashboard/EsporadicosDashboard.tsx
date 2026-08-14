@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, X, Trash2, MoreVertical, Play, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart } from "lucide-react";
+import { Plus, X, Trash2, MoreVertical, Play, Pause, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart, Pin } from "lucide-react";
 import {
     DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
@@ -49,6 +49,7 @@ interface EsporadicosProps {
     updateSporadicProject: (id: number, updates: Partial<SporadicProject>) => void;
     removeSporadicProject: (id: number) => void;
     startSporadicTimer: (id: number, stage?: string) => void;
+    pauseSporadicTimer: (id: number) => void;
     stopSporadicTimer: (id: number) => void;
     calendarEvents: CalendarEvent[];
     updateCalendarEvent: (id: number, updates: Partial<CalendarEvent>) => void;
@@ -63,15 +64,37 @@ const formatElapsed = (ms: number) => {
     return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
 };
 
-/** Reloj vivo: mientras el cronómetro corre, muestra cuánto tiempo lleva esta sesión (se actualiza cada segundo). */
-const LiveElapsed = ({ activeSince }: { activeSince: number }) => {
+/** Reloj vivo: mientras `enabled`, se actualiza cada segundo (para el cronómetro, la barra de horas y el aviso de Pomodoro). */
+const useNowTicking = (enabled: boolean) => {
     const [now, setNow] = useState(() => Date.now());
     useEffect(() => {
+        if (!enabled) return;
         const id = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(id);
-    }, []);
-    return <>{formatElapsed(now - activeSince)}</>;
+    }, [enabled]);
+    return now;
 };
+
+const formatHM = (date: Date) => date.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+
+// Sonido corto de aviso (dos beeps) sin depender de un archivo de audio.
+const playPomodoroBeep = () => {
+    try {
+        const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const ctx = new AC();
+        [0, 0.35].forEach(delay => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.frequency.value = 880;
+            gain.gain.setValueAtTime(0.18, ctx.currentTime + delay);
+            osc.start(ctx.currentTime + delay);
+            osc.stop(ctx.currentTime + delay + 0.25);
+        });
+    } catch { /* el navegador puede bloquear audio sin interacción previa; no es crítico */ }
+};
+
+const POMODORO_MINUTES = 25;
 
 const priorityOf = (p: SporadicProject) => {
     if (p.status === 'completado') return -9999;
@@ -105,7 +128,7 @@ const computeStreak = (projects: SporadicProject[]) => {
     return streak;
 };
 
-export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, updateSporadicProject, removeSporadicProject, startSporadicTimer, stopSporadicTimer, calendarEvents, updateCalendarEvent }: EsporadicosProps) => {
+export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, updateSporadicProject, removeSporadicProject, startSporadicTimer, pauseSporadicTimer, stopSporadicTimer, calendarEvents, updateCalendarEvent }: EsporadicosProps) => {
     const movil = useIsMobile();
     const [addingOpen, setAddingOpen] = useState(false);
     const [title, setTitle] = useState("");
@@ -171,9 +194,10 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                 if (ib === -1) return -1;
                 return ia - ib;
             });
-        // Lo que está en curso (cronómetro corriendo) siempre sube al principio,
-        // manual o automático: es en lo que estás trabajando ahora mismo.
-        return sorted.sort((a, b) => Number(!!b.activeSince) - Number(!!a.activeSince));
+        // Lo fijado (o con el cronómetro corriendo — se fija solo al darle Play)
+        // siempre sube al principio, manual o automático: es en lo que estás
+        // metido ahora, aunque hayas parado el cronómetro un rato.
+        return sorted.sort((a, b) => Number(!!b.pinned || !!b.activeSince) - Number(!!a.pinned || !!a.activeSince));
     }, [customOrder]);
 
     const pendientes = useMemo(
@@ -359,7 +383,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                         {listosParaEntregar.length > 0 && <span style={etiqueta}>En curso ({enProgreso.length})</span>}
                         <SortableContext items={enProgreso.map(p => p.id)} strategy={verticalListSortingStrategy}>
                             {enProgreso.map(p => (
-                                <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} stopSporadicTimer={stopSporadicTimer} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
+                                <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
                             ))}
                         </SortableContext>
                     </div>
@@ -370,7 +394,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                             <span style={etiqueta}>Listos para entregar ({listosParaEntregar.length})</span>
                             <SortableContext items={listosParaEntregar.map(p => p.id)} strategy={verticalListSortingStrategy}>
                                 {listosParaEntregar.map(p => (
-                                    <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} stopSporadicTimer={stopSporadicTimer} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
+                                    <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
                                 ))}
                             </SortableContext>
                         </div>
@@ -383,7 +407,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                     <summary style={{ ...etiqueta, cursor: "pointer", marginBottom: "0.6rem" }}>Completados ({completados.length})</summary>
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem", marginTop: "0.6rem" }}>
                         {completados.map(p => (
-                            <ProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} stopSporadicTimer={stopSporadicTimer} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
+                            <ProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
                         ))}
                     </div>
                 </details>
@@ -399,11 +423,12 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
     );
 };
 
-const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSporadicTimer, stopSporadicTimer, calendarEvents, updateCalendarEvent, dragHandle }: {
+const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSporadicTimer, pauseSporadicTimer, stopSporadicTimer, calendarEvents, updateCalendarEvent, dragHandle }: {
     p: SporadicProject;
     updateSporadicProject: (id: number, updates: Partial<SporadicProject>) => void;
     removeSporadicProject: (id: number) => void;
     startSporadicTimer: (id: number, stage?: string) => void;
+    pauseSporadicTimer: (id: number) => void;
     stopSporadicTimer: (id: number) => void;
     calendarEvents: CalendarEvent[];
     updateCalendarEvent: (id: number, updates: Partial<CalendarEvent>) => void;
@@ -411,14 +436,39 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
 }) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
+    const [pomodoroAlert, setPomodoroAlert] = useState(false);
+    const lastPomodoroThresholdRef = useRef(0);
 
     const { color, label } = urgency(p);
     const totalSpan = Math.max(daysBetween(p.startDate, p.dueDate), 1);
-    const elapsed = daysBetween(p.startDate, todayStr());
-    const pctElapsed = Math.min(Math.max((elapsed / totalSpan) * 100, 0), 100);
+    const elapsedDays = daysBetween(p.startDate, todayStr());
+    const pctElapsed = Math.min(Math.max((elapsedDays / totalSpan) * 100, 0), 100);
     const overdueUnfinished = p.status !== 'completado' && pctElapsed >= 100;
     const running = !!p.activeSince;
+    const paused = !running && !!p.pausedAccumHours;
+    const inSession = running || paused;
     const linkedEvent = p.notionId ? calendarEvents.find(e => e.notionId === p.notionId) : undefined;
+
+    const now = useNowTicking(running);
+    const liveRunningHours = running && p.activeSince ? Math.max((now - p.activeSince) / (1000 * 60 * 60), 0) : 0;
+    const sessionHours = (p.pausedAccumHours || 0) + liveRunningHours;
+    const effectiveWorkedHours = p.workedHours + sessionHours;
+
+    // Pomodoro: cada 25 min acumulados de esta sesión (corriendo, sumando lo pausado),
+    // avisa una vez con sonido + banner. lastPomodoroThresholdRef evita repetir el aviso.
+    useEffect(() => {
+        if (!running) return;
+        const crossedBlocks = Math.floor((sessionHours * 60) / POMODORO_MINUTES);
+        if (crossedBlocks > lastPomodoroThresholdRef.current) {
+            lastPomodoroThresholdRef.current = crossedBlocks;
+            setPomodoroAlert(true);
+            playPomodoroBeep();
+            setTimeout(() => setPomodoroAlert(false), 8000);
+        }
+    }, [sessionHours, running]);
+    useEffect(() => {
+        if (!inSession) lastPomodoroThresholdRef.current = 0;
+    }, [inSession]);
 
     // Al cambiar el paso de trabajo local, si la tarjeta viene de Notion se
     // refleja también allá (best-effort) y de forma optimista acá mismo.
@@ -429,12 +479,23 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
         updateSporadicProject(p.id, { status: estado === 'Entregado' ? 'completado' : 'en-progreso' });
     };
 
+    // Calculadora tiempo real vs. estimado: cuánto falta, a qué hora terminarías
+    // si sigues al ritmo de ahora, y si vas atrasado, cuántas horas diarias hacen falta.
+    const remainingHours = Math.max(p.complexityHours - effectiveWorkedHours, 0);
+    const daysUntilDue = daysBetween(todayStr(), p.dueDate);
+    const eta = remainingHours > 0 ? formatHM(new Date(now + remainingHours * 60 * 60 * 1000)) : null;
+
     return (
-        <div style={{ ...bento, padding: "1rem", display: "flex", flexDirection: "column", gap: "0.6rem", borderLeft: `4px solid ${color}`, opacity: p.status === 'completado' ? 0.7 : 1 }}>
+        <div style={{ ...bento, padding: "1rem", display: "flex", flexDirection: "column", gap: "0.6rem", borderLeft: `4px solid ${color}`, opacity: p.status === 'completado' ? 0.7 : 1, position: "relative" }}>
+            {pomodoroAlert && (
+                <div style={{ position: "absolute", top: "-10px", left: "10px", right: "10px", background: C.ambar, color: "white", borderRadius: "10px", padding: "6px 10px", fontSize: "0.72rem", fontWeight: 800, textAlign: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.2)", zIndex: 6 }}>
+                    ⏰ {POMODORO_MINUTES} min — tómate 5 de descanso
+                </div>
+            )}
             <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
                 {dragHandle}
                 <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
                         {p.notionId && <span title="Sincronizado desde Notion" style={{ display: "flex" }}><Sparkles size={12} color={C.secondary} /></span>}
                         <span style={{ fontWeight: 800, fontSize: "0.95rem", color: C.onSurface, textDecoration: p.status === 'completado' ? "line-through" : "none" }}>{p.title}</span>
                         {running && (
@@ -443,13 +504,25 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                                 Trabajando
                             </span>
                         )}
+                        {paused && (
+                            <span style={{ background: C.ambar, color: "white", borderRadius: "999px", padding: "2px 8px", fontSize: "0.6rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.02em" }}>
+                                En pausa
+                            </span>
+                        )}
                     </div>
                     <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "3px", fontSize: "0.72rem", color: C.onSurfaceVariant, fontWeight: 700 }}>
                         <span style={{ color }}>{label}</span>
                         <span>Entrega: {p.dueDate}</span>
-                        <span>{p.workedHours.toFixed(1)}h / {p.complexityHours}h</span>
+                        <span>{effectiveWorkedHours.toFixed(1)}h / {p.complexityHours}h</span>
                     </div>
                 </div>
+                <button
+                    onClick={() => updateSporadicProject(p.id, { pinned: !p.pinned })}
+                    title={p.pinned ? "Desfijar" : "Fijar arriba"}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: p.pinned ? C.ambar : C.outlineVariant, padding: "3px", display: "flex", transform: p.pinned ? "rotate(0deg)" : "rotate(35deg)" }}
+                >
+                    <Pin size={15} fill={p.pinned ? C.ambar : "none"} />
+                </button>
                 <div style={{ position: "relative" }}>
                     <button onClick={() => setMenuOpen(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "3px", display: "flex" }}><MoreVertical size={16} /></button>
                     {menuOpen && (
@@ -487,37 +560,91 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                 </div>
             )}
 
-            {running && p.activeSince && (
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", fontWeight: 800, color: C.rojo }}>
+            {inSession && (
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", fontWeight: 800, color: running ? C.rojo : C.ambar }}>
                     <Timer size={13} />
-                    <LiveElapsed activeSince={p.activeSince} />
+                    {formatElapsed(sessionHours * 60 * 60 * 1000)}
                     {p.activeStage && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en {p.activeStage}</span>}
+                    {paused && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en pausa</span>}
                 </div>
             )}
 
-            <div style={{ height: "8px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
-                <div style={{
-                    height: "100%", borderRadius: "999px", width: `${pctElapsed}%`,
-                    background: overdueUnfinished ? "#111" : color,
-                    animation: overdueUnfinished ? "esporadico-blink 1.1s ease-in-out infinite" : undefined,
-                    transition: "width 0.3s",
-                }} />
+            <div>
+                <div style={{ fontSize: "0.6rem", fontWeight: 700, color: C.outline, marginBottom: "2px" }}>Días hasta la entrega</div>
+                <div style={{ height: "8px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
+                    <div style={{
+                        height: "100%", borderRadius: "999px", width: `${pctElapsed}%`,
+                        background: overdueUnfinished ? "#111" : color,
+                        animation: overdueUnfinished ? "esporadico-blink 1.1s ease-in-out infinite" : undefined,
+                        transition: "width 0.3s",
+                    }} />
+                </div>
             </div>
 
+            {p.complexityHours > 0 && (
+                <div>
+                    <div style={{ fontSize: "0.6rem", fontWeight: 700, color: C.outline, marginBottom: "2px" }}>Horas trabajadas vs. estimado</div>
+                    <div style={{ height: "8px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
+                        <div style={{
+                            height: "100%", borderRadius: "999px",
+                            width: `${Math.min((effectiveWorkedHours / p.complexityHours) * 100, 100)}%`,
+                            background: effectiveWorkedHours >= p.complexityHours ? C.verde : C.secondary,
+                            transition: "width 0.3s",
+                        }} />
+                    </div>
+                </div>
+            )}
+
+            {p.complexityHours > 0 && p.status !== 'completado' && (
+                <div style={{ fontSize: "0.7rem", color: C.onSurfaceVariant, lineHeight: 1.4 }}>
+                    {remainingHours <= 0 ? (
+                        <span style={{ color: C.verde, fontWeight: 700 }}>Ya llegaste a las horas estimadas.</span>
+                    ) : (
+                        <>
+                            Faltan <b>{remainingHours.toFixed(1)}h</b>.
+                            {running && eta && <> A este ritmo, terminas ~<b>{eta}</b>.</>}
+                            {!running && daysUntilDue > 0 && <> Para llegar a tiempo: <b>{(remainingHours / daysUntilDue).toFixed(1)}h/día</b> por {daysUntilDue} día{daysUntilDue === 1 ? '' : 's'}.</>}
+                            {!running && daysUntilDue <= 0 && <span style={{ color: C.rojo, fontWeight: 700 }}> Ya venció — dedícale tiempo hoy.</span>}
+                        </>
+                    )}
+                </div>
+            )}
+
             {p.status !== 'completado' && (
-                <button
-                    onClick={() => {
-                        if (running) { stopSporadicTimer(p.id); }
-                        else { startSporadicTimer(p.id, linkedEvent?.notionEstado); setNotionEstado('En Edición'); }
-                    }}
-                    style={{
-                        display: "flex", alignItems: "center", justifyContent: "center", gap: "7px",
-                        background: running ? C.rojo : C.surfaceContainerLow, color: running ? "white" : C.onSurfaceVariant,
-                        border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700,
-                    }}
-                >
-                    {running ? <><Square size={13} /> Terminar sesión</> : <><Play size={13} /> Empezar a trabajar</>}
-                </button>
+                <div style={{ display: "flex", gap: "6px" }}>
+                    {!inSession && (
+                        <button
+                            onClick={() => { startSporadicTimer(p.id, linkedEvent?.notionEstado); setNotionEstado('En Edición'); }}
+                            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.surfaceContainerLow, color: C.onSurfaceVariant, border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
+                        >
+                            <Play size={13} /> Empezar a trabajar
+                        </button>
+                    )}
+                    {running && (
+                        <button
+                            onClick={() => pauseSporadicTimer(p.id)}
+                            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.ambar, color: "white", border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
+                        >
+                            <Pause size={13} /> Pausar
+                        </button>
+                    )}
+                    {paused && (
+                        <button
+                            onClick={() => startSporadicTimer(p.id, p.activeStage)}
+                            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.surfaceContainerLow, color: C.onSurfaceVariant, border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
+                        >
+                            <Play size={13} /> Reanudar
+                        </button>
+                    )}
+                    {inSession && (
+                        <button
+                            onClick={() => stopSporadicTimer(p.id)}
+                            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.rojo, color: "white", border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
+                        >
+                            <Square size={13} /> Terminar sesión
+                        </button>
+                    )}
+                </div>
             )}
 
             <ConfirmDialog

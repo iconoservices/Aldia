@@ -486,6 +486,7 @@ function App() {
                 updateSporadicProject={state.updateSporadicProject}
                 removeSporadicProject={state.removeSporadicProject}
                 startSporadicTimer={state.startSporadicTimer}
+                pauseSporadicTimer={state.pauseSporadicTimer}
                 stopSporadicTimer={state.stopSporadicTimer}
                 calendarEvents={state.agenda}
                 updateCalendarEvent={state.updateCalendarEvent}

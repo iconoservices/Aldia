@@ -246,8 +246,10 @@ export interface SporadicProject {
     status: 'pendiente' | 'en-progreso' | 'completado';
     workedHours: number;     // horas acumuladas (suma de logs)
     logs: SporadicWorkLog[];
-    activeSince?: number;    // timestamp ms si el cronómetro está corriendo ahora
+    activeSince?: number;    // timestamp ms si el cronómetro está corriendo ahora mismo (undefined si está en pausa o parado)
     activeStage?: string;    // etapa (Estado de Notion) que estaba activa al darle Play
+    pausedAccumHours?: number; // horas ya acumuladas de esta sesión abierta, de tramos previos a una pausa
+    pinned?: boolean;        // se fija arriba de su columna aunque el cronómetro esté parado — "en lo que estoy metido ahora"
     color?: string;
     notionId?: string;       // vincula esta tarjeta a una página de la base "Agenda" de Notion
 }
@@ -1207,20 +1209,35 @@ export const useAlDiaState = () => {
         setSporadicProjects(prev => prev.filter(p => p.id !== id));
     };
 
-    // Cronómetro simple: arranca guardando el timestamp (y en qué etapa/Estado
-    // estaba en ese momento), y al parar calcula las horas transcurridas y las
-    // suma como un log del día de hoy, etiquetado con esa etapa — así después
-    // se puede ver cuánto tiempo real se va en cada paso (Edición, Entrega, etc).
+    // Cronómetro con pausa: Play arranca (o reanuda si ya había un tramo pausado
+    // de esta misma sesión), Pausa guarda lo corrido sin cerrar el log todavía
+    // (para que una llamada o un café no cuenten como "sesión terminada"), y
+    // Terminar suma todos los tramos (los pausados + el que está corriendo) en
+    // un solo log del día, etiquetado con la etapa/Estado que tenías al arrancar.
+    // Se fija (pinned) sola al darle Play, para encontrarla arriba después.
     const startSporadicTimer = (id: number, stage?: string) => {
-        setSporadicProjects(prev => prev.map(p => p.id === id ? { ...p, activeSince: Date.now(), activeStage: stage, status: p.status === 'pendiente' ? 'en-progreso' : p.status } : p));
+        setSporadicProjects(prev => prev.map(p => p.id === id ? {
+            ...p, activeSince: Date.now(), pinned: true,
+            activeStage: p.pausedAccumHours ? p.activeStage : stage,
+            status: p.status === 'pendiente' ? 'en-progreso' : p.status,
+        } : p));
+    };
+
+    const pauseSporadicTimer = (id: number) => {
+        setSporadicProjects(prev => prev.map(p => {
+            if (p.id !== id || !p.activeSince) return p;
+            const hours = Math.max((Date.now() - p.activeSince) / (1000 * 60 * 60), 0);
+            return { ...p, activeSince: undefined, pausedAccumHours: (p.pausedAccumHours || 0) + hours };
+        }));
     };
 
     const stopSporadicTimer = (id: number) => {
         setSporadicProjects(prev => prev.map(p => {
-            if (p.id !== id || !p.activeSince) return p;
-            const hours = Math.max((Date.now() - p.activeSince) / (1000 * 60 * 60), 0);
+            if (p.id !== id || (!p.activeSince && !p.pausedAccumHours)) return p;
+            const running = p.activeSince ? Math.max((Date.now() - p.activeSince) / (1000 * 60 * 60), 0) : 0;
+            const hours = running + (p.pausedAccumHours || 0);
             const log: SporadicWorkLog = { id: nextBlockId(), date: new Date().toLocaleDateString('en-CA'), hours, stage: p.activeStage };
-            return { ...p, activeSince: undefined, activeStage: undefined, workedHours: p.workedHours + hours, logs: [log, ...p.logs] };
+            return { ...p, activeSince: undefined, activeStage: undefined, pausedAccumHours: undefined, workedHours: p.workedHours + hours, logs: [log, ...p.logs] };
         }));
     };
 
@@ -1342,7 +1359,7 @@ export const useAlDiaState = () => {
         sporadicProjects,
         addSporadicProject: lw(addSporadicProject), updateSporadicProject: lw(updateSporadicProject),
         removeSporadicProject: lw(removeSporadicProject),
-        startSporadicTimer: lw(startSporadicTimer), stopSporadicTimer: lw(stopSporadicTimer),
+        startSporadicTimer: lw(startSporadicTimer), pauseSporadicTimer: lw(pauseSporadicTimer), stopSporadicTimer: lw(stopSporadicTimer),
         markShoppingItemPurchased: lw(markShoppingItemPurchased),
         unmarkShoppingItemPurchased: lw(unmarkShoppingItemPurchased),
         // Calendario de comidas
