@@ -38,6 +38,8 @@ import { MovimientosDashboard } from './components/dashboard/MovimientosDashboar
 import { ListasDashboard } from './components/dashboard/ListasDashboard';
 import { ComprasDashboard } from './components/dashboard/ComprasDashboard';
 import { ComidasDashboard } from './components/dashboard/ComidasDashboard';
+import { EsporadicosDashboard } from './components/dashboard/EsporadicosDashboard';
+import { NotionDashboard } from './components/dashboard/NotionDashboard';
 
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -46,6 +48,8 @@ function App() {
     if (path.includes('/stats')) return 'Stats';
     if (path.includes('/finanzas')) return 'Finanzas';
     if (path.includes('/proyectos')) return 'Proyectos';
+    if (path.includes('/esporadicos')) return 'Esporádicos';
+    if (path.includes('/notion')) return 'Notion';
     if (path.includes('/movimientos')) return 'Movimientos';
     if (path.includes('/listas')) return 'Listas';
     if (path.includes('/compras')) return 'Compras';
@@ -88,6 +92,8 @@ function App() {
       path = '/lienzo-ops';
     } else if (activeTab === 'Buscador') {
       path = '/buscador';
+    } else if (activeTab === 'Esporádicos') {
+      path = '/esporadicos';
     }
     if (window.location.pathname !== path) {
       window.history.pushState(null, '', path);
@@ -101,6 +107,8 @@ function App() {
       else if (path.includes('/stats')) setActiveTab('Stats');
       else if (path.includes('/finanzas')) setActiveTab('Finanzas');
       else if (path.includes('/proyectos')) setActiveTab('Proyectos');
+      else if (path.includes('/esporadicos')) setActiveTab('Esporádicos');
+      else if (path.includes('/notion')) setActiveTab('Notion');
       else if (path.includes('/movimientos')) setActiveTab('Movimientos');
       else if (path.includes('/listas')) setActiveTab('Listas');
       else if (path.includes('/compras')) setActiveTab('Compras');
@@ -237,6 +245,9 @@ function App() {
                 updateCalendarEvent={state.updateCalendarEvent}
                 addRoutine={state.addRoutine}
                 addCalendarEvent={state.addCalendarEvent}
+                dailyBlocks={state.dailyBlocks}
+                addDailyBlock={state.addDailyBlock}
+                toggleDailyBlock={state.toggleDailyBlock}
               />
             ) : activeTab === 'Vida' ? (
               <VidaDashboard
@@ -467,6 +478,22 @@ function App() {
                 updateProject={state.updateProject}
                 onOpenDetail={(id: number) => setSelectedProjectDetailId(id)}
                 reorderProjects={state.reorderProjects}
+              />
+            ) : activeTab === 'Esporádicos' ? (
+              <EsporadicosDashboard
+                sporadicProjects={state.sporadicProjects}
+                addSporadicProject={state.addSporadicProject}
+                updateSporadicProject={state.updateSporadicProject}
+                removeSporadicProject={state.removeSporadicProject}
+                startSporadicTimer={state.startSporadicTimer}
+                stopSporadicTimer={state.stopSporadicTimer}
+                calendarEvents={state.agenda}
+                updateCalendarEvent={state.updateCalendarEvent}
+              />
+            ) : activeTab === 'Notion' ? (
+              <NotionDashboard
+                calendarEvents={state.agenda}
+                updateCalendarEvent={state.updateCalendarEvent}
               />
             ) : activeTab === 'Tablero' ? (
               <ProjectsKanbanView 

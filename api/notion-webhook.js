@@ -63,6 +63,14 @@ function addMinutesToTime(time, minutes) {
     return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
+// Las propiedades tipo "formula" traen el valor bajo una key que depende de su
+// tipo resuelto (number/string/date/boolean) — no siempre es la misma.
+function readFormula(prop) {
+    const f = prop?.formula;
+    if (!f) return undefined;
+    return f[f.type];
+}
+
 function toCalendarEvent(page) {
     const props = page.properties;
     const title = props['Título']?.title?.[0]?.plain_text?.trim();
@@ -77,16 +85,28 @@ function toCalendarEvent(page) {
 
     const location = props['Ubicación']?.select?.name;
     const status = props['Estado']?.status?.name;
+    const entregaDate = readFormula(props['Entrega ']);
 
-    return {
+    const event = {
         id: notionIdToNumber(page.id),
         notionId: page.id,
         title: location ? `${title} (${location})` : title,
         date,
         startTime,
         endTime,
-        description: status ? `Importado de Notion — ${status}` : 'Importado de Notion'
+        description: status ? `Importado de Notion — ${status}` : 'Importado de Notion',
+        notionProyecto: props['Proyecto']?.select?.name,
+        notionEstado: status,
+        notionPrecio: props['Precio']?.number,
+        notionCobrado: props['Cobrado']?.number,
+        notionSaldoPorCobrar: readFormula(props['Saldo por cobrar']),
+        notionEntregaFecha: entregaDate?.start ? parseNotionDate(entregaDate.start).date : undefined,
+        notionDiasRestantes: readFormula(props['Dias Restantes'])
     };
+    // Firestore rechaza valores `undefined`: los campos opcionales que Notion
+    // no tenga completos (Precio vacío, sin Proyecto, etc.) se omiten en vez
+    // de mandarse como undefined.
+    return Object.fromEntries(Object.entries(event).filter(([, v]) => v !== undefined));
 }
 
 function notionIdToNumber(uuid) {

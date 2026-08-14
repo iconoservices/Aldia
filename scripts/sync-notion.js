@@ -62,6 +62,14 @@ function addMinutesToTime(time, minutes) {
     return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
+// Las propiedades tipo "formula" traen el valor bajo una key que depende de su
+// tipo resuelto (number/string/date/boolean) — no siempre es la misma.
+function readFormula(prop) {
+    const f = prop?.formula;
+    if (!f) return undefined;
+    return f[f.type];
+}
+
 function toCalendarEvent(page) {
     const props = page.properties;
     const title = props['Título']?.title?.[0]?.plain_text?.trim();
@@ -76,16 +84,28 @@ function toCalendarEvent(page) {
 
     const location = props['Ubicación']?.select?.name;
     const status = props['Estado']?.status?.name;
+    const entregaDate = readFormula(props['Entrega ']);
 
-    return {
+    const event = {
         id: notionIdToNumber(page.id),
         notionId: page.id,
         title: location ? `${title} (${location})` : title,
         date,
         startTime,
         endTime,
-        description: status ? `Importado de Notion — ${status}` : 'Importado de Notion'
+        description: status ? `Importado de Notion — ${status}` : 'Importado de Notion',
+        notionProyecto: props['Proyecto']?.select?.name,
+        notionEstado: status,
+        notionPrecio: props['Precio']?.number,
+        notionCobrado: props['Cobrado']?.number,
+        notionSaldoPorCobrar: readFormula(props['Saldo por cobrar']),
+        notionEntregaFecha: entregaDate?.start ? parseNotionDate(entregaDate.start).date : undefined,
+        notionDiasRestantes: readFormula(props['Dias Restantes'])
     };
+    // Firestore rechaza valores `undefined`: los campos opcionales que Notion
+    // no tenga completos (Precio vacío, sin Proyecto, etc.) se omiten en vez
+    // de mandarse como undefined.
+    return Object.fromEntries(Object.entries(event).filter(([, v]) => v !== undefined));
 }
 
 // Id numerico estable derivado del UUID de Notion (para el campo `id` legado de CalendarEvent).
@@ -106,25 +126,33 @@ async function main() {
     }
 
     const existingAgenda = Array.isArray(data.agenda) ? data.agenda : [];
-    const existingNotionIds = new Set(existingAgenda.filter((e) => e.notionId).map((e) => e.notionId));
+    const byNotionId = new Map(existingAgenda.filter((e) => e.notionId).map((e) => [e.notionId, e]));
 
     const pages = await fetchAllNotionSessions();
-    const newEvents = pages
-        .map(toCalendarEvent)
-        .filter((e) => e && !existingNotionIds.has(e.notionId));
+    const fetchedEvents = pages.map(toCalendarEvent).filter(Boolean);
 
-    if (newEvents.length === 0) {
-        console.log('Nada nuevo que traer de Notion.');
+    let added = 0, updated = 0;
+    fetchedEvents.forEach((e) => {
+        if (byNotionId.has(e.notionId)) updated++; else added++;
+        byNotionId.set(e.notionId, e);
+    });
+
+    if (added === 0 && updated === 0) {
+        console.log('Nada que traer de Notion.');
         return;
     }
 
+    // Reconstruye agenda: eventos no-Notion tal cual, más el mapa recién actualizado
+    // (upsert por notionId), preservando el orden relativo original donde se pueda.
+    const nonNotion = existingAgenda.filter((e) => !e.notionId);
+    const nextAgenda = [...nonNotion, ...byNotionId.values()];
+
     await docRef.set(
-        { agenda: [...existingAgenda, ...newEvents], lastSync: new Date().toISOString() },
+        { agenda: nextAgenda, lastSync: new Date().toISOString() },
         { merge: true }
     );
 
-    console.log(`Importadas ${newEvents.length} sesion(es) nueva(s) de Notion:`);
-    newEvents.forEach((e) => console.log(`  - ${e.title} — ${e.date} ${e.startTime}`));
+    console.log(`Notion sync: ${added} nueva(s), ${updated} actualizada(s).`);
 }
 
 main()

@@ -125,6 +125,9 @@ export function getPeriodKey(frequency: 'monthly' | 'weekly' | undefined, dateSt
     return `${d.getFullYear()}-W${String(week).padStart(2, '0')}`;
 }
 
+export type NotionEstado = 'Agendado' | 'Realizado' | 'En Edición' | 'Terminado' | 'Entregado';
+export const NOTION_ESTADOS: NotionEstado[] = ['Agendado', 'Realizado', 'En Edición', 'Terminado', 'Entregado'];
+
 export interface CalendarEvent {
     id: number;
     title: string;
@@ -134,6 +137,14 @@ export interface CalendarEvent {
     description?: string;
     projectId?: number;
     notionId?: string; // ID de la pagina de Notion de origen, si vino importado
+    // Campos extra de la base "Agenda" de Notion (solo presentes si notionId existe).
+    notionProyecto?: string;         // Proyecto (select): "JuanMa Producer" | "Personal"
+    notionEstado?: NotionEstado;     // Estado (status): flujo de 5 pasos
+    notionPrecio?: number;
+    notionCobrado?: number;
+    notionSaldoPorCobrar?: number;
+    notionEntregaFecha?: string;     // YYYY-MM-DD, fecha de entrega calculada en Notion
+    notionDiasRestantes?: string;    // texto ya formateado por Notion, ej. "🟢 A tiempo: 18 días"
 }
 
 export interface Habit {
@@ -214,6 +225,30 @@ export interface NutritionGoals {
 }
 
 export const DEFAULT_NUTRITION_GOALS: NutritionGoals = { calories: 2200, protein: 150, carbs: 250 };
+
+// Proyectos esporádicos: entregables puntuales con fecha de entrega (videos,
+// encargos, trabajos por proyecto), a diferencia de Project que es un proyecto
+// continuo/organizativo sin fecha límite. Cada log de trabajo es un registro
+// de "empecé/terminé de editar", usado para la racha y para estimar el ritmo real.
+export interface SporadicWorkLog {
+    id: number;
+    date: string;  // YYYY-MM-DD
+    hours: number;
+}
+
+export interface SporadicProject {
+    id: number;
+    title: string;
+    startDate: string;       // YYYY-MM-DD, cuándo arranca el trabajo
+    dueDate: string;         // YYYY-MM-DD, fecha de entrega
+    complexityHours: number; // horas estimadas para completarlo
+    status: 'pendiente' | 'en-progreso' | 'completado';
+    workedHours: number;     // horas acumuladas (suma de logs)
+    logs: SporadicWorkLog[];
+    activeSince?: number;    // timestamp ms si el cronómetro está corriendo ahora
+    color?: string;
+    notionId?: string;       // vincula esta tarjeta a una página de la base "Agenda" de Notion
+}
 
 export interface UserPreferences {
     isBudgetFixed: boolean;
@@ -374,6 +409,7 @@ export const useAlDiaState = () => {
     const [expenseCategories, setExpenseCategories] = useState<string[]>(DEFAULT_EXPENSE_CATEGORIES);
     const [dailyBlocks, setDailyBlocks] = useState<DailyBlock[]>([]);
     const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
+    const [sporadicProjects, setSporadicProjects] = useState<SporadicProject[]>([]);
     const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [mealPlanEntries, setMealPlanEntries] = useState<MealPlanEntry[]>([]);
     const [nutritionGoals, setNutritionGoals] = useState<NutritionGoals>(DEFAULT_NUTRITION_GOALS);
@@ -410,6 +446,7 @@ export const useAlDiaState = () => {
                 expenseCategories: JSON.parse(localStorage.getItem('aldia_expense_categories') || JSON.stringify(DEFAULT_EXPENSE_CATEGORIES)),
                 dailyblocks: JSON.parse(localStorage.getItem('aldia_dailyblocks') || '[]'),
                 shoppingList: JSON.parse(localStorage.getItem('aldia_shopping_list') || '[]'),
+                sporadicProjects: JSON.parse(localStorage.getItem('aldia_sporadic_projects') || '[]'),
                 recipes: JSON.parse(localStorage.getItem('aldia_recipes') || '[]'),
                 mealPlanEntries: JSON.parse(localStorage.getItem('aldia_meal_plan_entries') || '[]'),
                 nutritionGoals: JSON.parse(localStorage.getItem('aldia_nutrition_goals') || JSON.stringify(DEFAULT_NUTRITION_GOALS)),
@@ -434,6 +471,7 @@ export const useAlDiaState = () => {
             setExpenseCategories(data.expenseCategories);
             setDailyBlocks(data.dailyblocks);
             setShoppingList(data.shoppingList);
+            setSporadicProjects(data.sporadicProjects);
             setRecipes(data.recipes);
             setMealPlanEntries(data.mealPlanEntries);
             setNutritionGoals(data.nutritionGoals);
@@ -518,6 +556,7 @@ export const useAlDiaState = () => {
                 sync(cloud.expenseCategories, setExpenseCategories);
                 sync(cloud.dailyBlocks, setDailyBlocks);
                 sync(cloud.shoppingList, setShoppingList);
+                sync(cloud.sporadicProjects, setSporadicProjects);
                 sync(cloud.recipes, setRecipes);
                 sync(cloud.mealPlanEntries, setMealPlanEntries);
                 sync(cloud.nutritionGoals, setNutritionGoals);
@@ -548,10 +587,10 @@ export const useAlDiaState = () => {
     // Esto previene "stale closures" en el setTimeout del debounced save,
     // donde un array viejo de transactions podía enviarse a Firestore y causar un rollback visual.
     const latestStateRef = useRef({
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, trash
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, trash
     });
     latestStateRef.current = {
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, trash
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, trash
     };
 
     // 3. Persistencia Cloud (Debounced) y Local (Immediate)
@@ -577,6 +616,7 @@ export const useAlDiaState = () => {
         localStorage.setItem('aldia_expense_categories', JSON.stringify(expenseCategories));
         localStorage.setItem('aldia_dailyblocks', JSON.stringify(dailyBlocks));
         localStorage.setItem('aldia_shopping_list', JSON.stringify(shoppingList));
+        localStorage.setItem('aldia_sporadic_projects', JSON.stringify(sporadicProjects));
         localStorage.setItem('aldia_recipes', JSON.stringify(recipes));
         localStorage.setItem('aldia_meal_plan_entries', JSON.stringify(mealPlanEntries));
         localStorage.setItem('aldia_nutrition_goals', JSON.stringify(nutritionGoals));
@@ -607,7 +647,7 @@ export const useAlDiaState = () => {
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, trash]);
+    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, trash]);
 
     // 4. Migraciones y Lógica Derivada
     useEffect(() => {
@@ -1139,6 +1179,47 @@ export const useAlDiaState = () => {
         }));
     };
 
+    /* ── Proyectos esporádicos ────────────────────────────────────── */
+
+    const addSporadicProject = (title: string, dueDate: string, complexityHours: number, startDate?: string, color?: string) => {
+        const project: SporadicProject = {
+            id: nextBlockId(),
+            title,
+            startDate: startDate || new Date().toLocaleDateString('en-CA'),
+            dueDate,
+            complexityHours: Math.abs(complexityHours) || 0,
+            status: 'pendiente',
+            workedHours: 0,
+            logs: [],
+            color,
+        };
+        setSporadicProjects(prev => [project, ...prev]);
+        return project.id;
+    };
+
+    const updateSporadicProject = (id: number, updates: Partial<SporadicProject>) => {
+        setSporadicProjects(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    };
+
+    const removeSporadicProject = (id: number) => {
+        setSporadicProjects(prev => prev.filter(p => p.id !== id));
+    };
+
+    // Cronómetro simple: arranca guardando el timestamp, y al parar calcula las
+    // horas transcurridas y las suma como un log del día de hoy (para la racha).
+    const startSporadicTimer = (id: number) => {
+        setSporadicProjects(prev => prev.map(p => p.id === id ? { ...p, activeSince: Date.now(), status: p.status === 'pendiente' ? 'en-progreso' : p.status } : p));
+    };
+
+    const stopSporadicTimer = (id: number) => {
+        setSporadicProjects(prev => prev.map(p => {
+            if (p.id !== id || !p.activeSince) return p;
+            const hours = Math.max((Date.now() - p.activeSince) / (1000 * 60 * 60), 0);
+            const log: SporadicWorkLog = { id: nextBlockId(), date: new Date().toLocaleDateString('en-CA'), hours };
+            return { ...p, activeSince: undefined, workedHours: p.workedHours + hours, logs: [log, ...p.logs] };
+        }));
+    };
+
     /* ── Calendario de comidas ─────────────────────────────────────── */
 
     const addRecipe = (name: string, kcal: number, protein: number, carbs: number, prepMinutes?: number, ingredients?: string) => {
@@ -1254,6 +1335,10 @@ export const useAlDiaState = () => {
         shoppingList,
         addShoppingItem: lw(addShoppingItem), updateShoppingItem: lw(updateShoppingItem),
         removeShoppingItem: lw(removeShoppingItem),
+        sporadicProjects,
+        addSporadicProject: lw(addSporadicProject), updateSporadicProject: lw(updateSporadicProject),
+        removeSporadicProject: lw(removeSporadicProject),
+        startSporadicTimer: lw(startSporadicTimer), stopSporadicTimer: lw(stopSporadicTimer),
         markShoppingItemPurchased: lw(markShoppingItemPurchased),
         unmarkShoppingItemPurchased: lw(unmarkShoppingItemPurchased),
         // Calendario de comidas

@@ -14,13 +14,18 @@ interface TimelineAgendaViewProps {
     updateCalendarEvent?: (id: number, updates: Record<string, any>) => void;
     addRoutine?: (title: string, color?: string, startTime?: string, endTime?: string, repeatDays?: number[]) => void;
     addCalendarEvent?: (title: string, date: string, startTime: string, endTime: string, description: string) => void;
+    dailyBlocks?: any[];
+    addDailyBlock?: (label: string, period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro', date: string, completed?: boolean, projectId?: number, repeatDays?: number[]) => void;
+    toggleDailyBlock?: (id: number) => void;
 }
 
 const DIAS_CORTOS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+const PERIOD_TIME: Record<string, string> = { 'Mañana': '07:00', 'Tarde': '13:00', 'Noche': '19:00', 'Otro': '23:00' };
 
 export const TimelineAgendaView = ({
-    calendarEvents, projects = [], rutinas = [], missions = [], habits = [],
-    onRemoveEvent, onToggleMission, updateRoutine, updateCalendarEvent, addRoutine, addCalendarEvent
+    calendarEvents, projects = [], rutinas = [], missions = [], habits = [], dailyBlocks = [],
+    onRemoveEvent, onToggleMission, updateRoutine, updateCalendarEvent, addRoutine, addCalendarEvent,
+    addDailyBlock, toggleDailyBlock
 }: TimelineAgendaViewProps) => {
     const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768);
     useEffect(() => {
@@ -223,6 +228,30 @@ export const TimelineAgendaView = ({
         const hbs = (habits || []).filter((h: any) => h.schedule?.includes(dayIdx));
         return hbs.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
     }, [habits, dayIdx, activeFilters.habitos]);
+
+    // 5.4 Tareas del Checklist para el día seleccionado (misma deducción que ChecklistDiario:
+    // dailyBlocks mezcla plantilla + registro, así que la tarea "existe hoy" si su repeatDays
+    // incluye este día, o si no tiene repeatDays y ya se registró alguna vez).
+    const dayChecklistTasks = useMemo(() => {
+        const keys = new Set<string>();
+        const templates: { label: string; period: string; repeatDays?: number[] }[] = [];
+        (dailyBlocks || []).forEach((b: any) => {
+            const k = `${b.label.toLowerCase()}||${b.period}`;
+            if (!keys.has(k)) {
+                keys.add(k);
+                templates.push({ label: b.label, period: b.period, repeatDays: b.repeatDays });
+            } else if (b.repeatDays?.length) {
+                const ex = templates.find(t => `${t.label.toLowerCase()}||${t.period}` === k);
+                if (ex && !ex.repeatDays?.length) ex.repeatDays = b.repeatDays;
+            }
+        });
+        return templates
+            .filter(t => t.repeatDays ? t.repeatDays.includes(dayIdx) : true)
+            .map(t => {
+                const record = (dailyBlocks || []).find((b: any) => b.label.toLowerCase() === t.label.toLowerCase() && b.period === t.period && b.date === todayStr);
+                return { id: record?.id, label: t.label, period: t.period, completed: !!record?.completed, repeatDays: t.repeatDays };
+            });
+    }, [dailyBlocks, dayIdx, todayStr]);
 
     // 6. Vista Mensual Logic
     const monthDays = useMemo(() => {
@@ -563,6 +592,18 @@ export const TimelineAgendaView = ({
                                                         <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
                                                     </div>
                                                     <div style={{ fontSize: '0.58rem', fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>{r.startTime} – {r.endTime}</div>
+                                                    {r.items && r.items.length > 0 && (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '4px' }}>
+                                                            {r.items.map((sub: any) => (
+                                                                <div key={sub.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.6rem', color: 'rgba(255,255,255,0.9)' }}>
+                                                                    <div style={{ width: '9px', height: '9px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                                        {sub.completed && <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'white' }} />}
+                                                                    </div>
+                                                                    <span style={{ textDecoration: sub.completed ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub.text}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             );
                                        })}
@@ -599,7 +640,7 @@ export const TimelineAgendaView = ({
                                 {dayMissions.map((m: any) => (
                                     <div key={m.id} style={{ background: 'white', padding: '14px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                                         <button onClick={() => onToggleMission?.(m.id)} style={{ width: '24px', height: '24px', borderRadius: '8px', background: m.completed ? 'var(--domain-green)' : 'white', border: '2px solid #EEE' }} />
-                                        <div style={{ fontWeight: 700 }}>{m.title || m.text}</div>
+                                        <div style={{ fontWeight: 700 }}>{m.text}</div>
                                     </div>
                                 ))}
                             </div>
@@ -641,40 +682,55 @@ export const TimelineAgendaView = ({
                                     {/* Línea vertical base */}
                                     <div style={{ position: 'absolute', left: '72px', top: '10px', bottom: '10px', width: '2px', background: '#F1F5F9', zIndex: 0 }} />
 
-                                    {/* MISIONES (TIMELINE GLOBAL) o SOLO TAREAS */}
-                                    {(rightPanelMode === 'mision' || rightPanelMode === 'tareas') && (() => {
-                                        // Construir Timeline Global al instante para Misiones
+                                    {/* MISIÓN DIARIA: refleja exactamente las tareas del Checklist (dailyBlocks) del día. */}
+                                    {rightPanelMode === 'mision' && (() => {
+                                        const items = dayChecklistTasks
+                                            .map(t => ({
+                                                id: `c-${t.label.toLowerCase()}-${t.period}`, time: PERIOD_TIME[t.period] || '23:00',
+                                                type: 'checklist', label: t.label, completed: t.completed, color: '#F59E0B', task: t
+                                            }))
+                                            .sort((a, b) => a.time.localeCompare(b.time));
+
+                                        if (items.length === 0) {
+                                            return <div style={{ fontSize: '0.75rem', color: '#94A3B8', textAlign: 'center', padding: '20px' }}>Sin tareas de Checklist para este día</div>;
+                                        }
+
+                                        return items.map((item) => (
+                                            <div key={item.id} style={{ display: 'flex', gap: '15px', marginBottom: '16px', position: 'relative' }}>
+                                                <div style={{ width: '45px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', paddingTop: '4px', flexShrink: 0 }}>
+                                                    <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{item.time}</span>
+                                                </div>
+                                                <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: item.completed ? item.color : '#E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '8px', zIndex: 1, boxShadow: '0 0 0 4px white', flexShrink: 0 }}>
+                                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'white' }} />
+                                                </div>
+                                                <div
+                                                    onClick={() => {
+                                                        const t = item.task;
+                                                        if (t.id !== undefined) toggleDailyBlock?.(t.id);
+                                                        else addDailyBlock?.(t.label, t.period as any, todayStr, true, undefined, t.repeatDays);
+                                                    }}
+                                                    style={{ flex: 1, padding: '12px', borderRadius: '16px', border: '1px solid #F8FAFC', borderLeft: `4px solid ${item.color}`, background: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', cursor: 'pointer', opacity: item.completed ? 0.7 : 1 }}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${item.completed ? 'var(--domain-green)' : '#E2E8F0'}`, background: item.completed ? 'var(--domain-green)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                            {item.completed && <span style={{ color: 'white', fontSize: '0.65rem', fontWeight: 900 }}>✓</span>}
+                                                        </div>
+                                                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: item.completed ? '#94A3B8' : 'var(--text-carbon)', textDecoration: item.completed ? 'line-through' : 'none' }}>
+                                                            {item.label}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ));
+                                    })()}
+                                    {/* TAREAS (Misiones sueltas) */}
+                                    {rightPanelMode === 'tareas' && (() => {
                                         let allItems: any[] = [];
-                                        
-                                        // 1. Tareas (Misiones sueltas)
                                         dayMissions.forEach((m: any) => {
                                             allItems.push({
-                                                id: `m-${m.id}`, rawId: m.id, time: m.dueTime || '09:00', type: 'tarea', label: m.title || m.text, completed: m.completed, color: '#F59E0B', raw: m
+                                                id: `m-${m.id}`, rawId: m.id, time: m.dueTime || '09:00', type: 'tarea', label: m.text, completed: m.completed, color: '#F59E0B'
                                             });
                                         });
-
-                                        if (rightPanelMode === 'mision') {
-                                            // 2. Rutinas
-                                            dayRoutines.forEach((r: any) => {
-                                                allItems.push({
-                                                    id: `r-${r.id}`, type: 'rutina', time: r.startTime || '07:00', label: r.title, color: r.color || '#10B981', items: r.items, raw: r
-                                                });
-                                            });
-
-                                            // 3. Hábitos
-                                            dayHabits.forEach((h: any) => {
-                                                allItems.push({
-                                                    id: `h-${h.id}`, type: 'habito', time: h.timeOfDay || '08:00', label: h.name, color: '#EC4899', raw: h, completed: (h.completedDates || []).includes(todayStr)
-                                                });
-                                            });
-
-                                            // 4. Citas
-                                            dayEvents.forEach((e: any) => {
-                                                allItems.push({
-                                                    id: `e-${e.id}`, type: 'cita', time: e.startTime || '10:00', endTime: e.endTime, label: e.title, color: e.color || '#6366F1', raw: e
-                                                });
-                                            });
-                                        }
 
                                         allItems.sort((a, b) => a.time.localeCompare(b.time));
 
@@ -682,39 +738,22 @@ export const TimelineAgendaView = ({
                                             <div key={item.id} style={{ display: 'flex', gap: '15px', marginBottom: '16px', position: 'relative' }}>
                                                 <div style={{ width: '45px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', paddingTop: '4px', flexShrink: 0 }}>
                                                     <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{item.time}</span>
-                                                    {item.endTime && <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#AAA' }}>{item.endTime}</span>}
                                                 </div>
                                                 <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: item.completed ? item.color : '#E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '8px', zIndex: 1, boxShadow: '0 0 0 4px white', flexShrink: 0 }}>
-                                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: item.type === 'rutina' || item.type === 'cita' ? item.color : 'white' }} />
+                                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'white' }} />
                                                 </div>
-                                                
-                                                <div 
-                                                    onClick={() => item.type === 'tarea' && onToggleMission && onToggleMission(item.rawId)} 
-                                                    style={{ flex: 1, padding: '12px', borderRadius: '16px', border: '1px solid #F8FAFC', borderLeft: `4px solid ${item.color}`, background: item.type === 'rutina' ? `${item.color}08` : 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', cursor: item.type === 'tarea' ? 'pointer' : 'default', opacity: item.completed ? 0.7 : 1 }}
+                                                <div
+                                                    onClick={() => onToggleMission?.(item.rawId)}
+                                                    style={{ flex: 1, padding: '12px', borderRadius: '16px', border: '1px solid #F8FAFC', borderLeft: `4px solid ${item.color}`, background: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', cursor: 'pointer', opacity: item.completed ? 0.7 : 1 }}
                                                 >
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                        {(item.type === 'tarea' || item.type === 'habito') && (
-                                                            <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${item.completed ? 'var(--domain-green)' : '#E2E8F0'}`, background: item.completed ? 'var(--domain-green)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                                {item.completed && <span style={{ color: 'white', fontSize: '0.65rem', fontWeight: 900 }}>✓</span>}
-                                                            </div>
-                                                        )}
+                                                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${item.completed ? 'var(--domain-green)' : '#E2E8F0'}`, background: item.completed ? 'var(--domain-green)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                            {item.completed && <span style={{ color: 'white', fontSize: '0.65rem', fontWeight: 900 }}>✓</span>}
+                                                        </div>
                                                         <span style={{ fontSize: '0.85rem', fontWeight: 800, color: item.completed ? '#94A3B8' : 'var(--text-carbon)', textDecoration: item.completed ? 'line-through' : 'none' }}>
                                                             {item.label}
                                                         </span>
                                                     </div>
-
-                                                    {item.type === 'rutina' && item.items && item.items.length > 0 && (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
-                                                            {item.items.map((sub: any) => (
-                                                                <div key={sub.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', color: '#94A3B8' }}>
-                                                                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', border: '1px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                        {sub.completed && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--domain-green)' }} />}
-                                                                    </div>
-                                                                    <span style={{ textDecoration: sub.completed ? 'line-through' : 'none' }}>{sub.text}</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
                                                 </div>
                                             </div>
                                         ));
@@ -777,7 +816,7 @@ export const TimelineAgendaView = ({
                                     {rightPanelMode === 'habitos' && dayHabits.map((h: any) => (
                                         <div key={h.id} style={{ display: 'flex', gap: '15px', marginBottom: '16px', position: 'relative' }}>
                                             <div style={{ width: '45px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', paddingTop: '4px', flexShrink: 0 }}>
-                                                <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{h.timeOfDay || '08:00'}</span>
+                                                <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-carbon)' }}>08:00</span>
                                             </div>
                                             
                                             {(() => {

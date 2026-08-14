@@ -37,13 +37,17 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     const PRIMARY_ITEMS = [
         { label: 'Checklist', tab: 'Checklist', icon: 'task_alt' },
         { label: 'Finanzas',  tab: 'Finanzas',  icon: 'payments'      },
+        { label: 'Esporádicos', tab: 'Esporádicos', icon: 'local_fire_department' },
         { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
         { label: 'Deudas',     tab: 'Deudas',     icon: 'receipt_long'  },
         { label: 'Bloques', tab: 'Bloques',   icon: 'history_edu'    },
         { label: 'Movimientos', tab: 'Movimientos', icon: 'list_alt'    },
         { label: 'Listas',    tab: 'Listas',    icon: 'fact_check'    },
+        { label: 'Compras',   tab: 'Compras',   icon: 'shopping_cart' },
+        { label: 'Comidas',   tab: 'Comidas',   icon: 'restaurant'    },
         { label: 'Plan',      tab: 'Plan',      icon: 'savings'       },
         { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
+        { label: 'Notion', tab: 'Notion', icon: 'sync_alt' },
     ];
 
     // ── Secondary / all other tools ────────────────────────────────────
@@ -126,6 +130,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         switch (tab) {
             case 'Checklist': return 'Checklist Diario';
             case 'Plan': return 'Plan del Mes';
+            case 'Compras': return 'Lista de Compras & Deseos';
+            case 'Comidas': return 'Calendario de Comidas';
             case 'Bloques': return 'Registro Semanal';
             case 'Finanzas': return 'Finanzas';
             case 'Deudas': return 'Deudas y Cobros';
