@@ -184,6 +184,31 @@ const MoneyMini = ({ label, val, color, prefix = "S/ ", title: tip }: { label: s
     </div>
 );
 
+// Desglose de categorías al expandir una fila de cuenta en "Ingresos y Gastos por
+// Cuenta": barra proporcional al gasto más alto de esa cuenta, para ver de un
+// vistazo en qué se fue la plata sin tener que ir a Movimientos a buscarlo.
+const CategoryBreakdown = ({ items }: { items: { category: string; amount: number }[] }) => {
+    if (items.length === 0) {
+        return <div style={{ padding: "10px 4px", fontSize: "0.72rem", color: C.outline, fontStyle: "italic" }}>Sin gastos con categoría en este período.</div>;
+    }
+    const max = Math.max(...items.map(i => i.amount));
+    return (
+        <div style={{ display: "flex", flexDirection: "column", gap: "7px", padding: "10px 4px 2px" }}>
+            {items.map(({ category, amount }) => (
+                <div key={category} style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: "8px" }}>
+                        <span style={{ fontSize: "0.74rem", fontWeight: 700, color: C.onSurface, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{category}</span>
+                        <span style={{ fontSize: "0.74rem", fontWeight: 800, color: C.rojo, whiteSpace: "nowrap" }}>−S/ {amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div style={{ height: "5px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
+                        <div style={{ height: "100%", borderRadius: "999px", width: `${max > 0 ? (amount / max) * 100 : 0}%`, background: C.rojo, opacity: 0.75 }} />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 // Antes las 11 métricas vivían en una sola grilla plana, todas con el mismo peso
 // visual: no se distinguía "Ingresos" de "Deudas" de "Balance Neto" a simple vista.
 // Agruparlas por categoría (con su propio título) restaura esa jerarquía sin
@@ -732,6 +757,28 @@ export const FinanzasDashboard = ({
             return { id: acc.id, remaining: ingresoReal - gastoTotal, ingresoReal, gastoTotal, transferTotal, gastoPuro };
         });
     }, [accounts, transactions, topPeriod, periodRef]);
+
+    // Desglose por categoría del gasto real de cada cuenta, en el mismo período de arriba.
+    // Se usa para expandir la fila de una cuenta en "Ingresos y Gastos por Cuenta" y ver
+    // en qué se fue la plata sin tener que ir a buscarlo en Movimientos.
+    const accountCategoryBreakdown = useMemo(() => {
+        const { start, end } = getPeriodBounds(topPeriod, periodRef);
+        const map = new Map<number, { category: string; amount: number }[]>();
+        accounts.forEach(acc => {
+            const byCategory = new Map<string, number>();
+            transactions
+                .filter(tx => tx.accountId === acc.id && !tx.isCashless && tx.type === "gasto" && tx.category !== "Transferencia" && tx.fullDate >= start && tx.fullDate <= end)
+                .forEach(tx => {
+                    const cat = tx.category || "Sin categoría";
+                    byCategory.set(cat, (byCategory.get(cat) || 0) + Math.abs(Number(tx.amount) || 0));
+                });
+            map.set(acc.id, [...byCategory.entries()].map(([category, amount]) => ({ category, amount })).sort((a, b) => b.amount - a.amount));
+        });
+        return map;
+    }, [accounts, transactions, topPeriod, periodRef]);
+    // Set (no un solo id): las filas de cuenta se expanden independientemente,
+    // abrir una no debe cerrar las demás que ya estaban abiertas.
+    const [expandedAccountIds, setExpandedAccountIds] = useState<Set<number>>(new Set());
 
     // Ganancia real (todas las cuentas juntas) del período inmediatamente anterior al elegido
     // arriba, para poder comparar "este mes vs el anterior" sin agregar un segundo selector.
@@ -1400,36 +1447,67 @@ export const FinanzasDashboard = ({
                                 const transfer = b?.transferTotal ?? 0;
                                 const ganancia = ingreso - gastoReal;
                                 const colorGanancia = ganancia >= 0 ? C.verde : C.rojo;
+                                const isExpanded = expandedAccountIds.has(acc.id);
+                                const breakdown = accountCategoryBreakdown.get(acc.id) || [];
+                                const toggle = () => setExpandedAccountIds(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(acc.id)) next.delete(acc.id); else next.add(acc.id);
+                                    return next;
+                                });
                                 if (movil) return (
-                                    <div key={acc.id} style={{ display: "flex", flexDirection: "column", padding: "10px", borderRadius: "10px", background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, gap: "8px" }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
-                                            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: acc.color, flexShrink: 0 }} />
-                                            <span style={{ fontSize: "0.78rem", fontWeight: 700, whiteSpace: "normal" }} title={acc.name}>
-                                                {acc.name}
-                                            </span>
-                                        </div>
-                                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "6px" }}>
-                                            <MoneyMini label="Ingreso" val={ingreso} color={C.verde} prefix="+S/ " />
-                                            <MoneyMini label="Gasto Total" val={gastoTotalAcc} color={C.rojo} prefix="−S/ " title="Gasto total: incluye lo que salió como transferencia a otra cuenta" />
-                                            <MoneyMini label="Gasto Real" val={gastoReal} color={C.rojo} prefix="−S/ " title="Gasto real: no incluye lo que salió como transferencia a otra cuenta" />
-                                            <MoneyMini label="Transf." val={transfer} color={C.outline} prefix="↔ S/ " title="Plata movida entre cuentas — no es ingreso ni gasto real" />
-                                            <MoneyMini label="Ganancia" val={Math.abs(ganancia)} color={colorGanancia} prefix={ganancia >= 0 ? "+S/ " : "−S/ "} title="Ingreso Real menos Gasto Real" />
-                                        </div>
+                                    <div key={acc.id} style={{ borderRadius: "10px", background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, overflow: "hidden" }}>
+                                        <button onClick={toggle} style={{ width: "100%", display: "flex", flexDirection: "column", padding: "10px", gap: "8px", background: "none", border: "none", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                                                <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: acc.color, flexShrink: 0 }} />
+                                                <span style={{ fontSize: "0.78rem", fontWeight: 700, whiteSpace: "normal", flex: 1 }} title={acc.name}>
+                                                    {acc.name}
+                                                </span>
+                                                <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} style={{ display: "flex", flexShrink: 0 }}><ArrowDownCircle size={13} color={C.outline} /></motion.div>
+                                            </div>
+                                            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "6px" }}>
+                                                <MoneyMini label="Ingreso" val={ingreso} color={C.verde} prefix="+S/ " />
+                                                <MoneyMini label="Gasto Total" val={gastoTotalAcc} color={C.rojo} prefix="−S/ " title="Gasto total: incluye lo que salió como transferencia a otra cuenta" />
+                                                <MoneyMini label="Gasto Real" val={gastoReal} color={C.rojo} prefix="−S/ " title="Gasto real: no incluye lo que salió como transferencia a otra cuenta" />
+                                                <MoneyMini label="Transf." val={transfer} color={C.outline} prefix="↔ S/ " title="Plata movida entre cuentas — no es ingreso ni gasto real" />
+                                                <MoneyMini label="Ganancia" val={Math.abs(ganancia)} color={colorGanancia} prefix={ganancia >= 0 ? "+S/ " : "−S/ "} title="Ingreso Real menos Gasto Real" />
+                                            </div>
+                                        </button>
+                                        <AnimatePresence>
+                                            {isExpanded && (
+                                                <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} style={{ overflow: "hidden" }}>
+                                                    <div style={{ padding: "0 10px 10px", borderTop: `1px solid ${C.outlineVariant}` }}>
+                                                        <CategoryBreakdown items={breakdown} />
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
                                 );
                                 return (
-                                    <div key={acc.id} style={{ display: "grid", gridTemplateColumns: desktopCols, gap: "12px", alignItems: "center", padding: "10px 12px", borderRadius: "10px", background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}` }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
-                                            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: acc.color, flexShrink: 0 }} />
-                                            <span style={{ fontSize: "0.82rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={acc.name}>
-                                                {acc.name}
-                                            </span>
-                                        </div>
-                                        <span style={{ fontSize: "0.88rem", fontWeight: 900, color: C.verde }}>+S/ {ingreso.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                                        <span style={{ fontSize: "0.88rem", fontWeight: 900, color: C.rojo }} title="Gasto total: incluye lo que salió como transferencia a otra cuenta">−S/ {gastoTotalAcc.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                                        <span style={{ fontSize: "0.88rem", fontWeight: 700, color: C.rojo }} title="Gasto real: no incluye lo que salió como transferencia a otra cuenta">−S/ {gastoReal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                                        <span style={{ fontSize: "0.8rem", fontWeight: 700, color: C.outline }} title="Plata movida entre cuentas — no es ingreso ni gasto real">↔ S/ {transfer.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-                                        <span style={{ fontSize: "0.88rem", fontWeight: 900, color: colorGanancia }} title="Ingreso Real menos Gasto Real">{ganancia >= 0 ? "+" : "−"}S/ {Math.abs(ganancia).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                    <div key={acc.id} style={{ borderRadius: "10px", background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, overflow: "hidden" }}>
+                                        <button onClick={toggle} style={{ width: "100%", display: "grid", gridTemplateColumns: desktopCols, gap: "12px", alignItems: "center", padding: "10px 12px", background: "none", border: "none", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                                                <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} style={{ display: "flex", flexShrink: 0 }}><ArrowDownCircle size={13} color={C.outline} /></motion.div>
+                                                <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: acc.color, flexShrink: 0 }} />
+                                                <span style={{ fontSize: "0.82rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={acc.name}>
+                                                    {acc.name}
+                                                </span>
+                                            </div>
+                                            <span style={{ fontSize: "0.88rem", fontWeight: 900, color: C.verde }}>+S/ {ingreso.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                            <span style={{ fontSize: "0.88rem", fontWeight: 900, color: C.rojo }} title="Gasto total: incluye lo que salió como transferencia a otra cuenta">−S/ {gastoTotalAcc.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                            <span style={{ fontSize: "0.88rem", fontWeight: 700, color: C.rojo }} title="Gasto real: no incluye lo que salió como transferencia a otra cuenta">−S/ {gastoReal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                            <span style={{ fontSize: "0.8rem", fontWeight: 700, color: C.outline }} title="Plata movida entre cuentas — no es ingreso ni gasto real">↔ S/ {transfer.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                            <span style={{ fontSize: "0.88rem", fontWeight: 900, color: colorGanancia }} title="Ingreso Real menos Gasto Real">{ganancia >= 0 ? "+" : "−"}S/ {Math.abs(ganancia).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                        </button>
+                                        <AnimatePresence>
+                                            {isExpanded && (
+                                                <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} style={{ overflow: "hidden" }}>
+                                                    <div style={{ padding: "0 12px 10px 33px", borderTop: `1px solid ${C.outlineVariant}` }}>
+                                                        <CategoryBreakdown items={breakdown} />
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
                                 );
                             })}

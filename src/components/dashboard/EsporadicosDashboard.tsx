@@ -126,6 +126,19 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
         () => sporadicProjects.filter(p => p.status !== 'completado').sort((a, b) => priorityOf(b) - priorityOf(a)),
         [sporadicProjects]
     );
+    // "Listos para entregar": ya en Notion dice Terminado (se acabó de editar) pero
+    // todavía no Entregado — separados para no perderlos entre lo que aún falta trabajar.
+    const listosParaEntregar = useMemo(
+        () => pendientes.filter(p => {
+            const ev = p.notionId ? calendarEvents.find(e => e.notionId === p.notionId) : undefined;
+            return ev?.notionEstado === 'Terminado';
+        }),
+        [pendientes, calendarEvents]
+    );
+    const enProgreso = useMemo(
+        () => pendientes.filter(p => !listosParaEntregar.includes(p)),
+        [pendientes, listosParaEntregar]
+    );
     const completados = useMemo(() => sporadicProjects.filter(p => p.status === 'completado'), [sporadicProjects]);
 
     const submit = () => {
@@ -206,10 +219,21 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                 </div>
             )}
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-                {pendientes.map(p => (
-                    <ProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} stopSporadicTimer={stopSporadicTimer} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
-                ))}
+            <div style={{ display: "grid", gridTemplateColumns: movil || listosParaEntregar.length === 0 ? "1fr" : "1fr 1fr", gap: "1.25rem", alignItems: "start" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+                    {listosParaEntregar.length > 0 && <span style={etiqueta}>En curso ({enProgreso.length})</span>}
+                    {enProgreso.map(p => (
+                        <ProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} stopSporadicTimer={stopSporadicTimer} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
+                    ))}
+                </div>
+                {listosParaEntregar.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+                        <span style={etiqueta}>Listos para entregar ({listosParaEntregar.length})</span>
+                        {listosParaEntregar.map(p => (
+                            <ProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} stopSporadicTimer={stopSporadicTimer} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
+                        ))}
+                    </div>
+                )}
             </div>
 
             {completados.length > 0 && (
