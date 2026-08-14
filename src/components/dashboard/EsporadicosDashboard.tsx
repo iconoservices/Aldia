@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, X, Trash2, MoreVertical, Play, Pause, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart, Pin } from "lucide-react";
+import { Plus, X, Trash2, MoreVertical, Play, Pause, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart, Pin, Image as ImageIcon, Check, TimerReset } from "lucide-react";
 import {
     DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
@@ -51,6 +51,10 @@ interface EsporadicosProps {
     startSporadicTimer: (id: number, stage?: string) => void;
     pauseSporadicTimer: (id: number) => void;
     stopSporadicTimer: (id: number) => void;
+    startPhotoTimer: (id: number) => void;
+    finishPhotoTimer: (id: number) => void;
+    cancelPhotoTimer: (id: number) => void;
+    resetSporadicWorkedTime: (id: number) => void;
     calendarEvents: CalendarEvent[];
     updateCalendarEvent: (id: number, updates: Partial<CalendarEvent>) => void;
 }
@@ -128,7 +132,7 @@ const computeStreak = (projects: SporadicProject[]) => {
     return streak;
 };
 
-export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, updateSporadicProject, removeSporadicProject, startSporadicTimer, pauseSporadicTimer, stopSporadicTimer, calendarEvents, updateCalendarEvent }: EsporadicosProps) => {
+export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, updateSporadicProject, removeSporadicProject, startSporadicTimer, pauseSporadicTimer, stopSporadicTimer, startPhotoTimer, finishPhotoTimer, cancelPhotoTimer, resetSporadicWorkedTime, calendarEvents, updateCalendarEvent }: EsporadicosProps) => {
     const movil = useIsMobile();
     const [addingOpen, setAddingOpen] = useState(false);
     const [title, setTitle] = useState("");
@@ -232,6 +236,12 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
     }, [sporadicProjects]);
     const totalHoursLogged = useMemo(() => timeByStage.reduce((s, t) => s + t.hours, 0), [timeByStage]);
 
+    // Total acumulado sumando TODOS los proyectos (workedHours ya incluye tanto
+    // las sesiones cerradas como el tiempo de fotos sumado sin sesión activa) —
+    // a diferencia de timeByStage/totalHoursLogged, que solo cuenta lo que quedó
+    // etiquetado con una etapa. Se muestra siempre arriba, sin tener que desplegar nada.
+    const totalWorkedAllProjects = useMemo(() => sporadicProjects.reduce((s, p) => s + p.workedHours, 0), [sporadicProjects]);
+
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -267,6 +277,11 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                             <ArrowUpDown size={13} /> Orden manual
                         </button>
                     )}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(99,102,241,0.12)", borderRadius: "999px", padding: "8px 16px" }}>
+                        <Timer size={18} color={C.secondary} />
+                        <span style={{ fontWeight: 800, fontSize: "0.9rem", color: C.onSurface }}>{formatElapsed(totalWorkedAllProjects * 60 * 60 * 1000)}</span>
+                        <span style={{ fontSize: "0.75rem", color: C.onSurfaceVariant }}>en total</span>
+                    </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(230,168,23,0.12)", borderRadius: "999px", padding: "8px 16px" }}>
                         <Flame size={18} color={C.ambar} fill={streak > 0 ? C.ambar : "none"} />
                         <span style={{ fontWeight: 800, fontSize: "0.9rem", color: C.onSurface }}>{streak}</span>
@@ -330,6 +345,10 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                         n={13} title="Pomodoro integrado" done={false}
                         body="Pendiente: al dar Play, ciclos de 25 min de trabajo + 5 de descanso con aviso (sonido o notificación)."
                     />
+                    <SpecItem
+                        n={14} title="Cronómetro por foto" done
+                        body="Aparte del cronómetro de sesión: Iniciar/Foto lista marca cuánto tarda cada foto individual, y va sumando conteo, promedio y total — para saber el ritmo real por foto, no solo cuánto duró la sesión."
+                    />
                 </div>
             </details>
 
@@ -383,7 +402,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                         {listosParaEntregar.length > 0 && <span style={etiqueta}>En curso ({enProgreso.length})</span>}
                         <SortableContext items={enProgreso.map(p => p.id)} strategy={verticalListSortingStrategy}>
                             {enProgreso.map(p => (
-                                <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
+                                <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} resetSporadicWorkedTime={resetSporadicWorkedTime} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
                             ))}
                         </SortableContext>
                     </div>
@@ -394,7 +413,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                             <span style={etiqueta}>Listos para entregar ({listosParaEntregar.length})</span>
                             <SortableContext items={listosParaEntregar.map(p => p.id)} strategy={verticalListSortingStrategy}>
                                 {listosParaEntregar.map(p => (
-                                    <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
+                                    <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} resetSporadicWorkedTime={resetSporadicWorkedTime} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
                                 ))}
                             </SortableContext>
                         </div>
@@ -407,7 +426,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                     <summary style={{ ...etiqueta, cursor: "pointer", marginBottom: "0.6rem" }}>Completados ({completados.length})</summary>
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem", marginTop: "0.6rem" }}>
                         {completados.map(p => (
-                            <ProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
+                            <ProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
                         ))}
                     </div>
                 </details>
@@ -423,19 +442,24 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
     );
 };
 
-const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSporadicTimer, pauseSporadicTimer, stopSporadicTimer, calendarEvents, updateCalendarEvent, dragHandle }: {
+const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSporadicTimer, pauseSporadicTimer, stopSporadicTimer, startPhotoTimer, finishPhotoTimer, cancelPhotoTimer, resetSporadicWorkedTime, calendarEvents, updateCalendarEvent, dragHandle }: {
     p: SporadicProject;
     updateSporadicProject: (id: number, updates: Partial<SporadicProject>) => void;
     removeSporadicProject: (id: number) => void;
     startSporadicTimer: (id: number, stage?: string) => void;
     pauseSporadicTimer: (id: number) => void;
     stopSporadicTimer: (id: number) => void;
+    startPhotoTimer: (id: number) => void;
+    finishPhotoTimer: (id: number) => void;
+    cancelPhotoTimer: (id: number) => void;
+    resetSporadicWorkedTime: (id: number) => void;
     calendarEvents: CalendarEvent[];
     updateCalendarEvent: (id: number, updates: Partial<CalendarEvent>) => void;
     dragHandle?: React.ReactNode;
 }) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
+    const [confirmReset, setConfirmReset] = useState(false);
     const [pomodoroAlert, setPomodoroAlert] = useState(false);
     const lastPomodoroThresholdRef = useRef(0);
 
@@ -453,6 +477,41 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     const liveRunningHours = running && p.activeSince ? Math.max((now - p.activeSince) / (1000 * 60 * 60), 0) : 0;
     const sessionHours = (p.pausedAccumHours || 0) + liveRunningHours;
     const effectiveWorkedHours = p.workedHours + sessionHours;
+
+    // Reloj de pared: cuánto tiempo real pasó desde que le diste Play por primera
+    // vez a esta sesión, sin importar si estuvo pausada o cuánto editaste de verdad
+    // (a diferencia de sessionHours, que sí descuenta las pausas). Tickea aunque
+    // esté en pausa, para que se note que el reloj real sigue corriendo.
+    const wallNow = useNowTicking(inSession);
+    const sinceStartMs = inSession && p.sessionStartedAt ? Math.max(wallNow - p.sessionStartedAt, 0) : 0;
+
+    // Reloj de "cuánto llevo metido en esto sin entregarlo": arranca la primera
+    // vez que le diste Play y NUNCA se detiene (ni con pausas, ni al Terminar
+    // sesión) hasta que el proyecto quede completado. Solo se resetea a mano
+    // desde "Reiniciar horas".
+    const trackingSinceFirstStart = !!p.firstStartedAt && p.status !== 'completado';
+    const trackNow = useNowTicking(trackingSinceFirstStart);
+    const sinceFirstStartMs = trackingSinceFirstStart && p.firstStartedAt ? Math.max(trackNow - p.firstStartedAt, 0) : 0;
+
+    // Cronómetro por foto: independiente del de sesión, para saber cuánto toma
+    // editar cada foto individual (no solo cuánto duró la sesión completa).
+    const photoRunning = !!p.photoActiveSince;
+    const photoNow = useNowTicking(photoRunning);
+    const livePhotoMs = photoRunning && p.photoActiveSince ? Math.max(photoNow - p.photoActiveSince, 0) : 0;
+    const photoLogs = p.photoLogs || [];
+    const photoCount = photoLogs.length;
+    const totalPhotoMs = photoLogs.reduce((s, l) => s + l.seconds * 1000, 0);
+    const avgPhotoMs = photoCount > 0 ? totalPhotoMs / photoCount : 0;
+
+    // Tiempo por etapa de ESTE proyecto (a diferencia del panel de arriba del
+    // dashboard, que suma todos los proyectos juntos) — cuánto de las horas
+    // trabajadas se fue en cada Estado (Agendado/En Edición/etc.).
+    const stageBreakdown = useMemo(() => {
+        const totals = new Map<string, number>();
+        p.logs.forEach(l => totals.set(l.stage || 'Sin etapa', (totals.get(l.stage || 'Sin etapa') || 0) + l.hours));
+        return [...totals.entries()].map(([stage, hours]) => ({ stage, hours })).sort((a, b) => b.hours - a.hours);
+    }, [p.logs]);
+    const stageBreakdownTotal = useMemo(() => stageBreakdown.reduce((s, t) => s + t.hours, 0), [stageBreakdown]);
 
     // Pomodoro: cada 25 min acumulados de esta sesión (corriendo, sumando lo pausado),
     // avisa una vez con sonido + banner. lastPomodoroThresholdRef evita repetir el aviso.
@@ -513,8 +572,13 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                     <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "3px", fontSize: "0.72rem", color: C.onSurfaceVariant, fontWeight: 700 }}>
                         <span style={{ color }}>{label}</span>
                         <span>Entrega: {p.dueDate}</span>
-                        <span>{effectiveWorkedHours.toFixed(1)}h / {p.complexityHours}h</span>
+                        <span>{formatElapsed(effectiveWorkedHours * 60 * 60 * 1000)} / {p.complexityHours}h</span>
                     </div>
+                    {trackingSinceFirstStart && (
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "3px", fontSize: "0.68rem", fontWeight: 700, color: C.outline }}>
+                            <Timer size={11} /> Llevas {formatElapsed(sinceFirstStartMs)} metido en esto sin entregarlo
+                        </div>
+                    )}
                 </div>
                 <button
                     onClick={() => updateSporadicProject(p.id, { pinned: !p.pinned })}
@@ -532,6 +596,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                             ) : (
                                 <button onClick={() => { updateSporadicProject(p.id, { status: 'en-progreso' }); setNotionEstado('En Edición'); setMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", color: C.onSurface, fontSize: "0.78rem", fontWeight: 600, textAlign: "left" }}><RotateCcw size={13} /> Reabrir</button>
                             )}
+                            <button onClick={() => { setConfirmReset(true); setMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", color: C.ambar, fontSize: "0.78rem", fontWeight: 600, textAlign: "left", borderTop: `1px solid ${C.surfaceContainerLow}` }}><TimerReset size={13} /> Reiniciar horas</button>
                             <button onClick={() => { setConfirmDelete(true); setMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", color: C.rojo, fontSize: "0.78rem", fontWeight: 600, textAlign: "left", borderTop: `1px solid ${C.surfaceContainerLow}` }}><Trash2 size={13} /> Eliminar</button>
                         </div>
                     )}
@@ -561,11 +626,62 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
             )}
 
             {inSession && (
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", fontWeight: 800, color: running ? C.rojo : C.ambar }}>
-                    <Timer size={13} />
-                    {formatElapsed(sessionHours * 60 * 60 * 1000)}
-                    {p.activeStage && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en {p.activeStage}</span>}
-                    {paused && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en pausa</span>}
+                <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", fontWeight: 800, color: running ? C.rojo : C.ambar }}>
+                        <Timer size={13} />
+                        {formatElapsed(sessionHours * 60 * 60 * 1000)} trabajado
+                        {p.activeStage && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en {p.activeStage}</span>}
+                        {paused && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en pausa</span>}
+                    </div>
+                    {p.sessionStartedAt && (
+                        <div style={{ fontSize: "0.68rem", fontWeight: 600, color: C.outline, paddingLeft: "19px" }}>
+                            Le diste Iniciar hace {formatElapsed(sinceStartMs)}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {p.status !== 'completado' && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px", padding: "8px 10px", background: C.surfaceContainerLow, borderRadius: "10px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "4px" }}>
+                        <span style={{ fontSize: "0.66rem", fontWeight: 800, color: C.onSurfaceVariant, display: "flex", alignItems: "center", gap: "4px", textTransform: "uppercase", letterSpacing: "0.02em" }}>
+                            <ImageIcon size={12} /> Tiempo por foto
+                        </span>
+                        {photoCount > 0 && (
+                            <span style={{ fontSize: "0.68rem", fontWeight: 700, color: C.onSurfaceVariant }}>
+                                {photoCount} foto{photoCount === 1 ? '' : 's'} · prom. {formatElapsed(avgPhotoMs)} · total {formatElapsed(totalPhotoMs)}
+                            </span>
+                        )}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        {!photoRunning ? (
+                            <button
+                                onClick={() => startPhotoTimer(p.id)}
+                                style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "white", color: C.onSurfaceVariant, border: `1px solid ${C.outlineVariant}`, borderRadius: "8px", padding: "6px", cursor: "pointer", fontSize: "0.74rem", fontWeight: 700 }}
+                            >
+                                <Play size={12} /> Iniciar foto
+                            </button>
+                        ) : (
+                            <>
+                                <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.76rem", fontWeight: 800, color: C.rojo, minWidth: "48px" }}>
+                                    <Timer size={12} /> {formatElapsed(livePhotoMs)}
+                                </span>
+                                <button
+                                    onClick={() => finishPhotoTimer(p.id)}
+                                    style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: C.verde, color: "white", border: "none", borderRadius: "8px", padding: "6px", cursor: "pointer", fontSize: "0.74rem", fontWeight: 700 }}
+                                >
+                                    <Check size={12} /> Foto lista
+                                </button>
+                                <button
+                                    onClick={() => cancelPhotoTimer(p.id)}
+                                    title="Cancelar (no la cuenta)"
+                                    style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "4px", display: "flex" }}
+                                >
+                                    <X size={14} />
+                                </button>
+                            </>
+                        )}
+                    </div>
                 </div>
             )}
 
@@ -581,18 +697,45 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                 </div>
             </div>
 
-            {p.complexityHours > 0 && (
+            {(p.complexityHours > 0 || effectiveWorkedHours > 0) && (
                 <div>
-                    <div style={{ fontSize: "0.6rem", fontWeight: 700, color: C.outline, marginBottom: "2px" }}>Horas trabajadas vs. estimado</div>
-                    <div style={{ height: "8px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
-                        <div style={{
-                            height: "100%", borderRadius: "999px",
-                            width: `${Math.min((effectiveWorkedHours / p.complexityHours) * 100, 100)}%`,
-                            background: effectiveWorkedHours >= p.complexityHours ? C.verde : C.secondary,
-                            transition: "width 0.3s",
-                        }} />
+                    <div style={{ fontSize: "0.6rem", fontWeight: 700, color: C.outline, marginBottom: "2px" }}>
+                        {p.complexityHours > 0 ? "Horas trabajadas vs. estimado" : "Horas trabajadas (acumulado)"}
                     </div>
+                    {p.complexityHours > 0 ? (
+                        <div style={{ height: "8px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
+                            <div style={{
+                                height: "100%", borderRadius: "999px",
+                                width: `${Math.min((effectiveWorkedHours / p.complexityHours) * 100, 100)}%`,
+                                background: effectiveWorkedHours >= p.complexityHours ? C.verde : C.secondary,
+                                transition: "width 0.3s",
+                            }} />
+                        </div>
+                    ) : (
+                        <div style={{ fontSize: "0.78rem", fontWeight: 800, color: C.onSurface }}>{formatElapsed(effectiveWorkedHours * 60 * 60 * 1000)}</div>
+                    )}
                 </div>
+            )}
+
+            {stageBreakdown.length > 0 && (
+                <details style={{ fontSize: "0.72rem" }}>
+                    <summary style={{ ...etiqueta, cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
+                        <PieChart size={12} /> Tiempo por etapa (este proyecto)
+                    </summary>
+                    <div style={{ marginTop: "6px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                        {stageBreakdown.map(({ stage, hours }) => (
+                            <div key={stage} style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.7rem" }}>
+                                    <span style={{ fontWeight: 700, color: C.onSurface }}>{stage}</span>
+                                    <span style={{ fontWeight: 800, color: C.onSurfaceVariant }}>{hours.toFixed(1)}h · {stageBreakdownTotal > 0 ? Math.round((hours / stageBreakdownTotal) * 100) : 0}%</span>
+                                </div>
+                                <div style={{ height: "5px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
+                                    <div style={{ height: "100%", borderRadius: "999px", width: `${stageBreakdownTotal > 0 ? (hours / stageBreakdownTotal) * 100 : 0}%`, background: ESTADO_COLOR[stage as NotionEstado] || C.secondary }} />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </details>
             )}
 
             {p.complexityHours > 0 && p.status !== 'completado' && (
@@ -655,6 +798,16 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                 cancelLabel="Cancelar"
                 onConfirm={() => { removeSporadicProject(p.id); setConfirmDelete(false); }}
                 onCancel={() => setConfirmDelete(false)}
+            />
+
+            <ConfirmDialog
+                open={confirmReset}
+                title="Reiniciar horas trabajadas"
+                message={`¿Poner en 0h "${p.title}"? Se borran las sesiones y fotos registradas de este proyecto (solo este, no afecta a los demás). El proyecto en sí no se borra.`}
+                confirmLabel="Reiniciar"
+                cancelLabel="Cancelar"
+                onConfirm={() => { resetSporadicWorkedTime(p.id); setConfirmReset(false); }}
+                onCancel={() => setConfirmReset(false)}
             />
         </div>
     );
