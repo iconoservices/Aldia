@@ -1,9 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, X, Trash2, MoreVertical, Play, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Plus, X, Trash2, MoreVertical, Play, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown } from "lucide-react";
+import {
+    DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
+} from "@dnd-kit/core";
+import type { DragEndEvent } from "@dnd-kit/core";
+import {
+    arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { CalendarEvent, NotionEstado, SporadicProject } from "../../hooks/useAlDiaState";
 import { NOTION_ESTADOS } from "../../hooks/useAlDiaState";
 import { C, bento, campo, botonPrimario, etiqueta, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina } from "../../theme";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
+
+const ORDER_STORAGE_KEY = "aldia_esporadicos_custom_order";
 
 const ESTADO_COLOR: Record<NotionEstado, string> = {
     'Agendado': '#6366F1',
@@ -122,24 +132,63 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
     }, [calendarEvents, sporadicProjects, addSporadicProject, updateSporadicProject]);
 
     const streak = useMemo(() => computeStreak(sporadicProjects), [sporadicProjects]);
+
+    // Orden manual: sustituye al automático (por prioridad) cuando el usuario arrastra
+    // una tarjeta, igual que en Checklist. Vive solo en este dispositivo (localStorage).
+    const [customOrder, setCustomOrder] = useState<number[]>(() => {
+        try {
+            const saved = localStorage.getItem(ORDER_STORAGE_KEY);
+            return saved ? JSON.parse(saved) : [];
+        } catch { return []; }
+    });
+    const saveOrder = (order: number[]) => {
+        setCustomOrder(order);
+        try { localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(order)); } catch { /* ignore */ }
+    };
+    const applyOrder = useCallback((list: SporadicProject[]) => {
+        if (customOrder.length === 0) return [...list].sort((a, b) => priorityOf(b) - priorityOf(a));
+        return [...list].sort((a, b) => {
+            const ia = customOrder.indexOf(a.id), ib = customOrder.indexOf(b.id);
+            if (ia === -1 && ib === -1) return priorityOf(b) - priorityOf(a);
+            if (ia === -1) return 1;
+            if (ib === -1) return -1;
+            return ia - ib;
+        });
+    }, [customOrder]);
+
     const pendientes = useMemo(
-        () => sporadicProjects.filter(p => p.status !== 'completado').sort((a, b) => priorityOf(b) - priorityOf(a)),
+        () => sporadicProjects.filter(p => p.status !== 'completado'),
         [sporadicProjects]
     );
     // "Listos para entregar": ya en Notion dice Terminado (se acabó de editar) pero
     // todavía no Entregado — separados para no perderlos entre lo que aún falta trabajar.
     const listosParaEntregar = useMemo(
-        () => pendientes.filter(p => {
+        () => applyOrder(pendientes.filter(p => {
             const ev = p.notionId ? calendarEvents.find(e => e.notionId === p.notionId) : undefined;
             return ev?.notionEstado === 'Terminado';
-        }),
-        [pendientes, calendarEvents]
+        })),
+        [pendientes, calendarEvents, applyOrder]
     );
     const enProgreso = useMemo(
-        () => pendientes.filter(p => !listosParaEntregar.includes(p)),
-        [pendientes, listosParaEntregar]
+        () => applyOrder(pendientes.filter(p => !listosParaEntregar.some(x => x.id === p.id))),
+        [pendientes, listosParaEntregar, applyOrder]
     );
     const completados = useMemo(() => sporadicProjects.filter(p => p.status === 'completado'), [sporadicProjects]);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    );
+    const handleDragEnd = (columnIds: number[]) => (e: DragEndEvent) => {
+        const { active, over } = e;
+        if (!over || active.id === over.id) return;
+        const oldIndex = columnIds.indexOf(active.id as number);
+        const newIndex = columnIds.indexOf(over.id as number);
+        if (oldIndex === -1 || newIndex === -1) return;
+        const reordered = arrayMove(columnIds, oldIndex, newIndex);
+        const others = (customOrder.length > 0 ? customOrder : sporadicProjects.map(p => p.id)).filter(id => !columnIds.includes(id));
+        saveOrder([...reordered, ...others]);
+    };
 
     const submit = () => {
         if (!title.trim() || !dueDate) return;
@@ -155,10 +204,17 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                     <h2 style={tituloPagina}>Esporádicos</h2>
                     <p style={subtituloPagina}>Entregas puntuales — ordenadas solas por qué tan urgentes están.</p>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(230,168,23,0.12)", borderRadius: "999px", padding: "8px 16px" }}>
-                    <Flame size={18} color={C.ambar} fill={streak > 0 ? C.ambar : "none"} />
-                    <span style={{ fontWeight: 800, fontSize: "0.9rem", color: C.onSurface }}>{streak}</span>
-                    <span style={{ fontSize: "0.75rem", color: C.onSurfaceVariant }}>{streak === 1 ? "día seguido" : "días seguidos"}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    {customOrder.length > 0 && (
+                        <button onClick={() => saveOrder([])} title="Volver al orden automático por prioridad" style={{ display: "flex", alignItems: "center", gap: "5px", background: "none", border: `1px solid ${C.outlineVariant}`, borderRadius: "999px", padding: "7px 12px", cursor: "pointer", color: C.onSurfaceVariant, fontSize: "0.72rem", fontWeight: 700 }}>
+                            <ArrowUpDown size={13} /> Orden manual
+                        </button>
+                    )}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(230,168,23,0.12)", borderRadius: "999px", padding: "8px 16px" }}>
+                        <Flame size={18} color={C.ambar} fill={streak > 0 ? C.ambar : "none"} />
+                        <span style={{ fontWeight: 800, fontSize: "0.9rem", color: C.onSurface }}>{streak}</span>
+                        <span style={{ fontSize: "0.75rem", color: C.onSurfaceVariant }}>{streak === 1 ? "día seguido" : "días seguidos"}</span>
+                    </div>
                 </div>
             </div>
 
@@ -220,19 +276,27 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
             )}
 
             <div style={{ display: "grid", gridTemplateColumns: movil || listosParaEntregar.length === 0 ? "1fr" : "1fr 1fr", gap: "1.25rem", alignItems: "start" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-                    {listosParaEntregar.length > 0 && <span style={etiqueta}>En curso ({enProgreso.length})</span>}
-                    {enProgreso.map(p => (
-                        <ProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} stopSporadicTimer={stopSporadicTimer} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
-                    ))}
-                </div>
-                {listosParaEntregar.length > 0 && (
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(enProgreso.map(p => p.id))}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-                        <span style={etiqueta}>Listos para entregar ({listosParaEntregar.length})</span>
-                        {listosParaEntregar.map(p => (
-                            <ProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} stopSporadicTimer={stopSporadicTimer} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
-                        ))}
+                        {listosParaEntregar.length > 0 && <span style={etiqueta}>En curso ({enProgreso.length})</span>}
+                        <SortableContext items={enProgreso.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                            {enProgreso.map(p => (
+                                <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} stopSporadicTimer={stopSporadicTimer} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
+                            ))}
+                        </SortableContext>
                     </div>
+                </DndContext>
+                {listosParaEntregar.length > 0 && (
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(listosParaEntregar.map(p => p.id))}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+                            <span style={etiqueta}>Listos para entregar ({listosParaEntregar.length})</span>
+                            <SortableContext items={listosParaEntregar.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                                {listosParaEntregar.map(p => (
+                                    <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} stopSporadicTimer={stopSporadicTimer} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
+                                ))}
+                            </SortableContext>
+                        </div>
+                    </DndContext>
                 )}
             </div>
 
@@ -257,7 +321,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
     );
 };
 
-const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSporadicTimer, stopSporadicTimer, calendarEvents, updateCalendarEvent }: {
+const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSporadicTimer, stopSporadicTimer, calendarEvents, updateCalendarEvent, dragHandle }: {
     p: SporadicProject;
     updateSporadicProject: (id: number, updates: Partial<SporadicProject>) => void;
     removeSporadicProject: (id: number) => void;
@@ -265,6 +329,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     stopSporadicTimer: (id: number) => void;
     calendarEvents: CalendarEvent[];
     updateCalendarEvent: (id: number, updates: Partial<CalendarEvent>) => void;
+    dragHandle?: React.ReactNode;
 }) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
@@ -289,6 +354,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     return (
         <div style={{ ...bento, padding: "1rem", display: "flex", flexDirection: "column", gap: "0.6rem", borderLeft: `4px solid ${color}`, opacity: p.status === 'completado' ? 0.7 : 1 }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
+                {dragHandle}
                 <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                         {p.notionId && <span title="Sincronizado desde Notion" style={{ display: "flex" }}><Sparkles size={12} color={C.secondary} /></span>}
@@ -371,6 +437,34 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                 onConfirm={() => { removeSporadicProject(p.id); setConfirmDelete(false); }}
                 onCancel={() => setConfirmDelete(false)}
             />
+        </div>
+    );
+};
+
+// Envuelve ProjectCard con la lógica de arrastre de @dnd-kit (mismo patrón que
+// ChecklistDiario): un handle chico y separado, no toda la tarjeta, para no pelear
+// con los clicks de los botones de Estado/menú/cronómetro que ya tiene la tarjeta.
+const SortableProjectCard = (props: React.ComponentProps<typeof ProjectCard>) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.p.id });
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+        touchAction: "none",
+    };
+    const dragHandle = (
+        <button
+            {...attributes}
+            {...listeners}
+            title="Arrastrar para reordenar"
+            style={{ background: "none", border: "none", cursor: "grab", padding: "2px", color: C.outlineVariant, display: "flex", flexShrink: 0, marginTop: "2px" }}
+        >
+            <GripVertical size={15} />
+        </button>
+    );
+    return (
+        <div ref={setNodeRef} style={style}>
+            <ProjectCard {...props} dragHandle={dragHandle} />
         </div>
     );
 };
