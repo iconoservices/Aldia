@@ -40,6 +40,7 @@ import { ComprasDashboard } from './components/dashboard/ComprasDashboard';
 import { ComidasDashboard } from './components/dashboard/ComidasDashboard';
 import { EsporadicosDashboard } from './components/dashboard/EsporadicosDashboard';
 import { NotionDashboard } from './components/dashboard/NotionDashboard';
+import { TranqueoDeVidaDashboard } from './components/dashboard/TranqueoDeVidaDashboard';
 
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -50,6 +51,7 @@ function App() {
     if (path.includes('/proyectos')) return 'Proyectos';
     if (path.includes('/esporadicos')) return 'Esporádicos';
     if (path.includes('/notion')) return 'Notion';
+    if (path.includes('/tranqueo')) return 'Tranqueo de Vida';
     if (path.includes('/movimientos')) return 'Movimientos';
     if (path.includes('/listas')) return 'Listas';
     if (path.includes('/compras')) return 'Compras';
@@ -82,6 +84,8 @@ function App() {
       path = '/accion';
     } else if (activeTab === 'Base de Datos') {
       path = '/base';
+    } else if (activeTab === 'Tranqueo de Vida') {
+      path = '/tranqueo-de-vida';
     } else if (activeTab === 'Proyección') {
       path = '/proyeccion';
     } else if (activeTab === 'Deudas') {
@@ -109,6 +113,7 @@ function App() {
       else if (path.includes('/proyectos')) setActiveTab('Proyectos');
       else if (path.includes('/esporadicos')) setActiveTab('Esporádicos');
       else if (path.includes('/notion')) setActiveTab('Notion');
+      else if (path.includes('/tranqueo')) setActiveTab('Tranqueo de Vida');
       else if (path.includes('/movimientos')) setActiveTab('Movimientos');
       else if (path.includes('/listas')) setActiveTab('Listas');
       else if (path.includes('/compras')) setActiveTab('Compras');
@@ -495,6 +500,12 @@ function App() {
               <NotionDashboard
                 calendarEvents={state.agenda}
                 updateCalendarEvent={state.updateCalendarEvent}
+              />
+            ) : activeTab === 'Tranqueo de Vida' ? (
+              <TranqueoDeVidaDashboard
+                notes={state.notes}
+                addNote={state.addNote}
+                removeNote={state.removeNote}
               />
             ) : activeTab === 'Tablero' ? (
               <ProjectsKanbanView 

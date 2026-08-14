@@ -52,6 +52,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
 
     // ── Secondary / all other tools ────────────────────────────────────
     const SECONDARY_ITEMS = [
+        { label: 'Tranqueo de Vida', tab: 'Tranqueo de Vida', icon: 'self_improvement' },
         { label: 'Buscador',   tab: 'Buscador',   icon: 'travel_explore' },
         { label: 'Acción',     tab: 'Acción',     icon: 'bolt'          },
         { label: 'Base de Datos', tab: 'Base de Datos', icon: 'database' },
