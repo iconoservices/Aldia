@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, X, Trash2, MoreVertical, Play, Pause, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart, Pin, Image as ImageIcon, Check, TimerReset } from "lucide-react";
+import { Plus, X, Trash2, MoreVertical, Play, Pause, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart, Pin, Image as ImageIcon, Check, TimerReset, Settings, Coffee, Bell, BellOff } from "lucide-react";
 import {
     DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
@@ -83,24 +83,75 @@ const useNowTicking = (enabled: boolean) => {
 
 const formatHM = (date: Date) => date.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
 
-// Sonido corto de aviso (dos beeps) sin depender de un archivo de audio.
-const playPomodoroBeep = () => {
+type PomodoroSound = 'clasico' | 'suave' | 'campana';
+type TickSound = 'reloj' | 'suave' | 'digital' | 'analogico';
+interface PomodoroPrefs { tickEnabled: boolean; sound: PomodoroSound; tickSound: TickSound; }
+const POMODORO_PREFS_KEY = "aldia_pomodoro_prefs";
+const DEFAULT_POMODORO_PREFS: PomodoroPrefs = { tickEnabled: false, sound: 'clasico', tickSound: 'reloj' };
+const SOUND_LABELS: Record<PomodoroSound, string> = { clasico: 'Clásico (beep doble)', suave: 'Suave', campana: 'Campana' };
+const TICK_LABELS: Record<TickSound, string> = { reloj: 'Reloj clásico (tick-tock)', suave: 'Suave', digital: 'Digital', analogico: 'Analógico (reloj de pared, seco)' };
+
+const getAudioCtx = () => {
+    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    return new AC();
+};
+
+// Sonido de aviso (fin de bloque de trabajo o de descanso) sin depender de un
+// archivo de audio -- varía según la preferencia elegida en Ajustes.
+const playAlertSound = (sound: PomodoroSound) => {
     try {
-        const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        const ctx = new AC();
-        [0, 0.35].forEach(delay => {
+        const ctx = getAudioCtx();
+        const patterns: Record<PomodoroSound, { freq: number; delays: number[]; dur: number; gain: number }> = {
+            clasico: { freq: 880, delays: [0, 0.35], dur: 0.25, gain: 0.18 },
+            suave: { freq: 523, delays: [0], dur: 0.6, gain: 0.12 },
+            campana: { freq: 660, delays: [0, 0.5], dur: 0.7, gain: 0.14 },
+        };
+        const { freq, delays, dur, gain } = patterns[sound];
+        delays.forEach(delay => {
             const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain); gain.connect(ctx.destination);
-            osc.frequency.value = 880;
-            gain.gain.setValueAtTime(0.18, ctx.currentTime + delay);
+            const g = ctx.createGain();
+            osc.connect(g); g.connect(ctx.destination);
+            osc.frequency.value = freq;
+            g.gain.setValueAtTime(gain, ctx.currentTime + delay);
             osc.start(ctx.currentTime + delay);
-            osc.stop(ctx.currentTime + delay + 0.25);
+            osc.stop(ctx.currentTime + delay + dur);
         });
     } catch { /* el navegador puede bloquear audio sin interacción previa; no es crítico */ }
 };
 
+// Tic opcional mientras corre un bloque de trabajo, con su propia preferencia
+// de sonido (independiente del sonido de aviso). Alterna tick/tock (dos tonos
+// distintos por variante) para que suene a reloj real, no a un pitido repetido.
+const playTickSound = (tickSound: TickSound, tock: boolean) => {
+    try {
+        const ctx = getAudioCtx();
+        const variants: Record<TickSound, { base: number; tockRatio: number; dur: number; gain: number; type: OscillatorType; dry?: boolean }> = {
+            reloj: { base: 900, tockRatio: 0.8, dur: 0.03, gain: 0.05, type: 'sine' },
+            suave: { base: 420, tockRatio: 0.85, dur: 0.05, gain: 0.045, type: 'sine' },
+            digital: { base: 1400, tockRatio: 0.7, dur: 0.015, gain: 0.06, type: 'square' },
+            // Más frío/seco: frecuencia más alta y metálica + decaimiento rápido
+            // (en vez de un volumen fijo) para que suene a clic mecánico, no a nota musical.
+            analogico: { base: 2600, tockRatio: 0.78, dur: 0.018, gain: 0.09, type: 'triangle', dry: true },
+        };
+        const { base, tockRatio, dur, gain, type, dry } = variants[tickSound];
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.connect(g); g.connect(ctx.destination);
+        osc.type = type;
+        osc.frequency.value = tock ? base * tockRatio : base;
+        if (dry) {
+            g.gain.setValueAtTime(gain, ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+        } else {
+            g.gain.setValueAtTime(gain, ctx.currentTime);
+        }
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + dur);
+    } catch { /* el navegador puede bloquear audio sin interacción previa; no es crítico */ }
+};
+
 const POMODORO_MINUTES = 25;
+const BREAK_MINUTES = 5;
 
 const priorityOf = (p: SporadicProject) => {
     if (p.status === 'completado') return -9999;
@@ -177,6 +228,24 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
     }, [calendarEvents, sporadicProjects, addSporadicProject, updateSporadicProject]);
 
     const streak = useMemo(() => computeStreak(sporadicProjects), [sporadicProjects]);
+
+    // Preferencias del Pomodoro (tic-tac + sonido): una sola vez para toda la app,
+    // no por proyecto. Vive solo en este dispositivo (localStorage), igual que el
+    // orden manual -- es una preferencia de UI, no datos que haya que sincronizar.
+    const [pomodoroPrefs, setPomodoroPrefsState] = useState<PomodoroPrefs>(() => {
+        try {
+            const saved = localStorage.getItem(POMODORO_PREFS_KEY);
+            return saved ? { ...DEFAULT_POMODORO_PREFS, ...JSON.parse(saved) } : DEFAULT_POMODORO_PREFS;
+        } catch { return DEFAULT_POMODORO_PREFS; }
+    });
+    const setPomodoroPrefs = (updates: Partial<PomodoroPrefs>) => {
+        setPomodoroPrefsState(prev => {
+            const next = { ...prev, ...updates };
+            try { localStorage.setItem(POMODORO_PREFS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+            return next;
+        });
+    };
+    const [pomodoroSettingsOpen, setPomodoroSettingsOpen] = useState(false);
 
     // Orden manual: sustituye al automático (por prioridad) cuando el usuario arrastra
     // una tarjeta, igual que en Checklist. Vive solo en este dispositivo (localStorage).
@@ -289,10 +358,65 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                         <span style={{ fontWeight: 800, fontSize: "0.9rem", color: C.onSurface }}>{streak}</span>
                         <span style={{ fontSize: "0.75rem", color: C.onSurfaceVariant }}>{streak === 1 ? "día seguido" : "días seguidos"}</span>
                     </div>
+                    <div style={{ position: "relative" }}>
+                        <button
+                            onClick={() => setPomodoroSettingsOpen(v => !v)}
+                            title="Preferencias del Pomodoro"
+                            style={{ display: "flex", alignItems: "center", justifyContent: "center", background: C.surfaceContainerLow, border: `1px solid ${C.outlineVariant}`, borderRadius: "999px", width: "36px", height: "36px", cursor: "pointer", color: C.onSurfaceVariant }}
+                        >
+                            <Settings size={16} />
+                        </button>
+                        {pomodoroSettingsOpen && (
+                            <div style={{ position: "absolute", top: "100%", right: 0, marginTop: "6px", zIndex: 10, background: "white", border: `1px solid ${C.outlineVariant}`, borderRadius: "12px", boxShadow: "0 8px 20px rgba(0,0,0,0.12)", padding: "12px", width: "230px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                                <span style={{ ...etiqueta }}>Pomodoro</span>
+                                <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.78rem", fontWeight: 600, color: C.onSurface, cursor: "pointer" }}>
+                                    <input type="checkbox" checked={pomodoroPrefs.tickEnabled} onChange={e => setPomodoroPrefs({ tickEnabled: e.target.checked })} />
+                                    Tic-tac mientras trabajas
+                                </label>
+                                <div>
+                                    <div style={{ fontSize: "0.66rem", fontWeight: 700, color: C.outline, marginBottom: "4px" }}>Sonido de aviso</div>
+                                    <select
+                                        value={pomodoroPrefs.sound}
+                                        onChange={e => setPomodoroPrefs({ sound: e.target.value as PomodoroSound })}
+                                        style={{ width: "100%", padding: "6px 8px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", color: C.onSurface, background: "white" }}
+                                    >
+                                        {(Object.keys(SOUND_LABELS) as PomodoroSound[]).map(s => (
+                                            <option key={s} value={s}>{SOUND_LABELS[s]}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <button
+                                    onClick={() => playAlertSound(pomodoroPrefs.sound)}
+                                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: C.surfaceContainerLow, border: "none", borderRadius: "8px", padding: "6px", cursor: "pointer", fontSize: "0.74rem", fontWeight: 700, color: C.onSurfaceVariant }}
+                                >
+                                    Probar sonido
+                                </button>
+                                <div>
+                                    <div style={{ fontSize: "0.66rem", fontWeight: 700, color: C.outline, marginBottom: "4px" }}>Sonido del tic-tac</div>
+                                    <select
+                                        value={pomodoroPrefs.tickSound}
+                                        onChange={e => setPomodoroPrefs({ tickSound: e.target.value as TickSound })}
+                                        style={{ width: "100%", padding: "6px 8px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", color: C.onSurface, background: "white" }}
+                                    >
+                                        {(Object.keys(TICK_LABELS) as TickSound[]).map(s => (
+                                            <option key={s} value={s}>{TICK_LABELS[s]}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <button
+                                    onClick={() => { playTickSound(pomodoroPrefs.tickSound, false); setTimeout(() => playTickSound(pomodoroPrefs.tickSound, true), 500); }}
+                                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: C.surfaceContainerLow, border: "none", borderRadius: "8px", padding: "6px", cursor: "pointer", fontSize: "0.74rem", fontWeight: 700, color: C.onSurfaceVariant }}
+                                >
+                                    Probar tic-tac
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            <details style={{ ...bento, padding: "0.9rem 1rem" }}>
+            <div style={{ display: "flex", flexDirection: movil ? "column" : "row", flexWrap: "wrap", gap: movil ? "0.8rem" : "0.75rem", alignItems: "flex-start" }}>
+            <details style={{ ...bento, padding: "0.9rem 1rem", flex: movil ? undefined : "1 1 260px", minWidth: 0, width: movil ? "100%" : undefined }}>
                 <summary style={{ ...etiqueta, cursor: "pointer" }}>Spec original de este módulo</summary>
                 <div style={{ marginTop: "0.8rem", display: "flex", flexDirection: "column", gap: "0.7rem", fontSize: "0.8rem", color: C.onSurfaceVariant, lineHeight: 1.5 }}>
                     <SpecItem
@@ -355,7 +479,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
             </details>
 
             {timeByStage.length > 0 && (
-                <details style={{ ...bento, padding: "0.9rem 1rem" }}>
+                <details style={{ ...bento, padding: "0.9rem 1rem", flex: movil ? undefined : "1 1 260px", minWidth: 0, width: movil ? "100%" : undefined }}>
                     <summary style={{ ...etiqueta, cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
                         <PieChart size={13} /> Tiempo por etapa ({totalHoursLogged.toFixed(1)}h en total)
                     </summary>
@@ -375,7 +499,14 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                 </details>
             )}
 
-            {addingOpen ? (
+            {!addingOpen && (
+                <button onClick={() => setAddingOpen(true)} style={{ flex: movil ? undefined : "1 1 260px", width: movil ? "100%" : undefined, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "none", border: `2px dashed ${C.outlineVariant}`, borderRadius: "12px", padding: "12px", cursor: "pointer", color: C.outline, fontWeight: 700, fontSize: "0.85rem" }}>
+                    <Plus size={16} /> Nuevo proyecto esporádico
+                </button>
+            )}
+            </div>
+
+            {addingOpen && (
                 <div style={{ ...bento, padding: "1rem", display: "flex", flexDirection: movil ? "column" : "row", gap: "8px", alignItems: movil ? "stretch" : "center" }}>
                     <input autoFocus placeholder="Título (ej. Video cliente X)" value={title} onChange={e => setTitle(e.target.value)} style={{ ...campo(movil), flex: 2 }} />
                     <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={{ ...campo(movil), flex: 1 }} />
@@ -385,10 +516,6 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                         <button onClick={() => setAddingOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outline, padding: "6px" }}><X size={18} /></button>
                     </div>
                 </div>
-            ) : (
-                <button onClick={() => setAddingOpen(true)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "none", border: `2px dashed ${C.outlineVariant}`, borderRadius: "12px", padding: "12px", cursor: "pointer", color: C.outline, fontWeight: 700, fontSize: "0.85rem" }}>
-                    <Plus size={16} /> Nuevo proyecto esporádico
-                </button>
             )}
 
             {sporadicProjects.length === 0 && !addingOpen && (
@@ -404,7 +531,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                         {listosParaEntregar.length > 0 && <span style={etiqueta}>En curso ({enProgreso.length})</span>}
                         <SortableContext items={enProgreso.map(p => p.id)} strategy={verticalListSortingStrategy}>
                             {enProgreso.map(p => (
-                                <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
+                                <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} pomodoroPrefs={pomodoroPrefs} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
                             ))}
                         </SortableContext>
                     </div>
@@ -415,7 +542,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                             <span style={etiqueta}>Listos para entregar ({listosParaEntregar.length})</span>
                             <SortableContext items={listosParaEntregar.map(p => p.id)} strategy={verticalListSortingStrategy}>
                                 {listosParaEntregar.map(p => (
-                                    <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
+                                    <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} pomodoroPrefs={pomodoroPrefs} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
                                 ))}
                             </SortableContext>
                         </div>
@@ -428,7 +555,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                     <summary style={{ ...etiqueta, cursor: "pointer", marginBottom: "0.6rem" }}>Completados ({completados.length})</summary>
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem", marginTop: "0.6rem" }}>
                         {completados.map(p => (
-                            <ProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
+                            <ProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} pomodoroPrefs={pomodoroPrefs} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} />
                         ))}
                     </div>
                 </details>
@@ -444,7 +571,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
     );
 };
 
-const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSporadicTimer, pauseSporadicTimer, stopSporadicTimer, startPhotoTimer, pausePhotoTimer, finishPhotoTimer, cancelPhotoTimer, resetSporadicWorkedTime, resetSporadicPhotoLog, calendarEvents, updateCalendarEvent, dragHandle }: {
+const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSporadicTimer, pauseSporadicTimer, stopSporadicTimer, startPhotoTimer, pausePhotoTimer, finishPhotoTimer, cancelPhotoTimer, resetSporadicWorkedTime, resetSporadicPhotoLog, pomodoroPrefs, calendarEvents, updateCalendarEvent, dragHandle }: {
     p: SporadicProject;
     updateSporadicProject: (id: number, updates: Partial<SporadicProject>) => void;
     removeSporadicProject: (id: number) => void;
@@ -457,6 +584,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     cancelPhotoTimer: (id: number) => void;
     resetSporadicWorkedTime: (id: number) => void;
     resetSporadicPhotoLog: (id: number) => void;
+    pomodoroPrefs: PomodoroPrefs;
     calendarEvents: CalendarEvent[];
     updateCalendarEvent: (id: number, updates: Partial<CalendarEvent>) => void;
     dragHandle?: React.ReactNode;
@@ -466,7 +594,11 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     const [confirmReset, setConfirmReset] = useState(false);
     const [confirmResetPhotos, setConfirmResetPhotos] = useState(false);
     const [pomodoroAlert, setPomodoroAlert] = useState(false);
+    const [pomodoroMuted, setPomodoroMuted] = useState(false);
+    const [breakEndAt, setBreakEndAt] = useState<number | null>(null);
+    const [breakDoneAlert, setBreakDoneAlert] = useState(false);
     const lastPomodoroThresholdRef = useRef(0);
+    const tickCountRef = useRef(0);
 
     const { color, label } = urgency(p);
     const totalSpan = Math.max(daysBetween(p.startDate, p.dueDate), 1);
@@ -482,13 +614,6 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     const liveRunningHours = running && p.activeSince ? Math.max((now - p.activeSince) / (1000 * 60 * 60), 0) : 0;
     const sessionHours = (p.pausedAccumHours || 0) + liveRunningHours;
     const effectiveWorkedHours = p.workedHours + sessionHours;
-
-    // Reloj de pared: cuánto tiempo real pasó desde que le diste Play por primera
-    // vez a esta sesión, sin importar si estuvo pausada o cuánto editaste de verdad
-    // (a diferencia de sessionHours, que sí descuenta las pausas). Tickea aunque
-    // esté en pausa, para que se note que el reloj real sigue corriendo.
-    const wallNow = useNowTicking(inSession);
-    const sinceStartMs = inSession && p.sessionStartedAt ? Math.max(wallNow - p.sessionStartedAt, 0) : 0;
 
     // Reloj de "cuánto llevo metido en esto sin entregarlo": arranca la primera
     // vez que le diste Play y NUNCA se detiene (ni con pausas, ni al Terminar
@@ -524,19 +649,46 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
 
     // Pomodoro: cada 25 min acumulados de esta sesión (corriendo, sumando lo pausado),
     // avisa una vez con sonido + banner. lastPomodoroThresholdRef evita repetir el aviso.
+    // Se puede silenciar por sesión con la campanita (pomodoroMuted, no persiste).
     useEffect(() => {
-        if (!running) return;
+        if (!running || pomodoroMuted) return;
         const crossedBlocks = Math.floor((sessionHours * 60) / POMODORO_MINUTES);
         if (crossedBlocks > lastPomodoroThresholdRef.current) {
             lastPomodoroThresholdRef.current = crossedBlocks;
             setPomodoroAlert(true);
-            playPomodoroBeep();
-            setTimeout(() => setPomodoroAlert(false), 8000);
+            playAlertSound(pomodoroPrefs.sound);
         }
-    }, [sessionHours, running]);
+    }, [sessionHours, running, pomodoroPrefs.sound, pomodoroMuted]);
+    // Cuánto falta para el próximo aviso de 25 min, para mostrarlo en la tarjeta.
+    const secIntoBlock = (sessionHours * 3600) % (POMODORO_MINUTES * 60);
+    const nextAlertMs = Math.max((POMODORO_MINUTES * 60 - secIntoBlock) * 1000, 0);
     useEffect(() => {
         if (!inSession) lastPomodoroThresholdRef.current = 0;
     }, [inSession]);
+
+    // Tic-tac opcional mientras corre el bloque de trabajo (no durante el descanso).
+    useEffect(() => {
+        if (!running || !pomodoroPrefs.tickEnabled) return;
+        const id = setInterval(() => {
+            tickCountRef.current += 1;
+            playTickSound(pomodoroPrefs.tickSound, tickCountRef.current % 2 === 1);
+        }, 1000);
+        return () => clearInterval(id);
+    }, [running, pomodoroPrefs.tickEnabled, pomodoroPrefs.tickSound]);
+
+    // Descanso de 5 min: lo arranca el usuario a mano desde el aviso de Pomodoro
+    // (no es automático). Cuando llega a 0, avisa con sonido y se queda fijo
+    // hasta que lo cierren -- igual que el aviso de trabajo.
+    const breakNow = useNowTicking(!!breakEndAt);
+    useEffect(() => {
+        if (!breakEndAt) return;
+        if (breakNow >= breakEndAt) {
+            setBreakEndAt(null);
+            setBreakDoneAlert(true);
+            playAlertSound(pomodoroPrefs.sound);
+        }
+    }, [breakNow, breakEndAt, pomodoroPrefs.sound]);
+    const breakMsLeft = breakEndAt ? Math.max(breakEndAt - breakNow, 0) : 0;
 
     // Al cambiar el paso de trabajo local, si la tarjeta viene de Notion se
     // refleja también allá (best-effort) y de forma optimista acá mismo.
@@ -556,8 +708,47 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     return (
         <div style={{ ...bento, padding: "1rem", display: "flex", flexDirection: "column", gap: "0.6rem", borderLeft: `4px solid ${color}`, opacity: p.status === 'completado' ? 0.7 : 1, position: "relative" }}>
             {pomodoroAlert && (
-                <div style={{ position: "absolute", top: "-10px", left: "10px", right: "10px", background: C.ambar, color: "white", borderRadius: "10px", padding: "6px 10px", fontSize: "0.72rem", fontWeight: 800, textAlign: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.2)", zIndex: 6 }}>
-                    ⏰ {POMODORO_MINUTES} min — tómate 5 de descanso
+                <div style={{ position: "absolute", top: "-10px", left: "10px", right: "10px", display: "flex", alignItems: "center", gap: "6px", background: C.ambar, color: "white", borderRadius: "10px", padding: "6px 8px", fontSize: "0.72rem", fontWeight: 800, boxShadow: "0 4px 12px rgba(0,0,0,0.2)", zIndex: 6, flexWrap: "wrap" }}>
+                    <span style={{ flex: 1, textAlign: "center" }}>⏰ {POMODORO_MINUTES} min — tómate {BREAK_MINUTES} de descanso</span>
+                    <button
+                        onClick={() => { setPomodoroAlert(false); setBreakEndAt(Date.now() + BREAK_MINUTES * 60 * 1000); }}
+                        title="Iniciar descanso de 5 min"
+                        style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(255,255,255,0.25)", border: "none", borderRadius: "6px", cursor: "pointer", color: "white", padding: "3px 8px", fontSize: "0.68rem", fontWeight: 800, flexShrink: 0 }}
+                    >
+                        <Play size={11} /> Iniciar descanso
+                    </button>
+                    <button
+                        onClick={() => setPomodoroAlert(false)}
+                        title="Ya lo tomé (no contar descanso)"
+                        style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(255,255,255,0.25)", border: "none", borderRadius: "6px", cursor: "pointer", color: "white", padding: "3px 8px", fontSize: "0.68rem", fontWeight: 800, flexShrink: 0 }}
+                    >
+                        <Check size={11} /> Ya lo tomé
+                    </button>
+                </div>
+            )}
+            {breakEndAt && (
+                <div style={{ position: "absolute", top: "-10px", left: "10px", right: "10px", display: "flex", alignItems: "center", gap: "8px", background: C.verde, color: "white", borderRadius: "10px", padding: "6px 8px 6px 10px", fontSize: "0.72rem", fontWeight: 800, boxShadow: "0 4px 12px rgba(0,0,0,0.2)", zIndex: 6 }}>
+                    <Coffee size={13} style={{ flexShrink: 0 }} />
+                    <span style={{ flex: 1, textAlign: "center" }}>Descanso: {formatElapsed(breakMsLeft)} restante</span>
+                    <button
+                        onClick={() => setBreakEndAt(null)}
+                        title="Ya terminé mi descanso, aunque no se hayan cumplido los 5 min"
+                        style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(255,255,255,0.25)", border: "none", borderRadius: "6px", cursor: "pointer", color: "white", padding: "3px 8px", fontSize: "0.68rem", fontWeight: 800, flexShrink: 0 }}
+                    >
+                        <Check size={11} /> Listo
+                    </button>
+                </div>
+            )}
+            {breakDoneAlert && (
+                <div style={{ position: "absolute", top: "-10px", left: "10px", right: "10px", display: "flex", alignItems: "center", gap: "8px", background: C.verde, color: "white", borderRadius: "10px", padding: "6px 8px 6px 10px", fontSize: "0.72rem", fontWeight: 800, boxShadow: "0 4px 12px rgba(0,0,0,0.2)", zIndex: 6 }}>
+                    <span style={{ flex: 1, textAlign: "center" }}>☕ ¡Descanso terminado! De vuelta al trabajo</span>
+                    <button
+                        onClick={() => setBreakDoneAlert(false)}
+                        title="Cerrar"
+                        style={{ background: "rgba(255,255,255,0.25)", border: "none", borderRadius: "6px", cursor: "pointer", color: "white", padding: "3px", display: "flex", flexShrink: 0 }}
+                    >
+                        <X size={13} />
+                    </button>
                 </div>
             )}
             <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
@@ -581,13 +772,10 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                     <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "3px", fontSize: "0.72rem", color: C.onSurfaceVariant, fontWeight: 700 }}>
                         <span style={{ color }}>{label}</span>
                         <span>Entrega: {p.dueDate}</span>
-                        <span>{formatElapsed(effectiveWorkedHours * 60 * 60 * 1000)} / {p.complexityHours}h</span>
+                        {trackingSinceFirstStart && (
+                            <span style={{ color: C.outline, fontWeight: 600 }}>· llevas {formatElapsed(sinceFirstStartMs)} sin entregarlo</span>
+                        )}
                     </div>
-                    {trackingSinceFirstStart && (
-                        <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "3px", fontSize: "0.68rem", fontWeight: 700, color: C.outline }}>
-                            <Timer size={11} /> Llevas {formatElapsed(sinceFirstStartMs)} metido en esto sin entregarlo
-                        </div>
-                    )}
                 </div>
                 <button
                     onClick={() => updateSporadicProject(p.id, { pinned: !p.pinned })}
@@ -635,18 +823,21 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
             )}
 
             {inSession && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", fontWeight: 800, color: running ? C.rojo : C.ambar }}>
-                        <Timer size={13} />
-                        {formatElapsed(sessionHours * 60 * 60 * 1000)} trabajado
-                        {p.activeStage && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en {p.activeStage}</span>}
-                        {paused && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en pausa</span>}
-                    </div>
-                    {p.sessionStartedAt && (
-                        <div style={{ fontSize: "0.68rem", fontWeight: 600, color: C.outline, paddingLeft: "19px" }}>
-                            Le diste Iniciar hace {formatElapsed(sinceStartMs)}
-                        </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", fontWeight: 800, color: running ? C.rojo : C.ambar }}>
+                    <Timer size={13} />
+                    {formatElapsed(sessionHours * 60 * 60 * 1000)} trabajado
+                    {p.activeStage && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en {p.activeStage}</span>}
+                    {paused && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en pausa</span>}
+                    {running && !pomodoroMuted && (
+                        <span style={{ fontWeight: 600, color: C.onSurfaceVariant, fontSize: "0.68rem" }}>· próx. descanso en {formatElapsed(nextAlertMs)}</span>
                     )}
+                    <button
+                        onClick={() => setPomodoroMuted(m => !m)}
+                        title={pomodoroMuted ? "Activar avisos de Pomodoro" : "Silenciar avisos de Pomodoro (solo esta sesión)"}
+                        style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: pomodoroMuted ? C.outlineVariant : C.onSurfaceVariant, padding: "2px", display: "flex", flexShrink: 0 }}
+                    >
+                        {pomodoroMuted ? <BellOff size={13} /> : <Bell size={13} />}
+                    </button>
                 </div>
             )}
 
@@ -736,23 +927,24 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                 </div>
             </div>
 
-            {(p.complexityHours > 0 || effectiveWorkedHours > 0) && (
+            {p.complexityHours > 0 && (
                 <div>
-                    <div style={{ fontSize: "0.6rem", fontWeight: 700, color: C.outline, marginBottom: "2px" }}>
-                        {p.complexityHours > 0 ? "Horas trabajadas vs. estimado" : "Horas trabajadas (acumulado)"}
+                    <div style={{ fontSize: "0.6rem", fontWeight: 700, color: C.outline, marginBottom: "2px" }}>Horas trabajadas vs. estimado</div>
+                    <div style={{ height: "8px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
+                        <div style={{
+                            height: "100%", borderRadius: "999px",
+                            width: `${Math.min((effectiveWorkedHours / p.complexityHours) * 100, 100)}%`,
+                            background: effectiveWorkedHours >= p.complexityHours ? C.verde : C.secondary,
+                            transition: "width 0.3s",
+                        }} />
                     </div>
-                    {p.complexityHours > 0 ? (
-                        <div style={{ height: "8px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
-                            <div style={{
-                                height: "100%", borderRadius: "999px",
-                                width: `${Math.min((effectiveWorkedHours / p.complexityHours) * 100, 100)}%`,
-                                background: effectiveWorkedHours >= p.complexityHours ? C.verde : C.secondary,
-                                transition: "width 0.3s",
-                            }} />
-                        </div>
-                    ) : (
-                        <div style={{ fontSize: "0.78rem", fontWeight: 800, color: C.onSurface }}>{formatElapsed(effectiveWorkedHours * 60 * 60 * 1000)}</div>
-                    )}
+                </div>
+            )}
+
+            {p.complexityHours === 0 && !inSession && effectiveWorkedHours > 0 && (
+                <div>
+                    <div style={{ fontSize: "0.6rem", fontWeight: 700, color: C.outline, marginBottom: "2px" }}>Horas trabajadas (acumulado)</div>
+                    <div style={{ fontSize: "0.78rem", fontWeight: 800, color: C.onSurface }}>{formatElapsed(effectiveWorkedHours * 60 * 60 * 1000)}</div>
                 </div>
             )}
 
@@ -824,6 +1016,15 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                             style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.rojo, color: "white", border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
                         >
                             <Square size={13} /> Terminar sesión
+                        </button>
+                    )}
+                    {inSession && !breakEndAt && !breakDoneAlert && (
+                        <button
+                            onClick={() => setBreakEndAt(Date.now() + BREAK_MINUTES * 60 * 1000)}
+                            title="Tomar un descanso de 5 min ahora, sin esperar el aviso"
+                            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "none", border: `1px solid ${C.outlineVariant}`, borderRadius: "8px", padding: "8px 10px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700, color: C.onSurfaceVariant, flexShrink: 0 }}
+                        >
+                            <Coffee size={13} />
                         </button>
                     )}
                 </div>
