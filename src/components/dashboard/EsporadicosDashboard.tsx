@@ -823,21 +823,26 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
             )}
 
             {inSession && (
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", fontWeight: 800, color: running ? C.rojo : C.ambar }}>
-                    <Timer size={13} />
-                    {formatElapsed(sessionHours * 60 * 60 * 1000)} trabajado
-                    {p.activeStage && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en {p.activeStage}</span>}
-                    {paused && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en pausa</span>}
-                    {running && !pomodoroMuted && (
-                        <span style={{ fontWeight: 600, color: C.onSurfaceVariant, fontSize: "0.68rem" }}>· próx. descanso en {formatElapsed(nextAlertMs)}</span>
-                    )}
-                    <button
-                        onClick={() => setPomodoroMuted(m => !m)}
-                        title={pomodoroMuted ? "Activar avisos de Pomodoro" : "Silenciar avisos de Pomodoro (solo esta sesión)"}
-                        style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: pomodoroMuted ? C.outlineVariant : C.onSurfaceVariant, padding: "2px", display: "flex", flexShrink: 0 }}
-                    >
-                        {pomodoroMuted ? <BellOff size={13} /> : <Bell size={13} />}
-                    </button>
+                <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", fontWeight: 800, color: running ? C.rojo : C.ambar }}>
+                        <Timer size={13} />
+                        {formatElapsed(effectiveWorkedHours * 60 * 60 * 1000)} total del proyecto
+                        {p.activeStage && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en {p.activeStage}</span>}
+                        {paused && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en pausa</span>}
+                        {running && !pomodoroMuted && (
+                            <span style={{ fontWeight: 600, color: C.onSurfaceVariant, fontSize: "0.68rem" }}>· próx. descanso en {formatElapsed(nextAlertMs)}</span>
+                        )}
+                        <button
+                            onClick={() => setPomodoroMuted(m => !m)}
+                            title={pomodoroMuted ? "Activar avisos de Pomodoro" : "Silenciar avisos de Pomodoro (solo esta sesión)"}
+                            style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: pomodoroMuted ? C.outlineVariant : C.onSurfaceVariant, padding: "2px", display: "flex", flexShrink: 0 }}
+                        >
+                            {pomodoroMuted ? <BellOff size={13} /> : <Bell size={13} />}
+                        </button>
+                    </div>
+                    <div style={{ fontSize: "0.68rem", fontWeight: 600, color: C.outline, paddingLeft: "19px" }}>
+                        Esta sesión: {formatElapsed(sessionHours * 60 * 60 * 1000)}
+                    </div>
                 </div>
             )}
 
