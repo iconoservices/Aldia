@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Camera, PackageCheck, RefreshCw, Plus, Trash2, ChevronDown, Loader2, ExternalLink, X, History, CalendarClock, AlertTriangle, HardDrive } from "lucide-react";
 import type { CalendarEvent, UserPreferences, NotionEstado } from "../../hooks/useAlDiaState";
 import { NOTION_ESTADOS } from "../../hooks/useAlDiaState";
-import { C, bento, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina, money, campo, botonPrimario, etiqueta } from "../../theme";
+import { C, bento, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina, money, campo, etiqueta, RADIO, TOQUE_MINIMO } from "../../theme";
 
 /* ══════════════════════════════════════════════════════════════════
    AgendaDashboard — vista rápida de "qué sigue": próxima sesión de
@@ -18,6 +18,31 @@ const ESTADO_COLOR: Record<NotionEstado, string> = {
     'Terminado': '#10B981',
     'Entregado': '#059669',
 };
+
+// Un solo tamaño de botón para toda la pestaña — antes "Agregar" usaba el
+// botón grande del tema mientras "Activar"/"Sincronizar" tenían su propio
+// padding chico, y en la misma fila se veían desparejos.
+const botonCompacto = (movil: boolean): React.CSSProperties => ({
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+    border: 'none', borderRadius: RADIO.chip, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700,
+    padding: movil ? '10px 16px' : '7px 14px',
+    fontSize: movil ? '0.85rem' : '0.78rem',
+    minHeight: movil ? `${TOQUE_MINIMO}px` : undefined,
+});
+
+const botonCompactoPrimario = (movil: boolean): React.CSSProperties => ({
+    ...botonCompacto(movil),
+    background: C.primary,
+    color: '#fff',
+    boxShadow: '0 3px 10px rgba(148,74,24,0.22)',
+});
+
+const botonCompactoSecundario = (movil: boolean): React.CSSProperties => ({
+    ...botonCompacto(movil),
+    background: 'none',
+    border: `1px solid ${C.outlineVariant}`,
+    color: C.onSurfaceVariant,
+});
 
 interface AgendaProps {
     calendarEvents: CalendarEvent[];
@@ -281,14 +306,14 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                             <button
                                 onClick={() => handleReagendar(item)}
                                 disabled={savingDateId === item.id}
-                                style={{ ...botonPrimario(movil), padding: '8px 16px', fontSize: '0.78rem', opacity: savingDateId === item.id ? 0.7 : 1 }}
+                                style={{ ...botonCompactoPrimario(movil), opacity: savingDateId === item.id ? 0.7 : 1 }}
                             >
                                 {savingDateId === item.id ? <Loader2 size={14} className="agenda-spin" /> : <CalendarClock size={14} />}
                                 Guardar nueva fecha
                             </button>
                             <button
                                 onClick={() => setEditingDateId(null)}
-                                style={{ background: 'none', border: `1px solid ${C.outlineVariant}`, borderRadius: '999px', padding: '8px 16px', fontSize: '0.78rem', fontWeight: 700, color: C.onSurfaceVariant, cursor: 'pointer' }}
+                                style={botonCompactoSecundario(movil)}
                             >
                                 Cancelar
                             </button>
@@ -364,17 +389,17 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                         Notion {notionActive ? 'activada' : 'desactivada'}
                     </div>
                     {!notionActive ? (
-                        <button onClick={handleActivar} style={{ ...botonPrimario(movil), background: C.verde, padding: '6px 14px', fontSize: '0.76rem' }}>
+                        <button onClick={handleActivar} style={{ ...botonCompacto(movil), background: C.verde, color: '#fff' }}>
                             Activar
                         </button>
                     ) : (
-                        <button onClick={handleSync} disabled={syncing} style={{ ...botonPrimario(movil), padding: '6px 14px', fontSize: '0.76rem', opacity: syncing ? 0.7 : 1, cursor: syncing ? 'wait' : 'pointer' }}>
+                        <button onClick={handleSync} disabled={syncing} style={{ ...botonCompactoPrimario(movil), opacity: syncing ? 0.7 : 1, cursor: syncing ? 'wait' : 'pointer' }}>
                             {syncing ? <Loader2 size={13} className="agenda-spin" /> : <RefreshCw size={13} />}
                             Sincronizar ahora
                         </button>
                     )}
-                    <button onClick={() => setShowAddForm(s => !s)} style={botonPrimario(movil)}>
-                        {showAddForm ? <X size={16} /> : <Plus size={16} />}
+                    <button onClick={() => setShowAddForm(s => !s)} style={botonCompactoPrimario(movil)}>
+                        {showAddForm ? <X size={15} /> : <Plus size={15} />}
                         {showAddForm ? 'Cerrar' : 'Agregar'}
                     </button>
                 </div>
@@ -433,7 +458,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                             style={campo(movil)}
                         />
                     )}
-                    <button onClick={handleAdd} disabled={creating} style={{ ...botonPrimario(movil), alignSelf: movil ? 'stretch' : 'flex-start', opacity: creating ? 0.7 : 1 }}>
+                    <button onClick={handleAdd} disabled={creating} style={{ ...botonCompactoPrimario(movil), alignSelf: movil ? 'stretch' : 'flex-start', opacity: creating ? 0.7 : 1 }}>
                         {creating ? <Loader2 size={16} className="agenda-spin" /> : <Plus size={16} />}
                         {crearEnNotion ? 'Crear en Notion' : 'Guardar solo en la agenda'}
                     </button>
