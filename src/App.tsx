@@ -519,6 +519,18 @@ function App() {
                 resetSporadicPhotoLog={state.resetSporadicPhotoLog}
                 calendarEvents={state.agenda}
                 updateCalendarEvent={state.updateCalendarEvent}
+                phaseTemplates={state.phaseTemplates}
+                addFaseTemplate={state.addFaseTemplate}
+                removeFaseTemplate={state.removeFaseTemplate}
+                addFaseTemplateStep={state.addFaseTemplateStep}
+                removeFaseTemplateStep={state.removeFaseTemplateStep}
+                applyFaseTemplate={state.applyFaseTemplate}
+                addProjectFase={state.addProjectFase}
+                removeProjectFase={state.removeProjectFase}
+                toggleProjectFase={state.toggleProjectFase}
+                startFaseTimer={state.startFaseTimer}
+                pauseFaseTimer={state.pauseFaseTimer}
+                finishFaseTimer={state.finishFaseTimer}
               />
             ) : activeTab === 'Notion' ? (
               <NotionDashboard

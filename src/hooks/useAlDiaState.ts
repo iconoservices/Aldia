@@ -248,6 +248,36 @@ export interface SporadicPhotoLog {
     seconds: number;
 }
 
+// Un paso de flujo de trabajo (ej. "Colorización", "Suavizado de ropa") dentro
+// de una plantilla de fases reutilizable (ver FaseTemplate) o ya copiado a un
+// proyecto puntual (ver ProjectFase, que además le suma estado + cronómetro).
+export interface FaseStep {
+    id: number;
+    label: string;
+}
+
+// Plantilla reutilizable de fases (ej. "Fotografía": Selección -> Revelado ->
+// Photoshop -> Revisión, con sus pasos). Vive aparte de los proyectos: se crea
+// una vez y se aplica a cualquier cantidad de proyectos.
+export interface FaseTemplate {
+    id: number;
+    name: string;
+    steps: FaseStep[];
+}
+
+// Copia de un FaseStep dentro de un proyecto puntual — se desengancha de la
+// plantilla al aplicarla (editar un proyecto no toca la plantilla original,
+// y viceversa), y le suma su propio cronómetro (mismo patrón pausa/resume que
+// photoActiveSince/photoPausedAccumSeconds, pero por fase en vez de por foto).
+export interface ProjectFase {
+    id: number;
+    label: string;
+    done: boolean;
+    activeSince?: number;        // timestamp ms si el cronómetro de esta fase está corriendo ahora mismo
+    pausedAccumSeconds?: number; // segundos ya acumulados de esta fase, de tramos previos a una pausa
+    seconds?: number;            // segundos totales ya cerrados (una vez marcada "hecha")
+}
+
 export interface SporadicProject {
     id: number;
     title: string;
@@ -268,6 +298,8 @@ export interface SporadicProject {
     photoLogs?: SporadicPhotoLog[]; // duración de cada foto ya editada (proyectos viejos no traen este campo)
     sessionStartedAt?: number;  // timestamp ms de cuando se le dio Play por primera vez a la sesión abierta actual (sobrevive pausas, se limpia al Terminar) -- reloj de pared, a diferencia de las horas trabajadas reales que sí descuentan las pausas
     firstStartedAt?: number;    // timestamp ms de la PRIMERA vez que se le dio Play a este proyecto en su vida -- nunca se limpia con pausas ni al Terminar sesión, solo se resetea a mano; mide "cuánto llevo metido en esto sin entregarlo"
+    faseTemplateId?: number;    // plantilla de la que se copiaron `fases` (solo referencia informativa, editar `fases` no la toca)
+    fases?: ProjectFase[];      // checklist de fases de este proyecto, una vez aplicada una plantilla
 }
 
 export interface UserPreferences {
@@ -342,6 +374,25 @@ export interface Project {
 
 export const DEFAULT_INCOME_CATEGORIES = ['Sueldo', 'Venta', 'Inversión', 'Otros'];
 export const DEFAULT_EXPENSE_CATEGORIES = ['Comida', 'Transporte', 'Servicios', 'Suscripciones', 'Salud', 'Ocio', 'Otros'];
+
+// Primera plantilla de fases, la del flujo de edición fotográfica.
+// IDs fijos y bajos a propósito: nextBlockId() siempre entrega timestamps
+// (número gigante), así que nunca va a chocar con estos.
+export const DEFAULT_PHASE_TEMPLATES: FaseTemplate[] = [
+    {
+        id: 1,
+        name: 'Fotografía',
+        steps: [
+            { id: 1, label: 'Selección' },
+            { id: 2, label: 'Colorización / revelado' },
+            { id: 3, label: 'Retoque de ojos (Claridad y Textura en Lightroom)' },
+            { id: 4, label: 'Quitar ruido' },
+            { id: 5, label: 'Suavizado de ropa (Photoshop)' },
+            { id: 6, label: 'Estilización de vestido (Photoshop, si aplica)' },
+            { id: 7, label: 'Revisión final' },
+        ],
+    },
+];
 
 // Metas: planificador de objetivos a mediano (semanas/meses) y largo plazo (años),
 // separado de Project (que organiza el trabajo del día a día) y de RitaMilestone
@@ -464,6 +515,7 @@ export const useAlDiaState = () => {
     const [dailyBlocks, setDailyBlocks] = useState<DailyBlock[]>([]);
     const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
     const [sporadicProjects, setSporadicProjects] = useState<SporadicProject[]>([]);
+    const [phaseTemplates, setPhaseTemplates] = useState<FaseTemplate[]>(DEFAULT_PHASE_TEMPLATES);
     const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [mealPlanEntries, setMealPlanEntries] = useState<MealPlanEntry[]>([]);
     const [nutritionGoals, setNutritionGoals] = useState<NutritionGoals>(DEFAULT_NUTRITION_GOALS);
@@ -501,6 +553,7 @@ export const useAlDiaState = () => {
                 dailyblocks: JSON.parse(localStorage.getItem('aldia_dailyblocks') || '[]'),
                 shoppingList: JSON.parse(localStorage.getItem('aldia_shopping_list') || '[]'),
                 sporadicProjects: JSON.parse(localStorage.getItem('aldia_sporadic_projects') || '[]'),
+                phaseTemplates: JSON.parse(localStorage.getItem('aldia_phase_templates') || JSON.stringify(DEFAULT_PHASE_TEMPLATES)),
                 recipes: JSON.parse(localStorage.getItem('aldia_recipes') || '[]'),
                 mealPlanEntries: JSON.parse(localStorage.getItem('aldia_meal_plan_entries') || '[]'),
                 nutritionGoals: JSON.parse(localStorage.getItem('aldia_nutrition_goals') || JSON.stringify(DEFAULT_NUTRITION_GOALS)),
@@ -527,6 +580,7 @@ export const useAlDiaState = () => {
             setDailyBlocks(data.dailyblocks);
             setShoppingList(data.shoppingList);
             setSporadicProjects(data.sporadicProjects);
+            setPhaseTemplates(data.phaseTemplates);
             setRecipes(data.recipes);
             setMealPlanEntries(data.mealPlanEntries);
             setNutritionGoals(data.nutritionGoals);
@@ -613,6 +667,7 @@ export const useAlDiaState = () => {
                 sync(cloud.dailyBlocks, setDailyBlocks);
                 sync(cloud.shoppingList, setShoppingList);
                 sync(cloud.sporadicProjects, setSporadicProjects);
+                sync(cloud.phaseTemplates, setPhaseTemplates);
                 sync(cloud.recipes, setRecipes);
                 sync(cloud.mealPlanEntries, setMealPlanEntries);
                 sync(cloud.nutritionGoals, setNutritionGoals);
@@ -644,10 +699,10 @@ export const useAlDiaState = () => {
     // Esto previene "stale closures" en el setTimeout del debounced save,
     // donde un array viejo de transactions podía enviarse a Firestore y causar un rollback visual.
     const latestStateRef = useRef({
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, goals, trash
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, phaseTemplates, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, goals, trash
     });
     latestStateRef.current = {
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, goals, trash
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, phaseTemplates, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, goals, trash
     };
 
     // 3. Persistencia Cloud (Debounced) y Local (Immediate)
@@ -674,6 +729,7 @@ export const useAlDiaState = () => {
         localStorage.setItem('aldia_dailyblocks', JSON.stringify(dailyBlocks));
         localStorage.setItem('aldia_shopping_list', JSON.stringify(shoppingList));
         localStorage.setItem('aldia_sporadic_projects', JSON.stringify(sporadicProjects));
+        localStorage.setItem('aldia_phase_templates', JSON.stringify(phaseTemplates));
         localStorage.setItem('aldia_recipes', JSON.stringify(recipes));
         localStorage.setItem('aldia_meal_plan_entries', JSON.stringify(mealPlanEntries));
         localStorage.setItem('aldia_nutrition_goals', JSON.stringify(nutritionGoals));
@@ -705,7 +761,7 @@ export const useAlDiaState = () => {
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, goals, trash]);
+    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, phaseTemplates, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, goals, trash]);
 
     // 4. Migraciones y Lógica Derivada
     useEffect(() => {
@@ -1371,6 +1427,105 @@ export const useAlDiaState = () => {
         } : p));
     };
 
+    /* ── Plantillas de fases (flujo de trabajo reutilizable, ej. "Fotografía") ── */
+
+    const addFaseTemplate = (name: string) => {
+        const template: FaseTemplate = { id: nextBlockId(), name, steps: [] };
+        setPhaseTemplates(prev => [...prev, template]);
+        return template.id;
+    };
+
+    const removeFaseTemplate = (id: number) => {
+        setPhaseTemplates(prev => prev.filter(t => t.id !== id));
+    };
+
+    const renameFaseTemplate = (id: number, name: string) => {
+        setPhaseTemplates(prev => prev.map(t => t.id === id ? { ...t, name } : t));
+    };
+
+    const addFaseTemplateStep = (templateId: number, label: string) => {
+        setPhaseTemplates(prev => prev.map(t => t.id === templateId
+            ? { ...t, steps: [...t.steps, { id: nextBlockId(), label }] }
+            : t));
+    };
+
+    const removeFaseTemplateStep = (templateId: number, stepId: number) => {
+        setPhaseTemplates(prev => prev.map(t => t.id === templateId
+            ? { ...t, steps: t.steps.filter(s => s.id !== stepId) }
+            : t));
+    };
+
+    /* ── Fases dentro de un proyecto esporádico ────────────────────── */
+    // Aplicar una plantilla COPIA sus pasos al proyecto (fases queda propia de
+    // ese proyecto, editable sin tocar la plantilla original ni afectar a
+    // otros proyectos que ya la hayan aplicado).
+    const applyFaseTemplate = (projectId: number, templateId: number) => {
+        const template = phaseTemplates.find(t => t.id === templateId);
+        if (!template) return;
+        const fases: ProjectFase[] = template.steps.map(s => ({ id: nextBlockId(), label: s.label, done: false }));
+        setSporadicProjects(prev => prev.map(p => p.id === projectId ? { ...p, faseTemplateId: templateId, fases } : p));
+    };
+
+    const addProjectFase = (projectId: number, label: string) => {
+        setSporadicProjects(prev => prev.map(p => p.id === projectId
+            ? { ...p, fases: [...(p.fases || []), { id: nextBlockId(), label, done: false }] }
+            : p));
+    };
+
+    const removeProjectFase = (projectId: number, faseId: number) => {
+        setSporadicProjects(prev => prev.map(p => p.id === projectId
+            ? { ...p, fases: (p.fases || []).filter(f => f.id !== faseId) }
+            : p));
+    };
+
+    const toggleProjectFase = (projectId: number, faseId: number) => {
+        setSporadicProjects(prev => prev.map(p => p.id === projectId
+            ? {
+                ...p,
+                fases: (p.fases || []).map(f => f.id === faseId
+                    ? { ...f, done: !f.done, activeSince: undefined, pausedAccumSeconds: undefined }
+                    : f)
+            }
+            : p));
+    };
+
+    // Mismo patrón pausa/resume que start/pausePhotoTimer, pero por fase: arrancar
+    // de nuevo reanuda (activeSince toggleable), pausar acumula lo corrido.
+    const startFaseTimer = (projectId: number, faseId: number) => {
+        setSporadicProjects(prev => prev.map(p => p.id === projectId
+            ? { ...p, fases: (p.fases || []).map(f => f.id === faseId ? { ...f, activeSince: Date.now() } : f) }
+            : p));
+    };
+
+    const pauseFaseTimer = (projectId: number, faseId: number) => {
+        setSporadicProjects(prev => prev.map(p => {
+            if (p.id !== projectId) return p;
+            return {
+                ...p, fases: (p.fases || []).map(f => {
+                    if (f.id !== faseId || !f.activeSince) return f;
+                    const seconds = Math.max(Math.round((Date.now() - f.activeSince) / 1000), 0);
+                    return { ...f, activeSince: undefined, pausedAccumSeconds: (f.pausedAccumSeconds || 0) + seconds };
+                })
+            };
+        }));
+    };
+
+    // Cierra el cronómetro de la fase Y la marca como hecha (mismo espíritu que
+    // finishPhotoTimer: sumar lo corrido + lo pausado y dejar un total fijo).
+    const finishFaseTimer = (projectId: number, faseId: number) => {
+        setSporadicProjects(prev => prev.map(p => {
+            if (p.id !== projectId) return p;
+            return {
+                ...p, fases: (p.fases || []).map(f => {
+                    if (f.id !== faseId) return f;
+                    const liveSeconds = f.activeSince ? Math.max(Math.round((Date.now() - f.activeSince) / 1000), 0) : 0;
+                    const seconds = liveSeconds + (f.pausedAccumSeconds || 0);
+                    return { ...f, activeSince: undefined, pausedAccumSeconds: undefined, seconds, done: true };
+                })
+            };
+        }));
+    };
+
     /* ── Calendario de comidas ─────────────────────────────────────── */
 
     const addRecipe = (name: string, kcal: number, protein: number, carbs: number, prepMinutes?: number, ingredients?: string) => {
@@ -1492,6 +1647,12 @@ export const useAlDiaState = () => {
         startSporadicTimer: lw(startSporadicTimer), pauseSporadicTimer: lw(pauseSporadicTimer), stopSporadicTimer: lw(stopSporadicTimer),
         startPhotoTimer: lw(startPhotoTimer), pausePhotoTimer: lw(pausePhotoTimer), finishPhotoTimer: lw(finishPhotoTimer), cancelPhotoTimer: lw(cancelPhotoTimer),
         resetSporadicWorkedTime: lw(resetSporadicWorkedTime), resetSporadicPhotoLog: lw(resetSporadicPhotoLog),
+        phaseTemplates,
+        addFaseTemplate: lw(addFaseTemplate), removeFaseTemplate: lw(removeFaseTemplate), renameFaseTemplate: lw(renameFaseTemplate),
+        addFaseTemplateStep: lw(addFaseTemplateStep), removeFaseTemplateStep: lw(removeFaseTemplateStep),
+        applyFaseTemplate: lw(applyFaseTemplate),
+        addProjectFase: lw(addProjectFase), removeProjectFase: lw(removeProjectFase), toggleProjectFase: lw(toggleProjectFase),
+        startFaseTimer: lw(startFaseTimer), pauseFaseTimer: lw(pauseFaseTimer), finishFaseTimer: lw(finishFaseTimer),
         markShoppingItemPurchased: lw(markShoppingItemPurchased),
         unmarkShoppingItemPurchased: lw(unmarkShoppingItemPurchased),
         // Calendario de comidas
