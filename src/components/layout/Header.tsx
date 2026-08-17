@@ -46,6 +46,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Compras',   tab: 'Compras',   icon: 'shopping_cart' },
         { label: 'Comidas',   tab: 'Comidas',   icon: 'restaurant'    },
         { label: 'Plan',      tab: 'Plan',      icon: 'savings'       },
+        { label: 'Metas',     tab: 'Metas',     icon: 'flag'          },
         { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
         { label: 'Notion', tab: 'Notion', icon: 'sync_alt' },
     ];
@@ -144,6 +145,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             case 'Cerebro': return 'Cerebro';
             case 'Vida': return 'Mi Vida';
             case 'Proyectos': return 'Proyectos';
+            case 'Metas': return 'Metas a Mediano y Largo Plazo';
             case 'Tablero': return 'Tablero Kanban';
             case 'Lienzo': return 'Lienzo';
             case 'Lienzo Ops': return 'Lienzo de Operaciones';

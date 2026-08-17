@@ -8,6 +8,7 @@ import { useProyectosState } from './state/useProyectosState';
 import { useCerebroState } from './state/useCerebroState';
 import { useRitaState } from './state/useRitaState';
 import { useNegocioState } from './state/useNegocioState';
+import { useMetasState } from './state/useMetasState';
 
 // Tipos de datos
 export interface Mission {
@@ -341,6 +342,34 @@ export interface Project {
 export const DEFAULT_INCOME_CATEGORIES = ['Sueldo', 'Venta', 'Inversión', 'Otros'];
 export const DEFAULT_EXPENSE_CATEGORIES = ['Comida', 'Transporte', 'Servicios', 'Suscripciones', 'Salud', 'Ocio', 'Otros'];
 
+// Metas: planificador de objetivos a mediano (semanas/meses) y largo plazo (años),
+// separado de Project (que organiza el trabajo del día a día) y de RitaMilestone
+// (que es la hoja de ruta específica del negocio). Una meta puede vivir sola o
+// enlazarse a un proyecto ya existente vía projectId.
+export interface GoalMilestone {
+    id: number;
+    text: string;
+    completed: boolean;
+}
+
+export type GoalHorizon = 'mediano' | 'largo';
+export type GoalStatus = 'pendiente' | 'en-progreso' | 'completado';
+
+export interface Goal {
+    id: number;
+    title: string;
+    description?: string;
+    horizon: GoalHorizon; // 'mediano' = próximos meses, 'largo' = 1+ años
+    area: string;         // categoría de vida libre: Negocio, Salud, Finanzas, Personal...
+    icon: string;
+    color: string;
+    status: GoalStatus;
+    targetDate?: string;  // YYYY-MM-DD, para cuándo se quiere lograr
+    milestones: GoalMilestone[];
+    projectId?: number;   // vínculo opcional a un proyecto existente
+    order: number;
+}
+
 export interface Note {
     id: number;
     title: string;
@@ -420,6 +449,12 @@ export const useAlDiaState = () => {
         addExpense, updateExpense, removeExpense
     } = useNegocioState();
 
+    const {
+        goals, setGoals,
+        addGoal, updateGoal, removeGoal, reorderGoals,
+        addGoalMilestone, toggleGoalMilestone, removeGoalMilestone
+    } = useMetasState();
+
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
@@ -470,7 +505,8 @@ export const useAlDiaState = () => {
                 nutritionGoals: JSON.parse(localStorage.getItem('aldia_nutrition_goals') || JSON.stringify(DEFAULT_NUTRITION_GOALS)),
                 ritaEntries: JSON.parse(localStorage.getItem('aldia_rita_entries') || '[]'),
                 trash: JSON.parse(localStorage.getItem('aldia_trash') || '[]'),
-                negocioProjects: JSON.parse(localStorage.getItem('aldia_negocio_projects') || '[]')
+                negocioProjects: JSON.parse(localStorage.getItem('aldia_negocio_projects') || '[]'),
+                goals: JSON.parse(localStorage.getItem('aldia_goals') || '[]')
             };
             setMisionesDirect(data.missions);
             setTransactions(data.transactions);
@@ -495,6 +531,7 @@ export const useAlDiaState = () => {
             setNutritionGoals(data.nutritionGoals);
             setRitaEntries(data.ritaEntries);
             setNegocioProjects(data.negocioProjects);
+            setGoals(data.goals);
             setTrash(data.trash.filter((t: TrashItem) => Date.now() - t.deletedAt < 60 * 24 * 60 * 60 * 1000));
         } catch (e) { console.error("Error inicial local:", e); }
     }, []); // Una sola vez al montar
@@ -580,6 +617,7 @@ export const useAlDiaState = () => {
                 sync(cloud.nutritionGoals, setNutritionGoals);
                 sync(cloud.ritaEntries, setRitaEntries);
                 sync(cloud.negocioProjects, setNegocioProjects);
+                sync(cloud.goals, setGoals);
                 sync(cloud.trash, setTrash);
                 if (cloud.monthlyBudget !== undefined) {
                     setMonthlyBudget(prev => Math.abs(cloud.monthlyBudget - prev) > 0.01 ? Number(cloud.monthlyBudget) : prev);
@@ -605,10 +643,10 @@ export const useAlDiaState = () => {
     // Esto previene "stale closures" en el setTimeout del debounced save,
     // donde un array viejo de transactions podía enviarse a Firestore y causar un rollback visual.
     const latestStateRef = useRef({
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, trash
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, goals, trash
     });
     latestStateRef.current = {
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, trash
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, goals, trash
     };
 
     // 3. Persistencia Cloud (Debounced) y Local (Immediate)
@@ -640,6 +678,7 @@ export const useAlDiaState = () => {
         localStorage.setItem('aldia_nutrition_goals', JSON.stringify(nutritionGoals));
         localStorage.setItem('aldia_rita_entries', JSON.stringify(ritaEntries));
         localStorage.setItem('aldia_negocio_projects', JSON.stringify(negocioProjects));
+        localStorage.setItem('aldia_goals', JSON.stringify(goals));
         localStorage.setItem('aldia_trash', JSON.stringify(trash));
 
         // Guardado Cloud debounced
@@ -665,7 +704,7 @@ export const useAlDiaState = () => {
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, trash]);
+    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, goals, trash]);
 
     // 4. Migraciones y Lógica Derivada
     useEffect(() => {
@@ -1469,6 +1508,10 @@ export const useAlDiaState = () => {
         addClient: lw(addClient), updateClient: lw(updateClient), removeClient: lw(removeClient),
         addWorker: lw(addWorker), updateWorker: lw(updateWorker), removeWorker: lw(removeWorker),
         addExpense: lw(addExpense), updateExpense: lw(updateExpense), removeExpense: lw(removeExpense),
+        // Metas
+        goals,
+        addGoal: lw(addGoal), updateGoal: lw(updateGoal), removeGoal: lw(removeGoal), reorderGoals: lw(reorderGoals),
+        addGoalMilestone: lw(addGoalMilestone), toggleGoalMilestone: lw(toggleGoalMilestone), removeGoalMilestone: lw(removeGoalMilestone),
         user, isInitialLoad, clearAllData, clearFinanzasSelectivo: lw(clearFinanzasSelectivo)
     };
 };

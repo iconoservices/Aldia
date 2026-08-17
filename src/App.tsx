@@ -41,6 +41,7 @@ import { ComidasDashboard } from './components/dashboard/ComidasDashboard';
 import { EsporadicosDashboard } from './components/dashboard/EsporadicosDashboard';
 import { NotionDashboard } from './components/dashboard/NotionDashboard';
 import { TranqueoDeVidaDashboard } from './components/dashboard/TranqueoDeVidaDashboard';
+import { MetasDashboard } from './components/dashboard/MetasDashboard';
 
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -73,6 +74,7 @@ function App() {
     if (path.includes('/negocio')) return 'Negocio';
     if (path.includes('/lienzo-ops')) return 'Lienzo Ops';
     if (path.includes('/buscador')) return 'Buscador';
+    if (path.includes('/metas')) return 'Metas';
     return 'Checklist';
   });
 
@@ -133,6 +135,7 @@ function App() {
     else if (path.includes('/lienzo-ops')) setActiveTab('Lienzo Ops');
     else if (path.includes('/deudas')) setActiveTab('Deudas');
     else if (path.includes('/buscador')) setActiveTab('Buscador');
+    else if (path.includes('/metas')) setActiveTab('Metas');
       else setActiveTab('Checklist');
     };
     window.addEventListener('popstate', handlePopState);
@@ -332,6 +335,16 @@ function App() {
                 removeSubitem={state.removeRitaSubitem}
                 addHabit={state.addHabit}
                 habits={state.habits}
+              />
+            ) : activeTab === 'Metas' ? (
+              <MetasDashboard
+                goals={state.goals}
+                addGoal={state.addGoal}
+                updateGoal={state.updateGoal}
+                removeGoal={state.removeGoal}
+                addGoalMilestone={state.addGoalMilestone}
+                toggleGoalMilestone={state.toggleGoalMilestone}
+                removeGoalMilestone={state.removeGoalMilestone}
               />
             ) : activeTab === 'Mapa' ? (
               <EcosistemaMap />
