@@ -46,6 +46,9 @@ import { MetasDashboard } from './components/dashboard/MetasDashboard';
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
     const path = window.location.pathname.toLowerCase();
+    // Ojo: "/lienzo-ops" también matchea "/lienzo", así que el caso más
+    // específico va primero — si no, nunca se llega a la rama de abajo.
+    if (path.includes('/lienzo-ops')) return 'Lienzo Ops';
     if (path.includes('/lienzo')) return 'Lienzo';
     if (path.includes('/stats')) return 'Stats';
     if (path.includes('/finanzas')) return 'Finanzas';
@@ -72,9 +75,9 @@ function App() {
     if (path.includes('/deudas')) return 'Deudas';
     if (path.includes('/bienestar')) return 'Bienestar';
     if (path.includes('/negocio')) return 'Negocio';
-    if (path.includes('/lienzo-ops')) return 'Lienzo Ops';
     if (path.includes('/buscador')) return 'Buscador';
     if (path.includes('/metas')) return 'Metas';
+    if (path.includes('/plan')) return 'Plan';
     return 'Checklist';
   });
 
@@ -107,7 +110,8 @@ function App() {
   useEffect(() => {
     const handlePopState = () => {
       const path = window.location.pathname.toLowerCase();
-      if (path.includes('/lienzo')) setActiveTab('Lienzo');
+      if (path.includes('/lienzo-ops')) setActiveTab('Lienzo Ops');
+      else if (path.includes('/lienzo')) setActiveTab('Lienzo');
       else if (path.includes('/stats')) setActiveTab('Stats');
       else if (path.includes('/finanzas')) setActiveTab('Finanzas');
       else if (path.includes('/proyectos')) setActiveTab('Proyectos');
@@ -132,10 +136,10 @@ function App() {
       else if (path.includes('/bloques')) setActiveTab('Bloques');
     else if (path.includes('/bienestar')) setActiveTab('Bienestar');
     else if (path.includes('/negocio')) setActiveTab('Negocio');
-    else if (path.includes('/lienzo-ops')) setActiveTab('Lienzo Ops');
     else if (path.includes('/deudas')) setActiveTab('Deudas');
     else if (path.includes('/buscador')) setActiveTab('Buscador');
     else if (path.includes('/metas')) setActiveTab('Metas');
+    else if (path.includes('/plan')) setActiveTab('Plan');
       else setActiveTab('Checklist');
     };
     window.addEventListener('popstate', handlePopState);
