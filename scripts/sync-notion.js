@@ -100,7 +100,8 @@ function toCalendarEvent(page) {
         notionCobrado: props['Cobrado']?.number,
         notionSaldoPorCobrar: readFormula(props['Saldo por cobrar']),
         notionEntregaFecha: entregaDate?.start ? parseNotionDate(entregaDate.start).date : undefined,
-        notionDiasRestantes: readFormula(props['Dias Restantes'])
+        notionDiasRestantes: readFormula(props['Dias Restantes']),
+        notionCelular: props['Celular']?.phone_number
     };
     // Firestore rechaza valores `undefined`: los campos opcionales que Notion
     // no tenga completos (Precio vacío, sin Proyecto, etc.) se omiten en vez

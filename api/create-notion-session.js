@@ -12,7 +12,7 @@ export default async function handler(req, res) {
         return;
     }
 
-    const { title, date, startTime, endTime } = req.body || {};
+    const { title, date, startTime, endTime, proyecto, ubicacion, precio, cobrado, celular } = req.body || {};
     if (!title || !date || !startTime) {
         res.status(400).json({ error: 'faltan title, date o startTime' });
         return;
@@ -20,6 +20,21 @@ export default async function handler(req, res) {
 
     const startIso = `${date}T${startTime}:00.000-05:00`;
     const endIso = endTime ? `${date}T${endTime}:00.000-05:00` : undefined;
+
+    // Proyecto y Ubicación son "select" en Notion: si el valor no existe como
+    // opción todavía, la API lo crea sola (mismo comportamiento que editar la
+    // sesión a mano en Notion). Entrega/Saldo/Días Restantes son fórmulas —
+    // Notion las calcula solo, así que no se mandan acá.
+    const properties = {
+        'Título': { title: [{ text: { content: title } }] },
+        'Fecha y hora': { date: { start: startIso, end: endIso || null } },
+        Estado: { status: { name: 'Agendado' } }
+    };
+    if (proyecto) properties['Proyecto'] = { select: { name: proyecto } };
+    if (ubicacion) properties['Ubicación'] = { select: { name: ubicacion } };
+    if (precio !== undefined && precio !== null && precio !== '') properties['Precio'] = { number: Number(precio) };
+    if (cobrado !== undefined && cobrado !== null && cobrado !== '') properties['Cobrado'] = { number: Number(cobrado) };
+    if (celular) properties['Celular'] = { phone_number: celular };
 
     try {
         const notionRes = await fetch('https://api.notion.com/v1/pages', {
@@ -31,11 +46,7 @@ export default async function handler(req, res) {
             },
             body: JSON.stringify({
                 parent: { database_id: NOTION_DATABASE_ID },
-                properties: {
-                    'Título': { title: [{ text: { content: title } }] },
-                    'Fecha y hora': { date: { start: startIso, end: endIso || null } },
-                    Estado: { status: { name: 'Agendado' } }
-                }
+                properties
             })
         });
         const page = await notionRes.json();

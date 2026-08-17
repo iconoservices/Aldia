@@ -40,6 +40,7 @@ import { ComprasDashboard } from './components/dashboard/ComprasDashboard';
 import { ComidasDashboard } from './components/dashboard/ComidasDashboard';
 import { EsporadicosDashboard } from './components/dashboard/EsporadicosDashboard';
 import { NotionDashboard } from './components/dashboard/NotionDashboard';
+import { AgendaDashboard } from './components/dashboard/AgendaDashboard';
 import { TranqueoDeVidaDashboard } from './components/dashboard/TranqueoDeVidaDashboard';
 import { MetasDashboard } from './components/dashboard/MetasDashboard';
 
@@ -54,6 +55,7 @@ function App() {
     if (path.includes('/finanzas')) return 'Finanzas';
     if (path.includes('/proyectos')) return 'Proyectos';
     if (path.includes('/entregas')) return 'Entregas';
+    if (path.includes('/agenda')) return 'Agenda';
     if (path.includes('/notion')) return 'Notion';
     if (path.includes('/tranqueo')) return 'Tranqueo de Vida';
     if (path.includes('/movimientos')) return 'Movimientos';
@@ -116,6 +118,7 @@ function App() {
       else if (path.includes('/finanzas')) setActiveTab('Finanzas');
       else if (path.includes('/proyectos')) setActiveTab('Proyectos');
       else if (path.includes('/entregas')) setActiveTab('Entregas');
+      else if (path.includes('/agenda')) setActiveTab('Agenda');
       else if (path.includes('/notion')) setActiveTab('Notion');
       else if (path.includes('/tranqueo')) setActiveTab('Tranqueo de Vida');
       else if (path.includes('/movimientos')) setActiveTab('Movimientos');
@@ -521,6 +524,15 @@ function App() {
               <NotionDashboard
                 calendarEvents={state.agenda}
                 updateCalendarEvent={state.updateCalendarEvent}
+              />
+            ) : activeTab === 'Agenda' ? (
+              <AgendaDashboard
+                calendarEvents={state.agenda}
+                addCalendarEvent={state.addCalendarEvent}
+                removeCalendarEvent={state.removeCalendarEvent}
+                updateCalendarEvent={state.updateCalendarEvent}
+                preferences={state.preferences}
+                updatePreference={state.updatePreference}
               />
             ) : activeTab === 'Tranqueo de Vida' ? (
               <TranqueoDeVidaDashboard
