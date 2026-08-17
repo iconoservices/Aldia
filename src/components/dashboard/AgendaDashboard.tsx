@@ -358,11 +358,30 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                     <h2 style={tituloPagina}>Agenda</h2>
                     <p style={subtituloPagina}>Tus próximas sesiones y entregas, a un vistazo.</p>
                 </div>
-                <button onClick={() => setShowAddForm(s => !s)} style={botonPrimario(movil)}>
-                    {showAddForm ? <X size={16} /> : <Plus size={16} />}
-                    {showAddForm ? 'Cerrar' : 'Agregar'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 800, color: C.onSurfaceVariant }}>
+                        <RefreshCw size={14} color={notionActive ? C.verde : C.outline} className={syncing ? 'agenda-spin' : ''} />
+                        Notion {notionActive ? 'activada' : 'desactivada'}
+                    </div>
+                    {!notionActive ? (
+                        <button onClick={handleActivar} style={{ ...botonPrimario(movil), background: C.verde, padding: '6px 14px', fontSize: '0.76rem' }}>
+                            Activar
+                        </button>
+                    ) : (
+                        <button onClick={handleSync} disabled={syncing} style={{ ...botonPrimario(movil), padding: '6px 14px', fontSize: '0.76rem', opacity: syncing ? 0.7 : 1, cursor: syncing ? 'wait' : 'pointer' }}>
+                            {syncing ? <Loader2 size={13} className="agenda-spin" /> : <RefreshCw size={13} />}
+                            Sincronizar ahora
+                        </button>
+                    )}
+                    <button onClick={() => setShowAddForm(s => !s)} style={botonPrimario(movil)}>
+                        {showAddForm ? <X size={16} /> : <Plus size={16} />}
+                        {showAddForm ? 'Cerrar' : 'Agregar'}
+                    </button>
+                </div>
             </div>
+            {syncMsg && (
+                <div style={{ fontSize: '0.72rem', color: syncError ? C.rojo : C.outline, fontWeight: 600, marginTop: '-0.6rem' }}>{syncMsg}</div>
+            )}
 
             {/* Alta manual */}
             {showAddForm && (
@@ -424,30 +443,6 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                 </div>
             )}
 
-            {/* Barra de sincronización con Notion — compacta, una sola línea en desktop */}
-            <div style={{ ...bento, padding: '0.6rem 0.9rem', display: 'flex', flexDirection: movil ? 'column' : 'row', gap: '0.6rem', alignItems: movil ? 'stretch' : 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                    <RefreshCw size={15} color={notionActive ? C.verde : C.outline} className={syncing ? 'agenda-spin' : ''} style={{ flexShrink: 0 }} />
-                    <span style={{ fontWeight: 800, fontSize: '0.8rem', flexShrink: 0 }}>
-                        Notion {notionActive ? 'activada' : 'desactivada'}
-                    </span>
-                    <span style={{ fontSize: '0.72rem', color: syncError ? C.rojo : C.outline, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {syncMsg ?? ''}
-                    </span>
-                </div>
-                <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                    {!notionActive ? (
-                        <button onClick={handleActivar} style={{ ...botonPrimario(movil), background: C.verde, padding: '6px 14px', fontSize: '0.76rem' }}>
-                            Activar
-                        </button>
-                    ) : (
-                        <button onClick={handleSync} disabled={syncing} style={{ ...botonPrimario(movil), padding: '6px 14px', fontSize: '0.76rem', opacity: syncing ? 0.7 : 1, cursor: syncing ? 'wait' : 'pointer' }}>
-                            {syncing ? <Loader2 size={13} className="agenda-spin" /> : <RefreshCw size={13} />}
-                            Sincronizar ahora
-                        </button>
-                    )}
-                </div>
-            </div>
 
             {/* Próxima sesión / próxima entrega / resumen de entregas — todo en una fila */}
             <div style={{ display: 'grid', gridTemplateColumns: movil ? '1fr' : entregasTotal > 0 ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap: '0.7rem' }}>
