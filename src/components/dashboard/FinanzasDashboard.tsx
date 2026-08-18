@@ -2188,7 +2188,7 @@ export const FinanzasDashboard = ({
                 {selectedProject && <ProjectDetailView project={selectedProject} onClose={() => setSelectedProject(null)} accounts={accounts} setAccounts={setAccounts} transactions={transactions} addProjectTask={addProjectTask} toggleProjectTask={toggleProjectTask} removeProjectTask={removeProjectTask} updateProjectTask={updateProjectTask} reorderProjectTasks={reorderProjectTasks} promoteTaskToRoutine={promoteTaskToRoutine} rutinas={rutinas} addProjectCategory={addProjectCategory} removeProjectCategory={removeProjectCategory} addInventoryItem={addInventoryItem} updateInventoryItemQuantity={updateInventoryItemQuantity} removeInventoryItem={removeInventoryItem} projects={projects} updateProject={updateProject} />}
             </AnimatePresence>
             <AnimatePresence>
-                {showAnalytics && <AnalyticsView transactions={transactions} onClose={() => setShowAnalytics(false)} owe={realOwe} owed={realOwed} accounts={accounts} />}
+                {showAnalytics && <AnalyticsView transactions={transactions} onClose={() => setShowAnalytics(false)} owe={realOwe} owed={realOwed} accounts={accounts} categoryGroups={categoryGroups} />}
             </AnimatePresence>
             <AnimatePresence>
                 {selectedAccountId != null && accountsWithBalance.find(a => a.id === selectedAccountId) && (

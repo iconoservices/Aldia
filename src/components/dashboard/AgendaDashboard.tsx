@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Camera, PackageCheck, RefreshCw, Plus, Trash2, ChevronDown, Loader2, ExternalLink, X, History, CalendarClock, AlertTriangle, HardDrive } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Camera, PackageCheck, RefreshCw, Plus, Trash2, ChevronDown, Loader2, ExternalLink, X, History, CalendarClock, AlertTriangle, HardDrive, CalendarDays } from "lucide-react";
 import type { CalendarEvent, UserPreferences, NotionEstado } from "../../hooks/useAlDiaState";
 import { NOTION_ESTADOS } from "../../hooks/useAlDiaState";
 import { C, bento, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina, money, campo, etiqueta, RADIO, TOQUE_MINIMO } from "../../theme";
@@ -69,6 +69,37 @@ const diasRestantes = (iso: string) => {
     return Math.round((fecha.getTime() - hoy.getTime()) / 86400000);
 };
 
+// Fila de botones para elegir un valor ya existente en Notion (Proyecto,
+// Ubicación) sin tener que escribirlo — como el selector de Notion, pero
+// sigue siendo posible escribir uno nuevo a mano en el input de al lado.
+const ChipsSelector = ({ options, value, onSelect }: { options: string[]; value: string; onSelect: (v: string) => void }) => {
+    if (!options.length) return null;
+    return (
+        <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', width: '100%' }}>
+            {options.map(opt => (
+                <button
+                    key={opt}
+                    type="button"
+                    onClick={() => onSelect(opt === value ? '' : opt)}
+                    style={{
+                        border: `1px solid ${opt === value ? C.primary : C.outlineVariant}`,
+                        background: opt === value ? C.primaryContainer : 'none',
+                        color: opt === value ? C.onPrimaryContainer : C.onSurfaceVariant,
+                        borderRadius: RADIO.chip,
+                        padding: '4px 10px',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                    }}
+                >
+                    {opt}
+                </button>
+            ))}
+        </div>
+    );
+};
+
 export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalendarEvent, updateCalendarEvent, preferences, updatePreference }: AgendaProps) => {
     const movil = useIsMobile();
     const [syncing, setSyncing] = useState(false);
@@ -87,12 +118,26 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
     const [dateForm, setDateForm] = useState({ date: '', startTime: '', endTime: '' });
     const [savingDateId, setSavingDateId] = useState<number | null>(null);
     const [dateErrorId, setDateErrorId] = useState<number | null>(null);
+    const [editingMeta, setEditingMeta] = useState(false);
+    const [metaInput, setMetaInput] = useState('');
+    const [notionOptions, setNotionOptions] = useState<{ proyecto: string[]; ubicacion: string[] } | null>(null);
 
     // El campo notionSyncEnabled falta en documentos viejos de Firestore (se
     // agregó después) — el resto del pipeline (webhook, script de sync) ya lo
     // trata así, con `=== false` en vez de un check de verdad, para no tratar
     // "nunca se tocó" como "lo desactivé a propósito".
     const notionActive = preferences.notionSyncEnabled !== false;
+
+    // Trae las opciones reales de "Proyecto"/"Ubicación" desde Notion la
+    // primera vez que se abre el formulario con creación en Notion activa,
+    // para poder mostrarlas como botones en vez de que se escriban a mano.
+    useEffect(() => {
+        if (!showAddForm || !crearEnNotion || !notionActive || notionOptions) return;
+        fetch('/api/get-notion-options')
+            .then(res => res.ok ? res.json() : null)
+            .then(data => { if (data) setNotionOptions(data); })
+            .catch(() => {});
+    }, [showAddForm, crearEnNotion, notionActive, notionOptions]);
 
     const items = useMemo(
         () => [...(calendarEvents || [])].sort((a, b) => {
@@ -151,6 +196,19 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
     const entregasTotal = items.filter(e => e.notionId).length;
     const entregadosCount = items.filter(e => e.notionEstado === 'Entregado').length;
     const porEntregarCount = items.filter(e => e.notionId && e.notionEstado !== 'Entregado').length;
+
+    // Sesiones del mes en curso, sin importar si ya pasaron o están por venir.
+    const mesActual = hoy.slice(0, 7); // YYYY-MM
+    const sesionesEsteMes = items.filter(e => e.date.startsWith(mesActual));
+    const sesionesEsteMesCount = sesionesEsteMes.length;
+    const sesionesEsteMesHechas = sesionesEsteMes.filter(e => yaSucedio(e)).length;
+    const metaSesiones = preferences.metaSesionesMes;
+
+    const guardarMeta = () => {
+        const n = parseInt(metaInput, 10);
+        updatePreference('metaSesionesMes', Number.isFinite(n) && n > 0 ? n : undefined);
+        setEditingMeta(false);
+    };
 
     const handleSync = async () => {
         setSyncing(true);
@@ -442,6 +500,12 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                                 <input placeholder="Proyecto (ej. JuanMa Producer, Personal)" value={form.proyecto} onChange={e => setForm(f => ({ ...f, proyecto: e.target.value }))} style={{ ...campo(movil), flex: '1 1 200px' }} />
                                 <input placeholder="Ubicación (opcional)" value={form.ubicacion} onChange={e => setForm(f => ({ ...f, ubicacion: e.target.value }))} style={{ ...campo(movil), flex: '1 1 140px' }} />
                             </div>
+                            {notionOptions && (
+                                <>
+                                    <ChipsSelector options={notionOptions.proyecto} value={form.proyecto} onSelect={v => setForm(f => ({ ...f, proyecto: v }))} />
+                                    <ChipsSelector options={notionOptions.ubicacion} value={form.ubicacion} onSelect={v => setForm(f => ({ ...f, ubicacion: v }))} />
+                                </>
+                            )}
                             <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
                                 <input type="tel" placeholder="Celular del cliente (opcional)" value={form.celular} onChange={e => setForm(f => ({ ...f, celular: e.target.value }))} style={{ ...campo(movil), flex: '1 1 160px' }} />
                             </div>
@@ -469,8 +533,8 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
             )}
 
 
-            {/* Próxima sesión / próxima entrega / resumen de entregas — todo en una fila */}
-            <div style={{ display: 'grid', gridTemplateColumns: movil ? '1fr' : entregasTotal > 0 ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap: '0.7rem' }}>
+            {/* Próxima sesión / próxima entrega / resumen de entregas / sesiones del mes — todo en una fila */}
+            <div style={{ display: 'grid', gridTemplateColumns: movil ? '1fr' : entregasTotal > 0 ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)', gap: '0.7rem' }}>
                 <div style={{ ...bento, padding: '0.8rem', display: 'flex', gap: '9px', alignItems: 'center' }}>
                     <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(99,102,241,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <Camera size={16} color="#6366F1" />
@@ -521,6 +585,44 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                         </div>
                     </div>
                 )}
+                <div style={{ ...bento, padding: '0.8rem', display: 'flex', gap: '9px', alignItems: 'center' }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(99,102,241,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <CalendarDays size={16} color="#6366F1" />
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={etiqueta}>Sesiones este mes</div>
+                        {editingMeta ? (
+                            <div style={{ display: 'flex', gap: '5px', alignItems: 'center', marginTop: '2px' }}>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    autoFocus
+                                    value={metaInput}
+                                    onChange={e => setMetaInput(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') guardarMeta(); if (e.key === 'Escape') setEditingMeta(false); }}
+                                    placeholder="ej. 6"
+                                    style={{ ...campo(movil), padding: '4px 8px', fontSize: '0.78rem', width: '56px' }}
+                                />
+                                <button onClick={guardarMeta} style={{ ...botonCompactoPrimario(movil), padding: '4px 9px', fontSize: '0.72rem' }}>OK</button>
+                            </div>
+                        ) : (
+                            <>
+                                <div style={{ fontWeight: 800, fontSize: '0.85rem', display: 'flex', alignItems: 'baseline', gap: '5px' }}>
+                                    <span style={metaSesiones ? { color: sesionesEsteMesCount >= metaSesiones ? C.verde : 'inherit' } : undefined}>
+                                        {metaSesiones ? `${sesionesEsteMesCount} de ${metaSesiones}` : sesionesEsteMesCount}
+                                    </span>
+                                    <button
+                                        onClick={() => { setMetaInput(metaSesiones ? String(metaSesiones) : ''); setEditingMeta(true); }}
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: C.outline, fontSize: '0.66rem', fontWeight: 700, textDecoration: 'underline' }}
+                                    >
+                                        {metaSesiones ? 'editar meta' : '+ meta'}
+                                    </button>
+                                </div>
+                                <div style={{ fontSize: '0.68rem', color: C.outline, fontWeight: 600 }}>{sesionesEsteMesHechas} hechas · {sesionesEsteMesCount - sesionesEsteMesHechas} por venir</div>
+                            </>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* Próximas — ordenadas por Fecha y hora (la sesión en sí), no por Estado */}

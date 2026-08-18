@@ -318,6 +318,7 @@ export interface UserPreferences {
     groupAccountScope: string;
     notionSyncEnabled: boolean; // Si esta en false, el script de sync con Notion no escribe nada
     blockOrder: string; // JSON: Record<period, string[]> -- orden manual (drag) de las tarjetas de Bloques por franja
+    metaSesionesMes?: number; // Meta de cuantas sesiones agendar en el mes (opcional, no todos los meses tienen una)
 }
 
 export const DEFAULT_PREFERENCES: UserPreferences = {

@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, PieChart, BarChart3, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, List, Filter, Check } from 'lucide-react';
+import { ArrowLeft, PieChart, BarChart3, ChevronLeft, ChevronRight, List, Filter, Check } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
 import { useIsMobile } from '../../theme';
 import { getPeriodBounds, periodLabel, shiftPeriod, type PeriodMode } from './FinanzasDashboard';
-import type { Transaction } from '../../hooks/useAlDiaState';
+import type { Transaction, CategoryGroupMap } from '../../hooks/useAlDiaState';
 
 interface AnalyticsAccount {
     id: number;
@@ -20,6 +20,7 @@ interface AnalyticsViewProps {
     owe?: number;
     owed?: number;
     accounts?: AnalyticsAccount[];
+    categoryGroups?: CategoryGroupMap;
 }
 
 const CATEGORY_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#64748b'];
@@ -120,7 +121,7 @@ const AccountSelectModal = ({ open, accounts, initialSelection, onSave, onCancel
     );
 };
 
-export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accounts = [] }: AnalyticsViewProps) => {
+export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accounts = [], categoryGroups }: AnalyticsViewProps) => {
     const isDesktop = !useIsMobile();
 
     // ── Periodo: mismo lenguaje que el resto de Finanzas (Día/Sem/Mes/Año/Todo),
@@ -129,10 +130,26 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
     const [refDate, setRefDate] = useState(new Date());
     const [customStart, setCustomStart] = useState('');
     const [customEnd, setCustomEnd] = useState('');
-    const [mobileTab, setMobileTab] = useState<'chart' | 'categories'>('chart');
     const [categoryView, setCategoryView] = useState<'bars' | 'pie'>('bars');
     const [breakdownType, setBreakdownType] = useState<'gasto' | 'ingreso'>('gasto');
-    const [breakdownGroupBy, setBreakdownGroupBy] = useState<'category' | 'account'>('category');
+    // Si el usuario ya organizó sus categorías en grupos, arranca directo ahí —
+    // es la vista que de verdad se puede leer de un vistazo; "Categoría" a secas
+    // se vuelve el modo detalle en vez del default.
+    const [breakdownGroupBy, setBreakdownGroupBy] = useState<'category' | 'account' | 'group'>(
+        () => (categoryGroups?.gasto && Object.keys(categoryGroups.gasto).length > 0) ? 'group' : 'category'
+    );
+
+    // Grupo de categorías (Esencial, Gustos, etc.) del tipo activo — para poder
+    // ver la distribución "aplastada" a grupo en vez de categoría por categoría,
+    // que es ilegible cuando hay muchas categorías chiquitas.
+    const groupMap = categoryGroups?.[breakdownType] || {};
+    const hasGroups = Object.keys(groupMap).length > 0;
+
+    // Si cambias de Gastos a Ingresos (o viceversa) y ese lado no tiene grupos
+    // todavía, no te quedes en una vista "Grupo" que solo mostraría "Sin grupo".
+    useEffect(() => {
+        if (breakdownGroupBy === 'group' && !hasGroups) setBreakdownGroupBy('category');
+    }, [breakdownGroupBy, hasGroups]);
     const [expandedBreakdownKey, setExpandedBreakdownKey] = useState<string | null>(null);
 
     // ── Filtro por cuenta: todas, o una selección (incluye "Sin cuenta") ──
@@ -203,36 +220,58 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
     const breakdownData = useMemo(() => {
         const groups: Record<string, number> = {};
         periodTxs.filter(t => t.type === breakdownType && !t.isDebt).forEach(t => {
-            const key = breakdownGroupBy === 'category'
-                ? (t.category || 'Otros')
+            const cat = t.category || 'Otros';
+            const key = breakdownGroupBy === 'category' ? cat
+                : breakdownGroupBy === 'group' ? (groupMap[cat] || 'Sin grupo')
                 : (accounts.find(a => a.id === t.accountId)?.name || 'Sin cuenta');
             groups[key] = (groups[key] || 0) + Math.abs(t.amount);
         });
         return Object.entries(groups)
             .sort((a, b) => b[1] - a[1])
             .map(([name, amount]) => ({ name, amount }));
-    }, [periodTxs, breakdownType, breakdownGroupBy, accounts]);
+    }, [periodTxs, breakdownType, breakdownGroupBy, accounts, groupMap]);
 
     const breakdownTotal = breakdownType === 'gasto' ? periodStats.expense : periodStats.income;
 
-    // Gráfico de flujo: por día si el rango es corto (<= ~3 meses), por mes si es largo
+    // Gráfico de flujo: por día solo para "Día"/"Sem" (rangos cortos, donde cada
+    // barra igual tiene algo); por semana para rangos tipo mes (registra en lote,
+    // así que 30 barras casi todas vacías no decían nada — 4-5 semanas sí);
+    // por mes para rangos largos.
     const chartBuckets = useMemo(() => {
         if (mode === 'day') return { granularity: 'day' as const, data: [] as { label: string; inc: number; exp: number }[] };
         const start = new Date(effectiveBounds.start);
         const end = new Date(effectiveBounds.end);
         const spanDays = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
 
-        if (spanDays <= 92) {
+        const sumFor = (txs: typeof periodTxs) => ({
+            inc: txs.filter(t => t.type === 'ingreso' && !t.isDebt).reduce((s, t) => s + (Number(t.amount) || 0), 0),
+            exp: txs.filter(t => t.type === 'gasto' && !t.isDebt).reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0),
+        });
+
+        if (spanDays <= 10) {
             const data = [];
             for (let i = 0; i < spanDays; i++) {
                 const d = new Date(start); d.setDate(d.getDate() + i);
                 const dateStr = fmtDate(d);
-                const dayTxs = periodTxs.filter(t => t.fullDate === dateStr);
-                const inc = dayTxs.filter(t => t.type === 'ingreso' && !t.isDebt).reduce((s, t) => s + (Number(t.amount) || 0), 0);
-                const exp = dayTxs.filter(t => t.type === 'gasto' && !t.isDebt).reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0);
+                const { inc, exp } = sumFor(periodTxs.filter(t => t.fullDate === dateStr));
                 data.push({ label: String(d.getDate()), inc, exp });
             }
             return { granularity: 'day' as const, data };
+        }
+
+        if (spanDays <= 120) {
+            const data = [];
+            let cursor = new Date(start);
+            while (cursor <= end) {
+                const weekStart = new Date(cursor);
+                const weekEnd = new Date(cursor); weekEnd.setDate(weekEnd.getDate() + 6);
+                if (weekEnd > end) weekEnd.setTime(end.getTime());
+                const startStr = fmtDate(weekStart), endStr = fmtDate(weekEnd);
+                const { inc, exp } = sumFor(periodTxs.filter(t => t.fullDate >= startStr && t.fullDate <= endStr));
+                data.push({ label: `${weekStart.getDate()}-${weekEnd.getDate()}`, inc, exp });
+                cursor.setDate(cursor.getDate() + 7);
+            }
+            return { granularity: 'week' as const, data };
         }
 
         const totalMonths = Math.min((end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1, 60);
@@ -240,9 +279,7 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
         for (let i = 0; i < totalMonths; i++) {
             const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
             const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-            const bucketTxs = periodTxs.filter(t => t.fullDate.startsWith(key));
-            const inc = bucketTxs.filter(t => t.type === 'ingreso' && !t.isDebt).reduce((s, t) => s + (Number(t.amount) || 0), 0);
-            const exp = bucketTxs.filter(t => t.type === 'gasto' && !t.isDebt).reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0);
+            const { inc, exp } = sumFor(periodTxs.filter(t => t.fullDate.startsWith(key)));
             data.push({ label: d.toLocaleDateString('es-ES', { month: 'short' }), inc, exp });
         }
         return { granularity: 'month' as const, data };
@@ -287,7 +324,7 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
         return `${accountFilter.size} seleccionadas`;
     }, [accountFilter, accounts]);
 
-    const chartTitle = chartBuckets.granularity === 'day' ? 'FLUJO DIARIO' : 'FLUJO MENSUAL';
+    const chartTitle = chartBuckets.granularity === 'day' ? 'FLUJO DIARIO' : chartBuckets.granularity === 'week' ? 'FLUJO SEMANAL' : 'FLUJO MENSUAL';
 
     // En escritorio hay espacio de sobra para separar barras y se puede
     // desplazar horizontalmente sin problema; en móvil eso obligaba a hacer
@@ -332,9 +369,13 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
     const getSubBreakdown = (key: string) => {
         const groups: Record<string, number> = {};
         periodTxs.filter(t => t.type === breakdownType && !t.isDebt).forEach(t => {
-            const primaryKey = breakdownGroupBy === 'category' ? (t.category || 'Otros') : (accounts.find(a => a.id === t.accountId)?.name || 'Sin cuenta');
+            const cat = t.category || 'Otros';
+            const accountName = accounts.find(a => a.id === t.accountId)?.name || 'Sin cuenta';
+            const primaryKey = breakdownGroupBy === 'category' ? cat : breakdownGroupBy === 'group' ? (groupMap[cat] || 'Sin grupo') : accountName;
             if (primaryKey !== key) return;
-            const secondaryKey = breakdownGroupBy === 'category' ? (accounts.find(a => a.id === t.accountId)?.name || 'Sin cuenta') : (t.category || 'Otros');
+            // Por categoría → desglosa por cuenta. Por cuenta → desglosa por categoría.
+            // Por grupo → desglosa por categoría (qué categorías componen ese grupo).
+            const secondaryKey = breakdownGroupBy === 'category' ? accountName : cat;
             groups[secondaryKey] = (groups[secondaryKey] || 0) + Math.abs(t.amount);
         });
         return Object.entries(groups).sort((a, b) => b[1] - a[1]).map(([name, amount]) => ({ name, amount }));
@@ -346,7 +387,7 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <PieChart size={18} color={breakdownAccent} />
                     <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 900, color: '#666' }}>
-                        DISTRIBUCIÓN {breakdownGroupBy === 'category' ? 'POR CATEGORÍA' : 'POR CUENTA'}
+                        DISTRIBUCIÓN {breakdownGroupBy === 'category' ? 'POR CATEGORÍA' : breakdownGroupBy === 'group' ? 'POR GRUPO' : 'POR CUENTA'}
                     </h3>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -390,9 +431,13 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                         </button>
                     ))}
                 </div>
-                {accounts.length > 0 && (
+                {(accounts.length > 0 || hasGroups) && (
                     <div style={{ display: 'flex', background: '#F1F5F9', borderRadius: '999px', padding: '3px', gap: '2px', flexShrink: 0 }}>
-                        {([['category', 'Categoría'], ['account', 'Cuenta']] as ['category' | 'account', string][]).map(([g, label]) => (
+                        {([
+                            ['category', 'Categoría'],
+                            ...(hasGroups ? [['group', 'Grupo']] as const : []),
+                            ...(accounts.length > 0 ? [['account', 'Cuenta']] as const : []),
+                        ] as ['category' | 'account' | 'group', string][]).map(([g, label]) => (
                             <button
                                 key={g}
                                 onClick={() => setBreakdownGroupBy(g)}
@@ -414,7 +459,7 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                     {breakdownData.map((cat, i) => {
                         const percentage = (cat.amount / (breakdownTotal || 1)) * 100;
                         const isExpanded = expandedBreakdownKey === cat.name;
-                        const canExpand = breakdownGroupBy === 'account' || accounts.length > 0;
+                        const canExpand = breakdownGroupBy !== 'category' || accounts.length > 0;
                         return (
                             <div key={cat.name} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                 <div
@@ -479,21 +524,17 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                 display: 'flex', flexDirection: 'column', gap: '1.5rem'
             }}
         >
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <button onClick={onClose} style={{ background: 'white', border: 'none', borderRadius: '12px', padding: '8px', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                    <ArrowLeft size={20} />
-                </button>
-                <div style={{ flex: 1 }}>
-                    <h2 style={{ margin:0, fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-carbon)' }}>Análisis de Gastos</h2>
-                    <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#AAA', textTransform: 'uppercase' }}>ESTADÍSTICAS Y MÁRGENES</span>
-                </div>
-            </div>
+            {/* Header + filtros: todo en la misma fila (título, periodo, cuentas) en vez
+                de un bloque de título arriba y una tarjeta de filtros aparte debajo —
+                eran dos filas para decir lo mismo. */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'white', padding: '10px 14px', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '7px', cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
+                        <ArrowLeft size={18} />
+                    </button>
+                    <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: 'var(--text-carbon)', whiteSpace: 'nowrap' }}>Análisis de Gastos</h2>
 
-            {/* Filtros: periodo + proyecto */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'white', padding: '10px 12px', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{ display: 'flex', background: '#F1F5F9', borderRadius: '999px', padding: '3px', gap: '2px', overflowX: 'auto', flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', background: '#F1F5F9', borderRadius: '999px', padding: '3px', gap: '2px', overflowX: 'auto' }}>
                         {([['day', 'Día'], ['week', 'Sem'], ['month', 'Mes'], ['year', 'Año'], ['all', 'Todo'], ['custom', 'Rango']] as [PeriodMode | 'custom', string][]).map(([m, label]) => {
                             const activo = mode === m;
                             return (
@@ -518,9 +559,9 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                     <button
                         onClick={() => setAccountModalOpen(true)}
                         title={`Cuentas: ${accountFilterLabel}`}
-                        style={{ display: 'flex', alignItems: 'center', gap: '5px', background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '7px 10px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap', flexShrink: 0 }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '5px', background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '7px 10px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap', flexShrink: 0, marginLeft: isDesktop ? 'auto' : undefined }}
                     >
-                        <Filter size={13} /> {isDesktop && <span>Cuentas: {accountFilterLabel}</span>}
+                        <Filter size={13} /> <span>Cuentas: {accountFilterLabel}</span>
                     </button>
                 </div>
 
@@ -541,149 +582,59 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                 )}
             </div>
 
-            {/* Balance neto + Ingresos/Gastos: en la misma fila, arriba para que no quede perdido al final del scroll */}
+            {/* Resumen del periodo: una sola barra compacta en vez de 4 tarjetas de
+                color — la versión anterior ocupaba dos filas enteras arriba de la
+                pantalla antes de mostrar ningún dato real. */}
             {(() => {
-                const statPadding = isDesktop ? '0.8rem 1.1rem' : '0.7rem 0.6rem';
-                const statAmountSize = isDesktop ? '1.1rem' : '0.85rem';
+                const incomeTrend = prevStats && prevStats.income > 0
+                    ? { up: periodStats.income >= prevStats.income, pct: Math.abs(Math.round(((periodStats.income - prevStats.income) / prevStats.income) * 100)) }
+                    : null;
+                const expenseTrend = prevStats && prevStats.expense > 0
+                    ? { down: periodStats.expense <= prevStats.expense, pct: Math.abs(Math.round(((periodStats.expense - prevStats.expense) / prevStats.expense) * 100)) }
+                    : null;
 
-                const balanceBlock = (
-                    <GlassCard style={{ padding: statPadding, background: periodStats.net >= 0 ? 'var(--domain-green)' : '#ef4444', color: 'white', border: 'none', flex: isDesktop ? 1 : undefined }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                {periodStats.net >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                                <span style={{ fontSize: '0.6rem', fontWeight: 800, opacity: 0.8 }}>BALANCE NETO</span>
-                            </div>
+                const Stat = ({ label, value, color, trend }: { label: string; value: string; color?: string; trend?: string }) => (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                        <span style={{ fontSize: '0.58rem', fontWeight: 800, color: '#94A3B8', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>{label}</span>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px' }}>
+                            <span style={{ fontSize: isDesktop ? '0.92rem' : '0.82rem', fontWeight: 900, color: color || 'var(--text-carbon)', whiteSpace: 'nowrap' }}>{value}</span>
+                            {trend && <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94A3B8' }}>{trend}</span>}
                         </div>
-                        <span style={{ fontSize: statAmountSize, fontWeight: 900 }}>S/.{periodStats.net.toLocaleString()}</span>
-                    </GlassCard>
+                    </div>
                 );
+                const Divider = () => <div style={{ width: '1px', alignSelf: 'stretch', background: '#EDEFF1', flexShrink: 0 }} />;
 
-                const saludBlock = (
-                    <GlassCard style={{ padding: '0.8rem 1.1rem', background: health.bg, border: 'none', flex: isDesktop ? 2 : undefined }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem', flexWrap: 'wrap', height: '100%' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}>
-                                <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: health.color, flexShrink: 0 }} />
-                                <span style={{ fontSize: '0.95rem', fontWeight: 900, color: health.color, whiteSpace: 'nowrap' }}>{health.label}</span>
-                            </div>
-                            {isDesktop && <div style={{ width: '1px', height: '22px', background: 'rgba(0,0,0,0.08)', flexShrink: 0 }} />}
-                            <div style={{ display: 'flex', gap: '1.3rem', flexWrap: 'wrap' }}>
-                                <div>
-                                    <span style={{ display: 'block', fontSize: '0.56rem', fontWeight: 800, color: '#94A3B8' }}>AHORRO</span>
-                                    <div style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{savingsRate.toFixed(0)}%</div>
-                                </div>
-                                {topExpenseCategory && (
-                                    <div>
-                                        <span style={{ display: 'block', fontSize: '0.56rem', fontWeight: 800, color: '#94A3B8' }}>MAYOR GASTO</span>
-                                        <div style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{topExpenseCategory.name}</div>
-                                    </div>
-                                )}
-                                {(owe > 0 || owed > 0) && (
-                                    <div>
-                                        <span style={{ display: 'block', fontSize: '0.56rem', fontWeight: 800, color: '#94A3B8' }}>DEUDA NETA</span>
-                                        <div style={{ fontSize: '0.95rem', fontWeight: 900, color: netDebt > 0 ? '#ef4444' : '#10b981' }}>
-                                            {netDebt >= 0 ? '-' : '+'}S/.{Math.abs(netDebt).toLocaleString()}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                return (
+                    <GlassCard variant="subtle" hoverable={false} style={{ padding: isDesktop ? '0.85rem 1.2rem' : '0.75rem 0.85rem', display: 'flex', alignItems: 'center', columnGap: isDesktop ? '1.3rem' : '0.8rem', rowGap: '0.6rem', flexWrap: 'wrap' }}>
+                        <Stat label="BALANCE" value={`S/.${periodStats.net.toLocaleString()}`} color={periodStats.net >= 0 ? '#10b981' : '#ef4444'} />
+                        <Divider />
+                        <Stat label="INGRESOS" value={`S/.${periodStats.income.toLocaleString()}`} color="#10b981" trend={incomeTrend ? `${incomeTrend.up ? '↑' : '↓'}${incomeTrend.pct}%` : undefined} />
+                        <Divider />
+                        <Stat label="GASTOS" value={`S/.${periodStats.expense.toLocaleString()}`} color="#ef4444" trend={expenseTrend ? `${expenseTrend.down ? '↓' : '↑'}${expenseTrend.pct}%` : undefined} />
+                        <Divider />
+                        <Stat label="AHORRO" value={`${savingsRate.toFixed(0)}%`} />
+                        {topExpenseCategory && <><Divider /><Stat label="MAYOR GASTO" value={topExpenseCategory.name} /></>}
+                        {(owe > 0 || owed > 0) && <><Divider /><Stat label="DEUDA NETA" value={`${netDebt >= 0 ? '-' : '+'}S/.${Math.abs(netDebt).toLocaleString()}`} color={netDebt > 0 ? '#ef4444' : '#10b981'} /></>}
+                        <span style={{ marginLeft: isDesktop ? 'auto' : undefined, display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '999px', background: health.bg, fontSize: '0.66rem', fontWeight: 900, color: health.color, whiteSpace: 'nowrap' }}>
+                            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: health.color, flexShrink: 0 }} />
+                            {health.label}
+                        </span>
                     </GlassCard>
-                );
-
-                const ingresosBlock = (
-                    <GlassCard style={{ padding: statPadding, background: '#dcfce7', border: 'none', flex: isDesktop ? 1 : undefined }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <TrendingUp size={14} color="#10b981" />
-                                <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#10b981', opacity: 0.8 }}>INGRESOS</span>
-                            </div>
-                            {isDesktop && prevStats && prevStats.income > 0 && (
-                                <span style={{ fontSize: '0.6rem', fontWeight: 900, color: periodStats.income >= prevStats.income ? '#10b981' : '#ef4444' }}>
-                                    {periodStats.income >= prevStats.income ? '↑' : '↓'} {Math.abs(((periodStats.income - prevStats.income) / prevStats.income) * 100).toFixed(0)}%
-                                </span>
-                            )}
-                        </div>
-                        <span style={{ fontSize: statAmountSize, fontWeight: 900, color: 'var(--text-carbon)' }}>S/.{periodStats.income.toLocaleString()}</span>
-                    </GlassCard>
-                );
-
-                const gastosBlock = (
-                    <GlassCard style={{ padding: statPadding, background: '#fee2e2', border: 'none', flex: isDesktop ? 1 : undefined }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <TrendingDown size={14} color="#ef4444" />
-                                <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#ef4444', opacity: 0.8 }}>GASTOS</span>
-                            </div>
-                            {isDesktop && prevStats && prevStats.expense > 0 && (
-                                <span style={{ fontSize: '0.6rem', fontWeight: 900, color: periodStats.expense <= prevStats.expense ? '#10b981' : '#ef4444' }}>
-                                    {periodStats.expense <= prevStats.expense ? '↓' : '↑'} {Math.abs(((periodStats.expense - prevStats.expense) / prevStats.expense) * 100).toFixed(0)}%
-                                </span>
-                            )}
-                        </div>
-                        <span style={{ fontSize: statAmountSize, fontWeight: 900, color: 'var(--text-carbon)' }}>S/.{periodStats.expense.toLocaleString()}</span>
-                    </GlassCard>
-                );
-
-                return isDesktop ? (
-                    <>
-                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'stretch' }}>
-                            {balanceBlock}
-                            {ingresosBlock}
-                            {gastosBlock}
-                        </div>
-                        {saludBlock}
-                    </>
-                ) : (
-                    <>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                            {balanceBlock}
-                            {ingresosBlock}
-                            {gastosBlock}
-                        </div>
-                        {saludBlock}
-                    </>
                 );
             })()}
 
-            {/* Mode Toggle — solo en móvil y solo si hay gráfico de flujo para alternar */}
-            {!isDesktop && monthlyChartBlock && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#E2E8F0', padding: '4px', borderRadius: '16px', gap: '4px' }}>
-                    <button
-                        onClick={() => setMobileTab('chart')}
-                        style={{
-                            padding: '10px', borderRadius: '12px', border: 'none',
-                            background: mobileTab === 'chart' ? 'white' : 'transparent',
-                            color: mobileTab === 'chart' ? 'var(--domain-purple)' : '#64748B',
-                            fontWeight: 900, fontSize: '0.75rem', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
-                        }}
-                    >
-                        <BarChart3 size={16} /> FLUJO
-                    </button>
-                    <button
-                        onClick={() => setMobileTab('categories')}
-                        style={{
-                            padding: '10px', borderRadius: '12px', border: 'none',
-                            background: mobileTab === 'categories' ? 'white' : 'transparent',
-                            color: mobileTab === 'categories' ? 'var(--domain-orange)' : '#64748B',
-                            fontWeight: 900, fontSize: '0.75rem', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
-                        }}
-                    >
-                        <PieChart size={16} /> CATEGORÍAS
-                    </button>
-                </div>
-            )}
-
-            {/* Main Content: en escritorio ambas vistas lado a lado; en móvil, la seleccionada en el toggle */}
+            {/* Main Content: en escritorio ambas vistas lado a lado; en móvil, una
+                debajo de otra en un solo scroll — antes había que tocar una
+                pestaña FLUJO/CATEGORÍAS para cambiar de una a otra, un paso de más. */}
             {isDesktop ? (
                 <div style={{ display: 'grid', gridTemplateColumns: monthlyChartBlock ? '1fr 1fr' : '1fr', gap: '1.5rem', flex: 1 }}>
                     {monthlyChartBlock}
                     {categoriesBlock}
                 </div>
             ) : (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    {(!monthlyChartBlock || mobileTab === 'categories') ? categoriesBlock : monthlyChartBlock}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {monthlyChartBlock}
+                    {categoriesBlock}
                 </div>
             )}
 

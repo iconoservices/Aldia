@@ -101,7 +101,7 @@ export const useFinanzasState = () => {
 
         // Auto-generate the transaction if it's being marked as paid
         if (expense.lastPaidMonth !== monthStr && remaining > 0) {
-            addTransaction(`Pago: ${expense.text}`, remaining, 'gasto', false, expense.projectId, resolvedAccountId, false, 'Servicios');
+            addTransaction(`Pago: ${expense.text}`, remaining, 'gasto', false, expense.projectId, resolvedAccountId, false, 'Gastos Fijos');
         }
     };
 
@@ -125,7 +125,7 @@ export const useFinanzasState = () => {
             partialPaid: isFullyPaid ? undefined : { month: monthStr, amount: totalPaid },
         } : e));
 
-        addTransaction(`Pago: ${expense.text}`, value, 'gasto', false, expense.projectId, resolvedAccountId, false, 'Servicios');
+        addTransaction(`Pago: ${expense.text}`, value, 'gasto', false, expense.projectId, resolvedAccountId, false, 'Gastos Fijos');
     };
 
     // Detecta gastos fijos que cruzaron a un período nuevo (mes/semana) sin quedar saldados
@@ -185,7 +185,7 @@ export const useFinanzasState = () => {
                 : (e.pendingPeriods ?? []).map(p => p.period === period ? { ...p, amountPaid: totalPaid } : p),
         } : e));
 
-        addTransaction(`Pago: ${expense.text} (${period})`, value, 'gasto', false, expense.projectId, resolvedAccountId, false, 'Servicios');
+        addTransaction(`Pago: ${expense.text} (${period})`, value, 'gasto', false, expense.projectId, resolvedAccountId, false, 'Gastos Fijos');
     };
 
     // Deshace todos los abonos hechos a un período pendiente específico (vuelve a quedar en 0).
