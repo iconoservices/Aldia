@@ -233,6 +233,33 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
 
     const breakdownTotal = breakdownType === 'gasto' ? periodStats.expense : periodStats.income;
 
+    // De qué cuenta sale cada porción de una fila (Categoría/Grupo) — para pintar
+    // la barra "partida" por color de cuenta en vez de un solo color, y así ver
+    // de un vistazo si ese gasto es de Personal, del negocio, o de ambos.
+    const SIN_CUENTA_COLOR = '#CBD5E1';
+    const breakdownAccountSegments = useMemo(() => {
+        if (breakdownGroupBy === 'account') return {} as Record<string, { color: string; amount: number }[]>;
+        const byKey: Record<string, Record<string, number>> = {};
+        periodTxs.filter(t => t.type === breakdownType && !t.isDebt).forEach(t => {
+            const cat = t.category || 'Otros';
+            const key = breakdownGroupBy === 'category' ? cat : (groupMap[cat] || 'Sin grupo');
+            const accKey = t.accountId != null ? String(t.accountId) : 'none';
+            byKey[key] = byKey[key] || {};
+            byKey[key][accKey] = (byKey[key][accKey] || 0) + Math.abs(t.amount);
+        });
+        const result: Record<string, { color: string; amount: number }[]> = {};
+        Object.entries(byKey).forEach(([key, byAcc]) => {
+            result[key] = Object.entries(byAcc)
+                .sort((a, b) => b[1] - a[1])
+                .map(([accKey, amount]) => ({
+                    color: accKey === 'none' ? SIN_CUENTA_COLOR : (accounts.find(a => String(a.id) === accKey)?.color || SIN_CUENTA_COLOR),
+                    amount,
+                }));
+        });
+        return result;
+    }, [periodTxs, breakdownType, breakdownGroupBy, accounts, groupMap]);
+    const showAccountSplit = breakdownGroupBy !== 'account' && accounts.length > 1;
+
     // Gráfico de flujo: por día solo para "Día"/"Sem" (rangos cortos, donde cada
     // barra igual tiene algo); por semana para rangos tipo mes (registra en lote,
     // así que 30 barras casi todas vacías no decían nada — 4-5 semanas sí);
@@ -450,6 +477,24 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                 )}
             </div>
 
+            {/* Leyenda de colores por cuenta — solo tiene sentido si las barras de
+                abajo están "partidas" por cuenta (categoryView bars, sin agrupar
+                ya por cuenta). Sin esto, dos colores en una barra no dicen nada. */}
+            {showAccountSplit && categoryView === 'bars' && breakdownData.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '-4px' }}>
+                    {accounts.map(a => (
+                        <span key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.66rem', fontWeight: 700, color: '#64748B' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: a.color, flexShrink: 0 }} />
+                            {a.name}
+                        </span>
+                    ))}
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.66rem', fontWeight: 700, color: '#64748B' }}>
+                        <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: SIN_CUENTA_COLOR, flexShrink: 0 }} />
+                        Sin cuenta
+                    </span>
+                </div>
+            )}
+
             {breakdownData.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
                     <span style={{ fontSize: '0.8rem', color: '#BBB', fontWeight: 600 }}>No hay {breakdownType === 'gasto' ? 'gastos' : 'ingresos'} registrados en este periodo.</span>
@@ -469,12 +514,23 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                                     <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-carbon)' }}>{cat.name}</span>
                                     <span style={{ fontSize: '0.85rem', fontWeight: 900, color: '#666' }}>S/.{cat.amount.toLocaleString()} ({percentage.toFixed(1)}%)</span>
                                 </div>
-                                <div style={{ height: '8px', background: '#F1F5F9', borderRadius: '4px', overflow: 'hidden' }}>
-                                    <motion.div
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${percentage}%` }}
-                                        style={{ height: '100%', background: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }}
-                                    />
+                                <div style={{ height: '8px', background: '#F1F5F9', borderRadius: '4px', overflow: 'hidden', display: 'flex' }}>
+                                    {showAccountSplit ? (
+                                        (breakdownAccountSegments[cat.name] || []).map((seg, si) => (
+                                            <motion.div
+                                                key={si}
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${(seg.amount / (breakdownTotal || 1)) * 100}%` }}
+                                                style={{ height: '100%', background: seg.color, flexShrink: 0 }}
+                                            />
+                                        ))
+                                    ) : (
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${percentage}%` }}
+                                            style={{ height: '100%', background: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }}
+                                        />
+                                    )}
                                 </div>
                                 {isExpanded && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', padding: '8px 0 2px 12px', borderLeft: '2px solid #F1F5F9', marginLeft: '4px' }}>
