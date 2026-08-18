@@ -612,6 +612,17 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                         })}
                     </div>
 
+                    {/* Navegador de mes/semana/año: antes vivía solo en su propia fila
+                        centrada, aislado entre el header y el resumen — se ve raro
+                        flotando solo, así que ahora entra en la misma fila. */}
+                    {mode !== 'custom' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                            <button onClick={() => setRefDate(shiftPeriod(mode, refDate, -1))} disabled={!canNavigate} style={{ background: 'transparent', border: 'none', cursor: canNavigate ? 'pointer' : 'default', opacity: canNavigate ? 1 : 0.25, color: '#64748B', display: 'flex' }}><ChevronLeft size={18} /></button>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--text-carbon)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>{periodLabelStr}</span>
+                            <button onClick={() => setRefDate(shiftPeriod(mode, refDate, 1))} disabled={!canNavigate} style={{ background: 'transparent', border: 'none', cursor: canNavigate ? 'pointer' : 'default', opacity: canNavigate ? 1 : 0.25, color: '#64748B', display: 'flex' }}><ChevronRight size={18} /></button>
+                        </div>
+                    )}
+
                     <button
                         onClick={() => setAccountModalOpen(true)}
                         title={`Cuentas: ${accountFilterLabel}`}
@@ -621,19 +632,11 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                     </button>
                 </div>
 
-                {mode === 'custom' ? (
+                {mode === 'custom' && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '0.78rem', fontFamily: 'inherit' }} />
                         <span style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 700 }}>→</span>
                         <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '0.78rem', fontFamily: 'inherit' }} />
-                    </div>
-                ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
-                        <button onClick={() => setRefDate(shiftPeriod(mode, refDate, -1))} disabled={!canNavigate} style={{ background: 'transparent', border: 'none', cursor: canNavigate ? 'pointer' : 'default', opacity: canNavigate ? 1 : 0.25, color: '#64748B' }}><ChevronLeft size={22} /></button>
-                        <div style={{ textAlign: 'center' }}>
-                            <span style={{ display: 'block', fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-carbon)', textTransform: 'capitalize' }}>{periodLabelStr}</span>
-                        </div>
-                        <button onClick={() => setRefDate(shiftPeriod(mode, refDate, 1))} disabled={!canNavigate} style={{ background: 'transparent', border: 'none', cursor: canNavigate ? 'pointer' : 'default', opacity: canNavigate ? 1 : 0.25, color: '#64748B' }}><ChevronRight size={22} /></button>
                     </div>
                 )}
             </div>
