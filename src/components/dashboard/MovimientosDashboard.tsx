@@ -237,8 +237,14 @@ const MovimientoRow = ({ tx, accountById, accounts, removeTransaction, updateTra
         </div>
     );
 
+    // Franja de color a la izquierda con el color de la cuenta — para distinguir
+    // de un vistazo, sin texto extra, de qué cuenta es cada movimiento cuando la
+    // lista mezcla varias cuentas (el tag con el nombre ya existía pero se pierde
+    // entre el resto del texto chico).
+    const accountColor = tx.accountId ? accountById.get(tx.accountId)?.color : undefined;
+
     return (
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 12px", borderRadius: "8px", background: C.surface, border: `1px solid ${C.surfaceContainerLow}` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 12px", borderRadius: "8px", background: C.surface, border: `1px solid ${C.surfaceContainerLow}`, borderLeft: `3px solid ${accountColor || C.outlineVariant}` }}>
             <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: tx.type === "ingreso" ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)", color: tx.type === "ingreso" ? C.verde : C.rojo, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 {tx.type === "ingreso" ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
             </div>
@@ -249,7 +255,7 @@ const MovimientoRow = ({ tx, accountById, accounts, removeTransaction, updateTra
                     {tx.category && <span style={{ background: C.surfaceContainerLow, padding: "1px 6px", borderRadius: "6px", color: C.onSurfaceVariant, fontWeight: 700 }}>{tx.category}</span>}
                     {tx.accountId && accountById.get(tx.accountId) ? (
                         <span style={{ display: "flex", alignItems: "center", gap: "4px", background: C.surfaceContainerLow, padding: "1px 6px", borderRadius: "6px", color: C.onSurfaceVariant, fontWeight: 700 }}>
-                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: accountById.get(tx.accountId)!.color, display: "inline-block" }} />
+                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: accountColor, display: "inline-block" }} />
                             {accountById.get(tx.accountId)!.name}
                         </span>
                     ) : (
