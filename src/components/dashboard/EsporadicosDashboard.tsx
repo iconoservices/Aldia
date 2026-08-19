@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, X, Trash2, MoreVertical, Play, Pause, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart, Pin, Image as ImageIcon, Check, TimerReset, Settings, Coffee, Bell, BellOff, ListChecks } from "lucide-react";
+import { Plus, X, Trash2, MoreVertical, Play, Pause, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart, Pin, Image as ImageIcon, Check, TimerReset, Settings, Coffee, Bell, BellOff, ListChecks, AlertTriangle, Pencil } from "lucide-react";
 import {
     DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
@@ -25,12 +25,22 @@ const ESTADO_COLOR: Record<NotionEstado, string> = {
 
 // Escribe el Estado de vuelta en Notion; el llamador ya actualiza el estado local
 // de forma optimista, esto solo intenta reflejarlo también allá (best-effort).
-const pushNotionEstado = (notionId: string, estado: NotionEstado) => {
-    fetch('/api/update-notion-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notionId, estado })
-    }).catch(err => console.error('No se pudo actualizar Estado en Notion:', err));
+// Devuelve si de verdad se guardó -- si no, el cambio local queda "colgado" y el
+// próximo sync (que lee el Notion real, sin tocar) lo va a pisar de vuelta, así
+// que el llamador necesita saberlo para avisar en vez de dejarlo como misterio.
+const pushNotionEstado = async (notionId: string, estado: NotionEstado): Promise<boolean> => {
+    try {
+        const res = await fetch('/api/update-notion-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notionId, estado })
+        });
+        if (!res.ok) throw new Error(`respuesta no ok: ${res.status}`);
+        return true;
+    } catch (err) {
+        console.error('No se pudo actualizar Estado en Notion:', err);
+        return false;
+    }
 };
 
 /* ══════════════════════════════════════════════════════════════════
@@ -282,6 +292,10 @@ const computeStreak = (projects: SporadicProject[]) => {
 
 export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, updateSporadicProject, removeSporadicProject, startSporadicTimer, pauseSporadicTimer, stopSporadicTimer, startPhotoTimer, pausePhotoTimer, finishPhotoTimer, cancelPhotoTimer, resetSporadicWorkedTime, resetSporadicPhotoLog, calendarEvents, updateCalendarEvent, phaseTemplates, addFaseTemplate, removeFaseTemplate, addFaseTemplateStep, removeFaseTemplateStep, applyFaseTemplate, addProjectFase, removeProjectFase, toggleProjectFase, startFaseTimer, pauseFaseTimer, finishFaseTimer }: EsporadicosProps) => {
     const movil = useIsMobile();
+    // Filtro rápido activado desde las pastillas de arriba: "atrasados" y "en edición"
+    // cruzan las dos columnas (en curso / listos para entregar), así que se filtra
+    // el render de ambas en vez de duplicar la lista en otro lado.
+    const [statFilter, setStatFilter] = useState<'atrasados' | 'enEdicion' | null>(null);
     const [addingOpen, setAddingOpen] = useState(false);
     const [title, setTitle] = useState("");
     const [dueDate, setDueDate] = useState(todayStr());
@@ -388,6 +402,30 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
         [pendientes, listosParaEntregar, applyOrder]
     );
     const completados = useMemo(() => sporadicProjects.filter(p => p.status === 'completado'), [sporadicProjects]);
+    const enProgresoAtrasados = useMemo(() => enProgreso.filter(p => daysBetween(todayStr(), p.dueDate) < 0).length, [enProgreso]);
+    const listosAtrasados = useMemo(() => listosParaEntregar.filter(p => daysBetween(todayStr(), p.dueDate) < 0).length, [listosParaEntregar]);
+    const atrasados = useMemo(
+        () => sporadicProjects.filter(p => p.status !== 'completado' && daysBetween(todayStr(), p.dueDate) < 0).length,
+        [sporadicProjects]
+    );
+    const enEdicion = useMemo(
+        () => sporadicProjects.filter(p => {
+            const ev = p.notionId ? calendarEvents.find(e => e.notionId === p.notionId) : undefined;
+            return ev?.notionEstado === 'En Edición';
+        }).length,
+        [sporadicProjects, calendarEvents]
+    );
+
+    const matchesStatFilter = useCallback((p: SporadicProject) => {
+        if (statFilter === 'atrasados') return daysBetween(todayStr(), p.dueDate) < 0;
+        if (statFilter === 'enEdicion') {
+            const ev = p.notionId ? calendarEvents.find(e => e.notionId === p.notionId) : undefined;
+            return ev?.notionEstado === 'En Edición';
+        }
+        return true;
+    }, [statFilter, calendarEvents]);
+    const visibleEnProgreso = useMemo(() => enProgreso.filter(matchesStatFilter), [enProgreso, matchesStatFilter]);
+    const visibleListosParaEntregar = useMemo(() => listosParaEntregar.filter(matchesStatFilter), [listosParaEntregar, matchesStatFilter]);
 
     // Cuánto tiempo real se va en cada etapa (Agendado/Realizado/En Edición/...), sumando
     // los logs de todos los proyectos. Sirve para detectar el cuello de botella real
@@ -508,6 +546,41 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                         )}
                     </div>
                 </div>
+            </div>
+
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px" }}>
+                {([
+                    { label: "por entregar", value: pendientes.length, icon: Timer, color: C.secondary, bg: "rgba(99,102,241,0.12)" },
+                    { label: "atrasados", value: atrasados, icon: AlertTriangle, color: C.rojo, bg: "rgba(239,68,68,0.12)", filterKey: 'atrasados' as const },
+                    { label: "en edición", value: enEdicion, icon: Pencil, color: ESTADO_COLOR['En Edición'], bg: "rgba(230,168,23,0.12)", filterKey: 'enEdicion' as const },
+                    { label: "listos para entregar", value: listosParaEntregar.length, icon: CheckCircle, color: C.ambar, bg: "rgba(230,168,23,0.12)" },
+                    { label: "entregados", value: completados.length, icon: CheckCircle2, color: C.verde, bg: "rgba(16,185,129,0.12)" },
+                ]).map(stat => {
+                    const clickable = !!stat.filterKey;
+                    const active = clickable && statFilter === stat.filterKey;
+                    return (
+                        <button
+                            key={stat.label}
+                            onClick={clickable ? () => setStatFilter(f => f === stat.filterKey ? null : stat.filterKey!) : undefined}
+                            title={clickable ? (active ? "Quitar filtro" : `Mostrar solo ${stat.label}`) : undefined}
+                            style={{
+                                display: "flex", alignItems: "center", gap: "6px", background: stat.bg, borderRadius: "999px", padding: "5px 12px",
+                                border: active ? `2px solid ${stat.color}` : "2px solid transparent",
+                                cursor: clickable ? "pointer" : "default",
+                                font: "inherit",
+                            }}
+                        >
+                            <stat.icon size={13} color={stat.color} />
+                            <span style={{ fontWeight: 800, fontSize: "0.8rem", color: C.onSurface }}>{stat.value}</span>
+                            <span style={{ fontSize: "0.68rem", color: C.onSurfaceVariant }}>{stat.label}</span>
+                        </button>
+                    );
+                })}
+                {statFilter && (
+                    <button onClick={() => setStatFilter(null)} style={{ display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", cursor: "pointer", color: C.outline, fontSize: "0.68rem", fontWeight: 700, padding: "5px 6px" }}>
+                        <X size={12} /> Quitar filtro
+                    </button>
+                )}
             </div>
 
             <div style={{ display: "flex", flexDirection: movil ? "column" : "row", flexWrap: "wrap", gap: movil ? "0.8rem" : "0.75rem", alignItems: "flex-start" }}>
@@ -652,29 +725,45 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                 </div>
             )}
 
-            <div style={{ display: "grid", gridTemplateColumns: movil || listosParaEntregar.length === 0 ? "1fr" : "1fr 1fr", gap: "1.25rem", alignItems: "start" }}>
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(enProgreso.map(p => p.id))}>
+            <div style={{ display: "grid", gridTemplateColumns: movil ? "1fr" : "1fr 1fr", gap: "1.25rem", alignItems: "start" }}>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(visibleEnProgreso.map(p => p.id))}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-                        {listosParaEntregar.length > 0 && <span style={etiqueta}>En curso ({enProgreso.length})</span>}
-                        <SortableContext items={enProgreso.map(p => p.id)} strategy={verticalListSortingStrategy}>
-                            {enProgreso.map(p => (
-                                <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} pomodoroPrefs={pomodoroPrefs} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} phaseTemplates={phaseTemplates} applyFaseTemplate={applyFaseTemplate} addProjectFase={addProjectFase} removeProjectFase={removeProjectFase} toggleProjectFase={toggleProjectFase} startFaseTimer={startFaseTimer} pauseFaseTimer={pauseFaseTimer} finishFaseTimer={finishFaseTimer} />
-                            ))}
-                        </SortableContext>
-                    </div>
-                </DndContext>
-                {listosParaEntregar.length > 0 && (
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(listosParaEntregar.map(p => p.id))}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-                            <span style={etiqueta}>Listos para entregar ({listosParaEntregar.length})</span>
-                            <SortableContext items={listosParaEntregar.map(p => p.id)} strategy={verticalListSortingStrategy}>
-                                {listosParaEntregar.map(p => (
+                        <span style={etiqueta}>
+                            En curso ({statFilter ? `${visibleEnProgreso.length} de ` : ""}{enProgreso.length})
+                            {enProgresoAtrasados > 0 && <span style={{ color: C.rojo }}> · {enProgresoAtrasados} atrasado{enProgresoAtrasados === 1 ? '' : 's'}</span>}
+                        </span>
+                        {visibleEnProgreso.length === 0 ? (
+                            <div style={{ ...bento, padding: "1.5rem 1rem", textAlign: "center", color: C.outline, fontSize: "0.78rem" }}>
+                                Ninguno con este filtro.
+                            </div>
+                        ) : (
+                            <SortableContext items={visibleEnProgreso.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                                {visibleEnProgreso.map(p => (
                                     <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} pomodoroPrefs={pomodoroPrefs} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} phaseTemplates={phaseTemplates} applyFaseTemplate={applyFaseTemplate} addProjectFase={addProjectFase} removeProjectFase={removeProjectFase} toggleProjectFase={toggleProjectFase} startFaseTimer={startFaseTimer} pauseFaseTimer={pauseFaseTimer} finishFaseTimer={finishFaseTimer} />
                                 ))}
                             </SortableContext>
-                        </div>
-                    </DndContext>
-                )}
+                        )}
+                    </div>
+                </DndContext>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(visibleListosParaEntregar.map(p => p.id))}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+                        <span style={etiqueta}>
+                            Listos para entregar ({statFilter ? `${visibleListosParaEntregar.length} de ` : ""}{listosParaEntregar.length})
+                            {listosAtrasados > 0 && <span style={{ color: C.rojo }}> · {listosAtrasados} atrasado{listosAtrasados === 1 ? '' : 's'}</span>}
+                        </span>
+                        {visibleListosParaEntregar.length === 0 ? (
+                            <div style={{ ...bento, padding: "1.5rem 1rem", textAlign: "center", color: C.outline, fontSize: "0.78rem" }}>
+                                {listosParaEntregar.length === 0 ? 'Nada listo todavía — aparecerán acá cuando marques un proyecto como "Terminado".' : "Ninguno con este filtro."}
+                            </div>
+                        ) : (
+                            <SortableContext items={visibleListosParaEntregar.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                                {visibleListosParaEntregar.map(p => (
+                                    <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} pomodoroPrefs={pomodoroPrefs} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} phaseTemplates={phaseTemplates} applyFaseTemplate={applyFaseTemplate} addProjectFase={addProjectFase} removeProjectFase={removeProjectFase} toggleProjectFase={toggleProjectFase} startFaseTimer={startFaseTimer} pauseFaseTimer={pauseFaseTimer} finishFaseTimer={finishFaseTimer} />
+                                ))}
+                            </SortableContext>
+                        )}
+                    </div>
+                </DndContext>
             </div>
 
             {completados.length > 0 && (
@@ -733,6 +822,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     const [pomodoroMuted, setPomodoroMuted] = useState(false);
     const [breakEndAt, setBreakEndAt] = useState<number | null>(null);
     const [breakDoneAlert, setBreakDoneAlert] = useState(false);
+    const [notionSyncError, setNotionSyncError] = useState(false);
     const lastPomodoroThresholdRef = useRef(0);
     const tickCountRef = useRef(0);
 
@@ -827,10 +917,13 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     const breakMsLeft = breakEndAt ? Math.max(breakEndAt - breakNow, 0) : 0;
 
     // Al cambiar el paso de trabajo local, si la tarjeta viene de Notion se
-    // refleja también allá (best-effort) y de forma optimista acá mismo.
+    // refleja también allá (best-effort) y de forma optimista acá mismo. Si el
+    // push falla, se avisa: el cambio local queda sin sincronizar y el próximo
+    // refresco desde Notion (real) lo va a pisar de vuelta, así que sin este
+    // aviso se ve como si la tarjeta "se reiniciara" sola sin explicación.
     const setNotionEstado = (estado: NotionEstado) => {
         if (!p.notionId) return;
-        pushNotionEstado(p.notionId, estado);
+        pushNotionEstado(p.notionId, estado).then(ok => setNotionSyncError(!ok));
         if (linkedEvent) updateCalendarEvent(linkedEvent.id, { notionEstado: estado });
         updateSporadicProject(p.id, { status: estado === 'Entregado' ? 'completado' : 'en-progreso' });
     };
@@ -955,6 +1048,12 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                             </button>
                         );
                     })}
+                </div>
+            )}
+
+            {notionSyncError && (
+                <div style={{ fontSize: "0.68rem", color: C.rojo, fontWeight: 700 }}>
+                    No se pudo guardar en Notion — este cambio no se sincronizó y puede revertirse solo. Revisa tu conexión o vuelve a intentarlo.
                 </div>
             )}
 
@@ -1110,38 +1209,46 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                 </div>
             )}
 
-            <div>
-                <div style={{ fontSize: "0.6rem", fontWeight: 700, color: C.outline, marginBottom: "2px" }}>Días hasta la entrega</div>
-                <div style={{ height: "8px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
-                    <div style={{
-                        height: "100%", borderRadius: "999px", width: `${pctElapsed}%`,
-                        background: overdueUnfinished ? "#111" : color,
-                        animation: overdueUnfinished ? "esporadico-blink 1.1s ease-in-out infinite" : undefined,
-                        transition: "width 0.3s",
-                    }} />
-                </div>
-            </div>
-
-            {p.complexityHours > 0 && (
-                <div>
-                    <div style={{ fontSize: "0.6rem", fontWeight: 700, color: C.outline, marginBottom: "2px" }}>Horas trabajadas vs. estimado</div>
-                    <div style={{ height: "8px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
+            <div style={{ display: "flex", gap: "12px" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: "6px", fontSize: "0.6rem", fontWeight: 700, color: C.outline, marginBottom: "2px" }}>
+                        <span>Días hasta la entrega</span>
+                        <span style={{ flexShrink: 0, color: overdueUnfinished ? "#111" : color }}>
+                            {daysUntilDue < 0 ? `${Math.abs(daysUntilDue)}d atrasado` : daysUntilDue === 0 ? "hoy" : `${daysUntilDue}d`}
+                        </span>
+                    </div>
+                    <div style={{ height: "5px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
                         <div style={{
-                            height: "100%", borderRadius: "999px",
-                            width: `${Math.min((effectiveWorkedHours / p.complexityHours) * 100, 100)}%`,
-                            background: effectiveWorkedHours >= p.complexityHours ? C.verde : C.secondary,
+                            height: "100%", borderRadius: "999px", width: `${pctElapsed}%`,
+                            background: overdueUnfinished ? "#111" : color,
+                            animation: overdueUnfinished ? "esporadico-blink 1.1s ease-in-out infinite" : undefined,
                             transition: "width 0.3s",
                         }} />
                     </div>
                 </div>
-            )}
 
-            {p.complexityHours === 0 && !inSession && effectiveWorkedHours > 0 && (
-                <div>
-                    <div style={{ fontSize: "0.6rem", fontWeight: 700, color: C.outline, marginBottom: "2px" }}>Horas trabajadas (acumulado)</div>
-                    <div style={{ fontSize: "0.78rem", fontWeight: 800, color: C.onSurface }}>{formatElapsed(effectiveWorkedHours * 60 * 60 * 1000)}</div>
-                </div>
-            )}
+                {p.complexityHours > 0 ? (
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: "6px", fontSize: "0.6rem", fontWeight: 700, color: C.outline, marginBottom: "2px" }}>
+                            <span>Horas vs. estimado</span>
+                            <span style={{ flexShrink: 0 }}>{Math.round(Math.min((effectiveWorkedHours / p.complexityHours) * 100, 100))}%</span>
+                        </div>
+                        <div style={{ height: "5px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
+                            <div style={{
+                                height: "100%", borderRadius: "999px",
+                                width: `${Math.min((effectiveWorkedHours / p.complexityHours) * 100, 100)}%`,
+                                background: effectiveWorkedHours >= p.complexityHours ? C.verde : C.secondary,
+                                transition: "width 0.3s",
+                            }} />
+                        </div>
+                    </div>
+                ) : !inSession && effectiveWorkedHours > 0 ? (
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: "0.6rem", fontWeight: 700, color: C.outline, marginBottom: "2px" }}>Horas trabajadas</div>
+                        <div style={{ fontSize: "0.78rem", fontWeight: 800, color: C.onSurface }}>{formatElapsed(effectiveWorkedHours * 60 * 60 * 1000)}</div>
+                    </div>
+                ) : null}
+            </div>
 
             {stageBreakdown.length > 0 && (
                 <details style={{ fontSize: "0.72rem" }}>
