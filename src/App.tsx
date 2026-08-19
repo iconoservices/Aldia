@@ -321,15 +321,12 @@ function App() {
                 preferences={state.preferences}
                 projects={state.projects}
                 accounts={state.accounts}
-                shoppingList={state.shoppingList}
-                addShoppingItem={state.addShoppingItem}
-                removeShoppingItem={state.removeShoppingItem}
-                markShoppingItemPurchased={state.markShoppingItemPurchased}
-                unmarkShoppingItemPurchased={state.unmarkShoppingItemPurchased}
                 updateFixedExpense={state.updateFixedExpense}
                 markFixedExpensePaid={state.markFixedExpensePaid}
                 unmarkFixedExpensePaid={state.unmarkFixedExpensePaid}
                 addTransaction={state.addTransaction}
+                removeTransaction={state.removeTransaction}
+                updatePreference={state.updatePreference}
               />
             ) : activeTab === 'Ruta' ? (
               <RitaDashboard

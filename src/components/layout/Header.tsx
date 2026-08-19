@@ -46,7 +46,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Listas',    tab: 'Listas',    icon: 'fact_check'    },
         { label: 'Compras',   tab: 'Compras',   icon: 'shopping_cart' },
         { label: 'Comidas',   tab: 'Comidas',   icon: 'restaurant'    },
-        { label: 'Plan',      tab: 'Plan',      icon: 'savings'       },
+        { label: 'Proyección', tab: 'Plan',      icon: 'savings'       },
         { label: 'Metas',     tab: 'Metas',     icon: 'flag'          },
         { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
         { label: 'Notion', tab: 'Notion', icon: 'sync_alt' },
@@ -132,7 +132,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     const getViewTitle = (tab: string) => {
         switch (tab) {
             case 'Checklist': return 'Checklist Diario';
-            case 'Plan': return 'Plan del Mes';
+            case 'Plan': return 'Proyección del Mes';
             case 'Compras': return 'Lista de Compras & Deseos';
             case 'Comidas': return 'Calendario de Comidas';
             case 'Bloques': return 'Registro Semanal';
