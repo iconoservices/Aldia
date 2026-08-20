@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, X, Trash2, MoreVertical, Play, Pause, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart, Pin, Image as ImageIcon, Check, TimerReset, Settings, Coffee, Bell, BellOff, ListChecks, AlertTriangle, Pencil, Send } from "lucide-react";
+import { Plus, X, Trash2, MoreVertical, Play, Pause, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart, Pin, Image as ImageIcon, Check, TimerReset, Settings, Coffee, Bell, BellOff, ListChecks, AlertTriangle, Pencil, Send, Usb } from "lucide-react";
 import {
     DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
@@ -1034,6 +1034,24 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                                 <Send size={10} /> {p.previewSent ? "Adelanto enviado" : "Adelanto pendiente"}
                             </button>
                         )}
+                        {/* Igual que el pill de Adelanto, pero para el USB físico de la entrega
+                            final — independiente de "Marcar completado": el proyecto puede estar
+                            entregado (digital) y el USB seguir pendiente de llevar/mandar. */}
+                        {p.requiresUsb && (
+                            <button
+                                onClick={() => updateSporadicProject(p.id, { usbDelivered: !p.usbDelivered })}
+                                title={p.usbDelivered ? "USB ya entregado — tocar para desmarcar" : "USB pendiente de entregar — tocar para marcar entregado"}
+                                style={{
+                                    display: "flex", alignItems: "center", gap: "4px",
+                                    background: p.usbDelivered ? "rgba(16,185,129,0.12)" : "rgba(230,168,23,0.12)",
+                                    color: p.usbDelivered ? C.verde : C.ambar,
+                                    border: "none", borderRadius: "999px", padding: "2px 8px",
+                                    fontSize: "0.62rem", fontWeight: 800, cursor: "pointer",
+                                }}
+                            >
+                                <Usb size={10} /> {p.usbDelivered ? "USB entregado" : "USB pendiente"}
+                            </button>
+                        )}
                     </div>
                 </div>
                 <button
@@ -1042,6 +1060,13 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                     style={{ background: "none", border: "none", cursor: "pointer", color: p.requiresPreview ? C.secondary : C.outlineVariant, padding: "3px", display: "flex" }}
                 >
                     <Send size={15} fill={p.requiresPreview ? C.secondary : "none"} />
+                </button>
+                <button
+                    onClick={() => updateSporadicProject(p.id, { requiresUsb: !p.requiresUsb, usbDelivered: p.requiresUsb ? undefined : p.usbDelivered })}
+                    title={p.requiresUsb ? "La entrega lleva USB físico — tocar para quitarlo" : "Marcar que la entrega final incluye un USB físico"}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: p.requiresUsb ? C.secondary : C.outlineVariant, padding: "3px", display: "flex" }}
+                >
+                    <Usb size={15} />
                 </button>
                 <button
                     onClick={() => updateSporadicProject(p.id, { pinned: !p.pinned })}
