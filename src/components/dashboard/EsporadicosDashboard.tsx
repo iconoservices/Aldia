@@ -10,7 +10,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { CalendarEvent, NotionEstado, SporadicProject, FaseTemplate, ProjectFase } from "../../hooks/useAlDiaState";
 import { NOTION_ESTADOS } from "../../hooks/useAlDiaState";
-import { C, bento, campo, botonPrimario, etiqueta, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina } from "../../theme";
+import { C, bento, campo, botonPrimario, etiqueta, useIsMobile, paddingPagina } from "../../theme";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 
 const ORDER_STORAGE_KEY = "aldia_esporadicos_custom_order";
@@ -470,34 +470,70 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: movil ? "1rem" : "1.5rem", ...paddingPagina(movil), color: "var(--text-carbon)" }}>
-            <div style={cabecera(movil)}>
-                <div>
-                    <h2 style={tituloPagina}>Entregas</h2>
-                    <p style={subtituloPagina}>Entregas puntuales — ordenadas solas por qué tan urgentes están.</p>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    {customOrder.length > 0 && (
-                        <button onClick={() => saveOrder([])} title="Volver al orden automático por prioridad" style={{ display: "flex", alignItems: "center", gap: "5px", background: "none", border: `1px solid ${C.outlineVariant}`, borderRadius: "999px", padding: "7px 12px", cursor: "pointer", color: C.onSurfaceVariant, fontSize: "0.72rem", fontWeight: 700 }}>
-                            <ArrowUpDown size={13} /> Orden manual
+            {/* Misma cápsula blanca de una sola fila que Finanzas/Analizar: título +
+                pastillas de estado + reloj/racha/ajustes, todo en el mismo nivel en vez
+                de una fila de título grande y otra de pastillas aparte debajo. */}
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", background: "white", padding: "10px 14px", borderRadius: "18px", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
+                <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 900, color: C.onSurface, whiteSpace: "nowrap" }}>Entregas</h2>
+
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px" }}>
+                    {([
+                        { label: "por entregar", value: pendientes.length, icon: Timer, color: C.secondary, bg: "rgba(99,102,241,0.12)" },
+                        { label: "atrasados", value: atrasados, icon: AlertTriangle, color: C.rojo, bg: "rgba(239,68,68,0.12)", filterKey: 'atrasados' as const },
+                        { label: "en edición", value: enEdicion, icon: Pencil, color: ESTADO_COLOR['En Edición'], bg: "rgba(230,168,23,0.12)", filterKey: 'enEdicion' as const },
+                        { label: "listos para entregar", value: listosParaEntregar.length, icon: CheckCircle, color: C.ambar, bg: "rgba(230,168,23,0.12)" },
+                        { label: "entregados", value: completados.length, icon: CheckCircle2, color: C.verde, bg: "rgba(16,185,129,0.12)" },
+                    ]).map(stat => {
+                        const clickable = !!stat.filterKey;
+                        const active = clickable && statFilter === stat.filterKey;
+                        return (
+                            <button
+                                key={stat.label}
+                                onClick={clickable ? () => setStatFilter(f => f === stat.filterKey ? null : stat.filterKey!) : undefined}
+                                title={clickable ? (active ? "Quitar filtro" : `Mostrar solo ${stat.label}`) : undefined}
+                                style={{
+                                    display: "flex", alignItems: "center", gap: "5px", background: stat.bg, borderRadius: "999px", padding: "4px 10px",
+                                    border: active ? `2px solid ${stat.color}` : "2px solid transparent",
+                                    cursor: clickable ? "pointer" : "default",
+                                    font: "inherit",
+                                }}
+                            >
+                                <stat.icon size={12} color={stat.color} />
+                                <span style={{ fontWeight: 800, fontSize: "0.76rem", color: C.onSurface }}>{stat.value}</span>
+                                <span style={{ fontSize: "0.64rem", color: C.onSurfaceVariant }}>{stat.label}</span>
+                            </button>
+                        );
+                    })}
+                    {statFilter && (
+                        <button onClick={() => setStatFilter(null)} style={{ display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", cursor: "pointer", color: C.outline, fontSize: "0.68rem", fontWeight: 700, padding: "5px 6px" }}>
+                            <X size={12} /> Quitar filtro
                         </button>
                     )}
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(99,102,241,0.12)", borderRadius: "999px", padding: "8px 16px" }}>
-                        <Timer size={18} color={C.secondary} />
-                        <span style={{ fontWeight: 800, fontSize: "0.9rem", color: C.onSurface }}>{formatElapsed(totalWorkedAllProjects * 60 * 60 * 1000)}</span>
-                        <span style={{ fontSize: "0.75rem", color: C.onSurfaceVariant }}>en total</span>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto", flexWrap: "wrap" }}>
+                    {customOrder.length > 0 && (
+                        <button onClick={() => saveOrder([])} title="Volver al orden automático por prioridad" style={{ display: "flex", alignItems: "center", gap: "5px", background: "none", border: `1px solid ${C.outlineVariant}`, borderRadius: "999px", padding: "6px 10px", cursor: "pointer", color: C.onSurfaceVariant, fontSize: "0.7rem", fontWeight: 700 }}>
+                            <ArrowUpDown size={12} /> Orden manual
+                        </button>
+                    )}
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "rgba(99,102,241,0.12)", borderRadius: "999px", padding: "6px 12px" }}>
+                        <Timer size={15} color={C.secondary} />
+                        <span style={{ fontWeight: 800, fontSize: "0.8rem", color: C.onSurface }}>{formatElapsed(totalWorkedAllProjects * 60 * 60 * 1000)}</span>
+                        <span style={{ fontSize: "0.68rem", color: C.onSurfaceVariant }}>en total</span>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(230,168,23,0.12)", borderRadius: "999px", padding: "8px 16px" }}>
-                        <Flame size={18} color={C.ambar} fill={streak > 0 ? C.ambar : "none"} />
-                        <span style={{ fontWeight: 800, fontSize: "0.9rem", color: C.onSurface }}>{streak}</span>
-                        <span style={{ fontSize: "0.75rem", color: C.onSurfaceVariant }}>{streak === 1 ? "día seguido" : "días seguidos"}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "rgba(230,168,23,0.12)", borderRadius: "999px", padding: "6px 12px" }}>
+                        <Flame size={15} color={C.ambar} fill={streak > 0 ? C.ambar : "none"} />
+                        <span style={{ fontWeight: 800, fontSize: "0.8rem", color: C.onSurface }}>{streak}</span>
+                        <span style={{ fontSize: "0.68rem", color: C.onSurfaceVariant }}>{streak === 1 ? "día seguido" : "días seguidos"}</span>
                     </div>
                     <div style={{ position: "relative" }}>
                         <button
                             onClick={() => setPomodoroSettingsOpen(v => !v)}
                             title="Preferencias del Pomodoro"
-                            style={{ display: "flex", alignItems: "center", justifyContent: "center", background: C.surfaceContainerLow, border: `1px solid ${C.outlineVariant}`, borderRadius: "999px", width: "36px", height: "36px", cursor: "pointer", color: C.onSurfaceVariant }}
+                            style={{ display: "flex", alignItems: "center", justifyContent: "center", background: C.surfaceContainerLow, border: `1px solid ${C.outlineVariant}`, borderRadius: "999px", width: "32px", height: "32px", cursor: "pointer", color: C.onSurfaceVariant }}
                         >
-                            <Settings size={16} />
+                            <Settings size={15} />
                         </button>
                         {pomodoroSettingsOpen && (
                             <div style={{ position: "absolute", top: "100%", right: 0, marginTop: "6px", zIndex: 10, background: "white", border: `1px solid ${C.outlineVariant}`, borderRadius: "12px", boxShadow: "0 8px 20px rgba(0,0,0,0.12)", padding: "12px", width: "230px", display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -546,41 +582,6 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                         )}
                     </div>
                 </div>
-            </div>
-
-            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px" }}>
-                {([
-                    { label: "por entregar", value: pendientes.length, icon: Timer, color: C.secondary, bg: "rgba(99,102,241,0.12)" },
-                    { label: "atrasados", value: atrasados, icon: AlertTriangle, color: C.rojo, bg: "rgba(239,68,68,0.12)", filterKey: 'atrasados' as const },
-                    { label: "en edición", value: enEdicion, icon: Pencil, color: ESTADO_COLOR['En Edición'], bg: "rgba(230,168,23,0.12)", filterKey: 'enEdicion' as const },
-                    { label: "listos para entregar", value: listosParaEntregar.length, icon: CheckCircle, color: C.ambar, bg: "rgba(230,168,23,0.12)" },
-                    { label: "entregados", value: completados.length, icon: CheckCircle2, color: C.verde, bg: "rgba(16,185,129,0.12)" },
-                ]).map(stat => {
-                    const clickable = !!stat.filterKey;
-                    const active = clickable && statFilter === stat.filterKey;
-                    return (
-                        <button
-                            key={stat.label}
-                            onClick={clickable ? () => setStatFilter(f => f === stat.filterKey ? null : stat.filterKey!) : undefined}
-                            title={clickable ? (active ? "Quitar filtro" : `Mostrar solo ${stat.label}`) : undefined}
-                            style={{
-                                display: "flex", alignItems: "center", gap: "6px", background: stat.bg, borderRadius: "999px", padding: "5px 12px",
-                                border: active ? `2px solid ${stat.color}` : "2px solid transparent",
-                                cursor: clickable ? "pointer" : "default",
-                                font: "inherit",
-                            }}
-                        >
-                            <stat.icon size={13} color={stat.color} />
-                            <span style={{ fontWeight: 800, fontSize: "0.8rem", color: C.onSurface }}>{stat.value}</span>
-                            <span style={{ fontSize: "0.68rem", color: C.onSurfaceVariant }}>{stat.label}</span>
-                        </button>
-                    );
-                })}
-                {statFilter && (
-                    <button onClick={() => setStatFilter(null)} style={{ display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", cursor: "pointer", color: C.outline, fontSize: "0.68rem", fontWeight: 700, padding: "5px 6px" }}>
-                        <X size={12} /> Quitar filtro
-                    </button>
-                )}
             </div>
 
             <div style={{ display: "flex", flexDirection: movil ? "column" : "row", flexWrap: "wrap", gap: movil ? "0.8rem" : "0.75rem", alignItems: "flex-start" }}>

@@ -1280,8 +1280,11 @@ export const FinanzasDashboard = ({
                             siempre pegado a la esquina derecha — la misma posición fija
                             que ocupa "Finanzas" en la cabecera de Analizar, en vez de
                             saltar de lugar según qué botones haya alrededor. */}
-                        <button onClick={() => setShowTxForm(v => !v)} style={{ ...botonPrimario(movil), marginLeft: "auto" }}>
-                            <Plus size={16} /> Registrar
+                        {/* Mismo padding y tamaño de fuente que los pills de al lado
+                            (Analizar, período) — botonPrimario solo, sin ajustar, quedaba
+                            visiblemente más alto que el resto de la fila. */}
+                        <button onClick={() => setShowTxForm(v => !v)} style={{ ...botonPrimario(movil), padding: "8px 14px", fontSize: "0.78rem", marginLeft: "auto" }}>
+                            <Plus size={15} /> Registrar
                         </button>
 
                         <button

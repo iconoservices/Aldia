@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Wallet, PieChart, BarChart3, ChevronLeft, ChevronRight, List, Filter, Check } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
-import { C, useIsMobile } from '../../theme';
+import { C, botonPrimario, useIsMobile } from '../../theme';
 import { getPeriodBounds, periodLabel, shiftPeriod, type PeriodMode } from './FinanzasDashboard';
 import type { Transaction, CategoryGroupMap } from '../../hooks/useAlDiaState';
 
@@ -625,10 +625,12 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                         </div>
                     )}
 
+                    {/* Mismo diseño sólido que "Registrar" en Finanzas — ocupa la misma
+                        posición (justo antes del toggle de modo) en ambas cabeceras. */}
                     <button
                         onClick={() => setAccountModalOpen(true)}
                         title={`Cuentas: ${accountFilterLabel}`}
-                        style={{ display: 'flex', alignItems: 'center', gap: '5px', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: '999px', padding: '7px 10px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700, color: C.onSurfaceVariant, whiteSpace: 'nowrap', flexShrink: 0 }}
+                        style={{ ...botonPrimario(!isDesktop), padding: '8px 14px', fontSize: '0.78rem' }}
                     >
                         <Filter size={13} /> <span>Cuentas: {accountFilterLabel}</span>
                     </button>
