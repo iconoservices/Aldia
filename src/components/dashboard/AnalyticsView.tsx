@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, PieChart, BarChart3, ChevronLeft, ChevronRight, List, Filter, Check } from 'lucide-react';
+import { Wallet, PieChart, BarChart3, ChevronLeft, ChevronRight, List, Filter, Check } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
-import { useIsMobile } from '../../theme';
+import { C, useIsMobile } from '../../theme';
 import { getPeriodBounds, periodLabel, shiftPeriod, type PeriodMode } from './FinanzasDashboard';
 import type { Transaction, CategoryGroupMap } from '../../hooks/useAlDiaState';
 
@@ -570,27 +570,21 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
 
     return (
         <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             style={{
-                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                background: '#F8F9FA', zIndex: 1200,
-                padding: '1.5rem', overflowY: 'auto',
-                display: 'flex', flexDirection: 'column', gap: '1.5rem'
+                display: 'flex', flexDirection: 'column', gap: '1.5rem',
             }}
         >
             {/* Header + filtros: todo en la misma fila (título, periodo, cuentas) en vez
                 de un bloque de título arriba y una tarjeta de filtros aparte debajo —
                 eran dos filas para decir lo mismo. */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'white', padding: '10px 14px', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: C.surfaceLowest, padding: '10px 14px', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                    <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '7px', cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
-                        <ArrowLeft size={18} />
-                    </button>
-                    <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: 'var(--text-carbon)', whiteSpace: 'nowrap' }}>Análisis de Gastos</h2>
+                    <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: C.onSurface, whiteSpace: 'nowrap' }}>Análisis de Gastos</h2>
 
-                    <div style={{ display: 'flex', background: '#F1F5F9', borderRadius: '999px', padding: '3px', gap: '2px', overflowX: 'auto' }}>
+                    <div style={{ display: 'flex', background: C.surfaceContainerLow, borderRadius: '999px', padding: '3px', border: `1px solid ${C.outlineVariant}`, gap: '2px', overflowX: 'auto' }}>
                         {([['day', 'Día'], ['week', 'Sem'], ['month', 'Mes'], ['year', 'Año'], ['all', 'Todo'], ['custom', 'Rango']] as [PeriodMode | 'custom', string][]).map(([m, label]) => {
                             const activo = mode === m;
                             return (
@@ -599,10 +593,10 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                                     onClick={() => setMode(m)}
                                     style={{
                                         border: 'none', borderRadius: '999px', cursor: 'pointer', flexShrink: 0,
-                                        padding: '6px 11px', fontSize: '0.7rem', fontWeight: 700,
+                                        padding: '5px 13px', fontSize: '0.75rem', fontWeight: 700,
                                         fontFamily: 'inherit', transition: 'all 0.15s',
-                                        background: activo ? 'var(--domain-purple, #6366f1)' : 'transparent',
-                                        color: activo ? '#fff' : '#64748B',
+                                        background: activo ? C.secondary : 'transparent',
+                                        color: activo ? '#fff' : C.onSurfaceVariant,
                                         whiteSpace: 'nowrap',
                                     }}
                                 >
@@ -617,26 +611,43 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                         flotando solo, así que ahora entra en la misma fila. */}
                     {mode !== 'custom' && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                            <button onClick={() => setRefDate(shiftPeriod(mode, refDate, -1))} disabled={!canNavigate} style={{ background: 'transparent', border: 'none', cursor: canNavigate ? 'pointer' : 'default', opacity: canNavigate ? 1 : 0.25, color: '#64748B', display: 'flex' }}><ChevronLeft size={18} /></button>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--text-carbon)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>{periodLabelStr}</span>
-                            <button onClick={() => setRefDate(shiftPeriod(mode, refDate, 1))} disabled={!canNavigate} style={{ background: 'transparent', border: 'none', cursor: canNavigate ? 'pointer' : 'default', opacity: canNavigate ? 1 : 0.25, color: '#64748B', display: 'flex' }}><ChevronRight size={18} /></button>
+                            <button onClick={() => setRefDate(shiftPeriod(mode, refDate, -1))} disabled={!canNavigate} style={{ background: 'transparent', border: 'none', cursor: canNavigate ? 'pointer' : 'default', opacity: canNavigate ? 1 : 0.25, color: C.onSurfaceVariant, display: 'flex' }}><ChevronLeft size={16} /></button>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 900, color: C.onSurface, textTransform: 'capitalize', whiteSpace: 'nowrap' }}>{periodLabelStr}</span>
+                            <button onClick={() => setRefDate(shiftPeriod(mode, refDate, 1))} disabled={!canNavigate} style={{ background: 'transparent', border: 'none', cursor: canNavigate ? 'pointer' : 'default', opacity: canNavigate ? 1 : 0.25, color: C.onSurfaceVariant, display: 'flex' }}><ChevronRight size={16} /></button>
                         </div>
                     )}
 
                     {mode === 'custom' && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}>
-                            <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '0.78rem', fontFamily: 'inherit' }} />
-                            <span style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 700 }}>→</span>
-                            <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '0.78rem', fontFamily: 'inherit' }} />
+                            <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} style={{ padding: '7px 10px', borderRadius: '8px', border: `1px solid ${C.outlineVariant}`, fontSize: '0.78rem', fontFamily: 'inherit' }} />
+                            <span style={{ fontSize: '0.75rem', color: C.outline, fontWeight: 700 }}>→</span>
+                            <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} style={{ padding: '7px 10px', borderRadius: '8px', border: `1px solid ${C.outlineVariant}`, fontSize: '0.78rem', fontFamily: 'inherit' }} />
                         </div>
                     )}
 
                     <button
                         onClick={() => setAccountModalOpen(true)}
                         title={`Cuentas: ${accountFilterLabel}`}
-                        style={{ display: 'flex', alignItems: 'center', gap: '5px', background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '7px 10px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap', flexShrink: 0, marginLeft: isDesktop ? 'auto' : undefined }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '5px', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: '999px', padding: '7px 10px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700, color: C.onSurfaceVariant, whiteSpace: 'nowrap', flexShrink: 0 }}
                     >
                         <Filter size={13} /> <span>Cuentas: {accountFilterLabel}</span>
+                    </button>
+
+                    {/* Mismo botón que "Analizar" en Finanzas, en el mismo lugar, con la
+                        etiqueta invertida: es el mismo control de modo, no un back button
+                        aparte — tocarlo alterna entre las dos vistas. */}
+                    <button
+                        onClick={onClose}
+                        title="Finanzas"
+                        style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                            background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`,
+                            borderRadius: '999px', cursor: 'pointer', flexShrink: 0,
+                            padding: '8px 14px', marginLeft: 'auto',
+                            fontSize: '0.78rem', fontWeight: 700, color: C.secondary, fontFamily: 'inherit',
+                        }}
+                    >
+                        <Wallet size={15} /> Finanzas
                     </button>
                 </div>
             </div>

@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ProjectDetailView } from "./ProjectDetailView";
 import type { Transaction, FixedExpense, Project, Routine, UserPreferences } from "../../hooks/useAlDiaState";
 import { getPeriodKey } from "../../hooks/useAlDiaState";
-import { C, bento, etiqueta, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina, botonPrimario, TOQUE_MINIMO } from "../../theme";
+import { C, bento, etiqueta, useIsMobile, paddingPagina, tituloPagina, subtituloPagina, botonPrimario, TOQUE_MINIMO } from "../../theme";
 import { RegistroMovimiento } from "../features/RegistroMovimiento";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 
@@ -1146,7 +1146,7 @@ export const FinanzasDashboard = ({
         }}>
 
             {/* ── Cabecera: título, vista, periodo y acción ─── */}
-            {(() => {
+            {!showAnalytics && (() => {
                 const periodPillsAndRegistrar = (
                     <div style={{
                         display: "flex", alignItems: "center", gap: movil ? "8px" : "10px", flexWrap: "nowrap",
@@ -1237,14 +1237,74 @@ export const FinanzasDashboard = ({
                     );
                 }
 
+                // Cabecera de escritorio, compacta y en una sola fila —
+                // mismo lenguaje visual que la cabecera de Analizar (tarjeta
+                // blanca angosta) en vez del título grande + subtítulo de antes,
+                // para que ambas vistas se sientan como la misma pantalla.
                 return (
-                    <div style={cabecera(movil)}>
-                        {tituloYSub}
-                        {periodPillsAndRegistrar}
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", background: "white", padding: "10px 14px", borderRadius: "18px", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
+                        <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 900, color: C.onSurface, whiteSpace: "nowrap" }}>Finanzas</h2>
+
+                        <div style={{ display: "flex", background: C.surfaceContainerLow, borderRadius: "999px", padding: "3px", border: `1px solid ${C.outlineVariant}` }}>
+                            {(["day", "week", "month", "quarter", "year", "all"] as PeriodMode[]).map(mode => {
+                                const etiquetas: Record<PeriodMode, string> = { day: "Día", week: "Sem", month: "Mes", quarter: "Trim", year: "Año", all: "Todo" };
+                                const activo = topPeriod === mode;
+                                return (
+                                    <button
+                                        key={mode}
+                                        onClick={() => { setTopPeriod(mode); setPeriodRef(new Date()); }}
+                                        style={{
+                                            border: "none", borderRadius: "999px", cursor: "pointer", flexShrink: 0,
+                                            padding: "5px 13px", fontSize: "0.75rem", fontWeight: 700,
+                                            fontFamily: "inherit", transition: "all 0.15s",
+                                            background: activo ? C.secondary : "transparent",
+                                            color: activo ? "#fff" : C.onSurfaceVariant,
+                                            whiteSpace: "nowrap",
+                                        }}
+                                    >
+                                        {etiquetas[mode]}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {topPeriod !== "all" && (
+                            <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+                                <button onClick={() => setPeriodRef(d => shiftPeriod(topPeriod, d, -1))} style={{ background: "none", border: "none", cursor: "pointer", color: C.onSurfaceVariant, display: "flex", padding: "2px" }}><ChevronLeft size={16} /></button>
+                                <span style={{ fontSize: "0.8rem", fontWeight: 900, color: C.onSurface, textTransform: "capitalize", whiteSpace: "nowrap" }}>{periodLabel(topPeriod, periodRef)}</span>
+                                <button onClick={() => setPeriodRef(d => shiftPeriod(topPeriod, d, 1))} style={{ background: "none", border: "none", cursor: "pointer", color: C.onSurfaceVariant, display: "flex", padding: "2px" }}><ChevronRight size={16} /></button>
+                            </div>
+                        )}
+
+                        {/* marginLeft: auto en el toggle (no en Registrar) para que quede
+                            siempre pegado a la esquina derecha — la misma posición fija
+                            que ocupa "Finanzas" en la cabecera de Analizar, en vez de
+                            saltar de lugar según qué botones haya alrededor. */}
+                        <button onClick={() => setShowTxForm(v => !v)} style={{ ...botonPrimario(movil), marginLeft: "auto" }}>
+                            <Plus size={16} /> Registrar
+                        </button>
+
+                        <button
+                            onClick={() => setShowAnalytics(true)}
+                            title="Analizar"
+                            style={{
+                                display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                                background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`,
+                                borderRadius: "999px", cursor: "pointer", flexShrink: 0,
+                                padding: "8px 14px",
+                                fontSize: "0.78rem", fontWeight: 700, color: C.secondary, fontFamily: "inherit",
+                            }}
+                        >
+                            <PieChart size={15} /> Analizar
+                        </button>
                     </div>
                 );
             })()}
 
+            {showAnalytics ? (
+                <AnalyticsView transactions={transactions} onClose={() => setShowAnalytics(false)} owe={realOwe} owed={realOwed} accounts={accounts} categoryGroups={categoryGroups} />
+            ) : (
+            <>
             {/* Modal de alta, el mismo que usa Checklist: mismos campos, mismo aspecto */}
             <RegistroMovimiento
                 open={showTxForm}
@@ -1925,7 +1985,14 @@ export const FinanzasDashboard = ({
                 comparten una sola fila (antes "Ver todo" se iba a su propia fila
                 al pedir 100% de ancho) ─── */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: movil ? "6px" : "10px", flexWrap: movil ? "nowrap" : "wrap" }}>
-                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", flex: movil ? 1 : undefined, minWidth: 0 }}>
+                {/* Misma cápsula (fondo + borde + padding 3px, botones 100% redondeados)
+                    que el selector de período de la cabecera — antes cada botón tenía
+                    su propio borde y esquinas cuadradas, un lenguaje distinto para el
+                    mismo tipo de control. */}
+                <div style={{
+                    display: "flex", gap: "2px", flexWrap: "wrap", flex: movil ? 1 : undefined, minWidth: 0,
+                    background: C.surfaceContainerLow, borderRadius: "999px", padding: "3px", border: `1px solid ${C.outlineVariant}`,
+                }}>
                     {VISTAS.map(v => {
                         const activo = vista === v.id;
                         return (
@@ -1934,15 +2001,15 @@ export const FinanzasDashboard = ({
                                 onClick={() => setVista(v.id)}
                                 title={v.sub}
                                 style={{
-                                    border: activo ? "none" : `1px solid ${C.outlineVariant}`,
-                                    borderRadius: "10px", cursor: "pointer",
+                                    border: "none",
+                                    borderRadius: "999px", cursor: "pointer",
                                     padding: movil ? "10px 6px" : "8px 16px",
                                     minHeight: movil ? `${TOQUE_MINIMO}px` : undefined,
                                     flex: movil ? 1 : undefined,
                                     minWidth: 0,
                                     fontSize: movil ? "0.7rem" : "0.82rem", fontWeight: 700,
                                     fontFamily: "inherit", transition: "all 0.15s",
-                                    background: activo ? C.secondary : C.surfaceLowest,
+                                    background: activo ? C.secondary : "transparent",
                                     color: activo ? "#fff" : C.onSurfaceVariant,
                                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                                 }}
@@ -2188,9 +2255,6 @@ export const FinanzasDashboard = ({
                 {selectedProject && <ProjectDetailView project={selectedProject} onClose={() => setSelectedProject(null)} accounts={accounts} setAccounts={setAccounts} transactions={transactions} addProjectTask={addProjectTask} toggleProjectTask={toggleProjectTask} removeProjectTask={removeProjectTask} updateProjectTask={updateProjectTask} reorderProjectTasks={reorderProjectTasks} promoteTaskToRoutine={promoteTaskToRoutine} rutinas={rutinas} addProjectCategory={addProjectCategory} removeProjectCategory={removeProjectCategory} addInventoryItem={addInventoryItem} updateInventoryItemQuantity={updateInventoryItemQuantity} removeInventoryItem={removeInventoryItem} projects={projects} updateProject={updateProject} />}
             </AnimatePresence>
             <AnimatePresence>
-                {showAnalytics && <AnalyticsView transactions={transactions} onClose={() => setShowAnalytics(false)} owe={realOwe} owed={realOwed} accounts={accounts} categoryGroups={categoryGroups} />}
-            </AnimatePresence>
-            <AnimatePresence>
                 {selectedAccountId != null && accountsWithBalance.find(a => a.id === selectedAccountId) && (
                     <AccountDetailModal
                         account={accountsWithBalance.find(a => a.id === selectedAccountId)!}
@@ -2208,6 +2272,8 @@ export const FinanzasDashboard = ({
                     />
                 )}
             </AnimatePresence>
+            </>
+            )}
         </div>
     );
 };
