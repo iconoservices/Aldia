@@ -835,7 +835,16 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     // si arranca una foto — nunca las fuerza a cerrarse si el usuario las dejó
     // abiertas a mano.
     const [photoDetailsOpen, setPhotoDetailsOpen] = useState(!!p.photoActiveSince);
-    const [fasesDetailsOpen, setFasesDetailsOpen] = useState(!p.fases?.length || p.fases.some(f => !f.done));
+    const allFasesDone = !!p.fases?.length && p.fases.every(f => f.done);
+    const [fasesDetailsOpen, setFasesDetailsOpen] = useState(!p.fases?.length || !allFasesDone);
+    // Se cierra sola justo cuando se tilda el último paso pendiente (7/7 con
+    // strikethrough ocupaba media tarjeta sin aportar nada ya) — pero solo en
+    // esa transición, para no pelear si el usuario la vuelve a abrir a mano.
+    const wasAllFasesDoneRef = useRef(allFasesDone);
+    useEffect(() => {
+        if (allFasesDone && !wasAllFasesDoneRef.current) setFasesDetailsOpen(false);
+        wasAllFasesDoneRef.current = allFasesDone;
+    }, [allFasesDone]);
 
     const { color, label } = urgency(p);
     const totalSpan = Math.max(daysBetween(p.startDate, p.dueDate), 1);
