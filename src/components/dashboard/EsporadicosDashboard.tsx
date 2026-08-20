@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, X, Trash2, MoreVertical, Play, Pause, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart, Pin, Image as ImageIcon, Check, TimerReset, Settings, Coffee, Bell, BellOff, ListChecks, AlertTriangle, Pencil } from "lucide-react";
+import { Plus, X, Trash2, MoreVertical, Play, Pause, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart, Pin, Image as ImageIcon, Check, TimerReset, Settings, Coffee, Bell, BellOff, ListChecks, AlertTriangle, Pencil, Send } from "lucide-react";
 import {
     DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
@@ -1002,14 +1002,39 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                             </span>
                         )}
                     </div>
-                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "3px", fontSize: "0.72rem", color: C.onSurfaceVariant, fontWeight: 700 }}>
+                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "3px", fontSize: "0.72rem", color: C.onSurfaceVariant, fontWeight: 700, alignItems: "center" }}>
                         <span style={{ color }}>{label}</span>
                         <span>Entrega: {p.dueDate}</span>
                         {trackingSinceFirstStart && (
                             <span style={{ color: C.outline, fontWeight: 600 }}>· llevas {formatElapsed(sinceFirstStartMs)} sin entregarlo</span>
                         )}
+                        {/* Solo aparece si el proyecto está marcado como "pide adelanto" (botón Send
+                            de al lado). Clickeable: pasa de pendiente a enviado y viceversa, sin
+                            abrir ningún menú — es algo que se marca varias veces al día. */}
+                        {p.requiresPreview && (
+                            <button
+                                onClick={() => updateSporadicProject(p.id, { previewSent: !p.previewSent })}
+                                title={p.previewSent ? "Adelanto ya enviado — tocar para desmarcar" : "Adelanto pendiente de enviar — tocar para marcar enviado"}
+                                style={{
+                                    display: "flex", alignItems: "center", gap: "4px",
+                                    background: p.previewSent ? "rgba(16,185,129,0.12)" : "rgba(230,168,23,0.12)",
+                                    color: p.previewSent ? C.verde : C.ambar,
+                                    border: "none", borderRadius: "999px", padding: "2px 8px",
+                                    fontSize: "0.62rem", fontWeight: 800, cursor: "pointer",
+                                }}
+                            >
+                                <Send size={10} /> {p.previewSent ? "Adelanto enviado" : "Adelanto pendiente"}
+                            </button>
+                        )}
                     </div>
                 </div>
+                <button
+                    onClick={() => updateSporadicProject(p.id, { requiresPreview: !p.requiresPreview, previewSent: p.requiresPreview ? undefined : p.previewSent })}
+                    title={p.requiresPreview ? "El cliente pidió adelanto de fotos — tocar para quitarlo" : "Marcar que el cliente pidió un adelanto de fotos antes de la entrega"}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: p.requiresPreview ? C.secondary : C.outlineVariant, padding: "3px", display: "flex" }}
+                >
+                    <Send size={15} fill={p.requiresPreview ? C.secondary : "none"} />
+                </button>
                 <button
                     onClick={() => updateSporadicProject(p.id, { pinned: !p.pinned })}
                     title={p.pinned ? "Desfijar" : "Fijar arriba"}

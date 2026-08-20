@@ -300,6 +300,8 @@ export interface SporadicProject {
     firstStartedAt?: number;    // timestamp ms de la PRIMERA vez que se le dio Play a este proyecto en su vida -- nunca se limpia con pausas ni al Terminar sesión, solo se resetea a mano; mide "cuánto llevo metido en esto sin entregarlo"
     faseTemplateId?: number;    // plantilla de la que se copiaron `fases` (solo referencia informativa, editar `fases` no la toca)
     fases?: ProjectFase[];      // checklist de fases de este proyecto, una vez aplicada una plantilla
+    requiresPreview?: boolean;  // el cliente pidió un adelanto (unas fotos de muestra) antes de la entrega final
+    previewSent?: boolean;      // ese adelanto ya se envió (solo tiene sentido si requiresPreview)
 }
 
 export interface UserPreferences {
