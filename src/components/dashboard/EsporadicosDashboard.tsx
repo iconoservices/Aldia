@@ -829,6 +829,13 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     const [notionSyncError, setNotionSyncError] = useState(false);
     const lastPomodoroThresholdRef = useRef(0);
     const tickCountRef = useRef(0);
+    // Tiempo por foto y Fases ahora son colapsables (antes eran dos cajas fijas
+    // siempre abiertas entre el timer y los botones de sesión). Arrancan abiertas
+    // solo si hay algo activo/pendiente ahí; un efecto más abajo las reabre solo
+    // si arranca una foto — nunca las fuerza a cerrarse si el usuario las dejó
+    // abiertas a mano.
+    const [photoDetailsOpen, setPhotoDetailsOpen] = useState(!!p.photoActiveSince);
+    const [fasesDetailsOpen, setFasesDetailsOpen] = useState(!p.fases?.length || p.fases.some(f => !f.done));
 
     const { color, label } = urgency(p);
     const totalSpan = Math.max(daysBetween(p.startDate, p.dueDate), 1);
@@ -866,6 +873,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     const photoCount = photoLogs.length;
     const totalPhotoMs = photoLogs.reduce((s, l) => s + l.seconds * 1000, 0);
     const avgPhotoMs = photoCount > 0 ? totalPhotoMs / photoCount : 0;
+    useEffect(() => { if (photoInSession) setPhotoDetailsOpen(true); }, [photoInSession]);
 
     // Tiempo por etapa de ESTE proyecto (a diferencia del panel de arriba del
     // dashboard, que suma todos los proyectos juntos) — cuánto de las horas
@@ -1086,52 +1094,179 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                 </div>
             )}
 
-            {inSession && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", fontWeight: 800, color: running ? C.rojo : C.ambar }}>
-                        <Timer size={13} />
-                        {formatElapsed(effectiveWorkedHours * 60 * 60 * 1000)} total del proyecto
-                        {p.activeStage && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en {p.activeStage}</span>}
-                        {paused && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en pausa</span>}
-                        {running && !pomodoroMuted && (
-                            <span style={{ fontWeight: 600, color: C.onSurfaceVariant, fontSize: "0.68rem" }}>· próx. descanso en {formatElapsed(nextAlertMs)}</span>
+            {/* Progreso arriba del todo, junto al estado — para ver de un vistazo
+                cómo va el proyecto ANTES de decidir si arrancar. Antes vivía pegado
+                al fondo, después de dos cajas completas (fotos y fases). El texto de
+                ritmo/ETA se fusiona acá abajo como bajada, en vez de un párrafo
+                aparte más abajo en la tarjeta. */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <div style={{ display: "flex", gap: "12px" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: "6px", fontSize: "0.6rem", fontWeight: 700, color: C.outline, marginBottom: "2px" }}>
+                            <span>Días hasta la entrega</span>
+                            <span style={{ flexShrink: 0, color: overdueUnfinished ? "#111" : color }}>
+                                {daysUntilDue < 0 ? `${Math.abs(daysUntilDue)}d atrasado` : daysUntilDue === 0 ? "hoy" : `${daysUntilDue}d`}
+                            </span>
+                        </div>
+                        <div style={{ height: "5px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
+                            <div style={{
+                                height: "100%", borderRadius: "999px", width: `${pctElapsed}%`,
+                                background: overdueUnfinished ? "#111" : color,
+                                animation: overdueUnfinished ? "esporadico-blink 1.1s ease-in-out infinite" : undefined,
+                                transition: "width 0.3s",
+                            }} />
+                        </div>
+                    </div>
+
+                    {p.complexityHours > 0 ? (
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: "6px", fontSize: "0.6rem", fontWeight: 700, color: C.outline, marginBottom: "2px" }}>
+                                <span>Horas vs. estimado</span>
+                                <span style={{ flexShrink: 0 }}>{Math.round(Math.min((effectiveWorkedHours / p.complexityHours) * 100, 100))}%</span>
+                            </div>
+                            <div style={{ height: "5px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
+                                <div style={{
+                                    height: "100%", borderRadius: "999px",
+                                    width: `${Math.min((effectiveWorkedHours / p.complexityHours) * 100, 100)}%`,
+                                    background: effectiveWorkedHours >= p.complexityHours ? C.verde : C.secondary,
+                                    transition: "width 0.3s",
+                                }} />
+                            </div>
+                        </div>
+                    ) : !inSession && effectiveWorkedHours > 0 ? (
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: "0.6rem", fontWeight: 700, color: C.outline, marginBottom: "2px" }}>Horas trabajadas</div>
+                            <div style={{ fontSize: "0.78rem", fontWeight: 800, color: C.onSurface }}>{formatElapsed(effectiveWorkedHours * 60 * 60 * 1000)}</div>
+                        </div>
+                    ) : null}
+                </div>
+
+                {p.complexityHours > 0 && p.status !== 'completado' && (
+                    <div style={{ fontSize: "0.68rem", color: C.onSurfaceVariant, lineHeight: 1.4 }}>
+                        {remainingHours <= 0 ? (
+                            <span style={{ color: C.verde, fontWeight: 700 }}>Ya llegaste a las horas estimadas.</span>
+                        ) : (
+                            <>
+                                Faltan <b>{remainingHours.toFixed(1)}h</b>.
+                                {running && eta && <> A este ritmo, terminas ~<b>{eta}</b>.</>}
+                                {!running && daysUntilDue > 0 && <> Para llegar a tiempo: <b>{(remainingHours / daysUntilDue).toFixed(1)}h/día</b> por {daysUntilDue} día{daysUntilDue === 1 ? '' : 's'}.</>}
+                                {!running && daysUntilDue <= 0 && <span style={{ color: C.rojo, fontWeight: 700 }}> Ya venció — dedícale tiempo hoy.</span>}
+                            </>
                         )}
-                        <button
-                            onClick={() => setPomodoroMuted(m => !m)}
-                            title={pomodoroMuted ? "Activar avisos de Pomodoro" : "Silenciar avisos de Pomodoro (solo esta sesión)"}
-                            style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: pomodoroMuted ? C.outlineVariant : C.onSurfaceVariant, padding: "2px", display: "flex", flexShrink: 0 }}
-                        >
-                            {pomodoroMuted ? <BellOff size={13} /> : <Bell size={13} />}
-                        </button>
                     </div>
-                    <div style={{ fontSize: "0.68rem", fontWeight: 600, color: C.outline, paddingLeft: "19px" }}>
-                        Esta sesión: {formatElapsed(sessionHours * 60 * 60 * 1000)}
-                    </div>
+                )}
+            </div>
+
+            {/* Panel de control: cronómetro + botones de sesión agrupados en una sola
+                unidad con fondo propio cuando hay sesión activa — antes el timer vivía
+                suelto arriba y los botones de Pausar/Terminar quedaban hasta el fondo
+                de la tarjeta, después de las cajas de fotos y fases. Es lo que más se
+                toca acá, así que ahora va justo debajo del progreso. */}
+            {(inSession || p.status !== 'completado') && (
+                <div style={{
+                    display: "flex", flexDirection: "column", gap: "8px",
+                    padding: inSession ? "10px" : 0,
+                    background: inSession ? (running ? "rgba(239,68,68,0.06)" : "rgba(230,168,23,0.06)") : "transparent",
+                    borderRadius: "12px",
+                }}>
+                    {inSession && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", fontWeight: 800, color: running ? C.rojo : C.ambar }}>
+                                <Timer size={13} />
+                                {formatElapsed(effectiveWorkedHours * 60 * 60 * 1000)} total del proyecto
+                                {p.activeStage && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en {p.activeStage}</span>}
+                                {paused && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en pausa</span>}
+                                {running && !pomodoroMuted && (
+                                    <span style={{ fontWeight: 600, color: C.onSurfaceVariant, fontSize: "0.68rem" }}>· próx. descanso en {formatElapsed(nextAlertMs)}</span>
+                                )}
+                                <button
+                                    onClick={() => setPomodoroMuted(m => !m)}
+                                    title={pomodoroMuted ? "Activar avisos de Pomodoro" : "Silenciar avisos de Pomodoro (solo esta sesión)"}
+                                    style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: pomodoroMuted ? C.outlineVariant : C.onSurfaceVariant, padding: "2px", display: "flex", flexShrink: 0 }}
+                                >
+                                    {pomodoroMuted ? <BellOff size={13} /> : <Bell size={13} />}
+                                </button>
+                            </div>
+                            <div style={{ fontSize: "0.68rem", fontWeight: 600, color: C.outline, paddingLeft: "19px" }}>
+                                Esta sesión: {formatElapsed(sessionHours * 60 * 60 * 1000)}
+                            </div>
+                        </div>
+                    )}
+                    {p.status !== 'completado' && (
+                        <div style={{ display: "flex", gap: "6px" }}>
+                            {!inSession && (
+                                <button
+                                    onClick={() => { startSporadicTimer(p.id, linkedEvent?.notionEstado); setNotionEstado('En Edición'); }}
+                                    style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.surfaceContainerLow, color: C.onSurfaceVariant, border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
+                                >
+                                    <Play size={13} /> Empezar a trabajar
+                                </button>
+                            )}
+                            {running && (
+                                <button
+                                    onClick={() => pauseSporadicTimer(p.id)}
+                                    style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.ambar, color: "white", border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
+                                >
+                                    <Pause size={13} /> Pausar
+                                </button>
+                            )}
+                            {paused && (
+                                <button
+                                    onClick={() => startSporadicTimer(p.id, p.activeStage)}
+                                    style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.surfaceContainerLow, color: C.onSurfaceVariant, border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
+                                >
+                                    <Play size={13} /> Reanudar
+                                </button>
+                            )}
+                            {inSession && (
+                                <button
+                                    onClick={() => stopSporadicTimer(p.id)}
+                                    style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.rojo, color: "white", border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
+                                >
+                                    <Square size={13} /> Terminar sesión
+                                </button>
+                            )}
+                            {inSession && !breakEndAt && !breakDoneAlert && (
+                                <button
+                                    onClick={() => setBreakEndAt(Date.now() + BREAK_MINUTES * 60 * 1000)}
+                                    title="Tomar un descanso de 5 min ahora, sin esperar el aviso"
+                                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "none", border: `1px solid ${C.outlineVariant}`, borderRadius: "8px", padding: "8px 10px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700, color: C.onSurfaceVariant, flexShrink: 0 }}
+                                >
+                                    <Coffee size={13} />
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
 
+            {/* Tiempo por foto: colapsable — antes era una caja fija siempre abierta
+                entre el timer y los botones de sesión, aportando poco cuando no se
+                está usando. Se reabre sola en cuanto arranca una foto. */}
             {p.status !== 'completado' && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px", padding: "8px 10px", background: C.surfaceContainerLow, borderRadius: "10px" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "4px" }}>
+                <details open={photoDetailsOpen} onToggle={e => setPhotoDetailsOpen(e.currentTarget.open)} style={{ background: C.surfaceContainerLow, borderRadius: "10px", padding: "8px 10px" }}>
+                    <summary style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "4px", cursor: "pointer", listStyle: "none" }}>
                         <span style={{ fontSize: "0.66rem", fontWeight: 800, color: C.onSurfaceVariant, display: "flex", alignItems: "center", gap: "4px", textTransform: "uppercase", letterSpacing: "0.02em" }}>
                             <ImageIcon size={12} /> Tiempo por foto
                         </span>
                         {photoCount > 0 && (
-                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: C.onSurfaceVariant }}>
-                                    {photoCount} foto{photoCount === 1 ? '' : 's'} · prom. {formatElapsed(avgPhotoMs)} · total {formatElapsed(totalPhotoMs)}
-                                </span>
+                            <span style={{ fontSize: "0.68rem", fontWeight: 700, color: C.onSurfaceVariant }}>
+                                {photoCount} foto{photoCount === 1 ? '' : 's'} · prom. {formatElapsed(avgPhotoMs)} · total {formatElapsed(totalPhotoMs)}
+                            </span>
+                        )}
+                    </summary>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "8px" }}>
+                        {photoCount > 0 && (
+                            <div style={{ display: "flex", justifyContent: "flex-end" }}>
                                 <button
                                     onClick={() => setConfirmResetPhotos(true)}
                                     title="Reiniciar contador de fotos"
-                                    style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "2px", display: "flex" }}
+                                    style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "2px", display: "flex", alignItems: "center", gap: "4px", fontSize: "0.66rem", fontWeight: 700 }}
                                 >
-                                    <TimerReset size={12} />
+                                    <TimerReset size={12} /> Reiniciar
                                 </button>
                             </div>
                         )}
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                         {!photoInSession ? (
                             <button
                                 onClick={() => startPhotoTimer(p.id)}
@@ -1181,12 +1316,15 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                             </>
                         )}
                     </div>
-                </div>
+                </details>
             )}
 
+            {/* Fases: colapsable — abierta de entrada si hay pasos pendientes o
+                todavía no se aplicó ninguna plantilla, cerrada si ya están todas
+                hechas. El usuario puede abrir/cerrar a mano en cualquier momento. */}
             {p.status !== 'completado' && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px", padding: "8px 10px", background: C.surfaceContainerLow, borderRadius: "10px" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "4px" }}>
+                <details open={fasesDetailsOpen} onToggle={e => setFasesDetailsOpen(e.currentTarget.open)} style={{ background: C.surfaceContainerLow, borderRadius: "10px", padding: "8px 10px" }}>
+                    <summary style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "4px", cursor: "pointer", listStyle: "none" }}>
                         <span style={{ fontSize: "0.66rem", fontWeight: 800, color: C.onSurfaceVariant, display: "flex", alignItems: "center", gap: "4px", textTransform: "uppercase", letterSpacing: "0.02em" }}>
                             <ListChecks size={12} /> Fases
                         </span>
@@ -1195,89 +1333,50 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                                 {p.fases.filter(f => f.done).length}/{p.fases.length}
                             </span>
                         )}
-                    </div>
-                    {!p.fases?.length ? (
-                        phaseTemplates.length > 0 ? (
-                            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                                <select
-                                    value={selectedTemplateId}
-                                    onChange={e => setSelectedTemplateId(Number(e.target.value))}
-                                    style={{ flex: 1, minWidth: "120px", border: `1px solid ${C.outlineVariant}`, borderRadius: "8px", padding: "5px 8px", fontSize: "0.74rem", fontFamily: "inherit", background: "white", color: C.onSurfaceVariant }}
-                                >
-                                    {phaseTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                </select>
-                                <button
-                                    onClick={() => selectedTemplateId && applyFaseTemplate(p.id, selectedTemplateId)}
-                                    style={{ background: "white", border: `1px solid ${C.outlineVariant}`, borderRadius: "8px", padding: "5px 12px", cursor: "pointer", fontSize: "0.74rem", fontWeight: 700, color: C.onSurfaceVariant }}
-                                >
-                                    Aplicar
-                                </button>
-                            </div>
+                    </summary>
+                    <div style={{ marginTop: "8px" }}>
+                        {!p.fases?.length ? (
+                            phaseTemplates.length > 0 ? (
+                                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                                    <select
+                                        value={selectedTemplateId}
+                                        onChange={e => setSelectedTemplateId(Number(e.target.value))}
+                                        style={{ flex: 1, minWidth: "120px", border: `1px solid ${C.outlineVariant}`, borderRadius: "8px", padding: "5px 8px", fontSize: "0.74rem", fontFamily: "inherit", background: "white", color: C.onSurfaceVariant }}
+                                    >
+                                        {phaseTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                    </select>
+                                    <button
+                                        onClick={() => selectedTemplateId && applyFaseTemplate(p.id, selectedTemplateId)}
+                                        style={{ background: "white", border: `1px solid ${C.outlineVariant}`, borderRadius: "8px", padding: "5px 12px", cursor: "pointer", fontSize: "0.74rem", fontWeight: 700, color: C.onSurfaceVariant }}
+                                    >
+                                        Aplicar
+                                    </button>
+                                </div>
+                            ) : (
+                                <span style={{ fontSize: "0.72rem", color: C.outline }}>Sin plantillas de fases todavía — créalas arriba.</span>
+                            )
                         ) : (
-                            <span style={{ fontSize: "0.72rem", color: C.outline }}>Sin plantillas de fases todavía — créalas arriba.</span>
-                        )
-                    ) : (
-                        <div style={{ display: "flex", flexDirection: "column" }}>
-                            {p.fases.map(f => (
-                                <FaseRow
-                                    key={f.id}
-                                    projectId={p.id}
-                                    fase={f}
-                                    toggleProjectFase={toggleProjectFase}
-                                    removeProjectFase={removeProjectFase}
-                                    startFaseTimer={startFaseTimer}
-                                    pauseFaseTimer={pauseFaseTimer}
-                                    finishFaseTimer={finishFaseTimer}
-                                />
-                            ))}
-                        </div>
-                    )}
-                    {!!p.fases?.length && (
-                        <AddInline placeholder="Agregar paso a este proyecto..." onAdd={label => addProjectFase(p.id, label)} />
-                    )}
-                </div>
+                            <div style={{ display: "flex", flexDirection: "column" }}>
+                                {p.fases.map(f => (
+                                    <FaseRow
+                                        key={f.id}
+                                        projectId={p.id}
+                                        fase={f}
+                                        toggleProjectFase={toggleProjectFase}
+                                        removeProjectFase={removeProjectFase}
+                                        startFaseTimer={startFaseTimer}
+                                        pauseFaseTimer={pauseFaseTimer}
+                                        finishFaseTimer={finishFaseTimer}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                        {!!p.fases?.length && (
+                            <AddInline placeholder="Agregar paso a este proyecto..." onAdd={label => addProjectFase(p.id, label)} />
+                        )}
+                    </div>
+                </details>
             )}
-
-            <div style={{ display: "flex", gap: "12px" }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: "6px", fontSize: "0.6rem", fontWeight: 700, color: C.outline, marginBottom: "2px" }}>
-                        <span>Días hasta la entrega</span>
-                        <span style={{ flexShrink: 0, color: overdueUnfinished ? "#111" : color }}>
-                            {daysUntilDue < 0 ? `${Math.abs(daysUntilDue)}d atrasado` : daysUntilDue === 0 ? "hoy" : `${daysUntilDue}d`}
-                        </span>
-                    </div>
-                    <div style={{ height: "5px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
-                        <div style={{
-                            height: "100%", borderRadius: "999px", width: `${pctElapsed}%`,
-                            background: overdueUnfinished ? "#111" : color,
-                            animation: overdueUnfinished ? "esporadico-blink 1.1s ease-in-out infinite" : undefined,
-                            transition: "width 0.3s",
-                        }} />
-                    </div>
-                </div>
-
-                {p.complexityHours > 0 ? (
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: "6px", fontSize: "0.6rem", fontWeight: 700, color: C.outline, marginBottom: "2px" }}>
-                            <span>Horas vs. estimado</span>
-                            <span style={{ flexShrink: 0 }}>{Math.round(Math.min((effectiveWorkedHours / p.complexityHours) * 100, 100))}%</span>
-                        </div>
-                        <div style={{ height: "5px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
-                            <div style={{
-                                height: "100%", borderRadius: "999px",
-                                width: `${Math.min((effectiveWorkedHours / p.complexityHours) * 100, 100)}%`,
-                                background: effectiveWorkedHours >= p.complexityHours ? C.verde : C.secondary,
-                                transition: "width 0.3s",
-                            }} />
-                        </div>
-                    </div>
-                ) : !inSession && effectiveWorkedHours > 0 ? (
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: "0.6rem", fontWeight: 700, color: C.outline, marginBottom: "2px" }}>Horas trabajadas</div>
-                        <div style={{ fontSize: "0.78rem", fontWeight: 800, color: C.onSurface }}>{formatElapsed(effectiveWorkedHours * 60 * 60 * 1000)}</div>
-                    </div>
-                ) : null}
-            </div>
 
             {stageBreakdown.length > 0 && (
                 <details style={{ fontSize: "0.72rem" }}>
@@ -1298,67 +1397,6 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                         ))}
                     </div>
                 </details>
-            )}
-
-            {p.complexityHours > 0 && p.status !== 'completado' && (
-                <div style={{ fontSize: "0.7rem", color: C.onSurfaceVariant, lineHeight: 1.4 }}>
-                    {remainingHours <= 0 ? (
-                        <span style={{ color: C.verde, fontWeight: 700 }}>Ya llegaste a las horas estimadas.</span>
-                    ) : (
-                        <>
-                            Faltan <b>{remainingHours.toFixed(1)}h</b>.
-                            {running && eta && <> A este ritmo, terminas ~<b>{eta}</b>.</>}
-                            {!running && daysUntilDue > 0 && <> Para llegar a tiempo: <b>{(remainingHours / daysUntilDue).toFixed(1)}h/día</b> por {daysUntilDue} día{daysUntilDue === 1 ? '' : 's'}.</>}
-                            {!running && daysUntilDue <= 0 && <span style={{ color: C.rojo, fontWeight: 700 }}> Ya venció — dedícale tiempo hoy.</span>}
-                        </>
-                    )}
-                </div>
-            )}
-
-            {p.status !== 'completado' && (
-                <div style={{ display: "flex", gap: "6px" }}>
-                    {!inSession && (
-                        <button
-                            onClick={() => { startSporadicTimer(p.id, linkedEvent?.notionEstado); setNotionEstado('En Edición'); }}
-                            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.surfaceContainerLow, color: C.onSurfaceVariant, border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
-                        >
-                            <Play size={13} /> Empezar a trabajar
-                        </button>
-                    )}
-                    {running && (
-                        <button
-                            onClick={() => pauseSporadicTimer(p.id)}
-                            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.ambar, color: "white", border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
-                        >
-                            <Pause size={13} /> Pausar
-                        </button>
-                    )}
-                    {paused && (
-                        <button
-                            onClick={() => startSporadicTimer(p.id, p.activeStage)}
-                            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.surfaceContainerLow, color: C.onSurfaceVariant, border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
-                        >
-                            <Play size={13} /> Reanudar
-                        </button>
-                    )}
-                    {inSession && (
-                        <button
-                            onClick={() => stopSporadicTimer(p.id)}
-                            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.rojo, color: "white", border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
-                        >
-                            <Square size={13} /> Terminar sesión
-                        </button>
-                    )}
-                    {inSession && !breakEndAt && !breakDoneAlert && (
-                        <button
-                            onClick={() => setBreakEndAt(Date.now() + BREAK_MINUTES * 60 * 1000)}
-                            title="Tomar un descanso de 5 min ahora, sin esperar el aviso"
-                            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "none", border: `1px solid ${C.outlineVariant}`, borderRadius: "8px", padding: "8px 10px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700, color: C.onSurfaceVariant, flexShrink: 0 }}
-                        >
-                            <Coffee size={13} />
-                        </button>
-                    )}
-                </div>
             )}
 
             <ConfirmDialog
