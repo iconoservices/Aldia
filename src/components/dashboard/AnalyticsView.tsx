@@ -581,56 +581,61 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                 de un bloque de título arriba y una tarjeta de filtros aparte debajo —
                 eran dos filas para decir lo mismo. */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: C.surfaceLowest, padding: '10px 14px', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                    <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: C.onSurface, whiteSpace: 'nowrap' }}>Análisis de Gastos</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'nowrap' }}>
+                    <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: C.onSurface, whiteSpace: 'nowrap', flexShrink: 0 }}>Análisis de Gastos</h2>
 
-                    <div style={{ display: 'flex', background: C.surfaceContainerLow, borderRadius: '999px', padding: '3px', border: `1px solid ${C.outlineVariant}`, gap: '2px', overflowX: 'auto' }}>
-                        {([['day', 'Día'], ['week', 'Sem'], ['month', 'Mes'], ['year', 'Año'], ['all', 'Todo'], ['custom', 'Rango']] as [PeriodMode | 'custom', string][]).map(([m, label]) => {
-                            const activo = mode === m;
-                            return (
-                                <button
-                                    key={m}
-                                    onClick={() => setMode(m)}
-                                    style={{
-                                        border: 'none', borderRadius: '999px', cursor: 'pointer', flexShrink: 0,
-                                        padding: '5px 13px', fontSize: '0.75rem', fontWeight: 700,
-                                        fontFamily: 'inherit', transition: 'all 0.15s',
-                                        background: activo ? C.secondary : 'transparent',
-                                        color: activo ? '#fff' : C.onSurfaceVariant,
-                                        whiteSpace: 'nowrap',
-                                    }}
-                                >
-                                    {label}
-                                </button>
-                            );
-                        })}
+                    {/* Igual que en Finanzas: solo este grupo (pills + navegador de fecha)
+                        se encoge y scrollea si falta espacio, para que Cuentas y el
+                        toggle Finanzas nunca terminen empujados a una segunda línea. */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: '1 1 auto', overflowX: 'auto' }}>
+                        <div style={{ display: 'flex', background: C.surfaceContainerLow, borderRadius: '999px', padding: '3px', border: `1px solid ${C.outlineVariant}`, gap: '2px', flexShrink: 0 }}>
+                            {([['day', 'Día'], ['week', 'Sem'], ['month', 'Mes'], ['year', 'Año'], ['all', 'Todo'], ['custom', 'Rango']] as [PeriodMode | 'custom', string][]).map(([m, label]) => {
+                                const activo = mode === m;
+                                return (
+                                    <button
+                                        key={m}
+                                        onClick={() => setMode(m)}
+                                        style={{
+                                            border: 'none', borderRadius: '999px', cursor: 'pointer', flexShrink: 0,
+                                            padding: '5px 13px', fontSize: '0.75rem', fontWeight: 700,
+                                            fontFamily: 'inherit', transition: 'all 0.15s',
+                                            background: activo ? C.secondary : 'transparent',
+                                            color: activo ? '#fff' : C.onSurfaceVariant,
+                                            whiteSpace: 'nowrap',
+                                        }}
+                                    >
+                                        {label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Navegador de mes/semana/año: antes vivía solo en su propia fila
+                            centrada, aislado entre el header y el resumen — se ve raro
+                            flotando solo, así que ahora entra en la misma fila. */}
+                        {mode !== 'custom' && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                <button onClick={() => setRefDate(shiftPeriod(mode, refDate, -1))} disabled={!canNavigate} style={{ background: 'transparent', border: 'none', cursor: canNavigate ? 'pointer' : 'default', opacity: canNavigate ? 1 : 0.25, color: C.onSurfaceVariant, display: 'flex' }}><ChevronLeft size={16} /></button>
+                                <span style={{ fontSize: '0.8rem', fontWeight: 900, color: C.onSurface, textTransform: 'capitalize', whiteSpace: 'nowrap' }}>{periodLabelStr}</span>
+                                <button onClick={() => setRefDate(shiftPeriod(mode, refDate, 1))} disabled={!canNavigate} style={{ background: 'transparent', border: 'none', cursor: canNavigate ? 'pointer' : 'default', opacity: canNavigate ? 1 : 0.25, color: C.onSurfaceVariant, display: 'flex' }}><ChevronRight size={16} /></button>
+                            </div>
+                        )}
+
+                        {mode === 'custom' && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                                <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} style={{ padding: '7px 10px', borderRadius: '8px', border: `1px solid ${C.outlineVariant}`, fontSize: '0.78rem', fontFamily: 'inherit' }} />
+                                <span style={{ fontSize: '0.75rem', color: C.outline, fontWeight: 700 }}>→</span>
+                                <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} style={{ padding: '7px 10px', borderRadius: '8px', border: `1px solid ${C.outlineVariant}`, fontSize: '0.78rem', fontFamily: 'inherit' }} />
+                            </div>
+                        )}
                     </div>
-
-                    {/* Navegador de mes/semana/año: antes vivía solo en su propia fila
-                        centrada, aislado entre el header y el resumen — se ve raro
-                        flotando solo, así que ahora entra en la misma fila. */}
-                    {mode !== 'custom' && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                            <button onClick={() => setRefDate(shiftPeriod(mode, refDate, -1))} disabled={!canNavigate} style={{ background: 'transparent', border: 'none', cursor: canNavigate ? 'pointer' : 'default', opacity: canNavigate ? 1 : 0.25, color: C.onSurfaceVariant, display: 'flex' }}><ChevronLeft size={16} /></button>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 900, color: C.onSurface, textTransform: 'capitalize', whiteSpace: 'nowrap' }}>{periodLabelStr}</span>
-                            <button onClick={() => setRefDate(shiftPeriod(mode, refDate, 1))} disabled={!canNavigate} style={{ background: 'transparent', border: 'none', cursor: canNavigate ? 'pointer' : 'default', opacity: canNavigate ? 1 : 0.25, color: C.onSurfaceVariant, display: 'flex' }}><ChevronRight size={16} /></button>
-                        </div>
-                    )}
-
-                    {mode === 'custom' && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}>
-                            <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} style={{ padding: '7px 10px', borderRadius: '8px', border: `1px solid ${C.outlineVariant}`, fontSize: '0.78rem', fontFamily: 'inherit' }} />
-                            <span style={{ fontSize: '0.75rem', color: C.outline, fontWeight: 700 }}>→</span>
-                            <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} style={{ padding: '7px 10px', borderRadius: '8px', border: `1px solid ${C.outlineVariant}`, fontSize: '0.78rem', fontFamily: 'inherit' }} />
-                        </div>
-                    )}
 
                     {/* Mismo diseño sólido que "Registrar" en Finanzas — ocupa la misma
                         posición (justo antes del toggle de modo) en ambas cabeceras. */}
                     <button
                         onClick={() => setAccountModalOpen(true)}
                         title={`Cuentas: ${accountFilterLabel}`}
-                        style={{ ...botonPrimario(!isDesktop), padding: '8px 14px', fontSize: '0.78rem' }}
+                        style={{ ...botonPrimario(!isDesktop), padding: '8px 14px', fontSize: '0.78rem', flexShrink: 0 }}
                     >
                         <Filter size={13} /> <span>Cuentas: {accountFilterLabel}</span>
                     </button>

@@ -1242,39 +1242,45 @@ export const FinanzasDashboard = ({
                 // blanca angosta) en vez del título grande + subtítulo de antes,
                 // para que ambas vistas se sientan como la misma pantalla.
                 return (
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", background: "white", padding: "10px 14px", borderRadius: "18px", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
-                        <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 900, color: C.onSurface, whiteSpace: "nowrap" }}>Finanzas</h2>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "nowrap", background: "white", padding: "10px 14px", borderRadius: "18px", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
+                        <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 900, color: C.onSurface, whiteSpace: "nowrap", flexShrink: 0 }}>Finanzas</h2>
 
-                        <div style={{ display: "flex", background: C.surfaceContainerLow, borderRadius: "999px", padding: "3px", border: `1px solid ${C.outlineVariant}` }}>
-                            {(["day", "week", "month", "quarter", "year", "all"] as PeriodMode[]).map(mode => {
-                                const etiquetas: Record<PeriodMode, string> = { day: "Día", week: "Sem", month: "Mes", quarter: "Trim", year: "Año", all: "Todo" };
-                                const activo = topPeriod === mode;
-                                return (
-                                    <button
-                                        key={mode}
-                                        onClick={() => { setTopPeriod(mode); setPeriodRef(new Date()); }}
-                                        style={{
-                                            border: "none", borderRadius: "999px", cursor: "pointer", flexShrink: 0,
-                                            padding: "5px 13px", fontSize: "0.75rem", fontWeight: 700,
-                                            fontFamily: "inherit", transition: "all 0.15s",
-                                            background: activo ? C.secondary : "transparent",
-                                            color: activo ? "#fff" : C.onSurfaceVariant,
-                                            whiteSpace: "nowrap",
-                                        }}
-                                    >
-                                        {etiquetas[mode]}
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        {topPeriod !== "all" && (
-                            <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
-                                <button onClick={() => setPeriodRef(d => shiftPeriod(topPeriod, d, -1))} style={{ background: "none", border: "none", cursor: "pointer", color: C.onSurfaceVariant, display: "flex", padding: "2px" }}><ChevronLeft size={16} /></button>
-                                <span style={{ fontSize: "0.8rem", fontWeight: 900, color: C.onSurface, textTransform: "capitalize", whiteSpace: "nowrap" }}>{periodLabel(topPeriod, periodRef)}</span>
-                                <button onClick={() => setPeriodRef(d => shiftPeriod(topPeriod, d, 1))} style={{ background: "none", border: "none", cursor: "pointer", color: C.onSurfaceVariant, display: "flex", padding: "2px" }}><ChevronRight size={16} /></button>
+                        {/* Este grupo (pills de período + navegador de fecha) es el único
+                            que se encoge y scrollea si falta espacio — así Registrar y
+                            Analizar (el toggle) nunca terminan empujados a una segunda
+                            línea más abajo; siempre quedan en la misma fila que el título. */}
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: "1 1 auto", overflowX: "auto" }}>
+                            <div style={{ display: "flex", background: C.surfaceContainerLow, borderRadius: "999px", padding: "3px", border: `1px solid ${C.outlineVariant}`, flexShrink: 0 }}>
+                                {(["day", "week", "month", "quarter", "year", "all"] as PeriodMode[]).map(mode => {
+                                    const etiquetas: Record<PeriodMode, string> = { day: "Día", week: "Sem", month: "Mes", quarter: "Trim", year: "Año", all: "Todo" };
+                                    const activo = topPeriod === mode;
+                                    return (
+                                        <button
+                                            key={mode}
+                                            onClick={() => { setTopPeriod(mode); setPeriodRef(new Date()); }}
+                                            style={{
+                                                border: "none", borderRadius: "999px", cursor: "pointer", flexShrink: 0,
+                                                padding: "5px 13px", fontSize: "0.75rem", fontWeight: 700,
+                                                fontFamily: "inherit", transition: "all 0.15s",
+                                                background: activo ? C.secondary : "transparent",
+                                                color: activo ? "#fff" : C.onSurfaceVariant,
+                                                whiteSpace: "nowrap",
+                                            }}
+                                        >
+                                            {etiquetas[mode]}
+                                        </button>
+                                    );
+                                })}
                             </div>
-                        )}
+
+                            {topPeriod !== "all" && (
+                                <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+                                    <button onClick={() => setPeriodRef(d => shiftPeriod(topPeriod, d, -1))} style={{ background: "none", border: "none", cursor: "pointer", color: C.onSurfaceVariant, display: "flex", padding: "2px" }}><ChevronLeft size={16} /></button>
+                                    <span style={{ fontSize: "0.8rem", fontWeight: 900, color: C.onSurface, textTransform: "capitalize", whiteSpace: "nowrap" }}>{periodLabel(topPeriod, periodRef)}</span>
+                                    <button onClick={() => setPeriodRef(d => shiftPeriod(topPeriod, d, 1))} style={{ background: "none", border: "none", cursor: "pointer", color: C.onSurfaceVariant, display: "flex", padding: "2px" }}><ChevronRight size={16} /></button>
+                                </div>
+                            )}
+                        </div>
 
                         {/* marginLeft: auto en el toggle (no en Registrar) para que quede
                             siempre pegado a la esquina derecha — la misma posición fija
@@ -1283,7 +1289,7 @@ export const FinanzasDashboard = ({
                         {/* Mismo padding y tamaño de fuente que los pills de al lado
                             (Analizar, período) — botonPrimario solo, sin ajustar, quedaba
                             visiblemente más alto que el resto de la fila. */}
-                        <button onClick={() => setShowTxForm(v => !v)} style={{ ...botonPrimario(movil), padding: "8px 14px", fontSize: "0.78rem", marginLeft: "auto" }}>
+                        <button onClick={() => setShowTxForm(v => !v)} style={{ ...botonPrimario(movil), padding: "8px 14px", fontSize: "0.78rem", marginLeft: "auto", flexShrink: 0 }}>
                             <Plus size={15} /> Registrar
                         </button>
 

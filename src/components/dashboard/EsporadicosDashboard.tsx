@@ -473,10 +473,13 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
             {/* Misma cápsula blanca de una sola fila que Finanzas/Analizar: título +
                 pastillas de estado + reloj/racha/ajustes, todo en el mismo nivel en vez
                 de una fila de título grande y otra de pastillas aparte debajo. */}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", background: "white", padding: "10px 14px", borderRadius: "18px", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
-                <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 900, color: C.onSurface, whiteSpace: "nowrap" }}>Entregas</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "nowrap", background: "white", padding: "10px 14px", borderRadius: "18px", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
+                <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 900, color: C.onSurface, whiteSpace: "nowrap", flexShrink: 0 }}>Entregas</h2>
 
-                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px" }}>
+                {/* Igual que en Finanzas/Analizar: solo las pastillas de estado se
+                    encogen y scrollean si falta espacio, para que el reloj/racha/
+                    ajustes nunca terminen empujados a una segunda línea más abajo. */}
+                <div style={{ display: "flex", flexWrap: "nowrap", alignItems: "center", gap: "6px", minWidth: 0, flex: "1 1 auto", overflowX: "auto" }}>
                     {([
                         { label: "por entregar", value: pendientes.length, icon: Timer, color: C.secondary, bg: "rgba(99,102,241,0.12)" },
                         { label: "atrasados", value: atrasados, icon: AlertTriangle, color: C.rojo, bg: "rgba(239,68,68,0.12)", filterKey: 'atrasados' as const },
@@ -495,7 +498,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                                     display: "flex", alignItems: "center", gap: "5px", background: stat.bg, borderRadius: "999px", padding: "4px 10px",
                                     border: active ? `2px solid ${stat.color}` : "2px solid transparent",
                                     cursor: clickable ? "pointer" : "default",
-                                    font: "inherit",
+                                    font: "inherit", flexShrink: 0,
                                 }}
                             >
                                 <stat.icon size={12} color={stat.color} />
@@ -505,13 +508,13 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                         );
                     })}
                     {statFilter && (
-                        <button onClick={() => setStatFilter(null)} style={{ display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", cursor: "pointer", color: C.outline, fontSize: "0.68rem", fontWeight: 700, padding: "5px 6px" }}>
+                        <button onClick={() => setStatFilter(null)} style={{ display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", cursor: "pointer", color: C.outline, fontSize: "0.68rem", fontWeight: 700, padding: "5px 6px", flexShrink: 0 }}>
                             <X size={12} /> Quitar filtro
                         </button>
                     )}
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto", flexWrap: "nowrap", flexShrink: 0 }}>
                     {customOrder.length > 0 && (
                         <button onClick={() => saveOrder([])} title="Volver al orden automático por prioridad" style={{ display: "flex", alignItems: "center", gap: "5px", background: "none", border: `1px solid ${C.outlineVariant}`, borderRadius: "999px", padding: "6px 10px", cursor: "pointer", color: C.onSurfaceVariant, fontSize: "0.7rem", fontWeight: 700 }}>
                             <ArrowUpDown size={12} /> Orden manual
