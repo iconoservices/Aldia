@@ -306,9 +306,9 @@ export interface SporadicProject {
     usbDelivered?: boolean;     // ese USB ya se entregó — independiente de "status: completado" (el proyecto
                                  // puede estar entregado digitalmente y el USB físico seguir pendiente)
     photoGoal?: number;         // cantidad total de fotos a editar en esta entrega (meta, se elige a mano)
-    photoManualExtra?: number;  // fotos marcadas a mano (+1/-1, sin cronómetro) para ponerse al día si ya
-                                 // avanzó algunas antes de acordarse de usar "Iniciar foto" -- se suma al
-                                 // conteo del cronómetro (photoLogs.length) para el progreso contra la meta
+    photoManualExtra?: number;  // progreso contra photoGoal, marcado a mano (+1/-1 o escrito directo) --
+                                 // independiente del cronómetro de "Tiempo por foto" (photoLogs), que mide
+                                 // duración por foto y no cuenta para la meta
 }
 
 export interface UserPreferences {
@@ -1427,6 +1427,13 @@ export const useAlDiaState = () => {
         } : p));
     };
 
+    // Deshace solo la última foto cronometrada (ej. un "Foto lista" de más por
+    // error) sin perder el resto del registro -- photoLogs[0] es la más nueva
+    // porque finishPhotoTimer la agrega al frente con unshift.
+    const removeLastPhotoLog = (id: number) => {
+        setSporadicProjects(prev => prev.map(p => p.id === id ? { ...p, photoLogs: (p.photoLogs || []).slice(1) } : p));
+    };
+
     // Reinicia solo el registro de tiempo trabajado (sesiones + fotos) sin borrar
     // el proyecto -- para corregir pruebas o arrancar de cero el conteo de horas.
     const resetSporadicWorkedTime = (id: number) => {
@@ -1666,7 +1673,7 @@ export const useAlDiaState = () => {
         startSporadicTimer: lw(startSporadicTimer), pauseSporadicTimer: lw(pauseSporadicTimer), stopSporadicTimer: lw(stopSporadicTimer),
         startPhotoTimer: lw(startPhotoTimer), pausePhotoTimer: lw(pausePhotoTimer), finishPhotoTimer: lw(finishPhotoTimer), cancelPhotoTimer: lw(cancelPhotoTimer),
         adjustPhotoManualExtra: lw(adjustPhotoManualExtra),
-        resetSporadicWorkedTime: lw(resetSporadicWorkedTime), resetSporadicPhotoLog: lw(resetSporadicPhotoLog),
+        resetSporadicWorkedTime: lw(resetSporadicWorkedTime), resetSporadicPhotoLog: lw(resetSporadicPhotoLog), removeLastPhotoLog: lw(removeLastPhotoLog),
         phaseTemplates,
         addFaseTemplate: lw(addFaseTemplate), removeFaseTemplate: lw(removeFaseTemplate), renameFaseTemplate: lw(renameFaseTemplate),
         addFaseTemplateStep: lw(addFaseTemplateStep), removeFaseTemplateStep: lw(removeFaseTemplateStep),

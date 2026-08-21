@@ -529,6 +529,7 @@ function App() {
                 adjustPhotoManualExtra={state.adjustPhotoManualExtra}
                 resetSporadicWorkedTime={state.resetSporadicWorkedTime}
                 resetSporadicPhotoLog={state.resetSporadicPhotoLog}
+                removeLastPhotoLog={state.removeLastPhotoLog}
                 calendarEvents={state.agenda}
                 updateCalendarEvent={state.updateCalendarEvent}
                 phaseTemplates={state.phaseTemplates}
