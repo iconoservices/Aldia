@@ -306,9 +306,10 @@ export interface SporadicProject {
     usbDelivered?: boolean;     // ese USB ya se entregó — independiente de "status: completado" (el proyecto
                                  // puede estar entregado digitalmente y el USB físico seguir pendiente)
     photoGoal?: number;         // cantidad total de fotos a editar en esta entrega (meta, se elige a mano)
-    photoManualExtra?: number;  // progreso contra photoGoal, marcado a mano (+1/-1 o escrito directo) --
-                                 // independiente del cronómetro de "Tiempo por foto" (photoLogs), que mide
-                                 // duración por foto y no cuenta para la meta
+    photoManualExtra?: number;  // ajuste a mano (+1/-1 o escrito directo) sobre el conteo del cronómetro
+                                 // (photoLogs.length) para el progreso contra photoGoal -- puede ser negativo
+                                 // (restar sin borrar el historial del cronómetro). El total mostrado es
+                                 // siempre photoLogs.length + photoManualExtra
 }
 
 export interface UserPreferences {
@@ -1416,7 +1417,13 @@ export const useAlDiaState = () => {
     // Lee el valor previo dentro del updater (no del render) para que clics
     // seguidos no se pisen entre sí por closures viejos.
     const adjustPhotoManualExtra = (id: number, delta: number) => {
-        setSporadicProjects(prev => prev.map(p => p.id === id ? { ...p, photoManualExtra: Math.max(0, (p.photoManualExtra || 0) + delta) } : p));
+        setSporadicProjects(prev => prev.map(p => {
+            if (p.id !== id) return p;
+            // photoManualExtra puede ir negativo (para restar sin borrar del historial
+            // del cronómetro) mientras el total (cronómetro + manual) no baje de 0.
+            const timerCount = (p.photoLogs || []).length;
+            return { ...p, photoManualExtra: Math.max(-timerCount, (p.photoManualExtra || 0) + delta) };
+        }));
     };
 
     // Reinicia solo el contador de fotos (conteo/promedio/total) sin tocar las

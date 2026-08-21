@@ -886,10 +886,11 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     const photoCount = photoLogs.length;
     const totalPhotoMs = photoLogs.reduce((s, l) => s + l.seconds * 1000, 0);
     const avgPhotoMs = photoCount > 0 ? totalPhotoMs / photoCount : 0;
-    // Contador de meta: independiente del cronómetro ("Tiempo por foto" de abajo
-    // mide duración por foto editada) -- este es a mano, para llevar la cuenta
-    // de cuántas fotos van contra la meta sin depender de haber cronometrado cada una.
+    // Progreso contra la meta: cuenta tanto las fotos cronometradas (photoCount,
+    // "Foto lista") como las marcadas a mano (photoManualExtra, para ponerse al
+    // día si ya se avanzó sin cronometrar) -- un solo número, no dos separados.
     const photoManualExtra = p.photoManualExtra || 0;
+    const photoProgress = Math.max(photoCount + photoManualExtra, 0);
     useEffect(() => { if (photoInSession) setPhotoDetailsOpen(true); }, [photoInSession]);
 
     // Tiempo por etapa de ESTE proyecto (a diferencia del panel de arriba del
@@ -1292,8 +1293,8 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                             <ImageIcon size={12} /> Tiempo por foto
                         </span>
                         <span style={{ fontSize: "0.68rem", fontWeight: 700, color: C.onSurfaceVariant, textAlign: "right" }}>
-                            {p.photoGoal ? `${photoManualExtra}/${p.photoGoal} fotos` : (photoManualExtra > 0 ? `${photoManualExtra} foto${photoManualExtra === 1 ? '' : 's'}` : '')}
-                            {photoCount > 0 && <> · cronómetro: {photoCount} foto{photoCount === 1 ? '' : 's'} · prom. {formatElapsed(avgPhotoMs)} · total {formatElapsed(totalPhotoMs)}</>}
+                            {p.photoGoal ? `${photoProgress}/${p.photoGoal} fotos` : (photoProgress > 0 ? `${photoProgress} foto${photoProgress === 1 ? '' : 's'}` : '')}
+                            {photoCount > 0 && <> · prom. {formatElapsed(avgPhotoMs)} · total {formatElapsed(totalPhotoMs)}</>}
                         </span>
                     </summary>
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "8px" }}>
@@ -1315,23 +1316,26 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "4px" }}>
                                 <button
                                     onClick={() => adjustPhotoManualExtra(p.id, -1)}
-                                    disabled={photoManualExtra === 0}
-                                    title="Quitar una foto marcada a mano"
-                                    style={{ background: "none", border: `1px solid ${C.outlineVariant}`, borderRadius: "6px", cursor: photoManualExtra === 0 ? "default" : "pointer", opacity: photoManualExtra === 0 ? 0.4 : 1, color: C.onSurfaceVariant, padding: "3px", display: "flex" }}
+                                    disabled={photoProgress === 0}
+                                    title="Restar una foto"
+                                    style={{ background: "none", border: `1px solid ${C.outlineVariant}`, borderRadius: "6px", cursor: photoProgress === 0 ? "default" : "pointer", opacity: photoProgress === 0 ? 0.4 : 1, color: C.onSurfaceVariant, padding: "3px", display: "flex" }}
                                 >
                                     <Minus size={12} />
                                 </button>
                                 <input
                                     type="number"
                                     min={0}
-                                    value={photoManualExtra}
-                                    onChange={e => updateSporadicProject(p.id, { photoManualExtra: Math.max(0, Number(e.target.value) || 0) })}
-                                    title="Fotos marcadas a mano — se puede escribir directo para ponerse al día"
+                                    value={photoProgress}
+                                    onChange={e => {
+                                        const newTotal = Math.max(0, Number(e.target.value) || 0);
+                                        updateSporadicProject(p.id, { photoManualExtra: newTotal - photoCount });
+                                    }}
+                                    title="Fotos hechas — cuenta las cronometradas con 'Foto lista' más las marcadas a mano; se puede escribir directo para ponerse al día"
                                     style={{ width: "44px", textAlign: "center", border: `1px solid ${C.outlineVariant}`, borderRadius: "6px", padding: "3px 2px", fontSize: "0.74rem", fontWeight: 700, fontFamily: "inherit", background: "white", color: C.onSurfaceVariant }}
                                 />
                                 <button
                                     onClick={() => adjustPhotoManualExtra(p.id, 1)}
-                                    title="Marcar una foto a mano (ya avanzada, sin cronómetro)"
+                                    title="Sumar una foto a mano (ya avanzada, sin cronómetro)"
                                     style={{ background: "none", border: `1px solid ${C.outlineVariant}`, borderRadius: "6px", cursor: "pointer", color: C.onSurfaceVariant, padding: "3px", display: "flex" }}
                                 >
                                     <Plus size={12} />
@@ -1340,10 +1344,10 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                         </div>
                         {!!p.photoGoal && (
                             <div style={{ height: "5px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
-                                <div style={{ height: "100%", borderRadius: "999px", width: `${Math.min((photoManualExtra / p.photoGoal) * 100, 100)}%`, background: photoManualExtra >= p.photoGoal ? C.verde : C.secondary }} />
+                                <div style={{ height: "100%", borderRadius: "999px", width: `${Math.min((photoProgress / p.photoGoal) * 100, 100)}%`, background: photoProgress >= p.photoGoal ? C.verde : C.secondary }} />
                             </div>
                         )}
-                        {(photoCount > 0 || photoManualExtra > 0) && (
+                        {(photoCount > 0 || photoManualExtra !== 0) && (
                             <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
                                 {photoCount > 0 && (
                                     <button
