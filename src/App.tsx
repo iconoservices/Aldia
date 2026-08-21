@@ -526,6 +526,7 @@ function App() {
                 pausePhotoTimer={state.pausePhotoTimer}
                 finishPhotoTimer={state.finishPhotoTimer}
                 cancelPhotoTimer={state.cancelPhotoTimer}
+                adjustPhotoManualExtra={state.adjustPhotoManualExtra}
                 resetSporadicWorkedTime={state.resetSporadicWorkedTime}
                 resetSporadicPhotoLog={state.resetSporadicPhotoLog}
                 calendarEvents={state.agenda}

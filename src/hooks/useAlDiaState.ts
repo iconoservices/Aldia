@@ -305,6 +305,10 @@ export interface SporadicProject {
     requiresUsb?: boolean;      // la entrega final incluye un USB físico con las fotos
     usbDelivered?: boolean;     // ese USB ya se entregó — independiente de "status: completado" (el proyecto
                                  // puede estar entregado digitalmente y el USB físico seguir pendiente)
+    photoGoal?: number;         // cantidad total de fotos a editar en esta entrega (meta, se elige a mano)
+    photoManualExtra?: number;  // fotos marcadas a mano (+1/-1, sin cronómetro) para ponerse al día si ya
+                                 // avanzó algunas antes de acordarse de usar "Iniciar foto" -- se suma al
+                                 // conteo del cronómetro (photoLogs.length) para el progreso contra la meta
 }
 
 export interface UserPreferences {
@@ -1407,11 +1411,19 @@ export const useAlDiaState = () => {
         setSporadicProjects(prev => prev.map(p => p.id === id ? { ...p, photoActiveSince: undefined, photoPausedAccumSeconds: undefined } : p));
     };
 
+    // Suma/resta al contador de fotos marcadas a mano (sin cronómetro), para
+    // ponerse al día si ya se avanzó antes de acordarse de usar "Iniciar foto".
+    // Lee el valor previo dentro del updater (no del render) para que clics
+    // seguidos no se pisen entre sí por closures viejos.
+    const adjustPhotoManualExtra = (id: number, delta: number) => {
+        setSporadicProjects(prev => prev.map(p => p.id === id ? { ...p, photoManualExtra: Math.max(0, (p.photoManualExtra || 0) + delta) } : p));
+    };
+
     // Reinicia solo el contador de fotos (conteo/promedio/total) sin tocar las
     // horas de sesión ni lo demás -- para corregir pruebas del cronómetro por foto.
     const resetSporadicPhotoLog = (id: number) => {
         setSporadicProjects(prev => prev.map(p => p.id === id ? {
-            ...p, photoLogs: [], photoActiveSince: undefined, photoPausedAccumSeconds: undefined,
+            ...p, photoLogs: [], photoActiveSince: undefined, photoPausedAccumSeconds: undefined, photoManualExtra: undefined,
         } : p));
     };
 
@@ -1428,6 +1440,7 @@ export const useAlDiaState = () => {
             pausedAccumHours: undefined,
             photoActiveSince: undefined,
             photoPausedAccumSeconds: undefined,
+            photoManualExtra: undefined,
             sessionStartedAt: undefined,
             firstStartedAt: undefined,
         } : p));
@@ -1652,6 +1665,7 @@ export const useAlDiaState = () => {
         removeSporadicProject: lw(removeSporadicProject),
         startSporadicTimer: lw(startSporadicTimer), pauseSporadicTimer: lw(pauseSporadicTimer), stopSporadicTimer: lw(stopSporadicTimer),
         startPhotoTimer: lw(startPhotoTimer), pausePhotoTimer: lw(pausePhotoTimer), finishPhotoTimer: lw(finishPhotoTimer), cancelPhotoTimer: lw(cancelPhotoTimer),
+        adjustPhotoManualExtra: lw(adjustPhotoManualExtra),
         resetSporadicWorkedTime: lw(resetSporadicWorkedTime), resetSporadicPhotoLog: lw(resetSporadicPhotoLog),
         phaseTemplates,
         addFaseTemplate: lw(addFaseTemplate), removeFaseTemplate: lw(removeFaseTemplate), renameFaseTemplate: lw(renameFaseTemplate),

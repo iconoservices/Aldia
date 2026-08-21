@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, X, Trash2, MoreVertical, Play, Pause, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart, Pin, Image as ImageIcon, Check, TimerReset, Settings, Coffee, Bell, BellOff, ListChecks, AlertTriangle, Pencil, Send, Usb } from "lucide-react";
+import { Plus, Minus, X, Trash2, MoreVertical, Play, Pause, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart, Pin, Image as ImageIcon, Check, TimerReset, Settings, Coffee, Bell, BellOff, ListChecks, AlertTriangle, Pencil, Send, Usb, Target } from "lucide-react";
 import {
     DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
@@ -65,6 +65,7 @@ interface EsporadicosProps {
     pausePhotoTimer: (id: number) => void;
     finishPhotoTimer: (id: number) => void;
     cancelPhotoTimer: (id: number) => void;
+    adjustPhotoManualExtra: (id: number, delta: number) => void;
     resetSporadicWorkedTime: (id: number) => void;
     resetSporadicPhotoLog: (id: number) => void;
     calendarEvents: CalendarEvent[];
@@ -290,7 +291,7 @@ const computeStreak = (projects: SporadicProject[]) => {
     return streak;
 };
 
-export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, updateSporadicProject, removeSporadicProject, startSporadicTimer, pauseSporadicTimer, stopSporadicTimer, startPhotoTimer, pausePhotoTimer, finishPhotoTimer, cancelPhotoTimer, resetSporadicWorkedTime, resetSporadicPhotoLog, calendarEvents, updateCalendarEvent, phaseTemplates, addFaseTemplate, removeFaseTemplate, addFaseTemplateStep, removeFaseTemplateStep, applyFaseTemplate, addProjectFase, removeProjectFase, toggleProjectFase, startFaseTimer, pauseFaseTimer, finishFaseTimer }: EsporadicosProps) => {
+export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, updateSporadicProject, removeSporadicProject, startSporadicTimer, pauseSporadicTimer, stopSporadicTimer, startPhotoTimer, pausePhotoTimer, finishPhotoTimer, cancelPhotoTimer, adjustPhotoManualExtra, resetSporadicWorkedTime, resetSporadicPhotoLog, calendarEvents, updateCalendarEvent, phaseTemplates, addFaseTemplate, removeFaseTemplate, addFaseTemplateStep, removeFaseTemplateStep, applyFaseTemplate, addProjectFase, removeProjectFase, toggleProjectFase, startFaseTimer, pauseFaseTimer, finishFaseTimer }: EsporadicosProps) => {
     const movil = useIsMobile();
     // Filtro rápido activado desde las pastillas de arriba: "atrasados" y "en edición"
     // cruzan las dos columnas (en curso / listos para entregar), así que se filtra
@@ -743,7 +744,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                         ) : (
                             <SortableContext items={visibleEnProgreso.map(p => p.id)} strategy={verticalListSortingStrategy}>
                                 {visibleEnProgreso.map(p => (
-                                    <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} pomodoroPrefs={pomodoroPrefs} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} phaseTemplates={phaseTemplates} applyFaseTemplate={applyFaseTemplate} addProjectFase={addProjectFase} removeProjectFase={removeProjectFase} toggleProjectFase={toggleProjectFase} startFaseTimer={startFaseTimer} pauseFaseTimer={pauseFaseTimer} finishFaseTimer={finishFaseTimer} />
+                                    <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} adjustPhotoManualExtra={adjustPhotoManualExtra} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} pomodoroPrefs={pomodoroPrefs} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} phaseTemplates={phaseTemplates} applyFaseTemplate={applyFaseTemplate} addProjectFase={addProjectFase} removeProjectFase={removeProjectFase} toggleProjectFase={toggleProjectFase} startFaseTimer={startFaseTimer} pauseFaseTimer={pauseFaseTimer} finishFaseTimer={finishFaseTimer} />
                                 ))}
                             </SortableContext>
                         )}
@@ -762,7 +763,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                         ) : (
                             <SortableContext items={visibleListosParaEntregar.map(p => p.id)} strategy={verticalListSortingStrategy}>
                                 {visibleListosParaEntregar.map(p => (
-                                    <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} pomodoroPrefs={pomodoroPrefs} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} phaseTemplates={phaseTemplates} applyFaseTemplate={applyFaseTemplate} addProjectFase={addProjectFase} removeProjectFase={removeProjectFase} toggleProjectFase={toggleProjectFase} startFaseTimer={startFaseTimer} pauseFaseTimer={pauseFaseTimer} finishFaseTimer={finishFaseTimer} />
+                                    <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} adjustPhotoManualExtra={adjustPhotoManualExtra} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} pomodoroPrefs={pomodoroPrefs} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} phaseTemplates={phaseTemplates} applyFaseTemplate={applyFaseTemplate} addProjectFase={addProjectFase} removeProjectFase={removeProjectFase} toggleProjectFase={toggleProjectFase} startFaseTimer={startFaseTimer} pauseFaseTimer={pauseFaseTimer} finishFaseTimer={finishFaseTimer} />
                                 ))}
                             </SortableContext>
                         )}
@@ -775,7 +776,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                     <summary style={{ ...etiqueta, cursor: "pointer", marginBottom: "0.6rem" }}>Completados ({completados.length})</summary>
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem", marginTop: "0.6rem" }}>
                         {completados.map(p => (
-                            <ProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} pomodoroPrefs={pomodoroPrefs} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} phaseTemplates={phaseTemplates} applyFaseTemplate={applyFaseTemplate} addProjectFase={addProjectFase} removeProjectFase={removeProjectFase} toggleProjectFase={toggleProjectFase} startFaseTimer={startFaseTimer} pauseFaseTimer={pauseFaseTimer} finishFaseTimer={finishFaseTimer} />
+                            <ProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} adjustPhotoManualExtra={adjustPhotoManualExtra} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} pomodoroPrefs={pomodoroPrefs} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} phaseTemplates={phaseTemplates} applyFaseTemplate={applyFaseTemplate} addProjectFase={addProjectFase} removeProjectFase={removeProjectFase} toggleProjectFase={toggleProjectFase} startFaseTimer={startFaseTimer} pauseFaseTimer={pauseFaseTimer} finishFaseTimer={finishFaseTimer} />
                         ))}
                     </div>
                 </details>
@@ -791,7 +792,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
     );
 };
 
-const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSporadicTimer, pauseSporadicTimer, stopSporadicTimer, startPhotoTimer, pausePhotoTimer, finishPhotoTimer, cancelPhotoTimer, resetSporadicWorkedTime, resetSporadicPhotoLog, pomodoroPrefs, calendarEvents, updateCalendarEvent, dragHandle, phaseTemplates, applyFaseTemplate, addProjectFase, removeProjectFase, toggleProjectFase, startFaseTimer, pauseFaseTimer, finishFaseTimer }: {
+const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSporadicTimer, pauseSporadicTimer, stopSporadicTimer, startPhotoTimer, pausePhotoTimer, finishPhotoTimer, cancelPhotoTimer, adjustPhotoManualExtra, resetSporadicWorkedTime, resetSporadicPhotoLog, pomodoroPrefs, calendarEvents, updateCalendarEvent, dragHandle, phaseTemplates, applyFaseTemplate, addProjectFase, removeProjectFase, toggleProjectFase, startFaseTimer, pauseFaseTimer, finishFaseTimer }: {
     p: SporadicProject;
     updateSporadicProject: (id: number, updates: Partial<SporadicProject>) => void;
     removeSporadicProject: (id: number) => void;
@@ -802,6 +803,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     pausePhotoTimer: (id: number) => void;
     finishPhotoTimer: (id: number) => void;
     cancelPhotoTimer: (id: number) => void;
+    adjustPhotoManualExtra: (id: number, delta: number) => void;
     resetSporadicWorkedTime: (id: number) => void;
     resetSporadicPhotoLog: (id: number) => void;
     pomodoroPrefs: PomodoroPrefs;
@@ -882,6 +884,10 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     const photoCount = photoLogs.length;
     const totalPhotoMs = photoLogs.reduce((s, l) => s + l.seconds * 1000, 0);
     const avgPhotoMs = photoCount > 0 ? totalPhotoMs / photoCount : 0;
+    // Progreso contra la meta: cronómetro (photoCount) + marcadas a mano
+    // (photoManualExtra), para cuando ya se avanzó sin acordarse de cronometrar.
+    const photoManualExtra = p.photoManualExtra || 0;
+    const photoProgress = photoCount + photoManualExtra;
     useEffect(() => { if (photoInSession) setPhotoDetailsOpen(true); }, [photoInSession]);
 
     // Tiempo por etapa de ESTE proyecto (a diferencia del panel de arriba del
@@ -1283,14 +1289,54 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                         <span style={{ fontSize: "0.66rem", fontWeight: 800, color: C.onSurfaceVariant, display: "flex", alignItems: "center", gap: "4px", textTransform: "uppercase", letterSpacing: "0.02em" }}>
                             <ImageIcon size={12} /> Tiempo por foto
                         </span>
-                        {photoCount > 0 && (
-                            <span style={{ fontSize: "0.68rem", fontWeight: 700, color: C.onSurfaceVariant }}>
-                                {photoCount} foto{photoCount === 1 ? '' : 's'} · prom. {formatElapsed(avgPhotoMs)} · total {formatElapsed(totalPhotoMs)}
-                            </span>
-                        )}
+                        <span style={{ fontSize: "0.68rem", fontWeight: 700, color: C.onSurfaceVariant, textAlign: "right" }}>
+                            {p.photoGoal ? `${photoProgress}/${p.photoGoal} fotos` : (photoCount > 0 ? `${photoCount} foto${photoCount === 1 ? '' : 's'}` : '')}
+                            {photoCount > 0 && <> · prom. {formatElapsed(avgPhotoMs)} · total {formatElapsed(totalPhotoMs)}</>}
+                        </span>
                     </summary>
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "8px" }}>
-                        {photoCount > 0 && (
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.7rem", fontWeight: 700, color: C.onSurfaceVariant, flexShrink: 0 }}>
+                                <Target size={12} /> Meta
+                            </span>
+                            <input
+                                type="number"
+                                min={0}
+                                value={p.photoGoal ?? ''}
+                                onChange={e => {
+                                    const v = e.target.value === '' ? undefined : Math.max(0, Number(e.target.value));
+                                    updateSporadicProject(p.id, { photoGoal: v });
+                                }}
+                                placeholder="cantidad de fotos"
+                                style={{ width: "90px", border: `1px solid ${C.outlineVariant}`, borderRadius: "8px", padding: "4px 8px", fontSize: "0.74rem", fontFamily: "inherit", background: "white", color: C.onSurface }}
+                            />
+                            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "4px" }}>
+                                <button
+                                    onClick={() => adjustPhotoManualExtra(p.id, -1)}
+                                    disabled={photoManualExtra === 0}
+                                    title="Quitar una foto marcada a mano"
+                                    style={{ background: "none", border: `1px solid ${C.outlineVariant}`, borderRadius: "6px", cursor: photoManualExtra === 0 ? "default" : "pointer", opacity: photoManualExtra === 0 ? 0.4 : 1, color: C.onSurfaceVariant, padding: "3px", display: "flex" }}
+                                >
+                                    <Minus size={12} />
+                                </button>
+                                <span style={{ fontSize: "0.7rem", fontWeight: 700, color: C.onSurfaceVariant, minWidth: "14px", textAlign: "center" }} title="Fotos marcadas a mano (sin cronómetro)">
+                                    {photoManualExtra}
+                                </span>
+                                <button
+                                    onClick={() => adjustPhotoManualExtra(p.id, 1)}
+                                    title="Marcar una foto a mano (ya avanzada, sin cronómetro)"
+                                    style={{ background: "none", border: `1px solid ${C.outlineVariant}`, borderRadius: "6px", cursor: "pointer", color: C.onSurfaceVariant, padding: "3px", display: "flex" }}
+                                >
+                                    <Plus size={12} />
+                                </button>
+                            </div>
+                        </div>
+                        {!!p.photoGoal && (
+                            <div style={{ height: "5px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden" }}>
+                                <div style={{ height: "100%", borderRadius: "999px", width: `${Math.min((photoProgress / p.photoGoal) * 100, 100)}%`, background: photoProgress >= p.photoGoal ? C.verde : C.secondary }} />
+                            </div>
+                        )}
+                        {(photoCount > 0 || photoManualExtra > 0) && (
                             <div style={{ display: "flex", justifyContent: "flex-end" }}>
                                 <button
                                     onClick={() => setConfirmResetPhotos(true)}
