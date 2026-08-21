@@ -37,16 +37,17 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     const PRIMARY_ITEMS = [
         { label: 'Checklist', tab: 'Checklist', icon: 'task_alt' },
         { label: 'Agenda', tab: 'Agenda', icon: 'event' },
-        { label: 'Finanzas',  tab: 'Finanzas',  icon: 'payments'      },
         { label: 'Entregas', tab: 'Entregas', icon: 'local_fire_department' },
-        { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
+        { label: 'Finanzas',  tab: 'Finanzas',  icon: 'payments'      },
+        { label: 'Proyección',   tab: 'Proyección',  icon: 'trending_up' },
         { label: 'Deudas',     tab: 'Deudas',     icon: 'receipt_long'  },
-        { label: 'Bloques', tab: 'Bloques',   icon: 'history_edu'    },
         { label: 'Movimientos', tab: 'Movimientos', icon: 'list_alt'    },
+        { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
+        { label: 'Bloques', tab: 'Bloques',   icon: 'history_edu'    },
         { label: 'Listas',    tab: 'Listas',    icon: 'fact_check'    },
         { label: 'Compras',   tab: 'Compras',   icon: 'shopping_cart' },
         { label: 'Comidas',   tab: 'Comidas',   icon: 'restaurant'    },
-        { label: 'Proyección', tab: 'Plan',      icon: 'savings'       },
+        { label: 'Plan Mensual', tab: 'Plan',      icon: 'savings'       },
         { label: 'Metas',     tab: 'Metas',     icon: 'flag'          },
         { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
         { label: 'Notion', tab: 'Notion', icon: 'sync_alt' },
@@ -58,7 +59,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Buscador',   tab: 'Buscador',   icon: 'travel_explore' },
         { label: 'Acción',     tab: 'Acción',     icon: 'bolt'          },
         { label: 'Base de Datos', tab: 'Base de Datos', icon: 'database' },
-        { label: 'Proyección',   tab: 'Proyección',  icon: 'trending_up' },
+        { label: 'Gastos Fijos', tab: 'Gastos Fijos', icon: 'event_repeat' },
         { label: 'Vida',       tab: 'Vida',        icon: 'spa'           },
         { label: 'Cerebro',    tab: 'Cerebro',     icon: 'psychology'    },
         { label: 'Ruta',       tab: 'Ruta',        icon: 'route'         },
@@ -76,7 +77,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         const isActive = item.tab === '__profile' ? false : activeTab === item.tab;
         return (
             <button
-                key={item.label}
+                key={item.tab}
                 onClick={() => {
                     if (item.tab === '__profile') { onProfileClick(); }
                     else { setActiveTab(item.tab); }
@@ -132,7 +133,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     const getViewTitle = (tab: string) => {
         switch (tab) {
             case 'Checklist': return 'Checklist Diario';
-            case 'Plan': return 'Proyección del Mes';
+            case 'Plan': return 'Plan Mensual';
             case 'Compras': return 'Lista de Compras & Deseos';
             case 'Comidas': return 'Calendario de Comidas';
             case 'Bloques': return 'Registro Semanal';
@@ -141,6 +142,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             case 'Acción': return 'Mi Acción';
             case 'Base de Datos': return 'Base de Datos';
             case 'Proyección': return 'Proyección Financiera';
+            case 'Gastos Fijos': return 'Gastos e Ingresos Fijos';
             case 'Calendario': return 'Calendario';
             case 'Stats': return 'Estadísticas';
             case 'Cerebro': return 'Cerebro';
@@ -297,7 +299,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     const isActive = item.tab === '__profile' ? false : activeTab === item.tab;
                     return (
                         <button
-                            key={item.label}
+                            key={item.tab}
                             onClick={() => item.tab === '__profile' ? onProfileClick() : setActiveTab(item.tab)}
                             className={`mobile-nav-btn ${isActive ? 'active' : ''}`}
                         >

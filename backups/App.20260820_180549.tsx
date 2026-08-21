@@ -27,7 +27,6 @@ import { ChecklistDiario } from './components/dashboard/ChecklistDiario';
 import { PlanDashboard } from './components/dashboard/PlanDashboard';
 import { BaseDatosDashboard } from './components/dashboard/BaseDatosDashboard';
 import { ProyeccionOriginalDashboard } from './components/dashboard/ProyeccionOriginalDashboard';
-import { GastosFijosDashboard } from './components/dashboard/GastosFijosDashboard';
 import { RitaDashboard } from './components/dashboard/RitaDashboard';
 import { EcosistemaMap } from './components/dashboard/EcosistemaMap';
 import { BienestarDashboard } from './components/dashboard/BienestarDashboard';
@@ -74,7 +73,6 @@ function App() {
     if (path.includes('/accion')) return 'Acción';
     if (path.includes('/base')) return 'Base de Datos';
     if (path.includes('/proyeccion')) return 'Proyección';
-    if (path.includes('/gastos-fijos')) return 'Gastos Fijos';
     if (path.includes('/bloques')) return 'Bloques';
     if (path.includes('/deudas')) return 'Deudas';
     if (path.includes('/bienestar')) return 'Bienestar';
@@ -97,8 +95,6 @@ function App() {
       path = '/tranqueo-de-vida';
     } else if (activeTab === 'Proyección') {
       path = '/proyeccion';
-    } else if (activeTab === 'Gastos Fijos') {
-      path = '/gastos-fijos';
     } else if (activeTab === 'Deudas') {
       path = '/deudas';
     } else if (activeTab === 'Negocio') {
@@ -140,7 +136,6 @@ function App() {
       else if (path.includes('/accion')) setActiveTab('Acción');
       else if (path.includes('/base')) setActiveTab('Base de Datos');
       else if (path.includes('/proyeccion')) setActiveTab('Proyección');
-      else if (path.includes('/gastos-fijos')) setActiveTab('Gastos Fijos');
       else if (path.includes('/bloques')) setActiveTab('Bloques');
     else if (path.includes('/bienestar')) setActiveTab('Bienestar');
     else if (path.includes('/negocio')) setActiveTab('Negocio');
@@ -249,26 +244,6 @@ function App() {
                 fixedExpenses={state.fixedExpenses}
                 fixedIncomeItems={(() => { try { return JSON.parse(state.preferences.fixedIncomes || '[]'); } catch { return []; }})()}
                 currentMonthStr={new Date().toLocaleDateString('en-CA').substring(0, 7)}
-              />
-            ) : activeTab === 'Gastos Fijos' ? (
-              <GastosFijosDashboard
-                transactions={state.transactions}
-                fixedExpenses={state.fixedExpenses}
-                addFixedExpense={state.addFixedExpense}
-                removeFixedExpense={state.removeFixedExpense}
-                toggleFixedExpense={state.toggleFixedExpense}
-                updateFixedExpense={state.updateFixedExpense}
-                payFixedExpensePartial={state.payFixedExpensePartial}
-                unmarkFixedExpensePaid={state.unmarkFixedExpensePaid}
-                rolloverFixedExpenses={state.rolloverFixedExpenses}
-                payPendingPeriod={state.payPendingPeriod}
-                unmarkPendingPeriod={state.unmarkPendingPeriod}
-                preferences={state.preferences}
-                updatePreference={state.updatePreference}
-                projects={state.projects}
-                accounts={state.accounts}
-                addTransaction={state.addTransaction}
-                removeTransaction={state.removeTransaction}
               />
             ) : activeTab === 'Calendario' ? (
               <TimelineAgendaView
@@ -423,11 +398,22 @@ function App() {
                 monthlyBudget={state.monthlyBudget}
                 updateMonthlyBudget={state.updateMonthlyBudget}
                 fixedExpenses={state.fixedExpenses}
+                addFixedExpense={state.addFixedExpense}
+                removeFixedExpense={state.removeFixedExpense}
+                toggleFixedExpense={state.toggleFixedExpense}
+                updateFixedExpense={state.updateFixedExpense}
                 repayDebt={state.repayDebt}
+                removeTransaction={state.removeTransaction}
                 updateTransaction={state.updateTransaction}
                 updateTransactionGroup={state.updateTransactionGroup}
+                markFixedExpensePaid={state.markFixedExpensePaid}
+                payFixedExpensePartial={state.payFixedExpensePartial}
+                unmarkFixedExpensePaid={state.unmarkFixedExpensePaid}
                 rolloverFixedExpenses={state.rolloverFixedExpenses}
+                payPendingPeriod={state.payPendingPeriod}
+                unmarkPendingPeriod={state.unmarkPendingPeriod}
                 preferences={state.preferences}
+                updatePreference={state.updatePreference}
                 projects={state.projects}
                 accounts={state.accounts}
                 setAccounts={state.setAccounts}
