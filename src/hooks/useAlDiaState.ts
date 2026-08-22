@@ -302,6 +302,7 @@ export interface SporadicProject {
     fases?: ProjectFase[];      // checklist de fases de este proyecto, una vez aplicada una plantilla
     requiresPreview?: boolean;  // el cliente pidió un adelanto (unas fotos de muestra) antes de la entrega final
     previewSent?: boolean;      // ese adelanto ya se envió (solo tiene sentido si requiresPreview)
+    previewDaysBefore?: number; // cuántos días antes de dueDate hay que mandar el adelanto (solo tiene sentido si requiresPreview)
     requiresUsb?: boolean;      // la entrega final incluye un USB físico con las fotos
     usbDelivered?: boolean;     // ese USB ya se entregó — independiente de "status: completado" (el proyecto
                                  // puede estar entregado digitalmente y el USB físico seguir pendiente)

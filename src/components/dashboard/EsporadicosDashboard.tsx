@@ -417,6 +417,12 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
         }).length,
         [sporadicProjects, calendarEvents]
     );
+    // USBs físicos que aún faltan entregar — independiente de si el proyecto
+    // ya se dio por completado, porque el USB puede quedar pendiente de llevar.
+    const usbPendientes = useMemo(
+        () => sporadicProjects.filter(p => p.requiresUsb && !p.usbDelivered).length,
+        [sporadicProjects]
+    );
 
     const matchesStatFilter = useCallback((p: SporadicProject) => {
         if (statFilter === 'atrasados') return daysBetween(todayStr(), p.dueDate) < 0;
@@ -488,6 +494,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                         { label: "en edición", value: enEdicion, icon: Pencil, color: ESTADO_COLOR['En Edición'], bg: "rgba(230,168,23,0.12)", filterKey: 'enEdicion' as const },
                         { label: "listos para entregar", value: listosParaEntregar.length, icon: CheckCircle, color: C.ambar, bg: "rgba(230,168,23,0.12)" },
                         { label: "entregados", value: completados.length, icon: CheckCircle2, color: C.verde, bg: "rgba(16,185,129,0.12)" },
+                        { label: "USB pendientes", value: usbPendientes, icon: Usb, color: C.ambar, bg: "rgba(230,168,23,0.12)" },
                     ]).map(stat => {
                         const clickable = !!stat.filterKey;
                         const active = clickable && statFilter === stat.filterKey;
@@ -831,6 +838,8 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     const [breakEndAt, setBreakEndAt] = useState<number | null>(null);
     const [breakDoneAlert, setBreakDoneAlert] = useState(false);
     const [notionSyncError, setNotionSyncError] = useState(false);
+    const [editandoAdelanto, setEditandoAdelanto] = useState(false);
+    const [diasAdelanto, setDiasAdelanto] = useState(String(p.previewDaysBefore ?? ''));
     const lastPomodoroThresholdRef = useRef(0);
     const tickCountRef = useRef(0);
     // Tiempo por foto y Fases ahora son colapsables (antes eran dos cajas fijas
@@ -1051,6 +1060,60 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                             >
                                 <Send size={10} /> {p.previewSent ? "Adelanto enviado" : "Adelanto pendiente"}
                             </button>
+                        )}
+                        {/* Días antes de la entrega para mandar el adelanto: si no está puesto,
+                            avisa en rojo (falta configurar); "sugerido" solo rellena un valor
+                            fijo (3 días) que se puede editar igual que si fuera manual. */}
+                        {p.requiresPreview && (
+                            editandoAdelanto ? (
+                                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                    <input
+                                        autoFocus
+                                        type="number" min="0"
+                                        value={diasAdelanto}
+                                        onChange={e => setDiasAdelanto(e.target.value)}
+                                        onKeyDown={e => {
+                                            if (e.key === "Enter") {
+                                                const d = parseInt(diasAdelanto, 10);
+                                                updateSporadicProject(p.id, { previewDaysBefore: d >= 0 ? d : undefined });
+                                                setEditandoAdelanto(false);
+                                            }
+                                            if (e.key === "Escape") setEditandoAdelanto(false);
+                                        }}
+                                        onBlur={() => {
+                                            const d = parseInt(diasAdelanto, 10);
+                                            updateSporadicProject(p.id, { previewDaysBefore: d >= 0 ? d : undefined });
+                                            setEditandoAdelanto(false);
+                                        }}
+                                        placeholder="días"
+                                        style={{ width: "46px", fontSize: "0.65rem", fontWeight: 700, padding: "2px 5px", borderRadius: "6px", border: `1px solid ${C.outlineVariant}`, outline: "none", fontFamily: "inherit" }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => { setDiasAdelanto("3"); updateSporadicProject(p.id, { previewDaysBefore: 3 }); setEditandoAdelanto(false); }}
+                                        title="Usar sugerido: 3 días antes de la entrega"
+                                        style={{ background: "none", border: "none", cursor: "pointer", color: C.secondary, fontSize: "0.6rem", fontWeight: 800, textDecoration: "underline", padding: 0 }}
+                                    >
+                                        sugerido 3d
+                                    </button>
+                                </span>
+                            ) : p.previewDaysBefore != null ? (
+                                <button
+                                    onClick={() => { setDiasAdelanto(String(p.previewDaysBefore)); setEditandoAdelanto(true); }}
+                                    title="Días antes de la entrega para mandar el adelanto — tocar para cambiar"
+                                    style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(148,74,24,0.08)", color: C.secondary, border: "none", borderRadius: "999px", padding: "2px 8px", fontSize: "0.62rem", fontWeight: 800, cursor: "pointer" }}
+                                >
+                                    <Timer size={10} /> Adelanto: {p.previewDaysBefore}d antes
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => setEditandoAdelanto(true)}
+                                    title="Falta poner cuántos días antes de la entrega hay que mandar el adelanto"
+                                    style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(239,68,68,0.1)", color: C.rojo, border: "none", borderRadius: "999px", padding: "2px 8px", fontSize: "0.62rem", fontWeight: 800, cursor: "pointer" }}
+                                >
+                                    <AlertTriangle size={10} /> Falta día de adelanto
+                                </button>
+                            )
                         )}
                         {/* Igual que el pill de Adelanto, pero para el USB físico de la entrega
                             final — independiente de "Marcar completado": el proyecto puede estar
