@@ -1,9 +1,8 @@
 import { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import type { Transaction, FixedExpense, Project, Account } from '../../hooks/useAlDiaState';
+import type { Transaction, FixedExpense, Account } from '../../hooks/useAlDiaState';
 import {
     C, bento, money, useIsMobile,
-    paddingPagina, cabecera, tituloPagina, subtituloPagina, campo, botonPrimario, TOQUE_MINIMO,
+    paddingPagina, campo, TOQUE_MINIMO,
 } from '../../theme';
 
 interface FixedIncome {
@@ -19,8 +18,8 @@ interface PlanDashboardProps {
     transactions:   Transaction[];
     fixedExpenses:  FixedExpense[];
     preferences:    { isBudgetFixed: boolean; fixedIncomes: string };
-    projects:       Project[];
     accounts:       Account[];
+    addFixedExpense:            (text: string, amount: number, projectId?: number, dueDay?: number, accountId?: number, frequency?: 'monthly' | 'weekly', dueWeekday?: number) => void;
     updateFixedExpense:         (id: number, updates: Partial<FixedExpense>) => void;
     markFixedExpensePaid:       (id: number, monthStr: string, accountId?: number) => void;
     unmarkFixedExpensePaid:     (id: number, monthStr: string) => void;
@@ -30,8 +29,8 @@ interface PlanDashboardProps {
 }
 
 export const PlanDashboard = ({
-    transactions, fixedExpenses, preferences, projects, accounts,
-    updateFixedExpense, markFixedExpensePaid, unmarkFixedExpensePaid, addTransaction,
+    transactions, fixedExpenses, preferences, accounts,
+    addFixedExpense, updateFixedExpense, markFixedExpensePaid, unmarkFixedExpensePaid, addTransaction,
     removeTransaction, updatePreference,
 }: PlanDashboardProps) => {
 
@@ -119,29 +118,12 @@ export const PlanDashboard = ({
     }, [fixedExpenses, ingresosFijos, transactions, mesActual, diasRestantes]);
 
     /* ── Formularios ── */
-    const [lote, setLote] = useState({ projectId: '', amount: '', concepto: '', accountId: '' });
-    const [loteOk, setLoteOk] = useState(false);
     const [editandoDia, setEditandoDia] = useState<number | null>(null);
     const [editandoIngreso, setEditandoIngreso] = useState<number | null>(null);
     const [nuevoIngreso, setNuevoIngreso] = useState({ name: '', amount: '', accountId: '' });
     const [mostrarFormIngreso, setMostrarFormIngreso] = useState(false);
-
-    const submitLote = (e: React.FormEvent) => {
-        e.preventDefault();
-        const monto = parseFloat(lote.amount);
-        if (!monto || monto <= 0) return;
-        const proyecto = projects.find(p => String(p.id) === lote.projectId);
-        const concepto = lote.concepto.trim() || `Ingresos ${proyecto?.name || ''} · ${nombreMes}`;
-        addTransaction(
-            concepto, monto, 'ingreso', false,
-            proyecto?.id,
-            lote.accountId ? Number(lote.accountId) : undefined,
-            false, 'Venta', undefined
-        );
-        setLote({ projectId: '', amount: '', concepto: '', accountId: '' });
-        setLoteOk(true);
-        setTimeout(() => setLoteOk(false), 2500);
-    };
+    const [nuevoGasto, setNuevoGasto] = useState({ name: '', amount: '', accountId: '' });
+    const [mostrarFormGasto, setMostrarFormGasto] = useState(false);
 
     const submitNuevoIngreso = (e: React.FormEvent) => {
         e.preventDefault();
@@ -150,6 +132,15 @@ export const PlanDashboard = ({
         addFixedIncome(nuevoIngreso.name.trim(), monto, nuevoIngreso.accountId ? Number(nuevoIngreso.accountId) : undefined);
         setNuevoIngreso({ name: '', amount: '', accountId: '' });
         setMostrarFormIngreso(false);
+    };
+
+    const submitNuevoGasto = (e: React.FormEvent) => {
+        e.preventDefault();
+        const monto = parseFloat(nuevoGasto.amount);
+        if (!nuevoGasto.name.trim() || !monto || monto <= 0) return;
+        addFixedExpense(nuevoGasto.name.trim(), monto, undefined, undefined, nuevoGasto.accountId ? Number(nuevoGasto.accountId) : undefined);
+        setNuevoGasto({ name: '', amount: '', accountId: '' });
+        setMostrarFormGasto(false);
     };
 
     const pendientesOrdenados = useMemo(() => {
@@ -161,65 +152,52 @@ export const PlanDashboard = ({
     return (
         <div style={paddingPagina(movil)}>
 
-            {/* ── Header ── */}
-            <div style={cabecera(movil)}>
-                <div>
-                    <h2 style={tituloPagina}>Proyección</h2>
-                    <p style={subtituloPagina}>
-                        {nombreMes} · quedan {diasRestantes} {diasRestantes === 1 ? 'día' : 'días'}
-                    </p>
-                </div>
+            {/* ── Header: misma cápsula compacta que Finanzas/Entregas ── */}
+            <div style={{
+                display: 'flex', alignItems: movil ? 'flex-start' : 'center', gap: '10px',
+                flexWrap: movil ? 'wrap' : 'nowrap', flexDirection: movil ? 'column' : 'row',
+                background: C.surfaceLowest, padding: '10px 14px', borderRadius: '18px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.03)', marginBottom: '1.25rem',
+            }}>
+                <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: C.onSurface, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    Ingresos y Gastos Fijos
+                </h2>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: C.onSurfaceVariant, textTransform: 'capitalize' }}>
+                    {nombreMes} · quedan {diasRestantes} {diasRestantes === 1 ? 'día' : 'días'}
+                </span>
             </div>
 
-            {/* ── 1. Cuánto me queda ── */}
+            {/* ── 1. Cuánto me queda: todo en una sola fila ── */}
             <section style={{
                 ...bento, border: 'none',
                 background: n.queda < 0 ? 'rgba(239,68,68,0.07)' : 'rgba(148,74,24,0.06)',
-                padding: '1.5rem', marginBottom: '1.25rem',
+                padding: '0.7rem 1.1rem', marginBottom: '1.25rem',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                flexWrap: movil ? 'wrap' : 'nowrap', gap: movil ? '8px' : '1.5rem',
             }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div>
-                        <h3 style={{ margin: 0, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: n.queda < 0 ? C.rojo : C.primary }}>
-                            Te queda este mes
-                        </h3>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '6px' }}>
-                            <span style={{
-                                // En móvil el importe se corta si no baja de tamaño
-                                fontSize: movil ? '2.3rem' : '3.2rem',
-                                fontWeight: 800, lineHeight: 1,
-                                color: n.queda < 0 ? C.rojo : C.primary,
-                                wordBreak: 'break-word',
-                            }}>
-                                {n.queda < 0 ? '−' : ''}{money(n.queda)}
-                            </span>
-                        </div>
-                        <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: C.onSurfaceVariant }}>
-                            {n.queda < 0
-                                ? 'Tus gastos fijos superan tus ingresos previstos.'
-                                : `Unos ${money(n.porDia)} por día durante ${diasRestantes} días.`}
-                        </p>
-                    </div>
-
-                    {/* El desglose: de dónde sale ese número */}
-                    <div style={{
-                        background: C.surfaceLowest, borderRadius: '12px', padding: '14px 18px',
-                        minWidth: movil ? '100%' : '260px', border: `1px solid ${C.outlineVariant}`,
-                        boxSizing: 'border-box',
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap', minWidth: 0 }}>
+                    <span style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: n.queda < 0 ? C.rojo : C.primary, whiteSpace: 'nowrap' }}>
+                        Te queda
+                    </span>
+                    <span style={{
+                        fontSize: movil ? '1.5rem' : '1.7rem',
+                        fontWeight: 800, lineHeight: 1,
+                        color: n.queda < 0 ? C.rojo : C.primary,
+                        whiteSpace: 'nowrap',
                     }}>
-                        <Linea label="Ingresos previstos" valor={n.ingresoPrevisto} signo="+" />
-                        <Linea label="Gastos fijos" valor={n.fijosTotal} signo="−" />
-                        <Linea label="Gastos variables" valor={n.gastoVariable} signo="−" />
-                        <div style={{ height: '1px', background: C.outlineVariant, margin: '8px 0' }} />
-                        <Linea label="Queda" valor={n.queda} signo={n.queda < 0 ? '−' : ''} destacado />
-                    </div>
+                        {n.queda < 0 ? '−' : ''}{money(n.queda)}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: C.onSurfaceVariant, whiteSpace: movil ? 'normal' : 'nowrap' }}>
+                        {n.queda < 0 ? 'gastos fijos superan tus ingresos' : `unos ${money(n.porDia)} por día`}
+                    </span>
                 </div>
 
-                {n.ingresoReal > 0 && (
-                    <p style={{ margin: '10px 0 0', fontSize: '0.78rem', color: C.outline }}>
-                        Llevas {money(n.ingresoReal)} de ingresos registrados este mes
-                        {n.ingresoPrevisto > 0 && ` (previsto: ${money(n.ingresoPrevisto)})`}.
-                    </p>
-                )}
+                {/* El desglose, en línea: de dónde sale ese número */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: movil ? 'wrap' : 'nowrap' }}>
+                    <LineaInline label="Ingresos" valor={n.ingresoPrevisto} signo="+" />
+                    <LineaInline label="Fijos" valor={n.fijosTotal} signo="−" />
+                    <LineaInline label="Variables" valor={n.gastoVariable} signo="−" />
+                </div>
             </section>
 
             <div style={{
@@ -232,20 +210,88 @@ export const PlanDashboard = ({
                 <section style={{ ...bento, padding: '1.25rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                         <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.onSurface }}>Pagos del mes</h3>
-                        <span style={{
-                            background: n.montoPend > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.12)',
-                            color: n.montoPend > 0 ? C.rojo : C.verde,
-                            padding: '3px 10px', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 700,
-                        }}>
-                            {n.montoPend > 0 ? `${money(n.montoPend)} pendiente` : 'Todo pagado'}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{
+                                background: n.montoPend > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.12)',
+                                color: n.montoPend > 0 ? C.rojo : C.verde,
+                                padding: '3px 10px', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 700,
+                            }}>
+                                {n.montoPend > 0 ? `${money(n.montoPend)} pendiente` : 'Todo pagado'}
+                            </span>
+                            <button
+                                onClick={() => setMostrarFormGasto(v => !v)}
+                                title="Añadir gasto fijo"
+                                style={{
+                                    width: '26px', height: '26px', borderRadius: '8px', border: 'none',
+                                    background: mostrarFormGasto ? C.surfaceContainerHigh : C.primary,
+                                    color: mostrarFormGasto ? C.onSurfaceVariant : '#fff',
+                                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                }}
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                                    {mostrarFormGasto ? 'close' : 'add'}
+                                </span>
+                            </button>
+                        </div>
                     </div>
                     <p style={{ margin: '0 0 14px', fontSize: '0.78rem', color: C.outline }}>
                         {n.fijosPagados.length} de {n.fijosPagados.length + n.fijosPend.length} pagados · {money(n.montoPagado)} de {money(n.fijosTotal)}
                     </p>
 
+                    {mostrarFormGasto && (
+                        <form onSubmit={submitNuevoGasto} style={{
+                            display: 'flex', gap: '8px', marginBottom: '14px',
+                            flexWrap: 'wrap', flexDirection: movil ? 'column' : 'row',
+                            padding: '10px', background: C.surfaceContainerLow,
+                            border: `1.5px dashed ${C.outlineVariant}`, borderRadius: '12px',
+                        }}>
+                            <input
+                                autoFocus
+                                value={nuevoGasto.name}
+                                onChange={e => setNuevoGasto(v => ({ ...v, name: e.target.value }))}
+                                placeholder="¿Qué pagas?"
+                                style={{ ...campo(movil), flex: movil ? undefined : '1 1 140px', width: movil ? '100%' : undefined, border: movil ? `1px solid ${C.outlineVariant}` : 'none', background: movil ? C.surfaceLowest : 'transparent' }}
+                            />
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <input
+                                    value={nuevoGasto.amount}
+                                    onChange={e => setNuevoGasto(v => ({ ...v, amount: e.target.value }))}
+                                    placeholder="S/"
+                                    type="number" min="0" step="0.01"
+                                    inputMode="decimal"
+                                    style={{ ...campo(movil), width: movil ? '100%' : '80px', flex: movil ? 1 : undefined }}
+                                />
+                                {accounts.length > 0 && (
+                                    <select
+                                        value={nuevoGasto.accountId}
+                                        onChange={e => setNuevoGasto(v => ({ ...v, accountId: e.target.value }))}
+                                        style={{
+                                            background: C.surfaceContainerHigh, border: 'none', borderRadius: '8px',
+                                            padding: movil ? '10px 12px' : '4px 8px',
+                                            minHeight: movil ? `${TOQUE_MINIMO}px` : undefined,
+                                            fontSize: movil ? '0.85rem' : '0.75rem', fontWeight: 700,
+                                            color: C.onSurfaceVariant, cursor: 'pointer', fontFamily: 'inherit',
+                                        }}
+                                    >
+                                        <option value="">Cuenta…</option>
+                                        {accounts.map(a => <option key={a.id} value={String(a.id)}>{a.name}</option>)}
+                                    </select>
+                                )}
+                            </div>
+                            <button type="submit" disabled={!nuevoGasto.name.trim() || !parseFloat(nuevoGasto.amount)} style={{
+                                background: nuevoGasto.name.trim() && parseFloat(nuevoGasto.amount) ? C.primary : C.surfaceContainerHigh,
+                                color: nuevoGasto.name.trim() && parseFloat(nuevoGasto.amount) ? '#fff' : C.onSurfaceVariant,
+                                border: 'none', borderRadius: '8px',
+                                padding: movil ? '12px 14px' : '5px 14px',
+                                minHeight: movil ? `${TOQUE_MINIMO}px` : undefined,
+                                fontSize: movil ? '0.9rem' : '0.8rem', fontWeight: 700, fontFamily: 'inherit',
+                                cursor: nuevoGasto.name.trim() && parseFloat(nuevoGasto.amount) ? 'pointer' : 'default',
+                            }}>Añadir</button>
+                        </form>
+                    )}
+
                     {n.fijosPend.length === 0 && n.fijosPagados.length === 0 && (
-                        <Vacio icono="event_available" titulo="Sin gastos fijos activos" texto="Actívalos en la pestaña Finanzas." />
+                        <Vacio icono="event_available" titulo="Sin gastos fijos activos" texto="Añádelo aquí arriba con el botón +." />
                     )}
 
                     {[...pendientesOrdenados.conDia, ...pendientesOrdenados.sinDia].map(f => (
@@ -413,99 +459,16 @@ export const PlanDashboard = ({
                     )}
                 </section>
             </div>
-
-            {/* ── 4. Volcado en bloque ── */}
-            <section style={{ ...bento, padding: '1.25rem', marginTop: '1.25rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.onSurface }}>Registrar ingresos en bloque</h3>
-                <p style={{ margin: '4px 0 14px', fontSize: '0.8rem', color: C.onSurfaceVariant, maxWidth: '620px' }}>
-                    Para volcar de una vez lo de varios trabajos: en vez de anotar cada sesión,
-                    apuntas el total del periodo y de dónde vino. El detalle lo sigues teniendo donde ya lo llevas.
-                </p>
-
-                <form onSubmit={submitLote} style={{
-                    display: 'flex', gap: '10px', alignItems: movil ? 'stretch' : 'center',
-                    flexWrap: 'wrap', flexDirection: movil ? 'column' : 'row',
-                }}>
-                    <select
-                        value={lote.projectId}
-                        onChange={e => setLote(v => ({ ...v, projectId: e.target.value }))}
-                        style={{ ...campo(movil), background: C.surfaceContainerLow, cursor: 'pointer', width: movil ? '100%' : undefined, minWidth: movil ? 0 : '160px' }}
-                    >
-                        <option value="">¿De dónde vino?</option>
-                        {projects.map(p => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
-                    </select>
-
-                    <input
-                        value={lote.concepto}
-                        onChange={e => setLote(v => ({ ...v, concepto: e.target.value }))}
-                        placeholder={movil ? 'Concepto' : 'Concepto (ej: 5 sesiones del 1 al 15)'}
-                        style={{ ...campo(movil), background: C.surfaceContainerLow, flex: movil ? undefined : '1 1 240px', width: movil ? '100%' : undefined }}
-                    />
-
-                    <div style={{ display: 'flex', gap: '10px', width: movil ? '100%' : undefined }}>
-                        {accounts.length > 0 && (
-                            <select
-                                value={lote.accountId}
-                                onChange={e => setLote(v => ({ ...v, accountId: e.target.value }))}
-                                style={{ ...campo(movil), background: C.surfaceContainerLow, cursor: 'pointer', flex: movil ? 1 : undefined, minWidth: movil ? 0 : undefined }}
-                            >
-                                <option value="">Cuenta…</option>
-                                {accounts.map(a => <option key={a.id} value={String(a.id)}>{a.name}</option>)}
-                            </select>
-                        )}
-
-                        <input
-                            value={lote.amount}
-                            onChange={e => setLote(v => ({ ...v, amount: e.target.value }))}
-                            placeholder="Total S/"
-                            type="number" min="0" step="0.01"
-                            inputMode="decimal"
-                            style={{ ...campo(movil), background: C.surfaceContainerLow, fontWeight: 700, width: movil ? undefined : '120px', flex: movil ? 1 : undefined, minWidth: movil ? 0 : undefined }}
-                        />
-                    </div>
-
-                    <button type="submit" disabled={!parseFloat(lote.amount)} style={{
-                        ...botonPrimario(movil),
-                        width: movil ? '100%' : undefined,
-                        background: parseFloat(lote.amount) ? C.verde : C.surfaceContainerHigh,
-                        color: parseFloat(lote.amount) ? '#fff' : C.onSurfaceVariant,
-                        boxShadow: parseFloat(lote.amount) ? '0 4px 14px rgba(16,185,129,0.25)' : 'none',
-                        cursor: parseFloat(lote.amount) ? 'pointer' : 'default',
-                    }}>
-                        Registrar
-                    </button>
-
-                    <AnimatePresence>
-                        {loteOk && (
-                            <motion.span
-                                initial={{ opacity: 0, x: -6 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0 }}
-                                style={{ fontSize: '0.8rem', color: C.verde, fontWeight: 700 }}
-                            >
-                                ✓ Registrado
-                            </motion.span>
-                        )}
-                    </AnimatePresence>
-                </form>
-            </section>
         </div>
     );
 };
 
 /* ══ Sub-componentes ══════════════════════════════════════════════ */
 
-const Linea = ({ label, valor, signo, destacado = false }: { label: string; valor: number; signo: string; destacado?: boolean }) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '20px', padding: '3px 0' }}>
-        <span style={{ fontSize: destacado ? '0.8rem' : '0.78rem', color: destacado ? C.onSurface : C.onSurfaceVariant, fontWeight: destacado ? 700 : 500 }}>
-            {label}
-        </span>
-        <span style={{
-            fontSize: destacado ? '0.95rem' : '0.85rem',
-            fontWeight: destacado ? 800 : 600,
-            color: destacado ? (valor < 0 ? C.rojo : C.onSurface) : C.onSurfaceVariant,
-            fontVariantNumeric: 'tabular-nums',
-        }}>
+const LineaInline = ({ label, valor, signo }: { label: string; valor: number; signo: string }) => (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: '0.68rem', color: C.onSurfaceVariant, fontWeight: 500 }}>{label}</span>
+        <span style={{ fontSize: '0.78rem', color: C.onSurface, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
             {signo}{money(valor)}
         </span>
     </div>

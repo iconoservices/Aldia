@@ -39,15 +39,15 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Agenda', tab: 'Agenda', icon: 'event' },
         { label: 'Entregas', tab: 'Entregas', icon: 'local_fire_department' },
         { label: 'Finanzas',  tab: 'Finanzas',  icon: 'payments'      },
-        { label: 'Proyección',   tab: 'Proyección',  icon: 'trending_up' },
+        { label: 'Ingresos y Gastos Fijos', tab: 'Plan',      icon: 'savings'       },
         { label: 'Deudas',     tab: 'Deudas',     icon: 'receipt_long'  },
+        { label: 'Proyección',   tab: 'Proyección',  icon: 'trending_up' },
         { label: 'Movimientos', tab: 'Movimientos', icon: 'list_alt'    },
         { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
         { label: 'Bloques', tab: 'Bloques',   icon: 'history_edu'    },
         { label: 'Listas',    tab: 'Listas',    icon: 'fact_check'    },
         { label: 'Compras',   tab: 'Compras',   icon: 'shopping_cart' },
         { label: 'Comidas',   tab: 'Comidas',   icon: 'restaurant'    },
-        { label: 'Plan Mensual', tab: 'Plan',      icon: 'savings'       },
         { label: 'Metas',     tab: 'Metas',     icon: 'flag'          },
         { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
         { label: 'Notion', tab: 'Notion', icon: 'sync_alt' },
@@ -133,7 +133,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     const getViewTitle = (tab: string) => {
         switch (tab) {
             case 'Checklist': return 'Checklist Diario';
-            case 'Plan': return 'Plan Mensual';
+            case 'Plan': return 'Ingresos y Gastos Fijos';
             case 'Compras': return 'Lista de Compras & Deseos';
             case 'Comidas': return 'Calendario de Comidas';
             case 'Bloques': return 'Registro Semanal';

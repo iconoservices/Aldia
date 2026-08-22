@@ -344,8 +344,8 @@ function App() {
                 transactions={state.transactions}
                 fixedExpenses={state.fixedExpenses}
                 preferences={state.preferences}
-                projects={state.projects}
                 accounts={state.accounts}
+                addFixedExpense={state.addFixedExpense}
                 updateFixedExpense={state.updateFixedExpense}
                 markFixedExpensePaid={state.markFixedExpensePaid}
                 unmarkFixedExpensePaid={state.unmarkFixedExpensePaid}
