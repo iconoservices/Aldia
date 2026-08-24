@@ -423,13 +423,18 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
         }).length,
         [sporadicProjects, calendarEvents]
     );
-    // Solo cuenta USBs de proyectos YA completados: si el proyecto sigue en
-    // curso, obvio que el USB todavía no se entregó -- no es algo pendiente de
-    // resolver todavía. Lo que sí importa es "ya entregué esto pero me falta
-    // llevar/mandar el USB", que es una acción suelta que se puede olvidar.
+    // Dos números distintos, no uno: "por entregar" es el total general (todo lo
+    // que todavía debe un USB, sin importar en qué etapa va) -- sirve para saber
+    // el volumen. "Urgente" es solo lo que ya está en Terminado (columna "Listos
+    // para entregar"): ahí sí es una acción suelta que se puede olvidar porque el
+    // proyecto ya se siente "hecho" aunque el USB físico siga sin salir.
     const usbPendientes = useMemo(
-        () => sporadicProjects.filter(p => p.status === 'completado' && p.requiresUsb && !p.usbDelivered).length,
+        () => sporadicProjects.filter(p => p.requiresUsb && !p.usbDelivered).length,
         [sporadicProjects]
+    );
+    const usbUrgente = useMemo(
+        () => listosParaEntregar.filter(p => p.requiresUsb && !p.usbDelivered).length,
+        [listosParaEntregar]
     );
     // Prioritarios pendientes: no cuenta los ya completados, porque marcar
     // prioritario un proyecto ya entregado no significa nada -- es "cuántos me
@@ -513,6 +518,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                         { label: "listos para entregar", value: listosParaEntregar.length, icon: CheckCircle, color: C.ambar, bg: "rgba(230,168,23,0.12)" },
                         { label: "entregados", value: completados.length, icon: CheckCircle2, color: C.verde, bg: "rgba(16,185,129,0.12)" },
                         { label: "USB por entregar", value: usbPendientes, icon: Usb, color: C.ambar, bg: "rgba(230,168,23,0.12)" },
+                        { label: "USB urgente", value: usbUrgente, icon: Usb, color: C.rojo, bg: "rgba(239,68,68,0.12)" },
                     ]).map(stat => {
                         const clickable = !!stat.filterKey;
                         const active = clickable && statFilter === stat.filterKey;
