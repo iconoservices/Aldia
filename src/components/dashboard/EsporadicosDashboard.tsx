@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Minus, X, Trash2, MoreVertical, Play, Pause, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart, Pin, Image as ImageIcon, Check, TimerReset, Settings, Coffee, Bell, BellOff, ListChecks, AlertTriangle, Pencil, Send, Usb, Target } from "lucide-react";
+import { Plus, Minus, X, Trash2, MoreVertical, Play, Pause, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart, Pin, Image as ImageIcon, Check, TimerReset, Settings, Coffee, Bell, BellOff, ListChecks, AlertTriangle, Pencil, Send, Usb, Target, StickyNote } from "lucide-react";
 import {
     DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
@@ -846,6 +846,8 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     const [notionSyncError, setNotionSyncError] = useState(false);
     const [editandoAdelanto, setEditandoAdelanto] = useState(false);
     const [diasAdelanto, setDiasAdelanto] = useState(String(p.previewDaysBefore ?? ''));
+    const [editandoNota, setEditandoNota] = useState(false);
+    const [notaDraft, setNotaDraft] = useState(p.note ?? '');
     const lastPomodoroThresholdRef = useRef(0);
     const tickCountRef = useRef(0);
     // Tiempo por foto y Fases ahora son colapsables (antes eran dos cajas fijas
@@ -986,7 +988,14 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     const adelantoDaysLeft = adelantoDueDate && !p.previewSent ? daysBetween(todayStr(), adelantoDueDate) : undefined;
 
     return (
-        <div style={{ ...bento, padding: "1rem", display: "flex", flexDirection: "column", gap: "0.6rem", borderLeft: `4px solid ${color}`, opacity: p.status === 'completado' ? 0.7 : 1, position: "relative" }}>
+        <div style={{
+            ...bento, padding: "1rem", display: "flex", flexDirection: "column", gap: "0.6rem",
+            borderLeft: `4px solid ${color}`, opacity: p.status === 'completado' ? 0.7 : 1, position: "relative",
+            // Fijado se ve, no solo se ordena arriba: fondo tibio + marco completo en
+            // vez de solo el borde izquierdo de urgencia, para que salte a la vista
+            // entre las demás tarjetas de la columna sin tener que leer el pin.
+            ...(p.pinned ? { background: "rgba(230,168,23,0.07)", boxShadow: `0 0 0 1.5px ${C.ambar} inset` } : {}),
+        }}>
             {pomodoroAlert && (
                 <div style={{ position: "absolute", top: "-10px", left: "10px", right: "10px", display: "flex", alignItems: "center", gap: "6px", background: C.ambar, color: "white", borderRadius: "10px", padding: "6px 8px", fontSize: "0.72rem", fontWeight: 800, boxShadow: "0 4px 12px rgba(0,0,0,0.2)", zIndex: 6, flexWrap: "wrap" }}>
                     <span style={{ flex: 1, textAlign: "center" }}>⏰ {POMODORO_MINUTES} min — tómate {BREAK_MINUTES} de descanso</span>
@@ -1037,6 +1046,11 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                     <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
                         {p.notionId && <span title="Sincronizado desde Notion" style={{ display: "flex" }}><Sparkles size={12} color={C.secondary} /></span>}
                         <span style={{ fontWeight: 800, fontSize: "0.95rem", color: C.onSurface, textDecoration: p.status === 'completado' ? "line-through" : "none" }}>{p.title}</span>
+                        {p.pinned && (
+                            <span style={{ display: "flex", alignItems: "center", gap: "3px", background: C.ambar, color: "white", borderRadius: "999px", padding: "2px 8px", fontSize: "0.6rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.02em" }}>
+                                <Pin size={9} fill="white" /> Fijado
+                            </span>
+                        )}
                         {running && (
                             <span style={{ display: "flex", alignItems: "center", gap: "4px", background: C.rojo, color: "white", borderRadius: "999px", padding: "2px 8px", fontSize: "0.6rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.02em" }}>
                                 <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "white", animation: "esporadico-blink 1.1s ease-in-out infinite" }} />
@@ -1178,6 +1192,13 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                     <Usb size={15} />
                 </button>
                 <button
+                    onClick={() => { setNotaDraft(p.note ?? ''); setEditandoNota(v => !v); }}
+                    title={p.note ? "Tiene una nota — tocar para editarla" : "Dejar una nota (algo que falta, no está claro, etc.)"}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: p.note ? C.ambar : C.outlineVariant, padding: "3px", display: "flex" }}
+                >
+                    <StickyNote size={15} fill={p.note ? "rgba(230,168,23,0.25)" : "none"} />
+                </button>
+                <button
                     onClick={() => updateSporadicProject(p.id, { pinned: !p.pinned })}
                     title={p.pinned ? "Desfijar" : "Fijar arriba"}
                     style={{ background: "none", border: "none", cursor: "pointer", color: p.pinned ? C.ambar : C.outlineVariant, padding: "3px", display: "flex", transform: p.pinned ? "rotate(0deg)" : "rotate(35deg)" }}
@@ -1199,6 +1220,51 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                     )}
                 </div>
             </div>
+
+            {/* Nota libre: para lo que no encaja en ningún campo fijo del proyecto
+                ("no sé si aprobó el edit", "falta que confirme la fecha"...) sin
+                tener que anotarlo aparte en otra app. Visible siempre que exista,
+                sin tener que abrir nada. */}
+            {editandoNota ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <textarea
+                        autoFocus
+                        value={notaDraft}
+                        onChange={e => setNotaDraft(e.target.value)}
+                        placeholder="Ej. Falta que confirme la fecha, no sé si aprobó el edit..."
+                        rows={2}
+                        style={{ width: "100%", padding: "7px 9px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", outline: "none", fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }}
+                    />
+                    <div style={{ display: "flex", gap: "6px" }}>
+                        <button
+                            onClick={() => { updateSporadicProject(p.id, { note: notaDraft.trim() || undefined }); setEditandoNota(false); }}
+                            style={{ background: C.secondary, color: "white", border: "none", borderRadius: "8px", padding: "6px 12px", fontWeight: 800, fontSize: "0.74rem", cursor: "pointer" }}
+                        >
+                            Guardar
+                        </button>
+                        {p.note && (
+                            <button
+                                onClick={() => { updateSporadicProject(p.id, { note: undefined }); setNotaDraft(''); setEditandoNota(false); }}
+                                style={{ background: "none", border: "none", cursor: "pointer", color: C.rojo, fontSize: "0.74rem", fontWeight: 700 }}
+                            >
+                                Quitar nota
+                            </button>
+                        )}
+                        <button onClick={() => setEditandoNota(false)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outline, fontSize: "0.74rem", fontWeight: 700, marginLeft: "auto" }}>
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            ) : p.note && (
+                <button
+                    onClick={() => { setNotaDraft(p.note ?? ''); setEditandoNota(true); }}
+                    title="Tocar para editar la nota"
+                    style={{ display: "flex", alignItems: "flex-start", gap: "6px", background: "rgba(230,168,23,0.08)", border: "none", borderRadius: "8px", padding: "6px 9px", cursor: "pointer", textAlign: "left", fontSize: "0.76rem", color: C.onSurfaceVariant, fontStyle: "italic" }}
+                >
+                    <StickyNote size={13} color={C.ambar} style={{ flexShrink: 0, marginTop: "1px" }} />
+                    {p.note}
+                </button>
+            )}
 
             {p.notionId && (
                 <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>

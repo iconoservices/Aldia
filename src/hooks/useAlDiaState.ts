@@ -311,6 +311,8 @@ export interface SporadicProject {
                                  // (photoLogs.length) para el progreso contra photoGoal -- puede ser negativo
                                  // (restar sin borrar el historial del cronómetro). El total mostrado es
                                  // siempre photoLogs.length + photoManualExtra
+    note?: string;               // nota corta libre ("falta que confirme la fecha", "no sé si aprobó el edit"...)
+                                 // para no depender de una app aparte (Keep) para lo que no encaja en ningún campo fijo
 }
 
 export interface UserPreferences {
