@@ -964,6 +964,24 @@ export const useAlDiaState = () => {
         localStorage.setItem('has_cleaned_seeded_projects', 'true');
     }, [isInitialLoad, hasLoadedFromCloud, projects, transactions, dailyBlocks, fixedExpenses, misionesState, accounts, timeBlocks]);
 
+    // Migración de una sola vez: lo normal es entregar USB junto con la entrega,
+    // así que los proyectos esporádicos ya existentes (creados antes de que
+    // requiresUsb quedara activado por defecto) se activan también. Solo toca
+    // los que nunca se tocaron (undefined) -- si alguien ya lo desmarcó a mano
+    // queda en `false` explícito, y eso no se pisa.
+    useEffect(() => {
+        if (isInitialLoad || !hasLoadedFromCloud || sporadicProjects.length === 0) return;
+        if (localStorage.getItem('has_migrated_usb_default')) return;
+
+        const sinTocar = sporadicProjects.filter(p => p.requiresUsb === undefined);
+        if (sinTocar.length) {
+            localWriteTimestampRef.current = Date.now();
+            setSporadicProjects(prev => prev.map(p => p.requiresUsb === undefined ? { ...p, requiresUsb: true } : p));
+            console.info(`[AlDía] Migración: USB activado por defecto en ${sinTocar.length} proyecto(s) existente(s).`);
+        }
+        localStorage.setItem('has_migrated_usb_default', 'true');
+    }, [isInitialLoad, hasLoadedFromCloud, sporadicProjects]);
+
     const todayStr = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
     const todayIndex = useMemo(() => (new Date().getDay() + 6) % 7, []); // 0=Mon
 
