@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Camera, PackageCheck, RefreshCw, Plus, Trash2, ChevronDown, Loader2, ExternalLink, X, History, CalendarClock, AlertTriangle, HardDrive, CalendarDays, Wallet } from "lucide-react";
-import type { CalendarEvent, UserPreferences, NotionEstado } from "../../hooks/useAlDiaState";
+import { Camera, PackageCheck, RefreshCw, Plus, Trash2, ChevronDown, Loader2, ExternalLink, X, History, CalendarClock, AlertTriangle, HardDrive, CalendarDays, Wallet, ListTodo, Check } from "lucide-react";
+import type { CalendarEvent, UserPreferences, NotionEstado, Note } from "../../hooks/useAlDiaState";
 import { NOTION_ESTADOS } from "../../hooks/useAlDiaState";
 import { C, bento, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina, money, campo, etiqueta, RADIO, TOQUE_MINIMO } from "../../theme";
 
@@ -51,7 +51,104 @@ interface AgendaProps {
     updateCalendarEvent: (id: number, updates: Partial<CalendarEvent>) => void;
     preferences: UserPreferences;
     updatePreference: (key: keyof UserPreferences, value: any) => void;
+    notes: Note[];
+    addNote: (title: string, content: string, type: 'text' | 'checklist', items: any[], q: string, color: string) => void;
+    toggleNoteItem: (noteId: number, itemId: number) => void;
+    updateNote: (id: number, updates: Partial<Note>) => void;
 }
+
+// Pequeño panel de "no debo olvidar esto" arriba de Agenda -- es la MISMA
+// lista "Pendientes" que ya existe en Listas (busca por título, la crea si
+// no existe todavía), para no terminar con un tercer lugar distinto donde
+// buscar tareas sueltas (Keep, Listas, y ahora Agenda por separado).
+const PendientesWidget = ({ notes, addNote, toggleNoteItem, updateNote }: { notes: Note[]; addNote: AgendaProps['addNote']; toggleNoteItem: AgendaProps['toggleNoteItem']; updateNote: AgendaProps['updateNote'] }) => {
+    const movil = useIsMobile();
+    const [nuevoTexto, setNuevoTexto] = useState('');
+    const [showDone, setShowDone] = useState(false);
+
+    const lista = notes.find(n => n.type === 'checklist' && n.title.trim().toLowerCase() === 'pendientes');
+    const pendientes = lista?.items.filter(it => !it.completed) ?? [];
+    const hechos = lista?.items.filter(it => it.completed) ?? [];
+
+    const agregar = () => {
+        const texto = nuevoTexto.trim();
+        if (!texto) return;
+        if (!lista) {
+            addNote('Pendientes', '', 'checklist', [{ text: texto, completed: false }], '', '#FFFFFF');
+        } else {
+            updateNote(lista.id, { items: [...lista.items, { id: Date.now() + Math.random(), text: texto, completed: false }] });
+        }
+        setNuevoTexto('');
+    };
+
+    const quitar = (itemId: number) => {
+        if (!lista) return;
+        updateNote(lista.id, { items: lista.items.filter(it => it.id !== itemId) });
+    };
+
+    return (
+        <div style={{ ...bento, padding: '0.9rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                <ListTodo size={15} color={C.secondary} />
+                <span style={etiqueta}>Pendientes{pendientes.length > 0 ? ` (${pendientes.length})` : ''}</span>
+            </div>
+            {pendientes.length === 0 && hechos.length === 0 && (
+                <p style={{ margin: 0, fontSize: '0.78rem', color: C.outline, fontStyle: 'italic' }}>Nada pendiente. Agrega algo que no debas olvidar.</p>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '220px', overflowY: 'auto' }}>
+                {pendientes.map(item => (
+                    <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '3px 0' }}>
+                        <div
+                            onClick={() => toggleNoteItem(lista!.id, item.id)}
+                            style={{ width: '16px', height: '16px', borderRadius: '5px', flexShrink: 0, cursor: 'pointer', border: `2px solid ${C.outlineVariant}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        />
+                        <span style={{ flex: 1, fontSize: '0.82rem', color: C.onSurface }}>{item.text}</span>
+                        <button onClick={() => quitar(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outlineVariant, padding: '2px', display: 'flex', flexShrink: 0 }}>
+                            <X size={13} />
+                        </button>
+                    </div>
+                ))}
+            </div>
+            {hechos.length > 0 && (
+                <div>
+                    <button onClick={() => setShowDone(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: C.outline, fontSize: '0.68rem', fontWeight: 700 }}>
+                        <ChevronDown size={12} style={{ transform: showDone ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} /> Hechos ({hechos.length})
+                    </button>
+                    {showDone && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '4px' }}>
+                            {hechos.map(item => (
+                                <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '3px 0' }}>
+                                    <div
+                                        onClick={() => toggleNoteItem(lista!.id, item.id)}
+                                        style={{ width: '16px', height: '16px', borderRadius: '5px', flexShrink: 0, cursor: 'pointer', border: `2px solid ${C.secondary}`, background: C.secondary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    >
+                                        <Check size={11} color="white" strokeWidth={3} />
+                                    </div>
+                                    <span style={{ flex: 1, fontSize: '0.82rem', color: C.outline, textDecoration: 'line-through' }}>{item.text}</span>
+                                    <button onClick={() => quitar(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outlineVariant, padding: '2px', display: 'flex', flexShrink: 0 }}>
+                                        <X size={13} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+            <div style={{ display: 'flex', gap: '6px' }}>
+                <input
+                    placeholder="+ agregar pendiente..."
+                    value={nuevoTexto}
+                    onChange={e => setNuevoTexto(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && agregar()}
+                    style={{ ...campo(movil), flex: 1, padding: '6px 9px', fontSize: '0.8rem' }}
+                />
+                <button onClick={agregar} style={{ background: C.surfaceContainerLow, border: 'none', borderRadius: '7px', padding: '6px 9px', cursor: 'pointer', color: C.onSurfaceVariant, display: 'flex' }}>
+                    <Plus size={14} />
+                </button>
+            </div>
+        </div>
+    );
+};
 
 const hoyISO = () => new Date().toLocaleDateString('en-CA');
 
@@ -100,7 +197,7 @@ const ChipsSelector = ({ options, value, onSelect }: { options: string[]; value:
     );
 };
 
-export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalendarEvent, updateCalendarEvent, preferences, updatePreference }: AgendaProps) => {
+export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalendarEvent, updateCalendarEvent, preferences, updatePreference, notes, addNote, toggleNoteItem, updateNote }: AgendaProps) => {
     const movil = useIsMobile();
     const [syncing, setSyncing] = useState(false);
     const [syncMsg, setSyncMsg] = useState<string | null>(null);
@@ -569,6 +666,8 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
             {syncMsg && (
                 <div style={{ fontSize: '0.72rem', color: syncError ? C.rojo : C.outline, fontWeight: 600, marginTop: '-0.6rem' }}>{syncMsg}</div>
             )}
+
+            <PendientesWidget notes={notes} addNote={addNote} toggleNoteItem={toggleNoteItem} updateNote={updateNote} />
 
             {/* Alta manual */}
             {showAddForm && (

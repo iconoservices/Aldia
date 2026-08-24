@@ -558,6 +558,10 @@ function App() {
                 updateCalendarEvent={state.updateCalendarEvent}
                 preferences={state.preferences}
                 updatePreference={state.updatePreference}
+                notes={state.notes}
+                addNote={state.addNote}
+                toggleNoteItem={state.toggleNoteItem}
+                updateNote={state.updateNote}
               />
             ) : activeTab === 'Tranqueo de Vida' ? (
               <TranqueoDeVidaDashboard
