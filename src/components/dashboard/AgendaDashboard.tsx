@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Camera, PackageCheck, RefreshCw, Plus, Trash2, ChevronDown, Loader2, ExternalLink, X, History, CalendarClock, AlertTriangle, HardDrive, CalendarDays, Wallet, ListTodo, Check } from "lucide-react";
 import type { CalendarEvent, UserPreferences, NotionEstado, Note } from "../../hooks/useAlDiaState";
 import { NOTION_ESTADOS } from "../../hooks/useAlDiaState";
-import { C, bento, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina, money, campo, etiqueta, RADIO, TOQUE_MINIMO } from "../../theme";
+import { C, bento, useIsMobile, paddingPagina, money, campo, etiqueta, RADIO, TOQUE_MINIMO } from "../../theme";
 
 /* ══════════════════════════════════════════════════════════════════
    AgendaDashboard — vista rápida de "qué sigue": próxima sesión de
@@ -637,12 +637,14 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: movil ? "1rem" : "1.5rem", ...paddingPagina(movil), color: "var(--text-carbon)" }}>
-            <div style={cabecera(movil)}>
-                <div>
-                    <h2 style={tituloPagina}>Agenda</h2>
-                    <p style={subtituloPagina}>Tus próximas sesiones y entregas, a un vistazo.</p>
+            {/* Misma cápsula blanca de una sola fila que Finanzas/Entregas: título +
+                controles, todo al mismo nivel en vez de flotar sobre el fondo. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: movil ? 'wrap' : 'nowrap', background: 'white', padding: '10px 14px', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+                <div style={{ flexShrink: 0 }}>
+                    <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: C.onSurface, whiteSpace: 'nowrap' }}>Agenda</h2>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: C.onSurfaceVariant, fontWeight: 600, whiteSpace: movil ? 'normal' : 'nowrap' }}>Tus próximas sesiones y entregas, a un vistazo.</p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginLeft: 'auto' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 800, color: C.onSurfaceVariant }}>
                         <RefreshCw size={14} color={notionActive ? C.verde : C.outline} className={syncing ? 'agenda-spin' : ''} />
                         Notion {notionActive ? 'activada' : 'desactivada'}
@@ -666,8 +668,6 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
             {syncMsg && (
                 <div style={{ fontSize: '0.72rem', color: syncError ? C.rojo : C.outline, fontWeight: 600, marginTop: '-0.6rem' }}>{syncMsg}</div>
             )}
-
-            <PendientesWidget notes={notes} addNote={addNote} toggleNoteItem={toggleNoteItem} updateNote={updateNote} />
 
             {/* Alta manual */}
             {showAddForm && (
@@ -736,8 +736,12 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
             )}
 
 
-            {/* Próxima sesión / próxima entrega / resumen de entregas / sesiones del mes — todo en una fila */}
-            <div style={{ display: 'grid', gridTemplateColumns: movil ? '1fr' : entregasTotal > 0 ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)', gap: '0.7rem' }}>
+            {/* Pendientes a la izquierda, los detalles (próxima sesión/entrega/etc.) a
+                la derecha en su propia grilla — antes iban uno full-width encima del
+                otro; ahora quedan lado a lado en vez de montados. */}
+            <div style={{ display: 'grid', gridTemplateColumns: movil ? '1fr' : '1fr 1.5fr', gap: '0.9rem', alignItems: 'start' }}>
+            <PendientesWidget notes={notes} addNote={addNote} toggleNoteItem={toggleNoteItem} updateNote={updateNote} />
+            <div style={{ display: 'grid', gridTemplateColumns: movil ? '1fr' : 'repeat(2, 1fr)', gap: '0.7rem' }}>
                 <div style={{ ...bento, padding: '0.8rem', display: 'flex', gap: '9px', alignItems: 'center' }}>
                     <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(99,102,241,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <Camera size={16} color="#6366F1" />
@@ -826,6 +830,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                         )}
                     </div>
                 </div>
+            </div>
             </div>
 
             {/* Próximas — ordenadas por Fecha y hora (la sesión en sí), no por Estado */}
