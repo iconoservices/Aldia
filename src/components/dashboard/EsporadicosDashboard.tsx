@@ -87,6 +87,12 @@ interface EsporadicosProps {
 
 const todayStr = () => new Date().toLocaleDateString('en-CA');
 const daysBetween = (a: string, b: string) => Math.round((new Date(b + 'T00:00:00').getTime() - new Date(a + 'T00:00:00').getTime()) / 86400000);
+const dateMinusDays = (dateStr: string, days: number) => {
+    const d = new Date(dateStr + 'T00:00:00');
+    d.setDate(d.getDate() - days);
+    return d.toLocaleDateString('en-CA');
+};
+const DIAS_ADELANTO_SUGERIDO = 5;
 
 const formatElapsed = (ms: number) => {
     const totalSec = Math.max(Math.floor(ms / 1000), 0);
@@ -973,6 +979,12 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
     const daysUntilDue = daysBetween(todayStr(), p.dueDate);
     const eta = remainingHours > 0 ? formatHM(new Date(now + remainingHours * 60 * 60 * 1000)) : null;
 
+    // Cuenta regresiva real (no solo la config "Nd antes") para saber cuánto
+    // falta para el vencimiento del adelanto de fotos: fecha de entrega menos
+    // los días configurados. Ya no aplica una vez que se marcó como enviado.
+    const adelantoDueDate = p.requiresPreview && p.previewDaysBefore != null ? dateMinusDays(p.dueDate, p.previewDaysBefore) : undefined;
+    const adelantoDaysLeft = adelantoDueDate && !p.previewSent ? daysBetween(todayStr(), adelantoDueDate) : undefined;
+
     return (
         <div style={{ ...bento, padding: "1rem", display: "flex", flexDirection: "column", gap: "0.6rem", borderLeft: `4px solid ${color}`, opacity: p.status === 'completado' ? 0.7 : 1, position: "relative" }}>
             {pomodoroAlert && (
@@ -1090,20 +1102,29 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                                     />
                                     <button
                                         type="button"
-                                        onClick={() => { setDiasAdelanto("3"); updateSporadicProject(p.id, { previewDaysBefore: 3 }); setEditandoAdelanto(false); }}
-                                        title="Usar sugerido: 3 días antes de la entrega"
+                                        onClick={() => { setDiasAdelanto(String(DIAS_ADELANTO_SUGERIDO)); updateSporadicProject(p.id, { previewDaysBefore: DIAS_ADELANTO_SUGERIDO }); setEditandoAdelanto(false); }}
+                                        title={`Usar sugerido: ${DIAS_ADELANTO_SUGERIDO} días antes de la entrega`}
                                         style={{ background: "none", border: "none", cursor: "pointer", color: C.secondary, fontSize: "0.6rem", fontWeight: 800, textDecoration: "underline", padding: 0 }}
                                     >
-                                        sugerido 3d
+                                        sugerido {DIAS_ADELANTO_SUGERIDO}d
                                     </button>
                                 </span>
                             ) : p.previewDaysBefore != null ? (
                                 <button
                                     onClick={() => { setDiasAdelanto(String(p.previewDaysBefore)); setEditandoAdelanto(true); }}
                                     title="Días antes de la entrega para mandar el adelanto — tocar para cambiar"
-                                    style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(148,74,24,0.08)", color: C.secondary, border: "none", borderRadius: "999px", padding: "2px 8px", fontSize: "0.62rem", fontWeight: 800, cursor: "pointer" }}
+                                    style={{
+                                        display: "flex", alignItems: "center", gap: "4px",
+                                        background: adelantoDaysLeft !== undefined && adelantoDaysLeft < 0 ? "rgba(239,68,68,0.1)" : adelantoDaysLeft !== undefined && adelantoDaysLeft <= 1 ? "rgba(230,168,23,0.14)" : "rgba(148,74,24,0.08)",
+                                        color: adelantoDaysLeft !== undefined && adelantoDaysLeft < 0 ? C.rojo : adelantoDaysLeft !== undefined && adelantoDaysLeft <= 1 ? C.ambar : C.secondary,
+                                        border: "none", borderRadius: "999px", padding: "2px 8px", fontSize: "0.62rem", fontWeight: 800, cursor: "pointer",
+                                    }}
                                 >
-                                    <Timer size={10} /> Adelanto: {p.previewDaysBefore}d antes
+                                    <Timer size={10} />
+                                    Adelanto: {p.previewDaysBefore}d antes
+                                    {adelantoDaysLeft !== undefined && (
+                                        <span> · {adelantoDaysLeft < 0 ? `atrasado ${Math.abs(adelantoDaysLeft)}d` : adelantoDaysLeft === 0 ? 'hoy' : `faltan ${adelantoDaysLeft}d`}</span>
+                                    )}
                                 </button>
                             ) : (
                                 <button
@@ -1136,7 +1157,14 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                     </div>
                 </div>
                 <button
-                    onClick={() => updateSporadicProject(p.id, { requiresPreview: !p.requiresPreview, previewSent: p.requiresPreview ? undefined : p.previewSent })}
+                    onClick={() => updateSporadicProject(p.id, {
+                        requiresPreview: !p.requiresPreview,
+                        previewSent: p.requiresPreview ? undefined : p.previewSent,
+                        // Al activarlo, ya arranca con un plazo por defecto (5d antes de la
+                        // entrega) en vez de forzar a configurarlo a mano cada vez — se puede
+                        // seguir editando igual desde el pill de abajo.
+                        previewDaysBefore: !p.requiresPreview && p.previewDaysBefore == null ? DIAS_ADELANTO_SUGERIDO : p.previewDaysBefore,
+                    })}
                     title={p.requiresPreview ? "El cliente pidió adelanto de fotos — tocar para quitarlo" : "Marcar que el cliente pidió un adelanto de fotos antes de la entrega"}
                     style={{ background: "none", border: "none", cursor: "pointer", color: p.requiresPreview ? C.secondary : C.outlineVariant, padding: "3px", display: "flex" }}
                 >
