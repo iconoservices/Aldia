@@ -303,7 +303,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
     // Filtro rápido activado desde las pastillas de arriba: "atrasados" y "en edición"
     // cruzan las dos columnas (en curso / listos para entregar), así que se filtra
     // el render de ambas en vez de duplicar la lista en otro lado.
-    const [statFilter, setStatFilter] = useState<'atrasados' | 'enEdicion' | 'prioridad' | null>(null);
+    const [statFilter, setStatFilter] = useState<'atrasados' | 'enEdicion' | 'prioridad' | 'usbGeneral' | 'usbUrgente' | null>(null);
     const [addingOpen, setAddingOpen] = useState(false);
     const [title, setTitle] = useState("");
     const [dueDate, setDueDate] = useState(todayStr());
@@ -451,6 +451,11 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
             return ev?.notionEstado === 'En Edición';
         }
         if (statFilter === 'prioridad') return !!p.pinned;
+        if (statFilter === 'usbGeneral') return !!p.requiresUsb && !p.usbDelivered;
+        if (statFilter === 'usbUrgente') {
+            const ev = p.notionId ? calendarEvents.find(e => e.notionId === p.notionId) : undefined;
+            return !!p.requiresUsb && !p.usbDelivered && ev?.notionEstado === 'Terminado';
+        }
         return true;
     }, [statFilter, calendarEvents]);
     const visibleEnProgreso = useMemo(() => enProgreso.filter(matchesStatFilter), [enProgreso, matchesStatFilter]);
@@ -517,8 +522,8 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                         { label: "prioritarios", value: prioritarios, icon: Pin, color: C.ambar, bg: "rgba(230,168,23,0.12)", filterKey: 'prioridad' as const },
                         { label: "listos para entregar", value: listosParaEntregar.length, icon: CheckCircle, color: C.ambar, bg: "rgba(230,168,23,0.12)" },
                         { label: "entregados", value: completados.length, icon: CheckCircle2, color: C.verde, bg: "rgba(16,185,129,0.12)" },
-                        { label: "USB por entregar", value: usbPendientes, icon: Usb, color: C.ambar, bg: "rgba(230,168,23,0.12)" },
-                        { label: "USB urgente", value: usbUrgente, icon: Usb, color: C.rojo, bg: "rgba(239,68,68,0.12)" },
+                        { label: "USB por entregar", value: usbPendientes, icon: Usb, color: C.ambar, bg: "rgba(230,168,23,0.12)", filterKey: 'usbGeneral' as const },
+                        { label: "USB urgente", value: usbUrgente, icon: Usb, color: C.rojo, bg: "rgba(239,68,68,0.12)", filterKey: 'usbUrgente' as const },
                     ]).map(stat => {
                         const clickable = !!stat.filterKey;
                         const active = clickable && statFilter === stat.filterKey;
