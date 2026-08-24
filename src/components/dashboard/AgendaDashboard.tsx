@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Camera, PackageCheck, RefreshCw, Plus, Trash2, ChevronDown, Loader2, ExternalLink, X, History, CalendarClock, AlertTriangle, HardDrive, CalendarDays } from "lucide-react";
+import { Camera, PackageCheck, RefreshCw, Plus, Trash2, ChevronDown, Loader2, ExternalLink, X, History, CalendarClock, AlertTriangle, HardDrive, CalendarDays, Wallet } from "lucide-react";
 import type { CalendarEvent, UserPreferences, NotionEstado } from "../../hooks/useAlDiaState";
 import { NOTION_ESTADOS } from "../../hooks/useAlDiaState";
 import { C, bento, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina, money, campo, etiqueta, RADIO, TOQUE_MINIMO } from "../../theme";
@@ -118,6 +118,10 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
     const [dateForm, setDateForm] = useState({ date: '', startTime: '', endTime: '' });
     const [savingDateId, setSavingDateId] = useState<number | null>(null);
     const [dateErrorId, setDateErrorId] = useState<number | null>(null);
+    const [abonandoId, setAbonandoId] = useState<number | null>(null);
+    const [abonoMonto, setAbonoMonto] = useState('');
+    const [savingAbonoId, setSavingAbonoId] = useState<number | null>(null);
+    const [abonoErrorId, setAbonoErrorId] = useState<number | null>(null);
     const [editingMeta, setEditingMeta] = useState(false);
     const [metaInput, setMetaInput] = useState('');
     const [notionOptions, setNotionOptions] = useState<{ proyecto: string[]; ubicacion: string[] } | null>(null);
@@ -310,6 +314,46 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
         }
     };
 
+    const openAbonar = (item: CalendarEvent) => {
+        setAbonoErrorId(null);
+        setAbonoMonto('');
+        setAbonandoId(item.id);
+    };
+
+    // Registra un abono (adelanto/pago) sobre "Cobrado". Notion sigue siendo la
+    // fuente de verdad — "Saldo por cobrar" es una fórmula allá (Precio - Cobrado),
+    // así que aquí solo la recalculamos localmente para reflejarla al toque.
+    const handleAbonar = async (item: CalendarEvent) => {
+        const monto = parseFloat(abonoMonto);
+        if (!monto || monto <= 0) return;
+        const nuevoCobrado = (item.notionCobrado || 0) + monto;
+        const nuevoSaldo = item.notionPrecio !== undefined ? Math.max(0, item.notionPrecio - nuevoCobrado) : undefined;
+
+        if (!item.notionId) {
+            updateCalendarEvent(item.id, { notionCobrado: nuevoCobrado, notionSaldoPorCobrar: nuevoSaldo });
+            setAbonandoId(null);
+            return;
+        }
+
+        setSavingAbonoId(item.id);
+        setAbonoErrorId(null);
+        try {
+            const res = await fetch('/api/update-notion-cobrado', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notionId: item.notionId, cobrado: nuevoCobrado })
+            });
+            if (!res.ok) throw new Error('respuesta no ok');
+            updateCalendarEvent(item.id, { notionCobrado: nuevoCobrado, notionSaldoPorCobrar: nuevoSaldo });
+            setAbonandoId(null);
+        } catch (err) {
+            console.error('No se pudo registrar el abono en Notion:', err);
+            setAbonoErrorId(item.id);
+        } finally {
+            setSavingAbonoId(null);
+        }
+    };
+
     const renderCard = (item: CalendarEvent) => {
         const isPast = item.date < hoy;
         const isExpanded = expandedId === item.id;
@@ -352,6 +396,71 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                         <ChevronDown size={16} color={C.outline} style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
                     </div>
                 </div>
+
+                {/* Cobro — siempre visible (no hace falta expandir la tarjeta) para
+                    ver de un vistazo cuánto ya pagaron y cuánto falta, con abono directo. */}
+                {item.notionPrecio !== undefined && (
+                    <div onClick={e => e.stopPropagation()} style={{ marginTop: '0.6rem', paddingTop: '0.6rem', borderTop: `1px solid ${C.surfaceContainer}` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+                            <div style={{ fontSize: '0.72rem', color: C.onSurfaceVariant, fontWeight: 700 }}>
+                                Cobrado {money(item.notionCobrado || 0)} de {money(item.notionPrecio)}
+                                {(item.notionSaldoPorCobrar ?? 0) > 0 ? (
+                                    <span style={{ color: C.rojo }}> · falta {money(item.notionSaldoPorCobrar!)}</span>
+                                ) : (
+                                    <span style={{ color: C.verde }}> · pagado completo</span>
+                                )}
+                            </div>
+                            {abonandoId !== item.id && (item.notionSaldoPorCobrar ?? 0) > 0 && (
+                                <button
+                                    onClick={() => openAbonar(item)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: C.primary, fontSize: '0.72rem', fontWeight: 800 }}
+                                >
+                                    <Wallet size={13} /> Abonar
+                                </button>
+                            )}
+                        </div>
+                        <div style={{ height: '5px', borderRadius: '999px', background: C.surfaceContainer, overflow: 'hidden', marginTop: '5px' }}>
+                            <div style={{
+                                height: '100%',
+                                width: `${item.notionPrecio > 0 ? Math.min(100, ((item.notionCobrado || 0) / item.notionPrecio) * 100) : 0}%`,
+                                background: (item.notionSaldoPorCobrar ?? 0) > 0 ? C.ambar : C.verde,
+                                borderRadius: '999px',
+                            }} />
+                        </div>
+                        {abonandoId === item.id && (
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '0.5rem' }}>
+                                <input
+                                    autoFocus
+                                    type="number"
+                                    placeholder={`Máx. ${(item.notionSaldoPorCobrar ?? 0).toFixed(2)}`}
+                                    value={abonoMonto}
+                                    onChange={e => setAbonoMonto(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && handleAbonar(item)}
+                                    style={{ ...campo(movil), flex: 1, padding: '6px 8px', fontSize: '0.78rem' }}
+                                />
+                                <button
+                                    onClick={() => setAbonoMonto(String(item.notionSaldoPorCobrar ?? 0))}
+                                    style={{ padding: '6px 8px', borderRadius: RADIO.chip, border: 'none', background: C.surfaceContainerLow, color: C.onSurfaceVariant, fontSize: '0.65rem', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                >
+                                    Todo
+                                </button>
+                                <button
+                                    onClick={() => handleAbonar(item)}
+                                    disabled={savingAbonoId === item.id}
+                                    style={{ ...botonCompactoPrimario(movil), padding: '6px 10px', opacity: savingAbonoId === item.id ? 0.7 : 1 }}
+                                >
+                                    {savingAbonoId === item.id ? <Loader2 size={13} className="agenda-spin" /> : 'Abonar'}
+                                </button>
+                                <button onClick={() => setAbonandoId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, padding: '4px', display: 'flex' }}>
+                                    <X size={14} />
+                                </button>
+                            </div>
+                        )}
+                        {abonoErrorId === item.id && (
+                            <div style={{ fontSize: '0.7rem', color: C.rojo, fontWeight: 700, marginTop: '0.35rem' }}>No se pudo registrar el abono en Notion. Intenta de nuevo.</div>
+                        )}
+                    </div>
+                )}
 
                 {isEditingDate && (
                     <div onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.6rem', paddingTop: '0.6rem', borderTop: `1px solid ${C.surfaceContainer}` }}>
@@ -419,11 +528,6 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                         {item.notionProyecto && <div><b>Proyecto:</b> {item.notionProyecto}</div>}
                         {item.notionCelular && (
                             <div><b>Celular:</b> <a href={`tel:${item.notionCelular}`} onClick={e => e.stopPropagation()} style={{ color: C.primary, fontWeight: 700 }}>{item.notionCelular}</a></div>
-                        )}
-                        {item.notionPrecio !== undefined && <div><b>Precio:</b> {money(item.notionPrecio)}</div>}
-                        {item.notionCobrado !== undefined && <div><b>Cobrado:</b> {money(item.notionCobrado)}</div>}
-                        {item.notionSaldoPorCobrar !== undefined && item.notionSaldoPorCobrar > 0 && (
-                            <div style={{ color: C.rojo }}><b>Saldo por cobrar:</b> {money(item.notionSaldoPorCobrar)}</div>
                         )}
                         {item.notionEntregaFecha && <div><b>Entrega:</b> {formatFecha(item.notionEntregaFecha)}</div>}
                         {item.notionDiasRestantes && <div><b>Días restantes:</b> {item.notionDiasRestantes}</div>}
