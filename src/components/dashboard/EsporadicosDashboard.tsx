@@ -423,13 +423,15 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
         }).length,
         [sporadicProjects, calendarEvents]
     );
-    // Dos números distintos, no uno: "por entregar" es el total general (todo lo
-    // que todavía debe un USB, sin importar en qué etapa va) -- sirve para saber
-    // el volumen. "Urgente" es solo lo que ya está en Terminado (columna "Listos
-    // para entregar"): ahí sí es una acción suelta que se puede olvidar porque el
-    // proyecto ya se siente "hecho" aunque el USB físico siga sin salir.
+    // Dos números distintos, no uno: "por entregar" es el total general de lo
+    // que sigue ACTIVO (en curso + listos para entregar) y todavía debe un USB
+    // -- excluye los ya completados porque esos son entregas viejas y cerradas,
+    // no algo que siga pendiente de resolver. "Urgente" es solo lo que ya está
+    // en Terminado (columna "Listos para entregar"): ahí sí es una acción
+    // suelta que se puede olvidar porque el proyecto ya se siente "hecho"
+    // aunque el USB físico siga sin salir.
     const usbPendientes = useMemo(
-        () => sporadicProjects.filter(p => p.requiresUsb && !p.usbDelivered).length,
+        () => sporadicProjects.filter(p => p.status !== 'completado' && p.requiresUsb && !p.usbDelivered).length,
         [sporadicProjects]
     );
     const usbUrgente = useMemo(

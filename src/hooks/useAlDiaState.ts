@@ -968,16 +968,18 @@ export const useAlDiaState = () => {
     // así que los proyectos esporádicos ya existentes (creados antes de que
     // requiresUsb quedara activado por defecto) se activan también. Solo toca
     // los que nunca se tocaron (undefined) -- si alguien ya lo desmarcó a mano
-    // queda en `false` explícito, y eso no se pisa.
+    // queda en `false` explícito, y eso no se pisa. Los ya completados quedan
+    // afuera: son entregas viejas y cerradas, activarles el USB ahora no suma
+    // nada, solo infla "USB por entregar" con historial que ya no importa.
     useEffect(() => {
         if (isInitialLoad || !hasLoadedFromCloud || sporadicProjects.length === 0) return;
         if (localStorage.getItem('has_migrated_usb_default')) return;
 
-        const sinTocar = sporadicProjects.filter(p => p.requiresUsb === undefined);
+        const sinTocar = sporadicProjects.filter(p => p.requiresUsb === undefined && p.status !== 'completado');
         if (sinTocar.length) {
             localWriteTimestampRef.current = Date.now();
-            setSporadicProjects(prev => prev.map(p => p.requiresUsb === undefined ? { ...p, requiresUsb: true } : p));
-            console.info(`[AlDía] Migración: USB activado por defecto en ${sinTocar.length} proyecto(s) existente(s).`);
+            setSporadicProjects(prev => prev.map(p => p.requiresUsb === undefined && p.status !== 'completado' ? { ...p, requiresUsb: true } : p));
+            console.info(`[AlDía] Migración: USB activado por defecto en ${sinTocar.length} proyecto(s) existente(s) sin completar.`);
         }
         localStorage.setItem('has_migrated_usb_default', 'true');
     }, [isInitialLoad, hasLoadedFromCloud, sporadicProjects]);
