@@ -303,7 +303,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
     // Filtro rápido activado desde las pastillas de arriba: "atrasados" y "en edición"
     // cruzan las dos columnas (en curso / listos para entregar), así que se filtra
     // el render de ambas en vez de duplicar la lista en otro lado.
-    const [statFilter, setStatFilter] = useState<'atrasados' | 'enEdicion' | null>(null);
+    const [statFilter, setStatFilter] = useState<'atrasados' | 'enEdicion' | 'prioridad' | null>(null);
     const [addingOpen, setAddingOpen] = useState(false);
     const [title, setTitle] = useState("");
     const [dueDate, setDueDate] = useState(todayStr());
@@ -423,10 +423,19 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
         }).length,
         [sporadicProjects, calendarEvents]
     );
-    // USBs físicos que aún faltan entregar — independiente de si el proyecto
-    // ya se dio por completado, porque el USB puede quedar pendiente de llevar.
+    // Solo cuenta USBs de proyectos YA completados: si el proyecto sigue en
+    // curso, obvio que el USB todavía no se entregó -- no es algo pendiente de
+    // resolver todavía. Lo que sí importa es "ya entregué esto pero me falta
+    // llevar/mandar el USB", que es una acción suelta que se puede olvidar.
     const usbPendientes = useMemo(
-        () => sporadicProjects.filter(p => p.requiresUsb && !p.usbDelivered).length,
+        () => sporadicProjects.filter(p => p.status === 'completado' && p.requiresUsb && !p.usbDelivered).length,
+        [sporadicProjects]
+    );
+    // Prioritarios pendientes: no cuenta los ya completados, porque marcar
+    // prioritario un proyecto ya entregado no significa nada -- es "cuántos me
+    // faltan entregar YA", no un historial de qué se marcó alguna vez.
+    const prioritarios = useMemo(
+        () => sporadicProjects.filter(p => p.status !== 'completado' && p.pinned).length,
         [sporadicProjects]
     );
 
@@ -436,6 +445,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
             const ev = p.notionId ? calendarEvents.find(e => e.notionId === p.notionId) : undefined;
             return ev?.notionEstado === 'En Edición';
         }
+        if (statFilter === 'prioridad') return !!p.pinned;
         return true;
     }, [statFilter, calendarEvents]);
     const visibleEnProgreso = useMemo(() => enProgreso.filter(matchesStatFilter), [enProgreso, matchesStatFilter]);
@@ -487,20 +497,22 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
             {/* Misma cápsula blanca de una sola fila que Finanzas/Analizar: título +
                 pastillas de estado + reloj/racha/ajustes, todo en el mismo nivel en vez
                 de una fila de título grande y otra de pastillas aparte debajo. */}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "nowrap", background: "white", padding: "10px 14px", borderRadius: "18px", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
-                <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 900, color: C.onSurface, whiteSpace: "nowrap", flexShrink: 0 }}>Entregas</h2>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", flexWrap: "nowrap", background: "white", padding: "10px 14px", borderRadius: "18px", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
+                <h2 style={{ margin: "5px 0 0", fontSize: "1rem", fontWeight: 900, color: C.onSurface, whiteSpace: "nowrap", flexShrink: 0 }}>Entregas</h2>
 
-                {/* Igual que en Finanzas/Analizar: solo las pastillas de estado se
-                    encogen y scrollean si falta espacio, para que el reloj/racha/
-                    ajustes nunca terminen empujados a una segunda línea más abajo. */}
-                <div style={{ display: "flex", flexWrap: "nowrap", alignItems: "center", gap: "6px", minWidth: 0, flex: "1 1 auto", overflowX: "auto" }}>
+                {/* Las pastillas de estado se acomodan en más de una línea si no
+                    entran todas — ya no las esconde un scroll horizontal, así se
+                    ven siempre completas de un vistazo (aunque la cápsula crezca
+                    un poco de alto en vez de mantenerse en una sola fila). */}
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px", minWidth: 0, flex: "1 1 auto" }}>
                     {([
                         { label: "por entregar", value: pendientes.length, icon: Timer, color: C.secondary, bg: "rgba(99,102,241,0.12)" },
                         { label: "atrasados", value: atrasados, icon: AlertTriangle, color: C.rojo, bg: "rgba(239,68,68,0.12)", filterKey: 'atrasados' as const },
                         { label: "en edición", value: enEdicion, icon: Pencil, color: ESTADO_COLOR['En Edición'], bg: "rgba(230,168,23,0.12)", filterKey: 'enEdicion' as const },
+                        { label: "prioritarios", value: prioritarios, icon: Pin, color: C.ambar, bg: "rgba(230,168,23,0.12)", filterKey: 'prioridad' as const },
                         { label: "listos para entregar", value: listosParaEntregar.length, icon: CheckCircle, color: C.ambar, bg: "rgba(230,168,23,0.12)" },
                         { label: "entregados", value: completados.length, icon: CheckCircle2, color: C.verde, bg: "rgba(16,185,129,0.12)" },
-                        { label: "USB pendientes", value: usbPendientes, icon: Usb, color: C.ambar, bg: "rgba(230,168,23,0.12)" },
+                        { label: "USB por entregar", value: usbPendientes, icon: Usb, color: C.ambar, bg: "rgba(230,168,23,0.12)" },
                     ]).map(stat => {
                         const clickable = !!stat.filterKey;
                         const active = clickable && statFilter === stat.filterKey;
@@ -1048,7 +1060,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                         <span style={{ fontWeight: 800, fontSize: "0.95rem", color: C.onSurface, textDecoration: p.status === 'completado' ? "line-through" : "none" }}>{p.title}</span>
                         {p.pinned && (
                             <span style={{ display: "flex", alignItems: "center", gap: "3px", background: C.ambar, color: "white", borderRadius: "999px", padding: "2px 8px", fontSize: "0.6rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.02em" }}>
-                                <Pin size={9} fill="white" /> Fijado
+                                <Pin size={9} fill="white" /> Prioritario
                             </span>
                         )}
                         {running && (
@@ -1200,7 +1212,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                 </button>
                 <button
                     onClick={() => updateSporadicProject(p.id, { pinned: !p.pinned })}
-                    title={p.pinned ? "Desfijar" : "Fijar arriba"}
+                    title={p.pinned ? "Quitar prioridad" : "Marcar como prioritario (sube arriba de su columna)"}
                     style={{ background: "none", border: "none", cursor: "pointer", color: p.pinned ? C.ambar : C.outlineVariant, padding: "3px", display: "flex", transform: p.pinned ? "rotate(0deg)" : "rotate(35deg)" }}
                 >
                     <Pin size={15} fill={p.pinned ? C.ambar : "none"} />

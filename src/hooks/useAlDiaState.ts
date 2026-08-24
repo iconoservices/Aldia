@@ -1321,6 +1321,7 @@ export const useAlDiaState = () => {
             logs: [],
             photoLogs: [],
             color,
+            requiresUsb: true, // lo normal es entregar USB junto con la entrega -- se puede desmarcar a mano si esta vez no toca
         };
         setSporadicProjects(prev => [project, ...prev]);
         return project.id;
