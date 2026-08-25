@@ -100,6 +100,17 @@ const formatElapsed = (ms: number) => {
     return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
 };
 
+/** Como formatElapsed, pero para duraciones de calendario (p.ej. "sin entregarlo" desde el primer Play):
+ *  a partir de 24h antepone "Xd" en vez de dejar que las horas sigan subiendo sin límite. */
+const formatElapsedWithDays = (ms: number) => {
+    const totalSec = Math.max(Math.floor(ms / 1000), 0);
+    const days = Math.floor(totalSec / 86400);
+    if (days === 0) return formatElapsed(ms);
+    const remSec = totalSec % 86400;
+    const h = Math.floor(remSec / 3600), m = Math.floor((remSec % 3600) / 60), s = remSec % 60;
+    return `${days}d ${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+};
+
 /** Reloj vivo: mientras `enabled`, se actualiza cada segundo (para el cronómetro, la barra de horas y el aviso de Pomodoro). */
 const useNowTicking = (enabled: boolean) => {
     const [now, setNow] = useState(() => Date.now());
@@ -1092,7 +1103,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, startSpo
                         <span style={{ color }}>{label}</span>
                         <span>Entrega: {p.dueDate}</span>
                         {trackingSinceFirstStart && (
-                            <span style={{ color: C.outline, fontWeight: 600 }}>· llevas {formatElapsed(sinceFirstStartMs)} sin entregarlo</span>
+                            <span style={{ color: C.outline, fontWeight: 600 }}>· llevas {formatElapsedWithDays(sinceFirstStartMs)} sin entregarlo</span>
                         )}
                         {/* Solo aparece si el proyecto está marcado como "pide adelanto" (botón Send
                             de al lado). Clickeable: pasa de pendiente a enviado y viceversa, sin
