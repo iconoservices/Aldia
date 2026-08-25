@@ -245,10 +245,11 @@ function App() {
               <BaseDatosDashboard />
             ) : activeTab === 'Proyección' ? (
               <ProyeccionOriginalDashboard
-                transactions={state.transactions}
                 fixedExpenses={state.fixedExpenses}
                 fixedIncomeItems={(() => { try { return JSON.parse(state.preferences.fixedIncomes || '[]'); } catch { return []; }})()}
                 currentMonthStr={new Date().toLocaleDateString('en-CA').substring(0, 7)}
+                preferences={state.preferences}
+                updatePreference={state.updatePreference}
               />
             ) : activeTab === 'Gastos Fijos' ? (
               <GastosFijosDashboard

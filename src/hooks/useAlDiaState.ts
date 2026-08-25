@@ -332,6 +332,10 @@ export interface UserPreferences {
     notionSyncEnabled: boolean; // Si esta en false, el script de sync con Notion no escribe nada
     blockOrder: string; // JSON: Record<period, string[]> -- orden manual (drag) de las tarjetas de Bloques por franja
     metaSesionesMes?: number; // Meta de cuantas sesiones agendar en el mes (opcional, no todos los meses tienen una)
+    // JSON: { fixedExpenses, fixedIncomes, movs } -- el "Plan del mes" (pestaña Proyección).
+    // Se siembra una vez desde los gastos/ingresos fijos reales y de ahí en más el usuario
+    // lo edita libremente; "Reiniciar" vuelve a sembrar desde los datos reales.
+    planDelMes?: string;
 }
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
