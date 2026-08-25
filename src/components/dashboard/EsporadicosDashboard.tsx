@@ -19,7 +19,11 @@ const ESTADO_COLOR: Record<NotionEstado, string> = {
     'Agendado': '#6366F1',
     'Realizado': '#8B5CF6',
     'En Edición': '#E6A817',
-    'Terminado': '#10B981',
+    // Azul, no verde: "Terminado" es solo "ya no le falta edición", NO que ya se
+    // entregó -- si usa el mismo verde que "Entregado" (o que el resto de la app
+    // usa para "listo/hecho"), la pastilla da la falsa sensación de que ya está
+    // todo resuelto y el USB físico se queda sin salir porque parece innecesario.
+    'Terminado': '#2563EB',
     'Entregado': '#059669',
 };
 

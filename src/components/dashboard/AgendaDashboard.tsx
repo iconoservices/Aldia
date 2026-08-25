@@ -15,7 +15,10 @@ const ESTADO_COLOR: Record<NotionEstado, string> = {
     'Agendado': '#6366F1',
     'Realizado': '#8B5CF6',
     'En Edición': '#E6A817',
-    'Terminado': '#10B981',
+    // Azul, no verde: "Terminado" no es "ya se entregó" -- mismo criterio que
+    // en EsporadicosDashboard, para no confundir "listo para entregar" con
+    // "ya entregado" solo por el color.
+    'Terminado': '#2563EB',
     'Entregado': '#059669',
 };
 
