@@ -961,6 +961,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
     const [breakEndAt, setBreakEndAt] = useState<number | null>(null);
     const [breakDoneAlert, setBreakDoneAlert] = useState(false);
     const [notionSyncError, setNotionSyncError] = useState(false);
+    const [failedEstado, setFailedEstado] = useState<NotionEstado | null>(null);
     const [editandoAdelanto, setEditandoAdelanto] = useState(false);
     const [diasAdelanto, setDiasAdelanto] = useState(String(p.previewDaysBefore ?? ''));
     const [editandoNota, setEditandoNota] = useState(false);
@@ -1082,16 +1083,27 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
     }, [breakNow, breakEndAt, pomodoroPrefs.sound]);
     const breakMsLeft = breakEndAt ? Math.max(breakEndAt - breakNow, 0) : 0;
 
-    // Al cambiar el paso de trabajo local, si la tarjeta viene de Notion se
-    // refleja también allá (best-effort) y de forma optimista acá mismo. Si el
-    // push falla, se avisa: el cambio local queda sin sincronizar y el próximo
-    // refresco desde Notion (real) lo va a pisar de vuelta, así que sin este
-    // aviso se ve como si la tarjeta "se reiniciara" sola sin explicación.
+    // Al cambiar el paso de trabajo, se ve al toque acá (optimista) mientras el
+    // push a Notion viaja en segundo plano. Si ese push falla, se revierte el
+    // cambio local en vez de dejarlo divergido -- antes se quedaba mostrando el
+    // Estado nuevo indefinidamente "hasta el próximo sync real de Notion", que
+    // en la práctica podía tardar mucho o no llegar nunca sin que el usuario
+    // tocara "Sincronizar ahora" a mano, y se sentía como que el click "no hizo
+    // nada" en Notion aunque en AlDía sí se había movido.
     const setNotionEstado = (estado: NotionEstado) => {
         if (!p.notionId) return;
-        pushNotionEstado(p.notionId, estado).then(ok => setNotionSyncError(!ok));
+        const estadoPrevio = linkedEvent?.notionEstado;
+        const statusPrevio = p.status;
         if (linkedEvent) updateCalendarEvent(linkedEvent.id, { notionEstado: estado });
         updateSporadicProject(p.id, { status: estado === 'Entregado' ? 'completado' : 'en-progreso' });
+        pushNotionEstado(p.notionId, estado).then(ok => {
+            setNotionSyncError(!ok);
+            setFailedEstado(ok ? null : estado);
+            if (!ok) {
+                if (linkedEvent && estadoPrevio) updateCalendarEvent(linkedEvent.id, { notionEstado: estadoPrevio });
+                updateSporadicProject(p.id, { status: statusPrevio });
+            }
+        });
     };
 
     // Calculadora tiempo real vs. estimado: cuánto falta, a qué hora terminarías
@@ -1457,8 +1469,17 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
             )}
 
             {notionSyncError && (
-                <div style={{ fontSize: "0.68rem", color: C.rojo, fontWeight: 700 }}>
-                    No se pudo guardar en Notion — este cambio no se sincronizó y puede revertirse solo. Revisa tu conexión o vuelve a intentarlo.
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.7rem", color: C.rojo, fontWeight: 700, background: "rgba(239,68,68,0.08)", borderRadius: "8px", padding: "6px 9px" }}>
+                    <AlertTriangle size={13} style={{ flexShrink: 0 }} />
+                    <span style={{ flex: 1 }}>No se pudo guardar en Notion — el cambio se revirtió acá también, para no quedar diciendo algo distinto. Revisa tu conexión.</span>
+                    {failedEstado && (
+                        <button
+                            onClick={() => setNotionEstado(failedEstado)}
+                            style={{ background: C.rojo, color: "white", border: "none", borderRadius: "6px", padding: "3px 8px", fontSize: "0.66rem", fontWeight: 800, cursor: "pointer", flexShrink: 0 }}
+                        >
+                            Reintentar
+                        </button>
+                    )}
                 </div>
             )}
 
