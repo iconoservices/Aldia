@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Minus, X, Trash2, MoreVertical, Play, Pause, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart, Pin, Image as ImageIcon, Check, TimerReset, Settings, Coffee, Bell, BellOff, ListChecks, AlertTriangle, Pencil, Send, Usb, Target, StickyNote, Search } from "lucide-react";
+import { Plus, Minus, X, Trash2, MoreVertical, Play, Pause, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart, Pin, Image as ImageIcon, Check, TimerReset, Settings, Coffee, Bell, BellOff, ListChecks, AlertTriangle, Pencil, Send, Usb, Target, StickyNote, Search, Loader2 } from "lucide-react";
 import {
     DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
@@ -873,6 +873,8 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                     0%, 100% { opacity: 1; }
                     50% { opacity: 0.35; }
                 }
+                @keyframes esporadico-spin { to { transform: rotate(360deg); } }
+                .esporadico-spin { animation: esporadico-spin 0.7s linear infinite; }
             `}</style>
         </div>
     );
@@ -960,7 +962,10 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
     const [pomodoroMuted, setPomodoroMuted] = useState(false);
     const [breakEndAt, setBreakEndAt] = useState<number | null>(null);
     const [breakDoneAlert, setBreakDoneAlert] = useState(false);
-    const [notionSyncError, setNotionSyncError] = useState(false);
+    // idle: nada que reportar. syncing: push en vuelo (spinner). ok: se acaba de
+    // confirmar (se borra sola a los pocos segundos). error: falló, se queda
+    // fijo con botón de Reintentar hasta que se resuelva.
+    const [notionSyncState, setNotionSyncState] = useState<'idle' | 'syncing' | 'ok' | 'error'>('idle');
     const [failedEstado, setFailedEstado] = useState<NotionEstado | null>(null);
     const [editandoAdelanto, setEditandoAdelanto] = useState(false);
     const [diasAdelanto, setDiasAdelanto] = useState(String(p.previewDaysBefore ?? ''));
@@ -1096,10 +1101,17 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
         const statusPrevio = p.status;
         if (linkedEvent) updateCalendarEvent(linkedEvent.id, { notionEstado: estado });
         updateSporadicProject(p.id, { status: estado === 'Entregado' ? 'completado' : 'en-progreso' });
+        setNotionSyncState('syncing');
+        setFailedEstado(null);
         pushNotionEstado(p.notionId, estado).then(ok => {
-            setNotionSyncError(!ok);
-            setFailedEstado(ok ? null : estado);
-            if (!ok) {
+            if (ok) {
+                setNotionSyncState('ok');
+                setFailedEstado(null);
+                // No hace falta que el usuario la cierre a mano -- confirma y se apaga sola.
+                setTimeout(() => setNotionSyncState(s => s === 'ok' ? 'idle' : s), 2500);
+            } else {
+                setNotionSyncState('error');
+                setFailedEstado(estado);
                 if (linkedEvent && estadoPrevio) updateCalendarEvent(linkedEvent.id, { notionEstado: estadoPrevio });
                 updateSporadicProject(p.id, { status: statusPrevio });
             }
@@ -1468,10 +1480,26 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                 <EstadoStepper current={linkedEvent?.notionEstado} onSelect={setNotionEstado} />
             )}
 
-            {notionSyncError && (
+            {/* Estado del último push a Notion: sincronizando (spinner, mientras viaja),
+                confirmado (verde, se apaga sola) o falló (rojo, se queda con botón de
+                Reintentar) -- antes el único rastro era un texto chico que solo aparecía
+                si fallaba, así que un push que tardaba se sentía como que "no hizo nada". */}
+            {notionSyncState === 'syncing' && (
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.7rem", color: C.onSurfaceVariant, fontWeight: 700, background: C.surfaceContainerLow, borderRadius: "8px", padding: "6px 9px" }}>
+                    <Loader2 size={13} className="esporadico-spin" style={{ flexShrink: 0 }} />
+                    Sincronizando con Notion...
+                </div>
+            )}
+            {notionSyncState === 'ok' && (
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.7rem", color: C.verde, fontWeight: 700, background: "rgba(16,185,129,0.1)", borderRadius: "8px", padding: "6px 9px" }}>
+                    <CheckCircle2 size={13} style={{ flexShrink: 0 }} />
+                    Sincronizado con Notion
+                </div>
+            )}
+            {notionSyncState === 'error' && (
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.7rem", color: C.rojo, fontWeight: 700, background: "rgba(239,68,68,0.08)", borderRadius: "8px", padding: "6px 9px" }}>
                     <AlertTriangle size={13} style={{ flexShrink: 0 }} />
-                    <span style={{ flex: 1 }}>No se pudo guardar en Notion — el cambio se revirtió acá también, para no quedar diciendo algo distinto. Revisa tu conexión.</span>
+                    <span style={{ flex: 1 }}>Falló al guardar en Notion — el cambio se revirtió acá también, para no quedar diciendo algo distinto. Revisa tu conexión.</span>
                     {failedEstado && (
                         <button
                             onClick={() => setNotionEstado(failedEstado)}
