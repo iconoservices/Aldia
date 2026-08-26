@@ -1148,101 +1148,95 @@ export const DeudasyCobrosDashboard = ({
     return (
         <div style={{ fontFamily: "'Inter', sans-serif", minHeight: "100%", paddingBottom: "3rem", color: "#191B23" }}>
 
-            {/* ── HEADER ── */}
-            <div style={{ marginBottom: movil ? "1.25rem" : "2rem" }}>
-                <div style={{ display: "flex", flexDirection: movil ? "column" : "row", justifyContent: "space-between", alignItems: movil ? "stretch" : "flex-end", flexWrap: "wrap", gap: movil ? "0.85rem" : "1rem", marginBottom: movil ? "1rem" : "1.5rem" }}>
-                    <div>
-                        <h2 style={{ margin: 0, fontSize: movil ? "1.2rem" : "1.6rem", fontWeight: 700, color: "#191B23", lineHeight: 1.2 }}>
-                            Deudas y Cobros Pendientes
-                        </h2>
-                        <p style={{ margin: "4px 0 0", fontSize: movil ? "0.78rem" : "0.88rem", color: "#424754" }}>
-                            Gestione sus compromisos financieros y flujo de caja entrante.
-                        </p>
-                    </div>
-                    <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
-                        <button style={movil ? { ...BTN_PRIMARY, flex: 1, justifyContent: "center", padding: "9px 12px", fontSize: "0.78rem" } : BTN_PRIMARY} onClick={() => setShowAddModal(true)}>
-                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>add</span>
-                            {movil ? "Agregar" : "Agregar Deuda/Cobro"}
-                        </button>
-                    </div>
+            {/* ── HEADER ──
+                Antes: título+subtítulo en su fila, 3 tarjetas grandes con borde de
+                color debajo, y una barra de filtro aparte con <select> para el tipo.
+                Ahora: una sola cápsula compacta (mismo patrón que Finanzas/Entregas/
+                Fijos) con título, los 3 números en línea, el filtro de tipo como
+                toggle de pastillas (igual estilo que el selector de período de
+                Finanzas) y las acciones, todo en una fila que se acomoda sola si no
+                entra completa. */}
+            <div style={{
+                display: "flex", flexWrap: "wrap", alignItems: "center", gap: movil ? "10px" : "12px",
+                background: "#fff", padding: movil ? "10px 14px" : "10px 16px", borderRadius: "18px",
+                boxShadow: "0 4px 12px rgba(15,23,24,0.05)", marginBottom: movil ? "1.25rem" : "1.5rem",
+            }}>
+                <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 900, color: "#191B23", whiteSpace: "nowrap", flexShrink: 0 }}>
+                    Deudas
+                </h2>
+
+                <div style={{ display: "flex", alignItems: "center", gap: movil ? "10px" : "16px", flexWrap: "wrap", flex: "1 1 auto", minWidth: 0 }}>
+                    <span style={{ fontSize: movil ? "0.72rem" : "0.78rem", color: "#424754", fontWeight: 600, whiteSpace: "nowrap" }}>
+                        Por pagar <b style={{ color: "#BA1A1A", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(totalPagar)}</b>
+                    </span>
+                    <span style={{ fontSize: movil ? "0.72rem" : "0.78rem", color: "#424754", fontWeight: 600, whiteSpace: "nowrap" }}>
+                        Por cobrar <b style={{ color: "#10B981", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(totalCobrar)}</b>
+                    </span>
+                    <span style={{ fontSize: movil ? "0.72rem" : "0.78rem", color: "#424754", fontWeight: 600, whiteSpace: "nowrap" }}>
+                        Balance <b style={{ color: balanceNeto >= 0 ? "#0058BE" : "#BA1A1A", fontVariantNumeric: "tabular-nums" }}>
+                            {balanceNeto < 0 ? "-" : ""}{formatCurrency(Math.abs(balanceNeto))}
+                        </b>
+                    </span>
                 </div>
 
-                {/* ── SUMMARY CARDS ── */}
-                <div style={{ display: "grid", gridTemplateColumns: movil ? "repeat(2, 1fr)" : "repeat(auto-fit, minmax(200px, 1fr))", gap: movil ? "0.6rem" : "1.25rem", marginBottom: movil ? "0.85rem" : "1.25rem" }}>
-                    {[
-                        {
-                            border: "#BA1A1A", label: "Total por Pagar", icon: "account_balance_wallet",
-                            iconColor: "#BA1A1A", amount: totalPagar, amountColor: "#191B23",
-                            sub: `${debtItems.length} deuda${debtItems.length !== 1 ? "s" : ""} pendiente${debtItems.length !== 1 ? "s" : ""}`,
-                            subIcon: "receipt_long", subColor: "#BA1A1A",
-                        },
-                        {
-                            border: "#10B981", label: "Total por Cobrar", icon: "payments",
-                            iconColor: "#10B981", amount: totalCobrar, amountColor: "#191B23",
-                            sub: `${cobroItems.length} cobro${cobroItems.length !== 1 ? "s" : ""} activo${cobroItems.length !== 1 ? "s" : ""}`,
-                            subIcon: "trending_up", subColor: "#10B981",
-                        },
-                        {
-                            border: "#0058BE", label: "Balance Neto", icon: "balance",
-                            iconColor: "#0058BE", amount: balanceNeto, amountColor: balanceNeto >= 0 ? "#0058BE" : "#BA1A1A",
-                            sub: balanceNeto >= 0 ? "Superávit neto" : "Déficit proyectado",
-                            subIcon: balanceNeto >= 0 ? "check_circle" : "warning",
-                            subColor: balanceNeto >= 0 ? "#10B981" : "#BA1A1A",
-                        },
-                    ].map((c, i) => (
-                        <div key={i} style={{ background: "#fff", borderRadius: "12px", padding: movil ? "0.85rem" : "1.5rem", borderLeft: `4px solid ${c.border}`, boxShadow: "0px 4px 12px rgba(15,23,24,0.05)", gridColumn: (movil && i === 2) ? "1 / -1" : undefined }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: movil ? "0.5rem" : "1rem" }}>
-                                <span style={{ fontSize: movil ? "0.6rem" : "0.65rem", fontWeight: 800, color: "#424754", textTransform: "uppercase", letterSpacing: "0.07em" }}>{c.label}</span>
-                                <span className="material-symbols-outlined" style={{ fontSize: movil ? "16px" : "20px", color: c.iconColor, opacity: 0.4 }}>{c.icon}</span>
-                            </div>
-                            <div style={{ fontSize: movil ? "1.15rem" : "1.7rem", fontWeight: 700, color: c.amountColor, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
-                                {c.amount < 0 ? "-" : ""}{formatCurrency(Math.abs(c.amount))}
-                            </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "8px", color: c.subColor, fontSize: movil ? "0.68rem" : "0.78rem", fontWeight: 600 }}>
-                                <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>{c.subIcon}</span>
-                                {c.sub}
-                            </div>
-                        </div>
-                    ))}
+                {/* Toggle de tipo, mismo estilo de pastillas que el período de Finanzas
+                    (fondo tenue + una pastilla activa sólida) en vez del <select> de antes. */}
+                <div style={{ display: "flex", background: "#F1F2F9", borderRadius: "999px", padding: "3px", border: "1px solid #C2C6D6", flexShrink: 0 }}>
+                    {([["todos", "Todos"], ["deuda", "Deudas"], ["cobro", "Cobros"]] as [FilterType, string][]).map(([value, label]) => {
+                        const activo = filterType === value;
+                        return (
+                            <button
+                                key={value}
+                                onClick={() => setFilterType(value)}
+                                style={{
+                                    border: "none", borderRadius: "999px", cursor: "pointer", flexShrink: 0,
+                                    padding: movil ? "5px 9px" : "5px 13px", fontSize: movil ? "0.68rem" : "0.75rem", fontWeight: 700,
+                                    fontFamily: "inherit", transition: "all 0.15s",
+                                    background: activo ? "#0058BE" : "transparent",
+                                    color: activo ? "#fff" : "#424754",
+                                    whiteSpace: "nowrap",
+                                }}
+                            >
+                                {label}
+                            </button>
+                        );
+                    })}
                 </div>
 
-                {/* ── FILTER BAR ── */}
-                <div style={{ background: "#ECEDF7", borderRadius: "12px", padding: movil ? "0.75rem" : "1rem 1.25rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.6rem", border: "1px solid #C2C6D6" }}>
-                    {!movil && <span style={{ fontSize: "0.78rem", color: "#424754", fontWeight: 600 }}>Filtrar por:</span>}
-                    <select value={filterType} onChange={e => setFilterType(e.target.value as FilterType)}
-                        style={{ background: "#fff", border: "1px solid #C2C6D6", borderRadius: "8px", padding: "6px 10px", fontSize: movil ? "0.75rem" : "0.82rem", fontFamily: "'Inter',sans-serif", color: "#191B23", cursor: "pointer", flex: movil ? 1 : undefined, minWidth: 0 }}>
-                        <option value="todos">Todos los Tipos</option>
-                        <option value="deuda">Solo Deudas</option>
-                        <option value="cobro">Solo Cobros</option>
-                    </select>
-                    <select value={filterEstado} onChange={e => setFilterEstado(e.target.value as FilterEstado)}
-                        style={{ background: "#fff", border: "1px solid #C2C6D6", borderRadius: "8px", padding: "6px 10px", fontSize: movil ? "0.75rem" : "0.82rem", fontFamily: "'Inter',sans-serif", color: "#191B23", cursor: "pointer", flex: movil ? 1 : undefined, minWidth: 0 }}>
-                        <option value="todos">Todos los Estados</option>
-                        <option value="vencido">Vencido</option>
-                        <option value="proximo">Próximo</option>
-                        <option value="pendiente">Pendiente</option>
-                        <option value="confirmado">Confirmado</option>
-                        <option value="atrasado">Atrasado</option>
-                        <option value="programado">Programado</option>
-                    </select>
-                    <div style={{ marginLeft: movil ? undefined : "auto", display: "flex", gap: "6px", width: movil ? "100%" : undefined }}>
-                        <button
-                            onClick={() => setViewMode(v => v === "contacto" ? "list" : "contacto")}
-                            style={{ padding: "6px 10px", borderRadius: "8px", border: "none", background: viewMode === "contacto" ? "#fff" : "transparent", boxShadow: viewMode === "contacto" ? "0 1px 4px rgba(0,0,0,0.08)" : "none", cursor: "pointer", color: viewMode === "contacto" ? "#0058BE" : "#424754", display: "flex", alignItems: "center", gap: "5px", fontSize: movil ? "0.75rem" : "0.8rem", fontWeight: 700, flex: movil ? 1 : undefined, justifyContent: "center", fontFamily: "inherit" }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>group</span>
-                            Por contacto
-                        </button>
-                        {!movil && (
-                            <>
-                                {(["grid", "list"] as const).map(m => (
-                                    <button key={m} onClick={() => setViewMode(m)} style={{ padding: "6px 10px", borderRadius: "8px", border: "none", background: viewMode === m ? "#fff" : "transparent", boxShadow: viewMode === m ? "0 1px 4px rgba(0,0,0,0.08)" : "none", cursor: "pointer", color: viewMode === m ? "#0058BE" : "#424754" }}>
-                                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>{m === "grid" ? "grid_view" : "list"}</span>
-                                    </button>
-                                ))}
-                            </>
-                        )}
-                    </div>
+                <select value={filterEstado} onChange={e => setFilterEstado(e.target.value as FilterEstado)}
+                    style={{ background: "#F8F9FC", border: "1px solid #C2C6D6", borderRadius: "999px", padding: "6px 10px", fontSize: movil ? "0.72rem" : "0.78rem", fontFamily: "'Inter',sans-serif", color: "#191B23", cursor: "pointer", flexShrink: 0 }}>
+                    <option value="todos">Todos los Estados</option>
+                    <option value="vencido">Vencido</option>
+                    <option value="proximo">Próximo</option>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="confirmado">Confirmado</option>
+                    <option value="atrasado">Atrasado</option>
+                    <option value="programado">Programado</option>
+                </select>
+
+                <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                    <button
+                        onClick={() => setViewMode(v => v === "contacto" ? "list" : "contacto")}
+                        title="Por contacto"
+                        style={{ padding: "6px 10px", borderRadius: "8px", border: `1px solid ${viewMode === "contacto" ? "#0058BE" : "#C2C6D6"}`, background: viewMode === "contacto" ? "#EAF1FC" : "transparent", cursor: "pointer", color: viewMode === "contacto" ? "#0058BE" : "#424754", display: "flex", alignItems: "center", gap: "5px", fontSize: movil ? "0.72rem" : "0.78rem", fontWeight: 700, fontFamily: "inherit" }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>group</span>
+                        {!movil && "Por contacto"}
+                    </button>
+                    {!movil && (
+                        <>
+                            {(["grid", "list"] as const).map(m => (
+                                <button key={m} onClick={() => setViewMode(m)} style={{ padding: "6px 10px", borderRadius: "8px", border: `1px solid ${viewMode === m ? "#0058BE" : "#C2C6D6"}`, background: viewMode === m ? "#EAF1FC" : "transparent", cursor: "pointer", color: viewMode === m ? "#0058BE" : "#424754", display: "flex" }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>{m === "grid" ? "grid_view" : "list"}</span>
+                                </button>
+                            ))}
+                        </>
+                    )}
                 </div>
+
+                <button style={{ ...BTN_PRIMARY, padding: "8px 14px", fontSize: "0.78rem", flexShrink: 0 }} onClick={() => setShowAddModal(true)}>
+                    <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>add</span>
+                    Agregar
+                </button>
             </div>
 
             {/* ── DEUDAS/COBROS A PLAZOS (convertidos a pago fijo, se abonan desde Fijos) ──
