@@ -316,6 +316,12 @@ export interface SporadicProject {
                                  // siempre photoLogs.length + photoManualExtra
     note?: string;               // nota corta libre ("falta que confirme la fecha", "no sé si aprobó el edit"...)
                                  // para no depender de una app aparte (Keep) para lo que no encaja en ningún campo fijo
+    myDueDateOverride?: string;  // fecha "mía" puesta ENCIMA de dueDate, sin tocarlo -- dueDate sigue siendo
+                                 // la fecha real (la de Notion si está vinculado, o la de creación si no) y
+                                 // sigue marcando el atraso normal como siempre; esto es solo la fecha a la
+                                 // que el usuario se comprometió a sí mismo después de reagendar, para saber
+                                 // cuánto le falta para ESA sin tocar Notion ni el atraso real
+    rescheduleCount?: number;    // cuántas veces se puso/cambió myDueDateOverride (cada reagendo suma 1, nunca baja)
 }
 
 export interface UserPreferences {
@@ -1358,6 +1364,22 @@ export const useAlDiaState = () => {
         setSporadicProjects(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
     };
 
+    // Reagendar: NUNCA toca dueDate -- esa sigue siendo la fecha real (la de
+    // Notion si el proyecto está vinculado, o la de creación si no) y sigue
+    // marcando el atraso normal como siempre, sin tocarla desde acá ni de
+    // rebote en Notion. Esto solo pone/actualiza myDueDateOverride, una fecha
+    // "mía" por encima, y sube el contador de reagendos.
+    const rescheduleSporadicProject = (id: number, newDueDate: string) => {
+        setSporadicProjects(prev => prev.map(p => {
+            if (p.id !== id || p.myDueDateOverride === newDueDate) return p;
+            return {
+                ...p,
+                myDueDateOverride: newDueDate,
+                rescheduleCount: (p.rescheduleCount || 0) + 1,
+            };
+        }));
+    };
+
     const removeSporadicProject = (id: number) => {
         setSporadicProjects(prev => prev.filter(p => p.id !== id));
     };
@@ -1707,7 +1729,7 @@ export const useAlDiaState = () => {
         removeShoppingItem: lw(removeShoppingItem),
         sporadicProjects,
         addSporadicProject: lw(addSporadicProject), updateSporadicProject: lw(updateSporadicProject),
-        removeSporadicProject: lw(removeSporadicProject),
+        removeSporadicProject: lw(removeSporadicProject), rescheduleSporadicProject: lw(rescheduleSporadicProject),
         startSporadicTimer: lw(startSporadicTimer), pauseSporadicTimer: lw(pauseSporadicTimer), stopSporadicTimer: lw(stopSporadicTimer),
         startPhotoTimer: lw(startPhotoTimer), pausePhotoTimer: lw(pausePhotoTimer), finishPhotoTimer: lw(finishPhotoTimer), cancelPhotoTimer: lw(cancelPhotoTimer),
         adjustPhotoManualExtra: lw(adjustPhotoManualExtra),

@@ -116,26 +116,30 @@ export default async function handler(req, res) {
         const data = snap.data() || {};
 
         const existingAgenda = Array.isArray(data.agenda) ? data.agenda : [];
-        const byNotionId = new Map(existingAgenda.filter((e) => e.notionId).map((e) => [e.notionId, e]));
+        const existingNotionIds = new Set(existingAgenda.filter((e) => e.notionId).map((e) => e.notionId));
 
         const pages = await fetchAllNotionSessions();
         const fetchedEvents = pages.map(toCalendarEvent).filter(Boolean);
+        const fetchedNotionIds = new Set(fetchedEvents.map((e) => e.notionId));
 
-        let added = 0, updated = 0;
-        fetchedEvents.forEach((e) => {
-            if (byNotionId.has(e.notionId)) updated++; else added++;
-            byNotionId.set(e.notionId, e);
-        });
+        let added = 0, updated = 0, removed = 0;
+        fetchedEvents.forEach((e) => { if (existingNotionIds.has(e.notionId)) updated++; else added++; });
+        existingNotionIds.forEach((id) => { if (!fetchedNotionIds.has(id)) removed++; });
 
+        // Reconstruye agenda: eventos no-Notion tal cual, más los eventos de Notion
+        // exactamente como están AHORA en Notion (fetchAllNotionSessions ya solo
+        // devuelve páginas vivas, sin archivar/borrar). Antes esto arrancaba de
+        // existingAgenda y solo agregaba/actualizaba encima sin nunca quitar, así
+        // que una página borrada en Notion se quedaba pegada en AlDía para siempre.
         const nonNotion = existingAgenda.filter((e) => !e.notionId);
-        const nextAgenda = [...nonNotion, ...byNotionId.values()];
+        const nextAgenda = [...nonNotion, ...fetchedEvents];
 
         await docRef.set(
             { agenda: nextAgenda, lastSync: new Date().toISOString() },
             { merge: true }
         );
 
-        res.status(200).json({ ok: true, added, updated, total: fetchedEvents.length });
+        res.status(200).json({ ok: true, added, updated, removed, total: fetchedEvents.length });
     } catch (err) {
         console.error('sync-notion-now error:', err);
         res.status(500).json({ error: 'internal error' });
