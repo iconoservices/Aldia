@@ -23,6 +23,12 @@ interface FixedIncome {
 const WEEKDAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const WEEKDAYS_CORTO = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
 
+// dueDay=0 es el sentinel para "fin de mes" (no todos tienen 31 días, así que un
+// número fijo se rompería en febrero/abril/junio/septiembre/noviembre) -- esto
+// resuelve a qué día real corresponde ESTE mes, para comparar contra hoy.
+const finDeMesActual = () => new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+const diaEfectivo = (dueDay: number | undefined) => dueDay === 0 ? finDeMesActual() : dueDay;
+
 interface PlanDashboardProps {
     transactions:   Transaction[];
     fixedExpenses:  FixedExpense[];
@@ -160,8 +166,12 @@ export const PlanDashboard = ({
     const [mostrarFormGasto, setMostrarFormGasto] = useState(false);
 
     const pendientesOrdenados = useMemo(() => {
-        const conDia    = n.fijosPend.filter(f => f.dueDay || f.dueWeekday !== undefined).sort((a, b) => (a.dueDay || 0) - (b.dueDay || 0));
-        const sinDia    = n.fijosPend.filter(f => !f.dueDay && f.dueWeekday === undefined);
+        // dueDay=0 ("fin de mes") es falsy, así que no puede filtrarse/ordenarse con
+        // `f.dueDay || ...` como si no tuviera día puesto -- eso lo mandaba al grupo
+        // "sin día" y, de haber quedado en "con día", ordenaba como si fuera el día 1.
+        const tieneDia  = (f: FixedExpense) => f.dueDay !== undefined || f.dueWeekday !== undefined;
+        const conDia    = n.fijosPend.filter(tieneDia).sort((a, b) => (diaEfectivo(a.dueDay) ?? 0) - (diaEfectivo(b.dueDay) ?? 0));
+        const sinDia    = n.fijosPend.filter(f => !tieneDia(f));
         return { conDia, sinDia };
     }, [n.fijosPend]);
 
@@ -515,8 +525,12 @@ const FilaFijo = ({
     const hasPartial = !pagado && paidSoFar > 0;
 
     const esSemanal = item.frequency === 'weekly';
-    const vencido = !pagado && !esSemanal && !!item.dueDay && item.dueDay < diaHoy;
-    const hoyToca = !pagado && (esSemanal ? item.dueWeekday === hoyWeekday : item.dueDay === diaHoy);
+    // diaEfectivo resuelve dueDay=0 ("fin de mes") al día real de ESTE mes --
+    // sin esto, un pago de "fin de mes" nunca se marcaba vencido (0 es falsy)
+    // ni "toca hoy" en los meses que no llegan al 31.
+    const efectivoDueDay = diaEfectivo(item.dueDay);
+    const vencido = !pagado && !esSemanal && efectivoDueDay !== undefined && efectivoDueDay < diaHoy;
+    const hoyToca = !pagado && (esSemanal ? item.dueWeekday === hoyWeekday : efectivoDueDay === diaHoy);
 
     const [payAmount, setPayAmount] = useState('');
     const [payAccountId, setPayAccountId] = useState<number | undefined>(item.accountId);
@@ -535,6 +549,7 @@ const FilaFijo = ({
         if (d >= 1 && d <= 31) onGuardarFecha({ dueDay: d });
         setEditandoDia(false);
     };
+    const guardarFinDeMes = () => { onGuardarFecha({ dueDay: 0 }); setEditandoDia(false); };
 
     if (editando) return (
         <FilaFijoEditForm
@@ -566,22 +581,34 @@ const FilaFijo = ({
                             {WEEKDAYS_CORTO.map((w, i) => <option key={i} value={i}>{w}</option>)}
                         </select>
                     ) : (
-                        <input
-                            autoFocus
-                            value={diaInput}
-                            onChange={e => setDiaInput(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter') guardarDia(); if (e.key === 'Escape') setEditandoDia(false); }}
-                            onBlur={guardarDia}
-                            type="number" min="1" max="31"
-                            placeholder="Día"
-                            style={{ width: '42px', height: '38px', textAlign: 'center', border: `2px solid ${C.primary}`, borderRadius: '9px', outline: 'none', fontSize: '0.85rem', fontWeight: 800, color: C.onSurface, fontFamily: 'inherit', flexShrink: 0 }}
-                        />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center' }}>
+                            <input
+                                autoFocus
+                                value={diaInput}
+                                onChange={e => setDiaInput(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') guardarDia(); if (e.key === 'Escape') setEditandoDia(false); }}
+                                onBlur={guardarDia}
+                                type="number" min="1" max="31"
+                                placeholder="Día"
+                                style={{ width: '42px', height: '38px', textAlign: 'center', border: `2px solid ${C.primary}`, borderRadius: '9px', outline: 'none', fontSize: '0.85rem', fontWeight: 800, color: C.onSurface, fontFamily: 'inherit', flexShrink: 0 }}
+                            />
+                            {/* No todos los meses tienen 31 días -- "fin de mes" se guarda como
+                                dueDay=0 y se resuelve al día real de cada mes al mostrarlo/compararlo. */}
+                            <button
+                                type="button"
+                                onMouseDown={e => e.preventDefault()}
+                                onClick={guardarFinDeMes}
+                                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: C.secondary, fontSize: '0.58rem', fontWeight: 800, whiteSpace: 'nowrap' }}
+                            >
+                                Fin de mes
+                            </button>
+                        </div>
                     )
                 ) : (
                     <button
                         onClick={() => { setDiaInput(String(item.dueDay ?? '')); setEditandoDia(true); }}
                         disabled={pagado}
-                        title={esSemanal ? 'Cambiar día de la semana' : (item.dueDay !== undefined ? 'Cambiar día de pago' : 'Poner día de pago')}
+                        title={esSemanal ? 'Cambiar día de la semana' : item.dueDay === 0 ? 'Fin de mes — tocar para cambiar' : (item.dueDay !== undefined ? 'Cambiar día de pago' : 'Poner día de pago')}
                         style={{
                             width: '42px', height: '38px', flexShrink: 0,
                             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -595,7 +622,9 @@ const FilaFijo = ({
                         {esSemanal ? (
                             <span style={{ fontSize: '0.62rem', fontWeight: 800, lineHeight: 1 }}>{WEEKDAYS_CORTO[item.dueWeekday ?? 1]}</span>
                         ) : item.dueDay !== undefined ? (
-                            <span style={{ fontSize: '1rem', fontWeight: 800, lineHeight: 1 }}>{item.dueDay === 0 ? '31' : item.dueDay}</span>
+                            item.dueDay === 0
+                                ? <span style={{ fontSize: '0.58rem', fontWeight: 800, lineHeight: 1.1, textAlign: 'center' }}>FIN<br />MES</span>
+                                : <span style={{ fontSize: '1rem', fontWeight: 800, lineHeight: 1 }}>{item.dueDay}</span>
                         ) : (
                             <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>event</span>
                         )}
@@ -898,7 +927,11 @@ const FilaFijoEditForm = ({ item, esGasto, accounts, onCancel, onGuardar }: any)
                 ) : (
                     <div>
                         <label style={campoLabel}>Día de cobro</label>
-                        <input type="number" min="1" max="31" placeholder="—" value={dueDay ?? ''} onChange={e => setDueDay(e.target.value ? Number(e.target.value) : undefined)} style={{ ...campo(false), width: '100%', boxSizing: 'border-box' }} />
+                        <input type="number" min="1" max="31" placeholder="—" disabled={dueDay === 0} value={dueDay === 0 ? '' : dueDay ?? ''} onChange={e => setDueDay(e.target.value ? Number(e.target.value) : undefined)} style={{ ...campo(false), width: '100%', boxSizing: 'border-box', opacity: dueDay === 0 ? 0.5 : 1 }} />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '5px', fontSize: '0.68rem', fontWeight: 700, color: C.onSurfaceVariant, cursor: 'pointer' }}>
+                            <input type="checkbox" checked={dueDay === 0} onChange={e => setDueDay(e.target.checked ? 0 : undefined)} />
+                            Fin de mes (no un día fijo)
+                        </label>
                     </div>
                 )}
             </div>
@@ -1032,7 +1065,13 @@ const NuevoFijoForm = ({ movil, accounts, placeholderNombre, conPrestamo, onSubm
                         {WEEKDAYS.map((w, i) => <option key={i} value={i}>{w}</option>)}
                     </select>
                 ) : (
-                    <input type="number" min="1" max="31" placeholder="Día de cobro" value={dueDay} onChange={e => setDueDay(e.target.value)} style={{ padding: '5px 8px', borderRadius: '7px', border: `1px solid ${C.outlineVariant}`, fontSize: '0.72rem', fontWeight: 700, width: '110px' }} />
+                    <>
+                        <input type="number" min="1" max="31" placeholder="Día de cobro" disabled={dueDay === '0'} value={dueDay === '0' ? '' : dueDay} onChange={e => setDueDay(e.target.value)} style={{ padding: '5px 8px', borderRadius: '7px', border: `1px solid ${C.outlineVariant}`, fontSize: '0.72rem', fontWeight: 700, width: '110px', opacity: dueDay === '0' ? 0.5 : 1 }} />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', fontWeight: 700, color: C.onSurfaceVariant, cursor: 'pointer' }}>
+                            <input type="checkbox" checked={dueDay === '0'} onChange={e => setDueDay(e.target.checked ? '0' : '')} />
+                            Fin de mes
+                        </label>
+                    </>
                 )}
             </div>
 

@@ -390,6 +390,8 @@ function App() {
                 contacts={state.contacts}
                 setContacts={state.setContacts}
                 addFixedExpense={state.addFixedExpense}
+                fixedExpenses={state.fixedExpenses}
+                removeFixedExpense={state.removeFixedExpense}
               />
             ) : activeTab === 'Finanzas' ? (
               <FinanzasDashboard

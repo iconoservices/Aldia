@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Transaction, Contact } from "../../hooks/useAlDiaState";
+import type { Transaction, Contact, FixedExpense } from "../../hooks/useAlDiaState";
 import { useIsMobile } from "../../theme";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 
@@ -47,6 +47,8 @@ interface DeudasyCobrosDashboardProps {
     contacts?: Contact[];
     setContacts?: React.Dispatch<React.SetStateAction<Contact[]>>;
     addFixedExpense?: (text: string, amount: number, projectId?: number, dueDay?: number, accountId?: number, frequency?: 'monthly' | 'weekly', dueWeekday?: number, contact?: string, totalAmount?: number) => void;
+    fixedExpenses?: FixedExpense[];
+    removeFixedExpense?: (id: number) => void;
 }
 
 // Antes registrar una deuda no tocaba ninguna cuenta: si te prestaban plata, "Debo"
@@ -224,6 +226,8 @@ export const DeudasyCobrosDashboard = ({
     contacts = [],
     setContacts,
     addFixedExpense,
+    fixedExpenses = [],
+    removeFixedExpense,
 }: DeudasyCobrosDashboardProps) => {
     const movil = useIsMobile();
     const visualViewport = useVisualViewport();
@@ -297,6 +301,28 @@ export const DeudasyCobrosDashboard = ({
 
     const debtItems = useMemo(() => debtGroups.filter(g => g.isOwe), [debtGroups]);
     const cobroItems = useMemo(() => debtGroups.filter(g => !g.isOwe), [debtGroups]);
+
+    // Deudas convertidas a pago a plazos (botón "A plazos" más abajo): siguen siendo
+    // una deuda de verdad, solo que ahora se abonan desde Fijos en vez de acá. Antes
+    // "convertir" las sacaba de Deudas por completo y no quedaba rastro de que
+    // seguían pendientes -- esto las mantiene visibles (de solo lectura, el abono
+    // real vive en Fijos) hasta que se terminen de pagar (quedan inactivas ahí).
+    const deudasAPlazos = useMemo(
+        () => fixedExpenses.filter(f => f.totalAmount != null && f.active),
+        [fixedExpenses]
+    );
+
+    // Deshace la conversión: la deuda vuelve a vivir en Deudas (por el saldo que
+    // faltaba) y deja de ser un pago fijo mensual -- para cuando ya no tiene sentido
+    // seguir tratándola como recurrente y se prefiere abonarla suelta desde acá.
+    const volverADeuda = (item: FixedExpense) => {
+        if (!removeFixedExpense) return;
+        const restante = Math.max(0, (item.totalAmount ?? 0) - (item.paidToDate ?? 0));
+        if (restante > 0) {
+            addTransaction(item.text, restante, "gasto", true, undefined, item.accountId, true, undefined, item.contact);
+        }
+        removeFixedExpense(item.id);
+    };
 
     // Nombres de contacto ya usados, para sugerir con datalist al escribir uno nuevo
     // y evitar que "Carlos" y "carlos " terminen como dos contactos distintos. Junta
@@ -1167,6 +1193,44 @@ export const DeudasyCobrosDashboard = ({
                     </div>
                 </div>
             </div>
+
+            {/* ── DEUDAS A PLAZOS (convertidas a pago fijo, se abonan desde Fijos) ── */}
+            {deudasAPlazos.length > 0 && (
+                <section style={{ ...CARD, marginBottom: movil ? "1.25rem" : "2rem" }}>
+                    <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
+                        <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
+                            <span className="material-symbols-outlined" style={{ color: "#0058BE", fontSize: "20px" }}>event_repeat</span>
+                            Deudas a plazos ({deudasAPlazos.length})
+                        </h3>
+                        <span style={{ fontSize: "0.72rem", color: "#424754" }}>Se abonan desde Fijos</span>
+                    </div>
+                    <div style={{ padding: movil ? "0.85rem" : "1rem 1.5rem", display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {deudasAPlazos.map(item => {
+                            const restante = Math.max(0, (item.totalAmount ?? 0) - (item.paidToDate ?? 0));
+                            return (
+                                <div key={item.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 14px", padding: "10px 12px", borderRadius: "10px", background: "#F8F9FC", border: "1px solid #E5E7F0" }}>
+                                    <div style={{ flex: "1 1 160px", minWidth: 0 }}>
+                                        <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#191B23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                            {item.text}
+                                        </div>
+                                        {item.contact && <div style={{ fontSize: "0.7rem", color: "#424754" }}>{item.contact}</div>}
+                                    </div>
+                                    <div style={{ fontSize: "0.78rem", color: "#424754" }}>
+                                        Falta <b style={{ color: "#191B23" }}>{formatCurrency(restante)}</b> de {formatCurrency(item.totalAmount ?? 0)} · cuota {formatCurrency(item.amount)}/mes
+                                    </div>
+                                    <button
+                                        onClick={() => volverADeuda(item)}
+                                        title="Dejar de tratarla como pago fijo mensual y volver a manejarla suelta desde acá"
+                                        style={{ marginLeft: "auto", background: "none", border: "1px solid #C2C6D6", borderRadius: "8px", padding: "5px 10px", fontSize: "0.7rem", fontWeight: 700, color: "#424754", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                                    >
+                                        Volver a Deudas
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </section>
+            )}
 
             {/* ── TABLES ── */}
             {viewMode === "contacto" ? renderContactView() : (

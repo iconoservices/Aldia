@@ -40,7 +40,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Entregas', tab: 'Entregas', icon: 'local_fire_department' },
         { label: 'Proyección',   tab: 'Proyección',  icon: 'trending_up' },
         { label: 'Finanzas',  tab: 'Finanzas',  icon: 'payments'      },
-        { label: 'Plan', tab: 'Plan',      icon: 'savings'       },
+        { label: 'Fijos', tab: 'Plan',      icon: 'savings'       },
         { label: 'Deudas',     tab: 'Deudas',     icon: 'receipt_long'  },
         { label: 'Movimientos', tab: 'Movimientos', icon: 'list_alt'    },
         { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
