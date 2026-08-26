@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Transaction, Contact, FixedExpense } from "../../hooks/useAlDiaState";
+import type { FixedIncome } from "./PlanDashboard";
 import { useIsMobile } from "../../theme";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 
@@ -49,6 +50,12 @@ interface DeudasyCobrosDashboardProps {
     addFixedExpense?: (text: string, amount: number, projectId?: number, dueDay?: number, accountId?: number, frequency?: 'monthly' | 'weekly', dueWeekday?: number, contact?: string, totalAmount?: number) => void;
     fixedExpenses?: FixedExpense[];
     removeFixedExpense?: (id: number) => void;
+    // Los ingresos fijos viven como JSON dentro de preferences (no en su propio
+    // array de Firestore, a diferencia de fixedExpenses) -- se necesitan estos dos
+    // para poder crear un "cobro a plazos" desde acá, igual que ya se hace con
+    // gastos fijos via addFixedExpense.
+    preferences?: { fixedIncomes: string };
+    updatePreference?: (key: 'fixedIncomes', value: string) => void;
 }
 
 // Antes registrar una deuda no tocaba ninguna cuenta: si te prestaban plata, "Debo"
@@ -228,6 +235,8 @@ export const DeudasyCobrosDashboard = ({
     addFixedExpense,
     fixedExpenses = [],
     removeFixedExpense,
+    preferences,
+    updatePreference,
 }: DeudasyCobrosDashboardProps) => {
     const movil = useIsMobile();
     const visualViewport = useVisualViewport();
@@ -302,19 +311,28 @@ export const DeudasyCobrosDashboard = ({
     const debtItems = useMemo(() => debtGroups.filter(g => g.isOwe), [debtGroups]);
     const cobroItems = useMemo(() => debtGroups.filter(g => !g.isOwe), [debtGroups]);
 
-    // Deudas convertidas a pago a plazos (botón "A plazos" más abajo): siguen siendo
-    // una deuda de verdad, solo que ahora se abonan desde Fijos en vez de acá. Antes
-    // "convertir" las sacaba de Deudas por completo y no quedaba rastro de que
-    // seguían pendientes -- esto las mantiene visibles (de solo lectura, el abono
-    // real vive en Fijos) hasta que se terminen de pagar (quedan inactivas ahí).
+    // Deudas/cobros convertidos a pago a plazos (botón "A plazos" más abajo): siguen
+    // siendo una deuda/cobro de verdad, solo que ahora se abonan desde Fijos en vez
+    // de acá. Antes "convertir" los sacaba de Deudas por completo y no quedaba
+    // rastro de que seguían pendientes -- esto los mantiene visibles (de solo
+    // lectura, el abono real vive en Fijos) hasta que se terminen de pagar/cobrar
+    // (quedan inactivos ahí).
     const deudasAPlazos = useMemo(
         () => fixedExpenses.filter(f => f.totalAmount != null && f.active),
         [fixedExpenses]
     );
+    const ingresosFijos = useMemo<FixedIncome[]>(() => {
+        try { return JSON.parse(preferences?.fixedIncomes || '[]'); }
+        catch { return []; }
+    }, [preferences?.fixedIncomes]);
+    const cobrosAPlazos = useMemo(
+        () => ingresosFijos.filter(i => i.totalAmount != null && i.active),
+        [ingresosFijos]
+    );
 
-    // Deshace la conversión: la deuda vuelve a vivir en Deudas (por el saldo que
-    // faltaba) y deja de ser un pago fijo mensual -- para cuando ya no tiene sentido
-    // seguir tratándola como recurrente y se prefiere abonarla suelta desde acá.
+    // Deshace la conversión: la deuda/cobro vuelve a vivir en Deudas (por el saldo
+    // que faltaba) y deja de ser un pago fijo recurrente -- para cuando ya no tiene
+    // sentido seguir tratándolo como tal y se prefiere abonarlo suelto desde acá.
     const volverADeuda = (item: FixedExpense) => {
         if (!removeFixedExpense) return;
         const restante = Math.max(0, (item.totalAmount ?? 0) - (item.paidToDate ?? 0));
@@ -322,6 +340,22 @@ export const DeudasyCobrosDashboard = ({
             addTransaction(item.text, restante, "gasto", true, undefined, item.accountId, true, undefined, item.contact);
         }
         removeFixedExpense(item.id);
+    };
+    const volverACobro = (item: FixedIncome) => {
+        if (!updatePreference) return;
+        const restante = Math.max(0, (item.totalAmount ?? 0) - (item.paidToDate ?? 0));
+        if (restante > 0) {
+            addTransaction(item.name, restante, "ingreso", true, undefined, item.accountId, true, undefined, item.contact);
+        }
+        updatePreference('fixedIncomes', JSON.stringify(ingresosFijos.filter(i => i.id !== item.id)));
+    };
+    // Crea el ingreso fijo a plazos -- mismo shape que addFixedIncome en PlanDashboard,
+    // reescrito acá porque los ingresos fijos no pasan por useAlDiaState (viven en
+    // preferences), así que este componente no tiene ya una función para agregarlos.
+    const addIngresoAPlazos = (name: string, cuota: number, dueDay: number | undefined, accountId: number | undefined, contact: string | undefined, totalAmount: number) => {
+        if (!updatePreference) return;
+        const nuevo: FixedIncome = { id: Date.now(), name, amount: cuota, active: true, accountId, frequency: 'monthly', dueDay, contact, totalAmount, paidToDate: 0 };
+        updatePreference('fixedIncomes', JSON.stringify([...ingresosFijos, nuevo]));
     };
 
     // Nombres de contacto ya usados, para sugerir con datalist al escribir uno nuevo
@@ -464,13 +498,20 @@ export const DeudasyCobrosDashboard = ({
     };
 
     const handleConvert = (item: DebtGroup) => {
-        if (!addFixedExpense) return;
         const id = item.originalTx.id;
         const cuota = parseFloat(convertCuota[id] || "");
         if (!cuota || cuota <= 0) return;
         const dueDay = convertDueDay[id] ? Number(convertDueDay[id]) : undefined;
         const accountId = convertAccountId[id] ? Number(convertAccountId[id]) : undefined;
-        addFixedExpense(item.name, cuota, undefined, dueDay, accountId, 'monthly', undefined, item.contact || undefined, item.amount);
+        // Antes esto SIEMPRE creaba un gasto fijo, aunque fuera un Cobro (dinero que
+        // te deben a TI) -- quedaba al revés: un cobro a plazos convertido se veía
+        // como si fuera plata que tú pagas, en vez de plata que te pagan a ti.
+        if (item.isOwe) {
+            if (!addFixedExpense) return;
+            addFixedExpense(item.name, cuota, undefined, dueDay, accountId, 'monthly', undefined, item.contact || undefined, item.amount);
+        } else {
+            addIngresoAPlazos(item.name, cuota, dueDay, accountId, item.contact || undefined, item.amount);
+        }
         removeTransaction(item.originalTx.id);
         closeConvert(id);
     };
@@ -829,9 +870,14 @@ export const DeudasyCobrosDashboard = ({
                                                         <button onClick={() => closeAbonar(id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", padding: "2px", fontSize: "0.75rem", fontWeight: 800 }}>✕</button>
                                                     </div>
                                                 </div>
+                                            ) : convertId === id ? (
+                                                <ConvertPanel item={item} accounts={accounts} cuota={convertCuota[id]} setCuota={(v: string) => setConvertCuota(m => ({ ...m, [id]: v }))} dueDay={convertDueDay[id]} setDueDay={(v: string) => setConvertDueDay(m => ({ ...m, [id]: v }))} accountId={convertAccountId[id]} setAccountId={(v: string) => setConvertAccountId(m => ({ ...m, [id]: v }))} onConfirm={() => handleConvert(item)} onCancel={() => closeConvert(id)} />
                                             ) : (
                                                 <>
                                                     <button onClick={() => openAbonar(item)} title="Cobrar" style={{ background: "#E2E8F0", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#475569" }}>Cobrar</button>
+                                                    {updatePreference && (
+                                                        <button onClick={() => openConvert(item)} title="Convertir a cobro fijo" style={{ background: "#DAE2FD", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#4858AB" }}>A plazos</button>
+                                                    )}
                                                     <button onClick={() => handleEdit(item)} title="Editar" style={{ background: "none", border: "1px solid #0058BE", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#0058BE" }}>
                                                         <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>edit</span>
                                                     </button>
@@ -998,9 +1044,14 @@ export const DeudasyCobrosDashboard = ({
                                         <button onClick={() => closeAbonar(id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", padding: "2px", fontSize: "0.75rem", fontWeight: 800 }}>✕</button>
                                     </div>
                                 </div>
+                            ) : convertId === id ? (
+                                <ConvertPanel item={item} accounts={accounts} cuota={convertCuota[id]} setCuota={(v: string) => setConvertCuota(m => ({ ...m, [id]: v }))} dueDay={convertDueDay[id]} setDueDay={(v: string) => setConvertDueDay(m => ({ ...m, [id]: v }))} accountId={convertAccountId[id]} setAccountId={(v: string) => setConvertAccountId(m => ({ ...m, [id]: v }))} onConfirm={() => handleConvert(item)} onCancel={() => closeConvert(id)} full />
                             ) : (
-                                <div style={{ display: "flex", gap: "4px" }}>
+                                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
                                     <button onClick={() => openAbonar(item)} title="Cobrar" style={{ background: "#E2E8F0", border: "none", borderRadius: "4px", padding: "4px 7px", fontWeight: 700, fontSize: "0.62rem", cursor: "pointer", color: "#475569" }}>Cobrar</button>
+                                    {updatePreference && (
+                                        <button onClick={() => openConvert(item)} title="Convertir a cobro fijo" style={{ background: "#DAE2FD", border: "none", borderRadius: "4px", padding: "4px 7px", fontWeight: 700, fontSize: "0.62rem", cursor: "pointer", color: "#4858AB" }}>A plazos</button>
+                                    )}
                                     <button onClick={() => handleEdit(item)} title="Editar" style={{ background: "none", border: "1px solid #0058BE", borderRadius: "6px", padding: "4px 6px", cursor: "pointer", color: "#0058BE", display: "flex" }}>
                                         <span className="material-symbols-outlined" style={{ fontSize: "13px" }}>edit</span>
                                     </button>
@@ -1194,42 +1245,87 @@ export const DeudasyCobrosDashboard = ({
                 </div>
             </div>
 
-            {/* ── DEUDAS A PLAZOS (convertidas a pago fijo, se abonan desde Fijos) ── */}
-            {deudasAPlazos.length > 0 && (
-                <section style={{ ...CARD, marginBottom: movil ? "1.25rem" : "2rem" }}>
-                    <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
-                        <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
-                            <span className="material-symbols-outlined" style={{ color: "#0058BE", fontSize: "20px" }}>event_repeat</span>
-                            Deudas a plazos ({deudasAPlazos.length})
-                        </h3>
-                        <span style={{ fontSize: "0.72rem", color: "#424754" }}>Se abonan desde Fijos</span>
-                    </div>
-                    <div style={{ padding: movil ? "0.85rem" : "1rem 1.5rem", display: "flex", flexDirection: "column", gap: "10px" }}>
-                        {deudasAPlazos.map(item => {
-                            const restante = Math.max(0, (item.totalAmount ?? 0) - (item.paidToDate ?? 0));
-                            return (
-                                <div key={item.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 14px", padding: "10px 12px", borderRadius: "10px", background: "#F8F9FC", border: "1px solid #E5E7F0" }}>
-                                    <div style={{ flex: "1 1 160px", minWidth: 0 }}>
-                                        <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#191B23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                            {item.text}
+            {/* ── DEUDAS/COBROS A PLAZOS (convertidos a pago fijo, se abonan desde Fijos) ──
+                Misma grilla de dos columnas que las tablas de abajo (mitad de pantalla
+                cada una) en vez de una barra ancha aparte -- así queda visualmente
+                agrupado con su contraparte (Deudas a la izquierda, Cobros a la derecha),
+                y cada bloque solo aparece cuando de verdad hay algo que mostrar. */}
+            {(deudasAPlazos.length > 0 || cobrosAPlazos.length > 0) && (
+                <div style={{ display: "grid", gridTemplateColumns: movil ? "1fr" : "repeat(auto-fit, minmax(380px, 1fr))", gap: movil ? "1.25rem" : "2rem", marginBottom: movil ? "1.25rem" : "2rem" }}>
+                    {deudasAPlazos.length > 0 && (
+                        <section style={CARD}>
+                            <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
+                                <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
+                                    <span className="material-symbols-outlined" style={{ color: "#BA1A1A", fontSize: "20px" }}>event_repeat</span>
+                                    Deudas a plazos ({deudasAPlazos.length})
+                                </h3>
+                                <span style={{ fontSize: "0.72rem", color: "#424754" }}>Se abonan desde Fijos</span>
+                            </div>
+                            <div style={{ padding: movil ? "0.85rem" : "1rem 1.5rem", display: "flex", flexDirection: "column", gap: "10px" }}>
+                                {deudasAPlazos.map(item => {
+                                    const restante = Math.max(0, (item.totalAmount ?? 0) - (item.paidToDate ?? 0));
+                                    return (
+                                        <div key={item.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 14px", padding: "10px 12px", borderRadius: "10px", background: "#F8F9FC", border: "1px solid #E5E7F0" }}>
+                                            <div style={{ flex: "1 1 140px", minWidth: 0 }}>
+                                                <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#191B23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                    {item.text}
+                                                </div>
+                                                {item.contact && <div style={{ fontSize: "0.7rem", color: "#424754" }}>{item.contact}</div>}
+                                            </div>
+                                            <div style={{ fontSize: "0.74rem", color: "#424754" }}>
+                                                Falta <b style={{ color: "#191B23" }}>{formatCurrency(restante)}</b> de {formatCurrency(item.totalAmount ?? 0)} · {formatCurrency(item.amount)}/mes
+                                            </div>
+                                            <button
+                                                onClick={() => volverADeuda(item)}
+                                                title="Dejar de tratarla como pago fijo mensual y volver a manejarla suelta desde acá"
+                                                style={{ marginLeft: "auto", background: "none", border: "1px solid #C2C6D6", borderRadius: "8px", padding: "5px 10px", fontSize: "0.68rem", fontWeight: 700, color: "#424754", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                                            >
+                                                Volver a Deudas
+                                            </button>
                                         </div>
-                                        {item.contact && <div style={{ fontSize: "0.7rem", color: "#424754" }}>{item.contact}</div>}
-                                    </div>
-                                    <div style={{ fontSize: "0.78rem", color: "#424754" }}>
-                                        Falta <b style={{ color: "#191B23" }}>{formatCurrency(restante)}</b> de {formatCurrency(item.totalAmount ?? 0)} · cuota {formatCurrency(item.amount)}/mes
-                                    </div>
-                                    <button
-                                        onClick={() => volverADeuda(item)}
-                                        title="Dejar de tratarla como pago fijo mensual y volver a manejarla suelta desde acá"
-                                        style={{ marginLeft: "auto", background: "none", border: "1px solid #C2C6D6", borderRadius: "8px", padding: "5px 10px", fontSize: "0.7rem", fontWeight: 700, color: "#424754", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
-                                    >
-                                        Volver a Deudas
-                                    </button>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </section>
+                                    );
+                                })}
+                            </div>
+                        </section>
+                    )}
+
+                    {cobrosAPlazos.length > 0 && (
+                        <section style={CARD}>
+                            <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
+                                <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
+                                    <span className="material-symbols-outlined" style={{ color: "#10B981", fontSize: "20px" }}>event_repeat</span>
+                                    Cobros a plazos ({cobrosAPlazos.length})
+                                </h3>
+                                <span style={{ fontSize: "0.72rem", color: "#424754" }}>Se cobran desde Fijos</span>
+                            </div>
+                            <div style={{ padding: movil ? "0.85rem" : "1rem 1.5rem", display: "flex", flexDirection: "column", gap: "10px" }}>
+                                {cobrosAPlazos.map(item => {
+                                    const restante = Math.max(0, (item.totalAmount ?? 0) - (item.paidToDate ?? 0));
+                                    return (
+                                        <div key={item.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 14px", padding: "10px 12px", borderRadius: "10px", background: "#F8F9FC", border: "1px solid #E5E7F0" }}>
+                                            <div style={{ flex: "1 1 140px", minWidth: 0 }}>
+                                                <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#191B23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                    {item.name}
+                                                </div>
+                                                {item.contact && <div style={{ fontSize: "0.7rem", color: "#424754" }}>{item.contact}</div>}
+                                            </div>
+                                            <div style={{ fontSize: "0.74rem", color: "#424754" }}>
+                                                Falta <b style={{ color: "#191B23" }}>{formatCurrency(restante)}</b> de {formatCurrency(item.totalAmount ?? 0)} · {formatCurrency(item.amount)}/mes
+                                            </div>
+                                            <button
+                                                onClick={() => volverACobro(item)}
+                                                title="Dejar de tratarlo como cobro fijo mensual y volver a manejarlo suelto desde acá"
+                                                style={{ marginLeft: "auto", background: "none", border: "1px solid #C2C6D6", borderRadius: "8px", padding: "5px 10px", fontSize: "0.68rem", fontWeight: 700, color: "#424754", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                                            >
+                                                Volver a Cobros
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </section>
+                    )}
+                </div>
             )}
 
             {/* ── TABLES ── */}

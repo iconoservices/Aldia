@@ -392,6 +392,8 @@ function App() {
                 addFixedExpense={state.addFixedExpense}
                 fixedExpenses={state.fixedExpenses}
                 removeFixedExpense={state.removeFixedExpense}
+                preferences={state.preferences}
+                updatePreference={state.updatePreference}
               />
             ) : activeTab === 'Finanzas' ? (
               <FinanzasDashboard

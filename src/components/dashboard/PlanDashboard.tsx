@@ -6,7 +6,7 @@ import {
     paddingPagina, campo, TOQUE_MINIMO,
 } from '../../theme';
 
-interface FixedIncome {
+export interface FixedIncome {
     id: number;
     name: string;
     amount: number;
@@ -18,6 +18,9 @@ interface FixedIncome {
     lastReceivedMonth?: string;
     partialReceived?: { month: string; amount: number };
     nota?: string; // Comentario libre corto, mismo patrón que la nota de gastos fijos
+    contact?: string; // Quién te debe (cobro a plazos), si aplica -- mismo patrón que FixedExpense
+    totalAmount?: number; // Si existe, este ingreso fijo es un cobro a plazos: se recibe en cuotas de `amount` hasta cubrir este tope
+    paidToDate?: number; // Acumulado recibido hacia totalAmount (solo relevante si totalAmount está definido)
 }
 
 const WEEKDAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -80,8 +83,17 @@ export const PlanDashboard = ({
 
     const saveIngresosFijos = (items: FixedIncome[]) => updatePreference('fixedIncomes', JSON.stringify(items));
 
-    const addFixedIncome = (name: string, amount: number, accountId?: number, frequency?: 'monthly' | 'weekly', dueDay?: number, dueWeekday?: number) =>
-        saveIngresosFijos([...ingresosFijos, { id: Date.now(), name, amount, active: true, accountId, frequency, dueDay, dueWeekday }]);
+    const addFixedIncome = (name: string, amount: number, accountId?: number, frequency?: 'monthly' | 'weekly', dueDay?: number, dueWeekday?: number, contact?: string, totalAmount?: number) =>
+        saveIngresosFijos([...ingresosFijos, { id: Date.now(), name, amount, active: true, accountId, frequency, dueDay, dueWeekday, contact, totalAmount, paidToDate: totalAmount != null ? 0 : undefined }]);
+
+    // Espejo de applyInstallmentProgress (gastos fijos, useFinanzasState.ts): si el
+    // ingreso es un cobro a plazos (tiene totalAmount), suma lo recibido al acumulado
+    // y lo desactiva solo cuando ya cubrió el tope, para que deje de pedirse cada período.
+    const applyIncomeInstallmentProgress = (income: FixedIncome, receivedValue: number): Partial<FixedIncome> => {
+        if (income.totalAmount == null) return {};
+        const paidToDate = (income.paidToDate ?? 0) + receivedValue;
+        return { paidToDate, active: paidToDate >= income.totalAmount - 0.005 ? false : income.active };
+    };
 
     const editFixedIncome = (id: number, updates: Partial<FixedIncome>) =>
         saveIngresosFijos(ingresosFijos.map(f => f.id === id ? { ...f, ...updates } : f));
@@ -107,8 +119,23 @@ export const PlanDashboard = ({
             ...f,
             lastReceivedMonth: isFullyReceived ? periodStr : f.lastReceivedMonth,
             partialReceived: isFullyReceived ? undefined : { month: periodStr, amount: totalReceived },
+            ...applyIncomeInstallmentProgress(f, value),
         } : f));
         addTransaction(`Depósito: ${item.name}`, value, 'ingreso', false, undefined, resolvedAccountId, false, 'Sueldo');
+    };
+
+    // Deshace la conversión desde plazos: recrea la deuda/cobro por el saldo que
+    // faltaba y deja de tratarlo como pago fijo recurrente -- mismo botón que ya
+    // existe en la pestaña Deudas, pero accesible también desde acá.
+    const volverADeuda = (item: FixedExpense) => {
+        const restante = Math.max(0, (item.totalAmount ?? 0) - (item.paidToDate ?? 0));
+        if (restante > 0) addTransaction(item.text, restante, 'gasto', true, undefined, item.accountId, true, undefined, item.contact);
+        removeFixedExpense(item.id);
+    };
+    const volverACobro = (item: FixedIncome) => {
+        const restante = Math.max(0, (item.totalAmount ?? 0) - (item.paidToDate ?? 0));
+        if (restante > 0) addTransaction(item.name, restante, 'ingreso', true, undefined, item.accountId, true, undefined, item.contact);
+        removeFixedIncome(item.id);
     };
 
     const unmarkFixedIncomeReceived = (id: number, periodStr: string) => {
@@ -270,6 +297,7 @@ export const PlanDashboard = ({
                             accounts={accounts}
                             placeholderNombre="¿Qué pagas?"
                             conPrestamo
+                            esGasto
                             onSubmit={(v) => {
                                 addFixedExpense(
                                     v.nombre, v.monto, undefined,
@@ -306,6 +334,7 @@ export const PlanDashboard = ({
                             onEditar={(updates) => updateFixedExpense(f.id, updates)}
                             onPagarPeriodoPendiente={(period, monto, accountId) => payPendingPeriod(f.id, period, monto, accountId)}
                             onDeshacerPeriodoPendiente={(period) => unmarkPendingPeriod(f.id, period)}
+                            onVolverADeuda={f.totalAmount != null ? () => volverADeuda(f) : undefined}
                         />
                     ))}
 
@@ -332,6 +361,7 @@ export const PlanDashboard = ({
                             // nada al tocar Pagar/Deshacer.
                             onPagarPeriodoPendiente={(period, monto, accountId) => payPendingPeriod(f.id, period, monto, accountId)}
                             onDeshacerPeriodoPendiente={(period) => unmarkPendingPeriod(f.id, period)}
+                            onVolverADeuda={f.totalAmount != null ? () => volverADeuda(f) : undefined}
                         />
                     ))}
                 </section>
@@ -373,8 +403,16 @@ export const PlanDashboard = ({
                             movil={movil}
                             accounts={accounts}
                             placeholderNombre="¿De dónde viene?"
+                            conPrestamo
+                            esGasto={false}
                             onSubmit={(v) => {
-                                addFixedIncome(v.nombre, v.monto, v.accountId, v.frequency, v.frequency === 'monthly' ? v.dueDay : undefined, v.frequency === 'weekly' ? v.dueWeekday : undefined);
+                                addFixedIncome(
+                                    v.nombre, v.monto, v.accountId, v.frequency,
+                                    v.frequency === 'monthly' ? v.dueDay : undefined,
+                                    v.frequency === 'weekly' ? v.dueWeekday : undefined,
+                                    v.esPrestamo ? (v.contact || undefined) : undefined,
+                                    v.esPrestamo && v.totalAmount ? v.totalAmount : undefined,
+                                );
                                 setMostrarFormIngreso(false);
                             }}
                         />
@@ -402,6 +440,7 @@ export const PlanDashboard = ({
                             onEditar={(updates) => editFixedIncome(i.id, updates)}
                             onPagarPeriodoPendiente={() => {}}
                             onDeshacerPeriodoPendiente={() => {}}
+                            onVolverADeuda={i.totalAmount != null ? () => volverACobro(i) : undefined}
                         />
                     ))}
 
@@ -502,12 +541,13 @@ interface FilaFijoProps {
     onEditar: (updates: any) => void;
     onPagarPeriodoPendiente: (period: string, monto: number, accountId?: number) => void;
     onDeshacerPeriodoPendiente: (period: string) => void;
+    onVolverADeuda?: () => void;
 }
 
 const FilaFijo = ({
     item, tipo, periodo, diaHoy, hoyWeekday, pagado, accounts,
     onGuardarFecha, onPagarParcial, onDeshacer, onToggleActivo, onEliminar, onEditar,
-    onPagarPeriodoPendiente, onDeshacerPeriodoPendiente,
+    onPagarPeriodoPendiente, onDeshacerPeriodoPendiente, onVolverADeuda,
 }: FilaFijoProps) => {
     const esGasto = tipo === 'gasto';
     const partial = esGasto ? item.partialPaid : item.partialReceived;
@@ -644,7 +684,11 @@ const FilaFijo = ({
                         {!pagado && hoyToca && <span style={{ fontSize: '0.68rem', fontWeight: 700, color: C.ambar }}>TOCA HOY</span>}
                         {esSemanal && <span style={{ fontSize: '0.68rem', color: C.outline }}>cada {WEEKDAYS[item.dueWeekday ?? 1]}</span>}
                         {item.totalAmount != null && (
-                            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: C.primary }}>{item.contact ? `Deuda: ${item.contact}` : 'Deuda a plazos'}</span>
+                            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: C.primary }}>
+                                {esGasto
+                                    ? (item.contact ? `Deuda: ${item.contact}` : 'Deuda a plazos')
+                                    : (item.contact ? `Cobro: ${item.contact}` : 'Cobro a plazos')}
+                            </span>
                         )}
                     </div>
                 </div>
@@ -689,9 +733,19 @@ const FilaFijo = ({
                             <button onClick={() => { setEditando(true); setMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '7px', width: '100%', background: 'none', border: 'none', padding: '9px 12px', cursor: 'pointer', color: C.onSurface, fontSize: '0.78rem', fontWeight: 600, textAlign: 'left' }}>
                                 <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>edit</span> Editar
                             </button>
-                            <button onClick={() => { onToggleActivo(); setMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '7px', width: '100%', background: 'none', border: 'none', padding: '9px 12px', cursor: 'pointer', color: C.onSurface, fontSize: '0.78rem', fontWeight: 600, textAlign: 'left', borderTop: `1px solid ${C.surfaceContainerLow}` }}>
-                                <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>{item.active ? 'visibility_off' : 'visibility'}</span> {item.active ? 'Desactivar' : 'Activar'}
-                            </button>
+                            {/* "Desactivar" no significa nada para un préstamo/cobro a plazos (no
+                                es un interruptor manual, se desactiva solo al terminar de pagarse) --
+                                para esos la acción útil es deshacer la conversión y volver a manejarlo
+                                suelto desde Deudas, igual que el botón que ya existe allá. */}
+                            {item.totalAmount != null && onVolverADeuda ? (
+                                <button onClick={() => { onVolverADeuda(); setMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '7px', width: '100%', background: 'none', border: 'none', padding: '9px 12px', cursor: 'pointer', color: C.onSurface, fontSize: '0.78rem', fontWeight: 600, textAlign: 'left', borderTop: `1px solid ${C.surfaceContainerLow}` }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>undo</span> {tipo === 'gasto' ? 'Volver a Deudas' : 'Volver a Cobros'}
+                                </button>
+                            ) : (
+                                <button onClick={() => { onToggleActivo(); setMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '7px', width: '100%', background: 'none', border: 'none', padding: '9px 12px', cursor: 'pointer', color: C.onSurface, fontSize: '0.78rem', fontWeight: 600, textAlign: 'left', borderTop: `1px solid ${C.surfaceContainerLow}` }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>{item.active ? 'visibility_off' : 'visibility'}</span> {item.active ? 'Desactivar' : 'Activar'}
+                                </button>
+                            )}
                             <button onClick={() => { onEliminar(); setMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '7px', width: '100%', background: 'none', border: 'none', padding: '9px 12px', cursor: 'pointer', color: C.rojo, fontSize: '0.78rem', fontWeight: 600, textAlign: 'left', borderTop: `1px solid ${C.surfaceContainerLow}` }}>
                                 <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>delete</span> Eliminar
                             </button>
@@ -777,7 +831,7 @@ const FilaFijo = ({
                 </div>
             )}
 
-            {esGasto && item.totalAmount != null && (
+            {item.totalAmount != null && (
                 <div style={{ marginTop: '8px' }}>
                     <div style={{ height: '5px', borderRadius: '999px', background: C.surfaceContainer, overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${Math.min(100, ((item.paidToDate ?? 0) / item.totalAmount) * 100)}%`, background: item.active ? C.primary : C.verde, borderRadius: '999px' }} />
@@ -785,7 +839,7 @@ const FilaFijo = ({
                     <div style={{ fontSize: '0.65rem', color: C.outline, marginTop: '3px', fontWeight: 600 }}>
                         {item.active
                             ? `${money(item.paidToDate ?? 0)} de ${money(item.totalAmount)} · faltan ${money(Math.max(0, item.totalAmount - (item.paidToDate ?? 0)))}`
-                            : `Deuda saldada · ${money(item.totalAmount)} pagados en total`}
+                            : esGasto ? `Deuda saldada · ${money(item.totalAmount)} pagados en total` : `Cobro completo · ${money(item.totalAmount)} recibidos en total`}
                     </div>
                 </div>
             )}
@@ -864,7 +918,7 @@ const PeriodoPendienteFila = ({ item, entry, accounts, onPagar, onDeshacer }: an
 };
 
 /* Formulario de edición in-place, compartido por gastos e ingresos fijos.
-   El préstamo a plazos (contact/totalAmount) solo aplica a gastos. */
+   El préstamo/cobro a plazos (contact/totalAmount) aplica a ambos. */
 const FilaFijoEditForm = ({ item, esGasto, accounts, onCancel, onGuardar }: any) => {
     const [nombre, setNombre] = useState(item.text ?? item.name ?? '');
     const [monto, setMonto] = useState(String(item.amount));
@@ -879,20 +933,17 @@ const FilaFijoEditForm = ({ item, esGasto, accounts, onCancel, onGuardar }: any)
     const guardar = () => {
         const montoNum = parseFloat(monto);
         if (!nombre.trim() || !montoNum || montoNum <= 0) return;
-        const total = esGasto && esPrestamo && totalAmount ? Number(totalAmount) : undefined;
+        const total = esPrestamo && totalAmount ? Number(totalAmount) : undefined;
         const updates: any = {
             amount: montoNum, accountId, frequency,
             dueDay: frequency === 'monthly' ? dueDay : undefined,
             dueWeekday: frequency === 'weekly' ? dueWeekday : undefined,
+            contact: esPrestamo ? (contact.trim() || undefined) : undefined,
+            totalAmount: total,
+            paidToDate: total != null ? (item.paidToDate ?? 0) : undefined,
         };
-        if (esGasto) {
-            updates.text = nombre.trim();
-            updates.contact = esPrestamo ? (contact.trim() || undefined) : undefined;
-            updates.totalAmount = total;
-            updates.paidToDate = total != null ? (item.paidToDate ?? 0) : undefined;
-        } else {
-            updates.name = nombre.trim();
-        }
+        if (esGasto) updates.text = nombre.trim();
+        else updates.name = nombre.trim();
         onGuardar(updates);
     };
 
@@ -944,29 +995,27 @@ const FilaFijoEditForm = ({ item, esGasto, accounts, onCancel, onGuardar }: any)
                     </select>
                 </div>
             )}
-            {esGasto && (
-                <>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, cursor: 'pointer' }}>
-                        <input type="checkbox" checked={esPrestamo} onChange={e => setEsPrestamo(e.target.checked)} />
-                        Es un préstamo/deuda a plazos
-                    </label>
-                    {esPrestamo && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', background: C.surfaceContainerHigh, padding: '9px', borderRadius: '9px' }}>
-                            <div>
-                                <label style={campoLabel}>¿A quién se le debe?</label>
-                                <input placeholder="Ej. Pandero de Julia" value={contact} onChange={e => setContact(e.target.value)} style={{ ...campo(false), width: '100%', boxSizing: 'border-box' }} />
-                            </div>
-                            <div>
-                                <label style={campoLabel}>Monto total de la deuda</label>
-                                <input type="number" placeholder="Ej. 900" value={totalAmount} onChange={e => setTotalAmount(e.target.value)} style={{ ...campo(false), width: '100%', boxSizing: 'border-box' }} />
-                                {item.totalAmount != null && (
-                                    <div style={{ fontSize: '0.66rem', color: C.outline, marginTop: '3px' }}>Pagado hasta ahora: {money(item.paidToDate ?? 0)}</div>
-                                )}
-                            </div>
+            <>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={esPrestamo} onChange={e => setEsPrestamo(e.target.checked)} />
+                    {esGasto ? 'Es un préstamo/deuda a plazos' : 'Es un cobro a plazos'}
+                </label>
+                {esPrestamo && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', background: C.surfaceContainerHigh, padding: '9px', borderRadius: '9px' }}>
+                        <div>
+                            <label style={campoLabel}>{esGasto ? '¿A quién se le debe?' : '¿Quién te debe?'}</label>
+                            <input placeholder="Ej. Pandero de Julia" value={contact} onChange={e => setContact(e.target.value)} style={{ ...campo(false), width: '100%', boxSizing: 'border-box' }} />
                         </div>
-                    )}
-                </>
-            )}
+                        <div>
+                            <label style={campoLabel}>{esGasto ? 'Monto total de la deuda' : 'Monto total a cobrar'}</label>
+                            <input type="number" placeholder="Ej. 900" value={totalAmount} onChange={e => setTotalAmount(e.target.value)} style={{ ...campo(false), width: '100%', boxSizing: 'border-box' }} />
+                            {item.totalAmount != null && (
+                                <div style={{ fontSize: '0.66rem', color: C.outline, marginTop: '3px' }}>{esGasto ? 'Pagado' : 'Recibido'} hasta ahora: {money(item.paidToDate ?? 0)}</div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '2px' }}>
                 <button onClick={onCancel} style={{ background: 'none', border: `1px solid ${C.outlineVariant}`, color: C.onSurfaceVariant, borderRadius: '9px', padding: '7px 14px', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer' }}>Cancelar</button>
                 <button onClick={guardar} style={{ background: C.primary, color: '#fff', border: 'none', borderRadius: '9px', padding: '7px 14px', fontWeight: 800, fontSize: '0.78rem', cursor: 'pointer' }}>Guardar</button>
@@ -982,8 +1031,8 @@ interface NuevoFijoValues {
     esPrestamo: boolean; contact: string; totalAmount?: number;
 }
 
-const NuevoFijoForm = ({ movil, accounts, placeholderNombre, conPrestamo, onSubmit }: {
-    movil: boolean; accounts: Account[]; placeholderNombre: string; conPrestamo?: boolean;
+const NuevoFijoForm = ({ movil, accounts, placeholderNombre, conPrestamo, esGasto = true, onSubmit }: {
+    movil: boolean; accounts: Account[]; placeholderNombre: string; conPrestamo?: boolean; esGasto?: boolean;
     onSubmit: (v: NuevoFijoValues) => void;
 }) => {
     const [nombre, setNombre] = useState('');
@@ -1079,12 +1128,12 @@ const NuevoFijoForm = ({ movil, accounts, placeholderNombre, conPrestamo, onSubm
                 <>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', fontWeight: 700, color: C.onSurfaceVariant, cursor: 'pointer' }}>
                         <input type="checkbox" checked={esPrestamo} onChange={e => setEsPrestamo(e.target.checked)} />
-                        Es un préstamo/deuda a plazos (pandero, préstamo, etc.)
+                        {esGasto ? 'Es un préstamo/deuda a plazos (pandero, préstamo, etc.)' : 'Es un cobro a plazos (alguien te paga en cuotas)'}
                     </label>
                     {esPrestamo && (
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                            <input placeholder="¿A quién se le debe?" value={contact} onChange={e => setContact(e.target.value)} style={{ ...campo(movil), flex: '1 1 140px' }} />
-                            <input type="number" placeholder="Monto total (ej. 900)" value={totalAmount} onChange={e => setTotalAmount(e.target.value)} style={{ ...campo(movil), width: movil ? '100%' : '150px' }} />
+                            <input placeholder={esGasto ? '¿A quién se le debe?' : '¿Quién te debe?'} value={contact} onChange={e => setContact(e.target.value)} style={{ ...campo(movil), flex: '1 1 140px' }} />
+                            <input type="number" placeholder={esGasto ? 'Monto total (ej. 900)' : 'Monto total a cobrar'} value={totalAmount} onChange={e => setTotalAmount(e.target.value)} style={{ ...campo(movil), width: movil ? '100%' : '150px' }} />
                         </div>
                     )}
                 </>
