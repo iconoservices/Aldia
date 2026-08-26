@@ -1239,114 +1239,113 @@ export const DeudasyCobrosDashboard = ({
                 </button>
             </div>
 
-            {/* ── DEUDAS/COBROS A PLAZOS (convertidos a pago fijo, se abonan desde Fijos) ──
-                Misma grilla de dos columnas que las tablas de abajo (mitad de pantalla
-                cada una) en vez de una barra ancha aparte -- así queda visualmente
-                agrupado con su contraparte (Deudas a la izquierda, Cobros a la derecha),
-                y cada bloque solo aparece cuando de verdad hay algo que mostrar. */}
-            {(deudasAPlazos.length > 0 || cobrosAPlazos.length > 0) && (
-                <div style={{ display: "grid", gridTemplateColumns: movil ? "1fr" : "repeat(auto-fit, minmax(380px, 1fr))", gap: movil ? "1.25rem" : "2rem", marginBottom: movil ? "1.25rem" : "2rem" }}>
-                    {deudasAPlazos.length > 0 && (
-                        <section style={CARD}>
-                            <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
-                                <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
-                                    <span className="material-symbols-outlined" style={{ color: "#BA1A1A", fontSize: "20px" }}>event_repeat</span>
-                                    Deudas a plazos ({deudasAPlazos.length})
-                                </h3>
-                                <span style={{ fontSize: "0.72rem", color: "#424754" }}>Se abonan desde Fijos</span>
-                            </div>
-                            <div style={{ padding: movil ? "0.85rem" : "1rem 1.5rem", display: "flex", flexDirection: "column", gap: "10px" }}>
-                                {deudasAPlazos.map(item => {
-                                    const restante = Math.max(0, (item.totalAmount ?? 0) - (item.paidToDate ?? 0));
-                                    return (
-                                        <div key={item.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 14px", padding: "10px 12px", borderRadius: "10px", background: "#F8F9FC", border: "1px solid #E5E7F0" }}>
-                                            <div style={{ flex: "1 1 140px", minWidth: 0 }}>
-                                                <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#191B23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                                    {item.text}
-                                                </div>
-                                                {item.contact && <div style={{ fontSize: "0.7rem", color: "#424754" }}>{item.contact}</div>}
-                                            </div>
-                                            <div style={{ fontSize: "0.74rem", color: "#424754" }}>
-                                                Falta <b style={{ color: "#191B23" }}>{formatCurrency(restante)}</b> de {formatCurrency(item.totalAmount ?? 0)} · {formatCurrency(item.amount)}/mes
-                                            </div>
-                                            <button
-                                                onClick={() => volverADeuda(item)}
-                                                title="Dejar de tratarla como pago fijo mensual y volver a manejarla suelta desde acá"
-                                                style={{ marginLeft: "auto", background: "none", border: "1px solid #C2C6D6", borderRadius: "8px", padding: "5px 10px", fontSize: "0.68rem", fontWeight: 700, color: "#424754", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
-                                            >
-                                                Volver a Deudas
-                                            </button>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </section>
-                    )}
-
-                    {cobrosAPlazos.length > 0 && (
-                        <section style={CARD}>
-                            <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
-                                <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
-                                    <span className="material-symbols-outlined" style={{ color: "#10B981", fontSize: "20px" }}>event_repeat</span>
-                                    Cobros a plazos ({cobrosAPlazos.length})
-                                </h3>
-                                <span style={{ fontSize: "0.72rem", color: "#424754" }}>Se cobran desde Fijos</span>
-                            </div>
-                            <div style={{ padding: movil ? "0.85rem" : "1rem 1.5rem", display: "flex", flexDirection: "column", gap: "10px" }}>
-                                {cobrosAPlazos.map(item => {
-                                    const restante = Math.max(0, (item.totalAmount ?? 0) - (item.paidToDate ?? 0));
-                                    return (
-                                        <div key={item.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 14px", padding: "10px 12px", borderRadius: "10px", background: "#F8F9FC", border: "1px solid #E5E7F0" }}>
-                                            <div style={{ flex: "1 1 140px", minWidth: 0 }}>
-                                                <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#191B23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                                    {item.name}
-                                                </div>
-                                                {item.contact && <div style={{ fontSize: "0.7rem", color: "#424754" }}>{item.contact}</div>}
-                                            </div>
-                                            <div style={{ fontSize: "0.74rem", color: "#424754" }}>
-                                                Falta <b style={{ color: "#191B23" }}>{formatCurrency(restante)}</b> de {formatCurrency(item.totalAmount ?? 0)} · {formatCurrency(item.amount)}/mes
-                                            </div>
-                                            <button
-                                                onClick={() => volverACobro(item)}
-                                                title="Dejar de tratarlo como cobro fijo mensual y volver a manejarlo suelto desde acá"
-                                                style={{ marginLeft: "auto", background: "none", border: "1px solid #C2C6D6", borderRadius: "8px", padding: "5px 10px", fontSize: "0.68rem", fontWeight: 700, color: "#424754", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
-                                            >
-                                                Volver a Cobros
-                                            </button>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </section>
-                    )}
-                </div>
-            )}
-
-            {/* ── TABLES ── */}
+            {/* ── TABLES ──
+                "Deudas/Cobros a plazos" vive DENTRO de la misma columna que su tabla
+                (apilado arriba de ella con un div flex-column), no como una grilla
+                aparte -- si viviera en su propia grilla de dos columnas, cuando solo
+                existe uno de los dos lados (ej. solo hay deudas a plazos, cero cobros
+                a plazos) el `auto-fit` lo estira a todo el ancho en vez de quedarse a
+                la mitad, como quedó la primera vez que se armó esto. */}
             {viewMode === "contacto" ? renderContactView() : (
                 <div style={{ display: "grid", gridTemplateColumns: movil ? "1fr" : "repeat(auto-fit, minmax(380px, 1fr))", gap: movil ? "1.25rem" : "2rem" }}>
                     {filterType !== "cobro" && (
-                        <section style={CARD}>
-                            <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
-                                <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
-                                    <span className="material-symbols-outlined" style={{ color: "#BA1A1A", fontSize: "20px" }}>outbox</span>
-                                    Deudas (Cuentas por Pagar)
-                                </h3>
-                            </div>
-                            {movil ? renderDebtCards(filteredDebts) : renderDebtTable(filteredDebts)}
-                        </section>
+                        <div style={{ display: "flex", flexDirection: "column", gap: movil ? "1.25rem" : "1.5rem" }}>
+                            {deudasAPlazos.length > 0 && (
+                                <section style={CARD}>
+                                    <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
+                                        <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
+                                            <span className="material-symbols-outlined" style={{ color: "#BA1A1A", fontSize: "20px" }}>event_repeat</span>
+                                            Deudas a plazos ({deudasAPlazos.length})
+                                        </h3>
+                                        <span style={{ fontSize: "0.72rem", color: "#424754" }}>Se abonan desde Fijos</span>
+                                    </div>
+                                    <div style={{ padding: movil ? "0.85rem" : "1rem 1.5rem", display: "flex", flexDirection: "column", gap: "10px" }}>
+                                        {deudasAPlazos.map(item => {
+                                            const restante = Math.max(0, (item.totalAmount ?? 0) - (item.paidToDate ?? 0));
+                                            return (
+                                                <div key={item.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 14px", padding: "10px 12px", borderRadius: "10px", background: "#F8F9FC", border: "1px solid #E5E7F0" }}>
+                                                    <div style={{ flex: "1 1 140px", minWidth: 0 }}>
+                                                        <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#191B23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                            {item.text}
+                                                        </div>
+                                                        {item.contact && <div style={{ fontSize: "0.7rem", color: "#424754" }}>{item.contact}</div>}
+                                                    </div>
+                                                    <div style={{ fontSize: "0.74rem", color: "#424754" }}>
+                                                        Falta <b style={{ color: "#191B23" }}>{formatCurrency(restante)}</b> de {formatCurrency(item.totalAmount ?? 0)} · {formatCurrency(item.amount)}/mes
+                                                    </div>
+                                                    <button
+                                                        onClick={() => volverADeuda(item)}
+                                                        title="Dejar de tratarla como pago fijo mensual y volver a manejarla suelta desde acá"
+                                                        style={{ marginLeft: "auto", background: "none", border: "1px solid #C2C6D6", borderRadius: "8px", padding: "5px 10px", fontSize: "0.68rem", fontWeight: 700, color: "#424754", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                                                    >
+                                                        Volver a Deudas
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </section>
+                            )}
+                            <section style={CARD}>
+                                <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
+                                    <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <span className="material-symbols-outlined" style={{ color: "#BA1A1A", fontSize: "20px" }}>outbox</span>
+                                        Deudas (Cuentas por Pagar)
+                                    </h3>
+                                </div>
+                                {movil ? renderDebtCards(filteredDebts) : renderDebtTable(filteredDebts)}
+                            </section>
+                        </div>
                     )}
 
                     {filterType !== "deuda" && (
-                        <section style={CARD}>
-                            <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
-                                <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
-                                    <span className="material-symbols-outlined" style={{ color: "#10B981", fontSize: "20px" }}>move_to_inbox</span>
-                                    Cobros (Cuentas por Cobrar)
-                                </h3>
-                            </div>
-                            {movil ? renderCobroCards(filteredCobros) : renderCobroTable(filteredCobros)}
-                        </section>
+                        <div style={{ display: "flex", flexDirection: "column", gap: movil ? "1.25rem" : "1.5rem" }}>
+                            {cobrosAPlazos.length > 0 && (
+                                <section style={CARD}>
+                                    <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
+                                        <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
+                                            <span className="material-symbols-outlined" style={{ color: "#10B981", fontSize: "20px" }}>event_repeat</span>
+                                            Cobros a plazos ({cobrosAPlazos.length})
+                                        </h3>
+                                        <span style={{ fontSize: "0.72rem", color: "#424754" }}>Se cobran desde Fijos</span>
+                                    </div>
+                                    <div style={{ padding: movil ? "0.85rem" : "1rem 1.5rem", display: "flex", flexDirection: "column", gap: "10px" }}>
+                                        {cobrosAPlazos.map(item => {
+                                            const restante = Math.max(0, (item.totalAmount ?? 0) - (item.paidToDate ?? 0));
+                                            return (
+                                                <div key={item.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 14px", padding: "10px 12px", borderRadius: "10px", background: "#F8F9FC", border: "1px solid #E5E7F0" }}>
+                                                    <div style={{ flex: "1 1 140px", minWidth: 0 }}>
+                                                        <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#191B23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                            {item.name}
+                                                        </div>
+                                                        {item.contact && <div style={{ fontSize: "0.7rem", color: "#424754" }}>{item.contact}</div>}
+                                                    </div>
+                                                    <div style={{ fontSize: "0.74rem", color: "#424754" }}>
+                                                        Falta <b style={{ color: "#191B23" }}>{formatCurrency(restante)}</b> de {formatCurrency(item.totalAmount ?? 0)} · {formatCurrency(item.amount)}/mes
+                                                    </div>
+                                                    <button
+                                                        onClick={() => volverACobro(item)}
+                                                        title="Dejar de tratarlo como cobro fijo mensual y volver a manejarlo suelto desde acá"
+                                                        style={{ marginLeft: "auto", background: "none", border: "1px solid #C2C6D6", borderRadius: "8px", padding: "5px 10px", fontSize: "0.68rem", fontWeight: 700, color: "#424754", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                                                    >
+                                                        Volver a Cobros
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </section>
+                            )}
+                            <section style={CARD}>
+                                <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
+                                    <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <span className="material-symbols-outlined" style={{ color: "#10B981", fontSize: "20px" }}>move_to_inbox</span>
+                                        Cobros (Cuentas por Cobrar)
+                                    </h3>
+                                </div>
+                                {movil ? renderCobroCards(filteredCobros) : renderCobroTable(filteredCobros)}
+                            </section>
+                        </div>
                     )}
                 </div>
             )}
