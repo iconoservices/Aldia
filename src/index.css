@@ -58,6 +58,14 @@ body {
   animation: spin-slow 3s linear infinite;
 }
 
+/* Spinner rápido para "guardando/sincronizando" -- reusa el mismo keyframe de
+   rotación que spin-slow, solo más veloz. Varios dashboards (Agenda, Notion,
+   Entregas) venían definiendo su propia copia de este mismo rotate 0.7s/linear
+   a nivel de componente; esta es la versión global para no seguir duplicándola. */
+.spin-fast {
+  animation: spin-slow 0.7s linear infinite;
+}
+
 .mission-item {
   display: flex;
   align-items: center;

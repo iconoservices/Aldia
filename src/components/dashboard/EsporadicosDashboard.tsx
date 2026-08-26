@@ -873,8 +873,6 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                     0%, 100% { opacity: 1; }
                     50% { opacity: 0.35; }
                 }
-                @keyframes esporadico-spin { to { transform: rotate(360deg); } }
-                .esporadico-spin { animation: esporadico-spin 0.7s linear infinite; }
             `}</style>
         </div>
     );
@@ -975,6 +973,12 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
     const [fechaDraft, setFechaDraft] = useState(p.dueDate);
     const lastPomodoroThresholdRef = useRef(0);
     const tickCountRef = useRef(0);
+    // Guarda el timeout que apaga sola la confirmación "Sincronizado con Notion"
+    // para poder cancelarlo -- si se reagenda antes de que pasen los 2.5s (varios
+    // clicks seguidos al stepper) o si la tarjeta se desmonta mientras espera,
+    // que no quede corriendo de más ni intente actualizar un componente ya idle.
+    const syncOkTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => () => { if (syncOkTimeoutRef.current) clearTimeout(syncOkTimeoutRef.current); }, []);
     // Tiempo por foto y Fases ahora son colapsables (antes eran dos cajas fijas
     // siempre abiertas entre el timer y los botones de sesión). Arrancan abiertas
     // solo si hay algo activo/pendiente ahí; un efecto más abajo las reabre solo
@@ -1101,6 +1105,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
         const statusPrevio = p.status;
         if (linkedEvent) updateCalendarEvent(linkedEvent.id, { notionEstado: estado });
         updateSporadicProject(p.id, { status: estado === 'Entregado' ? 'completado' : 'en-progreso' });
+        if (syncOkTimeoutRef.current) clearTimeout(syncOkTimeoutRef.current);
         setNotionSyncState('syncing');
         setFailedEstado(null);
         pushNotionEstado(p.notionId, estado).then(ok => {
@@ -1108,7 +1113,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                 setNotionSyncState('ok');
                 setFailedEstado(null);
                 // No hace falta que el usuario la cierre a mano -- confirma y se apaga sola.
-                setTimeout(() => setNotionSyncState(s => s === 'ok' ? 'idle' : s), 2500);
+                syncOkTimeoutRef.current = setTimeout(() => setNotionSyncState(s => s === 'ok' ? 'idle' : s), 2500);
             } else {
                 setNotionSyncState('error');
                 setFailedEstado(estado);
@@ -1486,7 +1491,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                 si fallaba, así que un push que tardaba se sentía como que "no hizo nada". */}
             {notionSyncState === 'syncing' && (
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.7rem", color: C.onSurfaceVariant, fontWeight: 700, background: C.surfaceContainerLow, borderRadius: "8px", padding: "6px 9px" }}>
-                    <Loader2 size={13} className="esporadico-spin" style={{ flexShrink: 0 }} />
+                    <Loader2 size={13} className="spin-fast" style={{ flexShrink: 0 }} />
                     Sincronizando con Notion...
                 </div>
             )}
