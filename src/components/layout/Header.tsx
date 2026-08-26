@@ -59,7 +59,6 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Buscador',   tab: 'Buscador',   icon: 'travel_explore' },
         { label: 'Acción',     tab: 'Acción',     icon: 'bolt'          },
         { label: 'Base de Datos', tab: 'Base de Datos', icon: 'database' },
-        { label: 'Gastos Fijos', tab: 'Gastos Fijos', icon: 'event_repeat' },
         { label: 'Vida',       tab: 'Vida',        icon: 'spa'           },
         { label: 'Cerebro',    tab: 'Cerebro',     icon: 'psychology'    },
         { label: 'Ruta',       tab: 'Ruta',        icon: 'route'         },
@@ -142,7 +141,6 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             case 'Acción': return 'Mi Acción';
             case 'Base de Datos': return 'Base de Datos';
             case 'Proyección': return 'Proyección Financiera';
-            case 'Gastos Fijos': return 'Gastos e Ingresos Fijos';
             case 'Calendario': return 'Calendario';
             case 'Stats': return 'Estadísticas';
             case 'Cerebro': return 'Cerebro';

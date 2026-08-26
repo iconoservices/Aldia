@@ -68,9 +68,18 @@ export const useFinanzasState = () => {
         setTransactions(prev => [repaymentTx, ...prev]);
     };
 
-    const addFixedExpense = (text: string, amount: number, projectId?: number, dueDay?: number, accountId?: number, frequency?: 'monthly' | 'weekly', dueWeekday?: number) => {
-        const newExpense: FixedExpense = { id: Date.now() + Math.random(), text, amount, active: true, projectId, dueDay, accountId, frequency, dueWeekday };
+    const addFixedExpense = (text: string, amount: number, projectId?: number, dueDay?: number, accountId?: number, frequency?: 'monthly' | 'weekly', dueWeekday?: number, contact?: string, totalAmount?: number) => {
+        const newExpense: FixedExpense = { id: Date.now() + Math.random(), text, amount, active: true, projectId, dueDay, accountId, frequency, dueWeekday, contact, totalAmount, paidToDate: totalAmount ? 0 : undefined };
         setFixedExpenses(prev => [...prev, newExpense]);
+    };
+
+    // Si el gasto fijo es un préstamo a plazos (tiene totalAmount), suma lo pagado en
+    // esta cuota al acumulado y lo desactiva solo cuando ya cubrió el tope — así deja
+    // de pedirse cada período sin que haya que borrarlo a mano.
+    const applyInstallmentProgress = (expense: FixedExpense, paidValue: number): Partial<FixedExpense> => {
+        if (expense.totalAmount == null) return {};
+        const paidToDate = (expense.paidToDate ?? 0) + paidValue;
+        return { paidToDate, active: paidToDate >= expense.totalAmount - 0.005 ? false : expense.active };
     };
 
     const removeFixedExpense = (id: number) => {
@@ -95,13 +104,17 @@ export const useFinanzasState = () => {
         // Si ya había un abono parcial este mes, solo se registra lo que falta
         const alreadyPaid = expense.partialPaid?.month === monthStr ? expense.partialPaid.amount : 0;
         const remaining = Math.max(0, expense.amount - alreadyPaid);
+        const isNewPayment = expense.lastPaidMonth !== monthStr && remaining > 0;
 
         // Update the paid status
-        setFixedExpenses((prev: FixedExpense[]) => prev.map(e => e.id === id ? { ...e, lastPaidMonth: monthStr, partialPaid: undefined } : e));
+        setFixedExpenses((prev: FixedExpense[]) => prev.map(e => e.id === id ? {
+            ...e, lastPaidMonth: monthStr, partialPaid: undefined,
+            ...(isNewPayment ? applyInstallmentProgress(e, remaining) : {}),
+        } : e));
 
         // Auto-generate the transaction if it's being marked as paid
-        if (expense.lastPaidMonth !== monthStr && remaining > 0) {
-            addTransaction(`Pago: ${expense.text}`, remaining, 'gasto', false, expense.projectId, resolvedAccountId, false, 'Gastos Fijos');
+        if (isNewPayment) {
+            addTransaction(`Pago: ${expense.text}`, remaining, 'gasto', false, expense.projectId, resolvedAccountId, false, 'Gastos Fijos', expense.contact);
         }
     };
 
@@ -123,9 +136,10 @@ export const useFinanzasState = () => {
             ...e,
             lastPaidMonth: isFullyPaid ? monthStr : e.lastPaidMonth,
             partialPaid: isFullyPaid ? undefined : { month: monthStr, amount: totalPaid },
+            ...applyInstallmentProgress(e, value),
         } : e));
 
-        addTransaction(`Pago: ${expense.text}`, value, 'gasto', false, expense.projectId, resolvedAccountId, false, 'Gastos Fijos');
+        addTransaction(`Pago: ${expense.text}`, value, 'gasto', false, expense.projectId, resolvedAccountId, false, 'Gastos Fijos', expense.contact);
     };
 
     // Detecta gastos fijos que cruzaron a un período nuevo (mes/semana) sin quedar saldados
@@ -183,9 +197,10 @@ export const useFinanzasState = () => {
             pendingPeriods: isFullySettled
                 ? (e.pendingPeriods ?? []).filter(p => p.period !== period)
                 : (e.pendingPeriods ?? []).map(p => p.period === period ? { ...p, amountPaid: totalPaid } : p),
+            ...applyInstallmentProgress(e, value),
         } : e));
 
-        addTransaction(`Pago: ${expense.text} (${period})`, value, 'gasto', false, expense.projectId, resolvedAccountId, false, 'Gastos Fijos');
+        addTransaction(`Pago: ${expense.text} (${period})`, value, 'gasto', false, expense.projectId, resolvedAccountId, false, 'Gastos Fijos', expense.contact);
     };
 
     // Deshace todos los abonos hechos a un período pendiente específico (vuelve a quedar en 0).
@@ -193,9 +208,13 @@ export const useFinanzasState = () => {
         const expense = fixedExpenses.find(e => e.id === id);
         if (!expense) return;
 
+        const entry = expense.pendingPeriods?.find(p => p.period === period);
+        const removedAmount = entry?.amountPaid ?? 0;
+
         setFixedExpenses((prev: FixedExpense[]) => prev.map(e => e.id === id ? {
             ...e,
             pendingPeriods: (e.pendingPeriods ?? []).map(p => p.period === period ? { ...p, amountPaid: 0 } : p),
+            ...(e.totalAmount != null ? { paidToDate: Math.max(0, (e.paidToDate ?? 0) - removedAmount), active: true } : {}),
         } : e));
 
         setTransactions((prev: Transaction[]) => {
@@ -208,13 +227,20 @@ export const useFinanzasState = () => {
         const expense = fixedExpenses.find(e => e.id === id);
         if (!expense) return;
 
+        const targetTxPrefix = `Pago: ${expense.text}`;
+        const removedAmount = txArr
+            .filter(t => t.text === targetTxPrefix && getPeriodKey(expense.frequency, t.fullDate) === monthStr)
+            .reduce((s, t) => s + Math.abs(t.amount), 0);
+
         // Reset the paid status (borra también cualquier abono parcial del período)
-        setFixedExpenses((prev: FixedExpense[]) => prev.map(e => e.id === id ? { ...e, lastPaidMonth: undefined, partialPaid: undefined } : e));
+        setFixedExpenses((prev: FixedExpense[]) => prev.map(e => e.id === id ? {
+            ...e, lastPaidMonth: undefined, partialPaid: undefined,
+            ...(e.totalAmount != null ? { paidToDate: Math.max(0, (e.paidToDate ?? 0) - removedAmount), active: true } : {}),
+        } : e));
 
         // Elimina todos los pagos/abonos generados para este gasto fijo en el período
         // (mensual: por prefijo "YYYY-MM"; semanal: por semana ISO calculada de la fecha real)
         setTransactions((prev: Transaction[]) => {
-            const targetTxPrefix = `Pago: ${expense.text}`;
             return prev.filter(t => !(t.text === targetTxPrefix && getPeriodKey(expense.frequency, t.fullDate) === monthStr));
         });
     };

@@ -101,6 +101,9 @@ export interface FixedExpense {
     partialPaid?: { month: string; amount: number }; // Abono parcial del período en curso, aún no cubre el total
     pendingPeriods?: { period: string; amountPaid: number }[]; // Períodos anteriores que quedaron sin saldar (arrastre), cada uno con lo ya abonado
     currentPeriodStart?: string; // Fecha (YYYY-MM-DD) usada como ancla para detectar cuándo arrancó un período nuevo
+    contact?: string; // A quién se le debe (préstamo a plazos, pandero), si aplica
+    totalAmount?: number; // Si existe, este gasto fijo es un préstamo a plazos: se paga en cuotas de `amount` hasta cubrir este tope
+    paidToDate?: number; // Acumulado pagado hacia totalAmount (solo relevante si totalAmount está definido)
 }
 
 // Avanza una fecha un período completo (mes o semana) según la frecuencia del gasto fijo.

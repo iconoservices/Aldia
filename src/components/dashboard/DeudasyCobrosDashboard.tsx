@@ -46,6 +46,7 @@ interface DeudasyCobrosDashboardProps {
     accounts: { id: number; name: string; color: string }[];
     contacts?: Contact[];
     setContacts?: React.Dispatch<React.SetStateAction<Contact[]>>;
+    addFixedExpense?: (text: string, amount: number, projectId?: number, dueDay?: number, accountId?: number, frequency?: 'monthly' | 'weekly', dueWeekday?: number, contact?: string, totalAmount?: number) => void;
 }
 
 // Antes registrar una deuda no tocaba ninguna cuenta: si te prestaban plata, "Debo"
@@ -189,6 +190,31 @@ const BTN_SECONDARY: React.CSSProperties = {
     gap: "8px",
 };
 
+// Panel inline para convertir una deuda en un gasto fijo a plazos: pide la cuota
+// mensual, el día de cobro y la cuenta desde donde se paga. El monto total ya lo
+// trae `item.amount` (el saldo restante de la deuda), no se pide de nuevo.
+const ConvertPanel = ({ item, accounts, cuota, setCuota, dueDay, setDueDay, accountId, setAccountId, onConfirm, onCancel, full }: any) => (
+    <div style={{ ...ABONO_PANEL, ...(full ? { flex: "1 1 100%" } : {}) }}>
+        <div style={{ fontSize: "0.64rem", fontWeight: 700, color: "#424754" }}>
+            A plazos · deuda total S/ {item.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+        </div>
+        <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+            <input type="number" placeholder="Cuota/mes" value={cuota ?? ""} onChange={e => setCuota(e.target.value)}
+                style={{ width: "70px", padding: "5px 6px", borderRadius: "6px", border: "1px solid #E2E8F0", fontSize: "0.68rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
+            <input type="number" placeholder="Día" min="1" max="31" value={dueDay ?? ""} onChange={e => setDueDay(e.target.value)}
+                style={{ width: "48px", padding: "5px 6px", borderRadius: "6px", border: "1px solid #E2E8F0", fontSize: "0.68rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
+            <select value={accountId ?? ""} onChange={e => setAccountId(e.target.value)} style={SELECT_MINI} title="¿De qué cuenta sale cada cuota?">
+                <option value="">Sin cuenta</option>
+                {accounts.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+        </div>
+        <div style={{ display: "flex", gap: "4px" }}>
+            <button onClick={onConfirm} style={{ background: "#4858AB", color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.64rem", cursor: "pointer" }}>Convertir</button>
+            <button onClick={onCancel} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", padding: "2px", fontSize: "0.75rem", fontWeight: 800 }}>✕</button>
+        </div>
+    </div>
+);
+
 export const DeudasyCobrosDashboard = ({
     transactions,
     addTransaction,
@@ -197,6 +223,7 @@ export const DeudasyCobrosDashboard = ({
     accounts,
     contacts = [],
     setContacts,
+    addFixedExpense,
 }: DeudasyCobrosDashboardProps) => {
     const movil = useIsMobile();
     const visualViewport = useVisualViewport();
@@ -227,6 +254,10 @@ export const DeudasyCobrosDashboard = ({
     const [abonarId, setAbonarId] = useState<number | null>(null);
     const [abonarAmount, setAbonarAmount] = useState<Record<number, string>>({});
     const [abonarAccountId, setAbonarAccountId] = useState<Record<number, string>>({});
+    const [convertId, setConvertId] = useState<number | null>(null);
+    const [convertCuota, setConvertCuota] = useState<Record<number, string>>({});
+    const [convertDueDay, setConvertDueDay] = useState<Record<number, string>>({});
+    const [convertAccountId, setConvertAccountId] = useState<Record<number, string>>({});
     const [confirmDeleteItem, setConfirmDeleteItem] = useState<DebtGroup | null>(null);
     const [editingContact, setEditingContact] = useState<Contact | null>(null);
     const [editContactPhone, setEditContactPhone] = useState("");
@@ -386,6 +417,36 @@ export const DeudasyCobrosDashboard = ({
         setAbonarId(null);
         setAbonarAmount(m => ({ ...m, [id]: "" }));
         setAbonarAccountId(m => ({ ...m, [id]: "" }));
+    };
+
+    // Convierte una deuda (con su saldo restante) en un gasto fijo a plazos: crea el
+    // gasto fijo con `totalAmount` = lo que faltaba, y cierra la deuda original acá,
+    // así el saldo no queda contado doble entre Deudas y Gastos Fijos.
+    const openConvert = (item: DebtGroup) => {
+        const id = item.originalTx.id;
+        setConvertId(id);
+        setConvertCuota(m => ({ ...m, [id]: item.amount.toFixed(2) }));
+        setConvertDueDay(m => ({ ...m, [id]: "" }));
+        setConvertAccountId(m => ({ ...m, [id]: item.originalTx.accountId ? String(item.originalTx.accountId) : "" }));
+    };
+
+    const closeConvert = (id: number) => {
+        setConvertId(null);
+        setConvertCuota(m => ({ ...m, [id]: "" }));
+        setConvertDueDay(m => ({ ...m, [id]: "" }));
+        setConvertAccountId(m => ({ ...m, [id]: "" }));
+    };
+
+    const handleConvert = (item: DebtGroup) => {
+        if (!addFixedExpense) return;
+        const id = item.originalTx.id;
+        const cuota = parseFloat(convertCuota[id] || "");
+        if (!cuota || cuota <= 0) return;
+        const dueDay = convertDueDay[id] ? Number(convertDueDay[id]) : undefined;
+        const accountId = convertAccountId[id] ? Number(convertAccountId[id]) : undefined;
+        addFixedExpense(item.name, cuota, undefined, dueDay, accountId, 'monthly', undefined, item.contact || undefined, item.amount);
+        removeTransaction(item.originalTx.id);
+        closeConvert(id);
     };
 
     const handleEdit = (item: DebtGroup) => {
@@ -620,9 +681,14 @@ export const DeudasyCobrosDashboard = ({
                                                         <button onClick={() => closeAbonar(id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", padding: "2px", fontSize: "0.75rem", fontWeight: 800 }}>✕</button>
                                                     </div>
                                                 </div>
+                                            ) : convertId === id ? (
+                                                <ConvertPanel item={item} accounts={accounts} cuota={convertCuota[id]} setCuota={(v: string) => setConvertCuota(m => ({ ...m, [id]: v }))} dueDay={convertDueDay[id]} setDueDay={(v: string) => setConvertDueDay(m => ({ ...m, [id]: v }))} accountId={convertAccountId[id]} setAccountId={(v: string) => setConvertAccountId(m => ({ ...m, [id]: v }))} onConfirm={() => handleConvert(item)} onCancel={() => closeConvert(id)} />
                                             ) : (
                                                 <>
                                                     <button onClick={() => openAbonar(item)} title="Abonar" style={{ background: "#E2E8F0", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#475569" }}>Abonar</button>
+                                                    {addFixedExpense && (
+                                                        <button onClick={() => openConvert(item)} title="Convertir a pago fijo" style={{ background: "#DAE2FD", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#4858AB" }}>A plazos</button>
+                                                    )}
                                                     <button onClick={() => handleEdit(item)} title="Editar" style={{ background: "none", border: "1px solid #0058BE", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#0058BE" }}>
                                                         <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>edit</span>
                                                     </button>
@@ -806,7 +872,7 @@ export const DeudasyCobrosDashboard = ({
                                 <div style={{ fontSize: "0.6rem", color: "#424754" }}>{formatDate(item.originalTx.dueDate || item.originalTx.fullDate)}</div>
                             </div>
                         </div>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: abonarId === id ? "flex-start" : "center", marginTop: "8px", gap: "6px", flexWrap: "wrap" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: (abonarId === id || convertId === id) ? "flex-start" : "center", marginTop: "8px", gap: "6px", flexWrap: "wrap" }}>
                             <span style={{ padding: "2px 8px", borderRadius: "999px", background: badge.bg, color: badge.text, fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.04em", flexShrink: 0 }}>
                                 {badge.label}
                             </span>
@@ -823,9 +889,14 @@ export const DeudasyCobrosDashboard = ({
                                         <button onClick={() => closeAbonar(id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", padding: "2px", fontSize: "0.75rem", fontWeight: 800 }}>✕</button>
                                     </div>
                                 </div>
+                            ) : convertId === id ? (
+                                <ConvertPanel item={item} accounts={accounts} cuota={convertCuota[id]} setCuota={(v: string) => setConvertCuota(m => ({ ...m, [id]: v }))} dueDay={convertDueDay[id]} setDueDay={(v: string) => setConvertDueDay(m => ({ ...m, [id]: v }))} accountId={convertAccountId[id]} setAccountId={(v: string) => setConvertAccountId(m => ({ ...m, [id]: v }))} onConfirm={() => handleConvert(item)} onCancel={() => closeConvert(id)} full />
                             ) : (
-                                <div style={{ display: "flex", gap: "4px" }}>
+                                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
                                     <button onClick={() => openAbonar(item)} title="Abonar" style={{ background: "#E2E8F0", border: "none", borderRadius: "4px", padding: "4px 7px", fontWeight: 700, fontSize: "0.62rem", cursor: "pointer", color: "#475569" }}>Abonar</button>
+                                    {addFixedExpense && (
+                                        <button onClick={() => openConvert(item)} title="Convertir a pago fijo" style={{ background: "#DAE2FD", border: "none", borderRadius: "4px", padding: "4px 7px", fontWeight: 700, fontSize: "0.62rem", cursor: "pointer", color: "#4858AB" }}>A plazos</button>
+                                    )}
                                     <button onClick={() => handleEdit(item)} title="Editar" style={{ background: "none", border: "1px solid #0058BE", borderRadius: "6px", padding: "4px 6px", cursor: "pointer", color: "#0058BE", display: "flex" }}>
                                         <span className="material-symbols-outlined" style={{ fontSize: "13px" }}>edit</span>
                                     </button>
