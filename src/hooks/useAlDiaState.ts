@@ -104,6 +104,7 @@ export interface FixedExpense {
     contact?: string; // A quién se le debe (préstamo a plazos, pandero), si aplica
     totalAmount?: number; // Si existe, este gasto fijo es un préstamo a plazos: se paga en cuotas de `amount` hasta cubrir este tope
     paidToDate?: number; // Acumulado pagado hacia totalAmount (solo relevante si totalAmount está definido)
+    nota?: string; // Comentario libre corto ("subió a S/500 desde marzo", "pagar antes del 5 o cobran mora"...)
 }
 
 // Avanza una fecha un período completo (mes o semana) según la frecuencia del gasto fijo.

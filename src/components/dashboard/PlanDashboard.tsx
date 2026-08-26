@@ -17,6 +17,7 @@ interface FixedIncome {
     dueWeekday?: number;
     lastReceivedMonth?: string;
     partialReceived?: { month: string; amount: number };
+    nota?: string; // Comentario libre corto, mismo patrón que la nota de gastos fijos
 }
 
 const WEEKDAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -314,8 +315,13 @@ export const PlanDashboard = ({
                             onToggleActivo={() => toggleFixedExpense(f.id)}
                             onEliminar={() => removeFixedExpense(f.id)}
                             onEditar={(updates) => updateFixedExpense(f.id, updates)}
-                            onPagarPeriodoPendiente={() => {}}
-                            onDeshacerPeriodoPendiente={() => {}}
+                            // Aunque este gasto ya esté pagado en el período actual, puede
+                            // seguir arrastrando un período MÁS VIEJO sin saldar (pagaste
+                            // este mes sin ponerte al día con el anterior) -- antes esos
+                            // botones eran no-op y la fila de "julio · falta S/X" no hacía
+                            // nada al tocar Pagar/Deshacer.
+                            onPagarPeriodoPendiente={(period, monto, accountId) => payPendingPeriod(f.id, period, monto, accountId)}
+                            onDeshacerPeriodoPendiente={(period) => unmarkPendingPeriod(f.id, period)}
                         />
                     ))}
                 </section>
@@ -501,6 +507,8 @@ const FilaFijo = ({
     const [isPaying, setIsPaying] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [diaInput, setDiaInput] = useState(String(item.dueDay ?? ''));
+    const [editandoNota, setEditandoNota] = useState(false);
+    const [notaDraft, setNotaDraft] = useState(item.nota ?? '');
 
     const paidSoFar = pagado ? item.amount : (partial?.month === periodo ? partial.amount : 0);
     const pending = Math.max(0, item.amount - paidSoFar);
@@ -635,6 +643,14 @@ const FilaFijo = ({
                     </button>
                 )}
 
+                <button
+                    onClick={() => { setNotaDraft(item.nota ?? ''); setEditandoNota(v => !v); }}
+                    title={item.nota ? 'Tiene una nota — tocar para editarla' : 'Agregar nota o comentario'}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: item.nota ? C.ambar : C.outlineVariant, padding: '2px', display: 'flex', flexShrink: 0 }}
+                >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>{item.nota ? 'sticky_note_2' : 'note_add'}</span>
+                </button>
+
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                     <button onClick={() => setMenuOpen(v => !v)} title="Más opciones" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, padding: '2px', display: 'flex' }}>
                         <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>more_vert</span>
@@ -654,6 +670,50 @@ const FilaFijo = ({
                     )}
                 </div>
             </div>
+
+            {/* Nota/comentario libre por ítem -- mismo patrón que la nota de proyectos
+                en Entregas: visible siempre que exista, editable en línea sin abrir
+                ningún formulario aparte. */}
+            {editandoNota ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+                    <textarea
+                        autoFocus
+                        value={notaDraft}
+                        onChange={e => setNotaDraft(e.target.value)}
+                        placeholder="Ej. Subió a S/500 desde marzo, pagar antes del 5..."
+                        rows={2}
+                        style={{ width: '100%', padding: '7px 9px', borderRadius: '8px', border: `1px solid ${C.outlineVariant}`, fontSize: '0.78rem', outline: 'none', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+                    />
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                        <button
+                            onClick={() => { onEditar({ nota: notaDraft.trim() || undefined }); setEditandoNota(false); }}
+                            style={{ background: C.secondary, color: 'white', border: 'none', borderRadius: '8px', padding: '6px 12px', fontWeight: 800, fontSize: '0.74rem', cursor: 'pointer' }}
+                        >
+                            Guardar
+                        </button>
+                        {item.nota && (
+                            <button
+                                onClick={() => { onEditar({ nota: undefined }); setNotaDraft(''); setEditandoNota(false); }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.rojo, fontSize: '0.74rem', fontWeight: 700 }}
+                            >
+                                Quitar nota
+                            </button>
+                        )}
+                        <button onClick={() => setEditandoNota(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, fontSize: '0.74rem', fontWeight: 700, marginLeft: 'auto' }}>
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            ) : item.nota && (
+                <button
+                    onClick={() => { setNotaDraft(item.nota ?? ''); setEditandoNota(true); }}
+                    title="Tocar para editar la nota"
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', background: 'rgba(230,168,23,0.08)', border: 'none', borderRadius: '8px', padding: '6px 9px', marginTop: '8px', cursor: 'pointer', textAlign: 'left', fontSize: '0.76rem', color: C.onSurfaceVariant, fontStyle: 'italic', width: '100%', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                >
+                    <span className="material-symbols-outlined" style={{ fontSize: '14px', flexShrink: 0, color: C.ambar }}>sticky_note_2</span>
+                    {item.nota}
+                </button>
+            )}
 
             {isPaying && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: C.surfaceContainerHigh, padding: '6px', borderRadius: '9px', marginTop: '8px' }}>
