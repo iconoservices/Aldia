@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Filter, Trash2, Star, Plus, Package, Camera, RefreshCw, Loader2, X, ArrowLeftRight } from 'lucide-react';
+import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, Filter, Trash2, Star, Plus, Package, Camera, RefreshCw, Loader2, X, ArrowLeftRight } from 'lucide-react';
 
 interface TimelineAgendaViewProps {
     calendarEvents: any[];
@@ -625,34 +625,6 @@ export const TimelineAgendaView = ({
                 <div style={{ padding: '0.5rem 1rem', background: 'white', borderBottom: 'none', zIndex: 100 }}>
                     <div className="timeline-header-grid" style={{ marginBottom: dayDeliveries.length > 0 ? '0.75rem' : '0' }}>
                         <div className="timeline-title-block" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <button
-                                onClick={() => setSidebarOpen(!sidebarOpen)}
-                                className="desktop-only"
-                                style={{
-                                    background: '#F8FAFC',
-                                    border: 'none',
-                                    borderRadius: '10px',
-                                    padding: '8px',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    transition: 'all 0.2s'
-                                }}
-                                title={sidebarOpen ? "Contraer lateral" : "Expandir lateral"}
-                            >
-                                {sidebarSide === 'right'
-                                    ? (sidebarOpen ? <PanelRightClose size={18} color="var(--domain-orange)" /> : <PanelRightOpen size={18} color="#64748B" />)
-                                    : (sidebarOpen ? <PanelLeftClose size={18} color="var(--domain-orange)" /> : <PanelLeftOpen size={18} color="#64748B" />)}
-                            </button>
-                            <button
-                                onClick={() => setSidebarSide(s => s === 'left' ? 'right' : 'left')}
-                                className="desktop-only"
-                                style={{ background: '#F8FAFC', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
-                                title={sidebarSide === 'right' ? 'Mover panel de Categorías a la izquierda' : 'Mover panel de Categorías a la derecha'}
-                            >
-                                <ArrowLeftRight size={16} color="#64748B" />
-                            </button>
                             <div>
                                 <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-carbon)', whiteSpace: 'nowrap' }}>
                                     {viewMode === 'month'
@@ -690,27 +662,38 @@ export const TimelineAgendaView = ({
                             <button onClick={() => { setSelectedDate(new Date()); scrollToNow(); setTimeout(scrollToNow, 300); }} style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px 10px', fontSize: '0.65rem', fontWeight: 900, cursor: 'pointer' }}>HOY</button>
                             <button onClick={() => viewMode === 'month' ? changeMonth(1) : changeDate(viewMode === 'timeline' ? (isMobile ? 1 : 7) : 1)} title={viewMode === 'timeline' && !isMobile ? 'Semana siguiente' : undefined} style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer' }}><ChevronRight size={16} /></button>
                             
-                            {/* Separador */}
+                            {/* Separador — a la derecha van juntos los toggles de los dos
+                                paneles laterales (ambos viven de este lado). */}
                             <div className="desktop-only" style={{ width: '1px', height: '20px', background: '#E2E8F0', margin: '0 4px' }} />
-                            
-                            {/* Toggle Panel Derecho (Misiones) */}
-                            <button 
+
+                            {/* Panel de Categorías / mini-calendario / Notion */}
+                            <button
+                                onClick={() => setSidebarOpen(!sidebarOpen)}
+                                className="desktop-only"
+                                style={{ background: sidebarOpen ? 'var(--domain-orange)' : '#F8FAFC', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                                title={sidebarOpen ? 'Ocultar Categorías y calendario' : 'Ver Categorías y calendario'}
+                            >
+                                <Filter size={16} color={sidebarOpen ? 'white' : '#64748B'} />
+                            </button>
+                            {sidebarOpen && (
+                                <button
+                                    onClick={() => setSidebarSide(s => s === 'left' ? 'right' : 'left')}
+                                    className="desktop-only"
+                                    style={{ background: '#F8FAFC', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                                    title={sidebarSide === 'right' ? 'Mover ese panel a la izquierda' : 'Mover ese panel a la derecha'}
+                                >
+                                    <ArrowLeftRight size={15} color="#64748B" />
+                                </button>
+                            )}
+
+                            {/* Panel de Misión Diaria */}
+                            <button
                                 onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
                                 className="desktop-only"
-                                style={{ 
-                                    background: rightSidebarOpen ? 'var(--domain-orange)' : '#F8FAFC', 
-                                    border: 'none', 
-                                    borderRadius: '10px', 
-                                    padding: '6px', 
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    transition: 'all 0.2s'
-                                }}
-                                title={rightSidebarOpen ? "Ocultar Misiones" : "Ver Misiones"}
+                                style={{ background: rightSidebarOpen ? 'var(--domain-orange)' : '#F8FAFC', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                                title={rightSidebarOpen ? 'Ocultar Misión Diaria' : 'Ver Misión Diaria'}
                             >
-                                {rightSidebarOpen ? <PanelRightClose size={16} color="white" /> : <PanelRightOpen size={16} color="#64748B" />}
+                                <Star size={16} color={rightSidebarOpen ? 'white' : '#64748B'} />
                             </button>
                         </div>
                     </div>
