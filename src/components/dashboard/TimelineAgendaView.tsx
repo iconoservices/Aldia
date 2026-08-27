@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, ChevronLeft, ChevronRight, ChevronDown, CalendarDays, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Filter, Trash2, Star, Plus, Link2, Package, Camera, X } from 'lucide-react';
+import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Filter, Trash2, Star, Plus, Package, Camera, RefreshCw, Loader2, X } from 'lucide-react';
 
 interface TimelineAgendaViewProps {
     calendarEvents: any[];
@@ -46,10 +46,41 @@ export const TimelineAgendaView = ({
         tareas: true,
         habitos: true,
         mision: true,
-        notionAgenda: true,
-        notionEntregas: true
+        agenda: true,
+        entregas: true
     });
-    const [notionExpanded, setNotionExpanded] = useState(true);
+    // Interruptor general de Notion (abajo, solito). Apagado = oculta todo lo
+    // que viene de Notion (sesiones + entregas), sin importar los filtros de
+    // arriba. Encenderlo dispara una sincronizacion. Es aparte de los filtros
+    // porque Notion lo usan varias pestañas, no solo el calendario.
+    const [notionOn, setNotionOn] = useState(true);
+    const [notionSyncing, setNotionSyncing] = useState(false);
+    const [notionSyncMsg, setNotionSyncMsg] = useState<string | null>(null);
+
+    const syncNotion = async () => {
+        setNotionSyncing(true);
+        setNotionSyncMsg(null);
+        try {
+            const res = await fetch('/api/sync-notion-now', { method: 'POST' });
+            const raw = await res.text();
+            const data = raw ? JSON.parse(raw) : {};
+            if (!res.ok) throw new Error(data?.error || 'error');
+            setNotionSyncMsg(`Listo: ${data.added ?? 0} nueva(s), ${data.updated ?? 0} actualizada(s).`);
+        } catch (err) {
+            console.error('No se pudo sincronizar con Notion:', err);
+            setNotionSyncMsg('No se pudo sincronizar. Intenta de nuevo.');
+        } finally {
+            setNotionSyncing(false);
+        }
+    };
+
+    const toggleNotion = () => {
+        setNotionOn(prev => {
+            const next = !prev;
+            if (next) syncNotion();
+            return next;
+        });
+    };
     
     // Estado para edición
     const [editTitle, setEditTitle] = useState('');
@@ -179,7 +210,7 @@ export const TimelineAgendaView = ({
 
     // 3. Filtrar entregas del proyecto para el día seleccionado
     const dayDeliveries = useMemo(() => {
-        if (!activeFilters.citas) return [];
+        if (!activeFilters.entregas) return [];
         const delivs: any[] = [];
         projects.forEach(p => {
             (p.objectives || []).forEach((obj: any) => {
@@ -189,13 +220,13 @@ export const TimelineAgendaView = ({
             });
         });
         return delivs;
-    }, [projects, todayStr, activeFilters.citas]);
+    }, [projects, todayStr, activeFilters.entregas]);
 
     // 4. Eventos y Misiones con hora
     const dayEvents = useMemo(() => {
         const items = (calendarEvents || [])
             .filter(e => e.date === todayStr)
-            .filter(e => (e.notionId ? activeFilters.notionAgenda : activeFilters.citas))
+            .filter(e => (e.notionId ? (activeFilters.agenda && notionOn) : activeFilters.citas))
             .map(e => ({
                 ...e,
                 itemType: 'event',
@@ -204,7 +235,7 @@ export const TimelineAgendaView = ({
                 endMin: toMin(e.endTime)
             }));
         return items.sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
-    }, [calendarEvents, todayStr, activeFilters.citas, activeFilters.notionAgenda]);
+    }, [calendarEvents, todayStr, activeFilters.citas, activeFilters.agenda, notionOn]);
 
     // 5.1 Misiones (Tareas)
     const dayMissions = useMemo(() => {
@@ -285,7 +316,7 @@ export const TimelineAgendaView = ({
             // Filtrar eventos y rutinas para este día específico de la semana
             const evs = (calendarEvents || [])
                 .filter(e => e.date === dStr)
-                .filter(e => (e.notionId ? activeFilters.notionAgenda : activeFilters.citas))
+                .filter(e => (e.notionId ? (activeFilters.agenda && notionOn) : activeFilters.citas))
                 .map(e => ({
                     ...e,
                     startMin: toMin(e.startTime),
@@ -300,14 +331,14 @@ export const TimelineAgendaView = ({
             // objetivos de proyecto. Van en una franja arriba de la columna, no
             // en una hora concreta.
             const dels: any[] = [];
-            if (activeFilters.notionEntregas) {
+            if (activeFilters.entregas && notionOn) {
                 (calendarEvents || []).forEach(e => {
                     if (e.notionId && e.notionEntregaFecha === dStr && e.notionEstado !== 'Entregado') {
                         dels.push({ id: `entrega-${e.id}`, title: e.title, color: '#059669', raw: e });
                     }
                 });
             }
-            if (activeFilters.citas) {
+            if (activeFilters.entregas) {
                 projects.forEach(p => (p.objectives || []).forEach((obj: any) => {
                     if (obj.deliveryDate === dStr) dels.push({ id: `obj-${obj.id ?? obj.title}`, title: obj.title, color: p.color || '#059669', raw: null });
                 }));
@@ -326,7 +357,7 @@ export const TimelineAgendaView = ({
             });
         }
         return days;
-    }, [selectedDate, calendarEvents, rutinas, habits, projects, activeFilters]);
+    }, [selectedDate, calendarEvents, rutinas, habits, projects, activeFilters, notionOn]);
 
     // 7.1 MES — eventos por día del mes visible (citas + sesiones de Notion),
     // para que la vista Mes no sea solo números: aquí es donde se ve "la agenda"
@@ -334,7 +365,7 @@ export const TimelineAgendaView = ({
     const monthEventsByDate = useMemo(() => {
         const map: Record<string, any[]> = {};
         (calendarEvents || [])
-            .filter(e => e.notionId ? activeFilters.notionAgenda : activeFilters.citas)
+            .filter(e => e.notionId ? (activeFilters.agenda && notionOn) : activeFilters.citas)
             .forEach(e => {
                 if (!e.date) return;
                 (map[e.date] ||= []).push({
@@ -348,7 +379,7 @@ export const TimelineAgendaView = ({
                 });
             });
         // Entregas de sesiones de Notion (fecha de entrega calculada allá)
-        if (activeFilters.notionEntregas) {
+        if (activeFilters.entregas && notionOn) {
             (calendarEvents || []).forEach(e => {
                 if (!e.notionId || !e.notionEntregaFecha || e.notionEstado === 'Entregado') return;
                 (map[e.notionEntregaFecha] ||= []).push({
@@ -364,7 +395,7 @@ export const TimelineAgendaView = ({
             });
         }
         // Entregas de proyectos (mismas que muestra la barra superior del timeline)
-        if (activeFilters.citas) {
+        if (activeFilters.entregas) {
             projects.forEach(p => {
                 (p.objectives || []).forEach((obj: any) => {
                     if (!obj.deliveryDate) return;
@@ -382,7 +413,7 @@ export const TimelineAgendaView = ({
         }
         Object.values(map).forEach(list => list.sort((a, b) => (a.startTime || '99:99').localeCompare(b.startTime || '99:99')));
         return map;
-    }, [calendarEvents, projects, activeFilters.notionAgenda, activeFilters.notionEntregas, activeFilters.citas]);
+    }, [calendarEvents, projects, activeFilters.agenda, activeFilters.entregas, activeFilters.citas, notionOn]);
 
     const currentTime = new Date();
     const currentPos = (currentTime.getHours() * 60) + currentTime.getMinutes();
@@ -502,62 +533,54 @@ export const TimelineAgendaView = ({
                         </div>
                     ))}
 
-                    {/* NOTION — grupo desplegable (como el árbol del explorador): un
-                        interruptor general arriba y, sangrados debajo, Agenda y Entregas
-                        por separado. Apagar el padre apaga ambos. */}
-                    {(() => {
-                        const nc = '#191919';
-                        const anyOn = activeFilters.notionAgenda || activeFilters.notionEntregas;
-                        const allOn = activeFilters.notionAgenda && activeFilters.notionEntregas;
-                        const toggleAll = () => setActiveFilters(prev => {
-                            const v = !(prev.notionAgenda || prev.notionEntregas);
-                            return { ...prev, notionAgenda: v, notionEntregas: v };
-                        });
-                        const hijos: { key: 'notionAgenda' | 'notionEntregas'; label: string; icon: React.ReactNode }[] = [
-                            { key: 'notionAgenda', label: 'Agenda', icon: <Camera size={13} /> },
-                            { key: 'notionEntregas', label: 'Entregas', icon: <Package size={13} /> },
-                        ];
+                    {/* Agenda y Entregas — filtros generales: muestran/ocultan sus items
+                        vengan de Notion o creados a mano. El sync de Notion es aparte (abajo). */}
+                    {([
+                        { key: 'agenda', label: 'Agenda', color: '#6366F1', icon: <Camera size={14} /> },
+                        { key: 'entregas', label: 'Entregas', color: '#059669', icon: <Package size={14} /> },
+                    ] as const).map(f => {
+                        const on = activeFilters[f.key];
                         return (
-                            <div style={{ marginBottom: '2px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: '12px', opacity: anyOn ? 1 : 0.6, transition: 'all 0.2s' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, cursor: 'pointer' }} onClick={() => setNotionExpanded(v => !v)}>
-                                        {notionExpanded ? <ChevronDown size={13} color="#94A3B8" /> : <ChevronRight size={13} color="#94A3B8" />}
-                                        <Link2 size={14} color={nc} />
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#475569' }}>Notion</span>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span style={{ fontSize: '0.55rem', fontWeight: 900, color: nc, opacity: 0.8 }}>SYNC</span>
-                                        <div
-                                            onClick={toggleAll}
-                                            title={anyOn ? 'Apagar Notion' : 'Prender Notion'}
-                                            style={{ width: '13px', height: '13px', borderRadius: '4px', border: `1px solid ${anyOn ? nc : '#CBD5E1'}`, background: allOn ? nc : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer' }}
-                                        >
-                                            {allOn && <span style={{ color: 'white', fontSize: '9px', fontWeight: 900, lineHeight: 1 }}>✓</span>}
-                                            {anyOn && !allOn && <span style={{ width: '7px', height: '2px', background: nc, borderRadius: '1px' }} />}
-                                        </div>
-                                    </div>
+                            <div
+                                key={f.key}
+                                onClick={() => setActiveFilters(prev => ({ ...prev, [f.key]: !prev[f.key] }))}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: '12px', cursor: 'pointer', marginBottom: '2px', opacity: on ? 1 : 0.6, border: '1px solid transparent', transition: 'all 0.15s' }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <div style={{ color: f.color }}>{f.icon}</div>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#475569' }}>{f.label}</span>
                                 </div>
-                                {notionExpanded && hijos.map(c => {
-                                    const on = activeFilters[c.key];
-                                    return (
-                                        <div
-                                            key={c.key}
-                                            onClick={() => setActiveFilters(prev => ({ ...prev, [c.key]: !prev[c.key] }))}
-                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 12px 7px 32px', borderRadius: '10px', cursor: 'pointer', opacity: on ? 1 : 0.5, marginBottom: '2px', transition: 'all 0.15s' }}
-                                        >
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <div style={{ color: nc }}>{c.icon}</div>
-                                                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#475569' }}>{c.label}</span>
-                                            </div>
-                                            <div style={{ width: '13px', height: '13px', borderRadius: '4px', border: `1px solid ${on ? nc : '#CBD5E1'}`, background: on ? nc : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                {on && <span style={{ color: 'white', fontSize: '9px', fontWeight: 900, lineHeight: 1 }}>✓</span>}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                                <div style={{ width: '13px', height: '13px', borderRadius: '4px', border: `1px solid ${on ? f.color : '#CBD5E1'}`, background: on ? f.color : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    {on && <span style={{ color: 'white', fontSize: '9px', fontWeight: 900, lineHeight: 1 }}>✓</span>}
+                                </div>
                             </div>
                         );
-                    })()}
+                    })}
+
+                    {/* NOTION — interruptor general, solito abajo. Apagado: oculta todo lo
+                        sincronizado de Notion (sesiones + entregas). Encenderlo lo vuelve a
+                        mostrar y dispara una sincronización. Va aparte porque Notion lo
+                        usan varias pestañas, no solo el calendario. */}
+                    <div style={{ margin: '8px 4px 0', borderTop: '1px solid #F1F5F9', paddingTop: '8px' }}>
+                        <div
+                            onClick={notionSyncing ? undefined : toggleNotion}
+                            title={notionOn ? 'Apagar Notion (ocultar lo sincronizado)' : 'Prender Notion y sincronizar'}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: '12px', cursor: notionSyncing ? 'wait' : 'pointer', background: notionOn ? 'rgba(25,25,25,0.04)' : 'transparent', opacity: notionOn ? 1 : 0.6, transition: 'all 0.15s' }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                {notionSyncing
+                                    ? <Loader2 size={14} color="#191919" style={{ animation: 'spin-slow 0.8s linear infinite' }} />
+                                    : <RefreshCw size={14} color="#191919" />}
+                                <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#475569' }}>Notion</span>
+                            </div>
+                            <div style={{ width: '34px', height: '18px', borderRadius: '10px', background: notionOn ? '#191919' : '#CBD5E1', position: 'relative', flexShrink: 0, transition: 'background 0.15s' }}>
+                                <div style={{ width: '14px', height: '14px', borderRadius: '50%', background: 'white', position: 'absolute', top: '2px', left: notionOn ? '18px' : '2px', transition: 'left 0.15s' }} />
+                            </div>
+                        </div>
+                        {notionSyncMsg && (
+                            <div style={{ fontSize: '0.62rem', color: '#94A3B8', fontWeight: 700, padding: '2px 12px 0' }}>{notionSyncMsg}</div>
+                        )}
+                    </div>
                 </div>
             </aside>
 
@@ -962,7 +985,7 @@ export const TimelineAgendaView = ({
                                             color: e.notionId ? '#191919' : (e.color || '#6366F1'), raw: e
                                         }));
 
-                                        if (activeFilters.notionEntregas) {
+                                        if (activeFilters.entregas && notionOn) {
                                             (calendarEvents || []).forEach(e => {
                                                 if (e.notionId && e.notionEntregaFecha === todayStr && e.notionEstado !== 'Entregado') {
                                                     rows.push({ id: `d-${e.id}`, time: '23:59', kind: 'delivery', label: `Entrega · ${e.title}`, sub: e.notionDiasRestantes, color: '#059669', raw: e });
