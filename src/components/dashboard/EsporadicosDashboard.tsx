@@ -1004,6 +1004,10 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
     const running = !!p.activeSince;
     const paused = !running && !!p.pausedAccumHours;
     const inSession = running || paused;
+    // El panel de sesión ("Empezar a trabajar" o el bloque de cronómetro +
+    // Pausar/Terminar) y "Tiempo por foto" comparten fila — uno al lado del otro,
+    // nunca apilados — mientras el proyecto no esté completado.
+    const inlinePhotoRow = p.status !== 'completado';
     const linkedEvent = p.notionId ? calendarEvents.find(e => e.notionId === p.notionId) : undefined;
 
     const now = useNowTicking(running);
@@ -1584,9 +1588,11 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                 suelto arriba y los botones de Pausar/Terminar quedaban hasta el fondo
                 de la tarjeta, después de las cajas de fotos y fases. Es lo que más se
                 toca acá, así que ahora va justo debajo del progreso. */}
+            <div style={{ display: inlinePhotoRow ? "flex" : "contents", flexWrap: "wrap", gap: "8px", alignItems: "flex-start" }}>
             {(inSession || p.status !== 'completado') && (
                 <div style={{
                     display: "flex", flexDirection: "column", gap: "8px",
+                    flex: inlinePhotoRow ? (inSession ? "1 1 58%" : "0 0 42%") : undefined,
                     padding: inSession ? "10px" : 0,
                     background: inSession ? (running ? "rgba(239,68,68,0.06)" : "rgba(230,168,23,0.06)") : "transparent",
                     borderRadius: "12px",
@@ -1615,7 +1621,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                         </div>
                     )}
                     {p.status !== 'completado' && (
-                        <div style={{ display: "flex", gap: "6px" }}>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                             {!inSession && (
                                 <button
                                     onClick={() => { startSporadicTimer(p.id, linkedEvent?.notionEstado); setNotionEstado('En Edición'); }}
@@ -1627,7 +1633,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                             {running && (
                                 <button
                                     onClick={() => pauseSporadicTimer(p.id)}
-                                    style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.ambar, color: "white", border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
+                                    style={{ flex: "1 1 auto", whiteSpace: "nowrap", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.ambar, color: "white", border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
                                 >
                                     <Pause size={13} /> Pausar
                                 </button>
@@ -1635,7 +1641,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                             {paused && (
                                 <button
                                     onClick={() => startSporadicTimer(p.id, p.activeStage)}
-                                    style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.surfaceContainerLow, color: C.onSurfaceVariant, border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
+                                    style={{ flex: "1 1 auto", whiteSpace: "nowrap", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.surfaceContainerLow, color: C.onSurfaceVariant, border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
                                 >
                                     <Play size={13} /> Reanudar
                                 </button>
@@ -1643,7 +1649,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                             {inSession && (
                                 <button
                                     onClick={() => stopSporadicTimer(p.id)}
-                                    style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.rojo, color: "white", border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
+                                    style={{ flex: "1 1 auto", whiteSpace: "nowrap", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.rojo, color: "white", border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
                                 >
                                     <Square size={13} /> Terminar sesión
                                 </button>
@@ -1666,7 +1672,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                 entre el timer y los botones de sesión, aportando poco cuando no se
                 está usando. Se reabre sola en cuanto arranca una foto. */}
             {p.status !== 'completado' && (
-                <details open={photoDetailsOpen} onToggle={e => setPhotoDetailsOpen(e.currentTarget.open)} style={{ background: C.surfaceContainerLow, borderRadius: "10px", padding: "8px 10px" }}>
+                <details open={photoDetailsOpen} onToggle={e => setPhotoDetailsOpen(e.currentTarget.open)} style={{ background: C.surfaceContainerLow, borderRadius: "10px", padding: "8px 10px", flex: inlinePhotoRow ? "1 1 150px" : undefined, minWidth: 0 }}>
                     <summary style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "4px", cursor: "pointer", listStyle: "none" }}>
                         <span style={{ fontSize: "0.66rem", fontWeight: 800, color: C.onSurfaceVariant, display: "flex", alignItems: "center", gap: "4px", textTransform: "uppercase", letterSpacing: "0.02em" }}>
                             <ImageIcon size={12} /> Tiempo por foto
@@ -1797,6 +1803,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                     </div>
                 </details>
             )}
+            </div>
 
             {/* Fases: colapsable — abierta de entrada si hay pasos pendientes o
                 todavía no se aplicó ninguna plantilla, cerrada si ya están todas
