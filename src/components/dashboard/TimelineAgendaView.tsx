@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, Filter, Trash2, Star, Plus, Package, Camera, RefreshCw, Loader2, X, ArrowLeftRight } from 'lucide-react';
+import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, Filter, Trash2, Star, Plus, Package, Camera, RefreshCw, Loader2, X } from 'lucide-react';
 
 interface TimelineAgendaViewProps {
     calendarEvents: any[];
@@ -59,13 +59,6 @@ export const TimelineAgendaView = ({
     // Arranca oculto: el usuario todavía no decidió cómo ordenar este panel
     // (mini-calendario + Categorías + Notion). Se abre con el botón de la cabecera.
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    // Lado del panel de mini-calendario + Categorías + Notion. El usuario lo
-    // quiere a la derecha; el botón de la cabecera lo deja moverlo mientras
-    // decide dónde se queda. Se recuerda entre sesiones.
-    const [sidebarSide, setSidebarSide] = useState<'left' | 'right'>(() => {
-        try { return localStorage.getItem('aldia_agenda_sidebar_side') === 'left' ? 'left' : 'right'; } catch { return 'right'; }
-    });
-    useEffect(() => { try { localStorage.setItem('aldia_agenda_sidebar_side', sidebarSide); } catch { /* storage bloqueado */ } }, [sidebarSide]);
     // Abierto de entrada en "Misión Diaria": es lo que el usuario quiere ver al
     // entrar al Calendario, junto con la vista Mes.
     const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
@@ -506,13 +499,11 @@ export const TimelineAgendaView = ({
 
     return (
         <div className="agenda-layout-container">
-            {/* Sidebar PC Only — su lado (izq/der) sale de `sidebarSide`; se
-                reordena por CSS `order` sin tocar el DOM. */}
+            {/* Sidebar PC Only — va a la derecha (order 2, después del main);
+                se reordena por CSS `order` sin tocar el DOM. */}
             <aside
                 className={`agenda-sidebar ${!sidebarOpen ? 'collapsed' : ''}`}
-                style={sidebarSide === 'right'
-                    ? { order: 2, borderRight: 'none', borderLeft: '1px solid #E2E8F0' }
-                    : { order: 0 }}
+                style={{ order: 2, borderRight: 'none', borderLeft: '1px solid #E2E8F0' }}
             >
                 <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid #F1F5F9' }}>
                     <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'var(--domain-orange)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
@@ -675,16 +666,6 @@ export const TimelineAgendaView = ({
                             >
                                 <Filter size={16} color={sidebarOpen ? 'white' : '#64748B'} />
                             </button>
-                            {sidebarOpen && (
-                                <button
-                                    onClick={() => setSidebarSide(s => s === 'left' ? 'right' : 'left')}
-                                    className="desktop-only"
-                                    style={{ background: '#F8FAFC', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
-                                    title={sidebarSide === 'right' ? 'Mover ese panel a la izquierda' : 'Mover ese panel a la derecha'}
-                                >
-                                    <ArrowLeftRight size={15} color="#64748B" />
-                                </button>
-                            )}
 
                             {/* Panel de Misión Diaria */}
                             <button
@@ -937,59 +918,45 @@ export const TimelineAgendaView = ({
             <aside className={`agenda-right-sidebar ${!rightSidebarOpen ? 'collapsed' : ''}`} style={{ order: 3 }}>
                 {(() => {
                     const configOptions: Record<string, any> = {
-                        mision: { title: 'Misión Diaria (Timeline)', icon: <Star size={16} />, color: 'var(--domain-orange)' },
-                        tareas: { title: 'Tareas Individuales', icon: <Filter size={16} />, color: '#F59E0B' },
-                        citas: { title: 'Citas y Eventos', icon: <Clock size={16} />, color: '#6366F1' },
-                        rutinas: { title: 'Rutinas y Bloques', icon: <CalendarDays size={16} />, color: '#10B981' },
-                        habitos: { title: 'Hábitos Diarios', icon: <CalendarDays size={16} />, color: '#EC4899' }
+                        mision: { title: 'Misión Diaria', icon: <Star size={15} />, color: 'var(--domain-orange)' },
+                        tareas: { title: 'Tareas', icon: <Filter size={15} />, color: '#F59E0B' },
+                        citas: { title: 'Citas y Eventos', icon: <Clock size={15} />, color: '#6366F1' },
+                        rutinas: { title: 'Rutinas y Bloques', icon: <CalendarDays size={15} />, color: '#10B981' },
+                        habitos: { title: 'Hábitos', icon: <CalendarDays size={15} />, color: '#EC4899' }
                     };
                     const config = configOptions[rightPanelMode] || { title: '', icon: null, color: '' };
 
                     return (
                         <>
-                            <div style={{ padding: '20px 16px', display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid #F1F5F9' }}>
-                                <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: config.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                            {/* Cabecera del panel en UNA sola fila: título + navegación
+                                por día (‹ fecha ›) + cerrar, para ocupar menos alto. La
+                                fecha es un botón: si no es hoy, va en naranja y al tocarla
+                                vuelve a hoy (reemplaza al link "volver a hoy"). */}
+                            <div style={{ padding: '12px 12px', display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid #F1F5F9' }}>
+                                <div style={{ width: '26px', height: '26px', borderRadius: '8px', background: config.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
                                     {config.icon}
                                 </div>
-                                <div style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--text-carbon)', flex: 1 }}>{config.title}</div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--text-carbon)', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{config.title}</div>
+                                <button onClick={() => changeDate(-1)} title="Día anterior" style={{ background: '#F1F5F9', border: 'none', borderRadius: '8px', padding: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#64748B', flexShrink: 0 }}>
+                                    <ChevronLeft size={14} />
+                                </button>
+                                <button
+                                    onClick={() => setSelectedDate(new Date())}
+                                    disabled={isActualToday}
+                                    title={isActualToday ? undefined : 'Volver a hoy'}
+                                    style={{ background: 'none', border: 'none', padding: '0 2px', cursor: isActualToday ? 'default' : 'pointer', fontSize: '0.72rem', fontWeight: 900, color: isActualToday ? 'var(--text-carbon)' : 'var(--domain-orange)', textTransform: 'capitalize', whiteSpace: 'nowrap', flexShrink: 0 }}
+                                >
+                                    {dayNames[dayIdx]} {selectedDate.getDate()} {monthNames[selectedDate.getMonth()].slice(0, 3).toLowerCase()}
+                                </button>
+                                <button onClick={() => changeDate(1)} title="Día siguiente" style={{ background: '#F1F5F9', border: 'none', borderRadius: '8px', padding: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#64748B', flexShrink: 0 }}>
+                                    <ChevronRight size={14} />
+                                </button>
                                 <button
                                     onClick={() => setRightSidebarOpen(false)}
                                     title="Cerrar panel"
-                                    style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#64748B', flexShrink: 0 }}
+                                    style={{ background: '#F1F5F9', border: 'none', borderRadius: '8px', padding: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#64748B', flexShrink: 0 }}
                                 >
-                                    <X size={16} />
-                                </button>
-                            </div>
-
-                            {/* Navegación por día — mueve el día que muestra este panel (y la
-                                columna en móvil) hacia adelante / atrás, de a uno. */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderBottom: '1px solid #F1F5F9' }}>
-                                <button
-                                    onClick={() => changeDate(-1)}
-                                    title="Día anterior"
-                                    style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#64748B' }}
-                                >
-                                    <ChevronLeft size={16} />
-                                </button>
-                                <div style={{ flex: 1, textAlign: 'center' }}>
-                                    <div style={{ fontSize: '0.82rem', fontWeight: 900, color: isActualToday ? 'var(--domain-orange)' : 'var(--text-carbon)', textTransform: 'capitalize' }}>
-                                        {dayNames[dayIdx]} {selectedDate.getDate()} {monthNames[selectedDate.getMonth()].slice(0, 3).toLowerCase()}
-                                    </div>
-                                    {!isActualToday && (
-                                        <button
-                                            onClick={() => setSelectedDate(new Date())}
-                                            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--domain-orange)', fontSize: '0.62rem', fontWeight: 800, textDecoration: 'underline' }}
-                                        >
-                                            volver a hoy
-                                        </button>
-                                    )}
-                                </div>
-                                <button
-                                    onClick={() => changeDate(1)}
-                                    title="Día siguiente"
-                                    style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#64748B' }}
-                                >
-                                    <ChevronRight size={16} />
+                                    <X size={14} />
                                 </button>
                             </div>
 
