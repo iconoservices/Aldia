@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Filter, Trash2, Star, Plus, Link2, X } from 'lucide-react';
+import { Calendar, Clock, ChevronLeft, ChevronRight, ChevronDown, CalendarDays, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Filter, Trash2, Star, Plus, Link2, Package, Camera, X } from 'lucide-react';
 
 interface TimelineAgendaViewProps {
     calendarEvents: any[];
@@ -46,8 +46,10 @@ export const TimelineAgendaView = ({
         tareas: true,
         habitos: true,
         mision: true,
-        notion: true
+        notionAgenda: true,
+        notionEntregas: true
     });
+    const [notionExpanded, setNotionExpanded] = useState(true);
     
     // Estado para edición
     const [editTitle, setEditTitle] = useState('');
@@ -193,7 +195,7 @@ export const TimelineAgendaView = ({
     const dayEvents = useMemo(() => {
         const items = (calendarEvents || [])
             .filter(e => e.date === todayStr)
-            .filter(e => (e.notionId ? activeFilters.notion : activeFilters.citas))
+            .filter(e => (e.notionId ? activeFilters.notionAgenda : activeFilters.citas))
             .map(e => ({
                 ...e,
                 itemType: 'event',
@@ -202,7 +204,7 @@ export const TimelineAgendaView = ({
                 endMin: toMin(e.endTime)
             }));
         return items.sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
-    }, [calendarEvents, todayStr, activeFilters.citas, activeFilters.notion]);
+    }, [calendarEvents, todayStr, activeFilters.citas, activeFilters.notionAgenda]);
 
     // 5.1 Misiones (Tareas)
     const dayMissions = useMemo(() => {
@@ -283,7 +285,7 @@ export const TimelineAgendaView = ({
             // Filtrar eventos y rutinas para este día específico de la semana
             const evs = (calendarEvents || [])
                 .filter(e => e.date === dStr)
-                .filter(e => (e.notionId ? activeFilters.notion : activeFilters.citas))
+                .filter(e => (e.notionId ? activeFilters.notionAgenda : activeFilters.citas))
                 .map(e => ({
                     ...e,
                     startMin: toMin(e.startTime),
@@ -298,7 +300,7 @@ export const TimelineAgendaView = ({
             // objetivos de proyecto. Van en una franja arriba de la columna, no
             // en una hora concreta.
             const dels: any[] = [];
-            if (activeFilters.notion) {
+            if (activeFilters.notionEntregas) {
                 (calendarEvents || []).forEach(e => {
                     if (e.notionId && e.notionEntregaFecha === dStr && e.notionEstado !== 'Entregado') {
                         dels.push({ id: `entrega-${e.id}`, title: e.title, color: '#059669', raw: e });
@@ -332,7 +334,7 @@ export const TimelineAgendaView = ({
     const monthEventsByDate = useMemo(() => {
         const map: Record<string, any[]> = {};
         (calendarEvents || [])
-            .filter(e => e.notionId ? activeFilters.notion : activeFilters.citas)
+            .filter(e => e.notionId ? activeFilters.notionAgenda : activeFilters.citas)
             .forEach(e => {
                 if (!e.date) return;
                 (map[e.date] ||= []).push({
@@ -346,7 +348,7 @@ export const TimelineAgendaView = ({
                 });
             });
         // Entregas de sesiones de Notion (fecha de entrega calculada allá)
-        if (activeFilters.notion) {
+        if (activeFilters.notionEntregas) {
             (calendarEvents || []).forEach(e => {
                 if (!e.notionId || !e.notionEntregaFecha || e.notionEstado === 'Entregado') return;
                 (map[e.notionEntregaFecha] ||= []).push({
@@ -380,7 +382,7 @@ export const TimelineAgendaView = ({
         }
         Object.values(map).forEach(list => list.sort((a, b) => (a.startTime || '99:99').localeCompare(b.startTime || '99:99')));
         return map;
-    }, [calendarEvents, projects, activeFilters.notion, activeFilters.citas]);
+    }, [calendarEvents, projects, activeFilters.notionAgenda, activeFilters.notionEntregas, activeFilters.citas]);
 
     const currentTime = new Date();
     const currentPos = (currentTime.getHours() * 60) + currentTime.getMinutes();
@@ -464,16 +466,15 @@ export const TimelineAgendaView = ({
                         { key: 'citas', label: 'Citas y Eventos', color: '#6366F1', icon: <Clock size={14} />, type: 'MACRO' },
                         { key: 'rutinas', label: 'Rutinas / Bloques', color: '#10B981', icon: <CalendarDays size={14} />, type: 'MACRO' },
                         { key: 'habitos', label: 'Hábitos (Habits)', color: '#EC4899', icon: <CalendarDays size={14} />, type: 'MICRO' },
-                        { key: 'notion', label: 'Notion', color: '#191919', icon: <Link2 size={14} />, type: 'SYNC' }
                     ].map(f => (
-                        <div 
-                            key={f.key} 
-                            style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'space-between', 
-                                padding: '10px 12px', 
-                                borderRadius: '12px', 
+                        <div
+                            key={f.key}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '10px 12px',
+                                borderRadius: '12px',
                                 cursor: 'pointer',
                                 background: rightSidebarOpen && rightPanelMode === f.key ? `${f.color}15` : 'transparent',
                                 border: rightSidebarOpen && rightPanelMode === f.key ? `1px solid ${f.color}30` : '1px solid transparent',
@@ -482,7 +483,7 @@ export const TimelineAgendaView = ({
                                 transition: 'all 0.2s'
                             }}
                         >
-                            <div 
+                            <div
                                 style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}
                                 onClick={() => { setRightPanelMode(f.key as any); setRightSidebarOpen(true); }}
                             >
@@ -500,6 +501,63 @@ export const TimelineAgendaView = ({
                             </div>
                         </div>
                     ))}
+
+                    {/* NOTION — grupo desplegable (como el árbol del explorador): un
+                        interruptor general arriba y, sangrados debajo, Agenda y Entregas
+                        por separado. Apagar el padre apaga ambos. */}
+                    {(() => {
+                        const nc = '#191919';
+                        const anyOn = activeFilters.notionAgenda || activeFilters.notionEntregas;
+                        const allOn = activeFilters.notionAgenda && activeFilters.notionEntregas;
+                        const toggleAll = () => setActiveFilters(prev => {
+                            const v = !(prev.notionAgenda || prev.notionEntregas);
+                            return { ...prev, notionAgenda: v, notionEntregas: v };
+                        });
+                        const hijos: { key: 'notionAgenda' | 'notionEntregas'; label: string; icon: React.ReactNode }[] = [
+                            { key: 'notionAgenda', label: 'Agenda', icon: <Camera size={13} /> },
+                            { key: 'notionEntregas', label: 'Entregas', icon: <Package size={13} /> },
+                        ];
+                        return (
+                            <div style={{ marginBottom: '2px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: '12px', opacity: anyOn ? 1 : 0.6, transition: 'all 0.2s' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, cursor: 'pointer' }} onClick={() => setNotionExpanded(v => !v)}>
+                                        {notionExpanded ? <ChevronDown size={13} color="#94A3B8" /> : <ChevronRight size={13} color="#94A3B8" />}
+                                        <Link2 size={14} color={nc} />
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#475569' }}>Notion</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{ fontSize: '0.55rem', fontWeight: 900, color: nc, opacity: 0.8 }}>SYNC</span>
+                                        <div
+                                            onClick={toggleAll}
+                                            title={anyOn ? 'Apagar Notion' : 'Prender Notion'}
+                                            style={{ width: '13px', height: '13px', borderRadius: '4px', border: `1px solid ${anyOn ? nc : '#CBD5E1'}`, background: allOn ? nc : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer' }}
+                                        >
+                                            {allOn && <span style={{ color: 'white', fontSize: '9px', fontWeight: 900, lineHeight: 1 }}>✓</span>}
+                                            {anyOn && !allOn && <span style={{ width: '7px', height: '2px', background: nc, borderRadius: '1px' }} />}
+                                        </div>
+                                    </div>
+                                </div>
+                                {notionExpanded && hijos.map(c => {
+                                    const on = activeFilters[c.key];
+                                    return (
+                                        <div
+                                            key={c.key}
+                                            onClick={() => setActiveFilters(prev => ({ ...prev, [c.key]: !prev[c.key] }))}
+                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 12px 7px 32px', borderRadius: '10px', cursor: 'pointer', opacity: on ? 1 : 0.5, marginBottom: '2px', transition: 'all 0.15s' }}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <div style={{ color: nc }}>{c.icon}</div>
+                                                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#475569' }}>{c.label}</span>
+                                            </div>
+                                            <div style={{ width: '13px', height: '13px', borderRadius: '4px', border: `1px solid ${on ? nc : '#CBD5E1'}`, background: on ? nc : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                {on && <span style={{ color: 'white', fontSize: '9px', fontWeight: 900, lineHeight: 1 }}>✓</span>}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })()}
                 </div>
             </aside>
 
@@ -904,7 +962,7 @@ export const TimelineAgendaView = ({
                                             color: e.notionId ? '#191919' : (e.color || '#6366F1'), raw: e
                                         }));
 
-                                        if (activeFilters.notion) {
+                                        if (activeFilters.notionEntregas) {
                                             (calendarEvents || []).forEach(e => {
                                                 if (e.notionId && e.notionEntregaFecha === todayStr && e.notionEstado !== 'Entregado') {
                                                     rows.push({ id: `d-${e.id}`, time: '23:59', kind: 'delivery', label: `Entrega · ${e.title}`, sub: e.notionDiasRestantes, color: '#059669', raw: e });
