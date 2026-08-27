@@ -79,12 +79,14 @@ interface EsporadicosProps {
     phaseTemplates: FaseTemplate[];
     addFaseTemplate: (name: string) => number;
     removeFaseTemplate: (id: number) => void;
-    addFaseTemplateStep: (templateId: number, label: string) => void;
+    addFaseTemplateStep: (templateId: number, label: string, stage?: NotionEstado) => void;
     removeFaseTemplateStep: (templateId: number, stepId: number) => void;
+    setFaseTemplateStepStage: (templateId: number, stepId: number, stage: NotionEstado | undefined) => void;
     applyFaseTemplate: (projectId: number, templateId: number) => void;
-    addProjectFase: (projectId: number, label: string) => void;
+    addProjectFase: (projectId: number, label: string, stage?: NotionEstado) => void;
     removeProjectFase: (projectId: number, faseId: number) => void;
     toggleProjectFase: (projectId: number, faseId: number) => void;
+    setProjectFaseStage: (projectId: number, faseId: number, stage: NotionEstado | undefined) => void;
     startFaseTimer: (projectId: number, faseId: number) => void;
     pauseFaseTimer: (projectId: number, faseId: number) => void;
     finishFaseTimer: (projectId: number, faseId: number) => void;
@@ -153,14 +155,73 @@ const AddInline = ({ placeholder, onAdd }: { placeholder: string; onAdd: (value:
     );
 };
 
+/** Menú chico para mover un paso (de plantilla o de proyecto) a otra etapa del
+ *  flujo, o dejarlo "sin etapa". Reusado en el editor de plantillas y en la
+ *  tarjeta del proyecto. */
+const StageSelect = ({ value, onChange }: { value: NotionEstado | undefined; onChange: (stage: NotionEstado | undefined) => void }) => (
+    <select
+        value={value ?? ''}
+        onChange={e => onChange((e.target.value || undefined) as NotionEstado | undefined)}
+        title="Mover a otra etapa del flujo"
+        onClick={e => e.stopPropagation()}
+        style={{ flexShrink: 0, border: `1px solid ${C.outlineVariant}`, borderRadius: "6px", padding: "2px 4px", fontSize: "0.62rem", fontFamily: "inherit", background: "white", color: C.onSurfaceVariant, maxWidth: "94px" }}
+    >
+        <option value="">Sin etapa</option>
+        {NOTION_ESTADOS.map(s => <option key={s} value={s}>{s}</option>)}
+    </select>
+);
+
+/** Agrupa pasos por etapa del flujo (Agendado…Entregado). Muestra SIEMPRE las 5
+ *  etapas, aunque estén vacías, y suma un grupo "Sin etapa" al final solo si hay
+ *  pasos sueltos. Cada grupo trae encabezado con color + conteo y su propio input
+ *  para agregar un paso directo a esa etapa. `renderRow` debe devolver un
+ *  elemento con `key`. */
+function StageGroups<T extends { id: number; stage?: NotionEstado; done?: boolean }>({ items, currentStage, renderRow, onAdd, addPlaceholder }: {
+    items: T[];
+    currentStage?: NotionEstado;
+    renderRow: (item: T) => React.ReactNode;
+    onAdd: (label: string, stage: NotionEstado | undefined) => void;
+    addPlaceholder: string;
+}) {
+    const groups: (NotionEstado | undefined)[] = [...NOTION_ESTADOS];
+    if (items.some(i => !i.stage)) groups.push(undefined);
+    return (
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {groups.map(stage => {
+                const rows = items.filter(i => i.stage === stage);
+                const done = rows.filter(r => r.done).length;
+                const color = stage ? ESTADO_COLOR[stage] : C.outlineVariant;
+                const isCurrent = !!stage && stage === currentStage;
+                return (
+                    <div key={stage ?? '—'} style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "1px 0" }}>
+                            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: color, flexShrink: 0, boxShadow: isCurrent ? `0 0 0 3px ${color}33` : "none" }} />
+                            <span style={{ fontSize: "0.66rem", fontWeight: 800, color: isCurrent ? color : C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.02em" }}>
+                                {stage ?? 'Sin etapa'}
+                            </span>
+                            {rows.length > 0 && <span style={{ fontSize: "0.62rem", fontWeight: 700, color: C.outline }}>{done}/{rows.length}</span>}
+                            {isCurrent && <span style={{ fontSize: "0.58rem", fontWeight: 800, color }}>· ahora</span>}
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "1px", paddingLeft: "14px" }}>
+                            {rows.map(renderRow)}
+                            <AddInline placeholder={addPlaceholder} onAdd={label => onAdd(label, stage)} />
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
 // Una fila de fase dentro de un proyecto: checkbox de hecho/pendiente + su propio
 // cronómetro (mismo patrón pausa/resume que el de "Tiempo por foto", pero por
 // fase). Componente aparte porque cada fila necesita su propio useNowTicking.
-const FaseRow = ({ projectId, fase, toggleProjectFase, removeProjectFase, startFaseTimer, pauseFaseTimer, finishFaseTimer }: {
+const FaseRow = ({ projectId, fase, toggleProjectFase, removeProjectFase, setProjectFaseStage, startFaseTimer, pauseFaseTimer, finishFaseTimer }: {
     projectId: number;
     fase: ProjectFase;
     toggleProjectFase: (projectId: number, faseId: number) => void;
     removeProjectFase: (projectId: number, faseId: number) => void;
+    setProjectFaseStage: (projectId: number, faseId: number, stage: NotionEstado | undefined) => void;
     startFaseTimer: (projectId: number, faseId: number) => void;
     pauseFaseTimer: (projectId: number, faseId: number) => void;
     finishFaseTimer: (projectId: number, faseId: number) => void;
@@ -172,7 +233,7 @@ const FaseRow = ({ projectId, fase, toggleProjectFase, removeProjectFase, startF
     const totalMs = liveMs + (fase.pausedAccumSeconds || 0) * 1000;
 
     return (
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "3px 0" }}>
+        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "6px", padding: "3px 0" }}>
             <button onClick={() => toggleProjectFase(projectId, fase.id)} title={fase.done ? "Marcar pendiente" : "Marcar hecho"} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", flexShrink: 0 }}>
                 {fase.done ? <CheckCircle size={16} color={C.verde} /> : <Circle size={16} color={C.outlineVariant} />}
             </button>
@@ -204,6 +265,9 @@ const FaseRow = ({ projectId, fase, toggleProjectFase, removeProjectFase, startF
             )}
             {fase.done && fase.seconds !== undefined && (
                 <span style={{ fontSize: "0.64rem", color: C.outline, fontWeight: 600, flexShrink: 0 }}>{formatElapsed(fase.seconds * 1000)}</span>
+            )}
+            {!running && !paused && (
+                <StageSelect value={fase.stage} onChange={stage => setProjectFaseStage(projectId, fase.id, stage)} />
             )}
             <button onClick={() => removeProjectFase(projectId, fase.id)} title="Quitar de este proyecto" style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "2px", display: "flex", flexShrink: 0 }}>
                 <X size={12} />
@@ -314,7 +378,7 @@ const computeStreak = (projects: SporadicProject[]) => {
     return streak;
 };
 
-export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, updateSporadicProject, removeSporadicProject, rescheduleSporadicProject, startSporadicTimer, pauseSporadicTimer, stopSporadicTimer, startPhotoTimer, pausePhotoTimer, finishPhotoTimer, cancelPhotoTimer, adjustPhotoManualExtra, resetSporadicWorkedTime, resetSporadicPhotoLog, removeLastPhotoLog, calendarEvents, updateCalendarEvent, phaseTemplates, addFaseTemplate, removeFaseTemplate, addFaseTemplateStep, removeFaseTemplateStep, applyFaseTemplate, addProjectFase, removeProjectFase, toggleProjectFase, startFaseTimer, pauseFaseTimer, finishFaseTimer }: EsporadicosProps) => {
+export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, updateSporadicProject, removeSporadicProject, rescheduleSporadicProject, startSporadicTimer, pauseSporadicTimer, stopSporadicTimer, startPhotoTimer, pausePhotoTimer, finishPhotoTimer, cancelPhotoTimer, adjustPhotoManualExtra, resetSporadicWorkedTime, resetSporadicPhotoLog, removeLastPhotoLog, calendarEvents, updateCalendarEvent, phaseTemplates, addFaseTemplate, removeFaseTemplate, addFaseTemplateStep, removeFaseTemplateStep, setFaseTemplateStepStage, applyFaseTemplate, addProjectFase, removeProjectFase, toggleProjectFase, setProjectFaseStage, startFaseTimer, pauseFaseTimer, finishFaseTimer }: EsporadicosProps) => {
     const movil = useIsMobile();
     // Filtro rápido activado desde las pastillas de arriba: "atrasados" y "en edición"
     // cruzan las dos columnas (en curso / listos para entregar), así que se filtra
@@ -769,19 +833,20 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                                     <Trash2 size={13} />
                                 </button>
                             </div>
-                            {t.steps.length > 0 && (
-                                <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-                                    {t.steps.map(s => (
-                                        <div key={s.id} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                            <span style={{ flex: 1, minWidth: 0, fontSize: "0.74rem", color: C.onSurfaceVariant }}>{s.label}</span>
-                                            <button onClick={() => removeFaseTemplateStep(t.id, s.id)} title="Quitar paso" style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "1px", display: "flex", flexShrink: 0 }}>
-                                                <X size={11} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            <AddInline placeholder="Agregar paso..." onAdd={label => addFaseTemplateStep(t.id, label)} />
+                            <StageGroups
+                                items={t.steps}
+                                addPlaceholder="Agregar paso a esta etapa..."
+                                onAdd={(label, stage) => addFaseTemplateStep(t.id, label, stage)}
+                                renderRow={s => (
+                                    <div key={s.id} style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "6px", padding: "1px 0" }}>
+                                        <span style={{ flex: 1, minWidth: "80px", fontSize: "0.74rem", color: C.onSurfaceVariant }}>{s.label}</span>
+                                        <StageSelect value={s.stage} onChange={stage => setFaseTemplateStepStage(t.id, s.id, stage)} />
+                                        <button onClick={() => removeFaseTemplateStep(t.id, s.id)} title="Quitar paso" style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "1px", display: "flex", flexShrink: 0 }}>
+                                            <X size={11} />
+                                        </button>
+                                    </div>
+                                )}
+                            />
                         </div>
                     ))}
                     <AddInline placeholder="Nueva plantilla (ej. Video, Diseño)..." onAdd={name => addFaseTemplate(name)} />
@@ -828,7 +893,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                         ) : (
                             <SortableContext items={visibleEnProgreso.map(p => p.id)} strategy={verticalListSortingStrategy}>
                                 {visibleEnProgreso.map(p => (
-                                    <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} rescheduleSporadicProject={rescheduleSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} adjustPhotoManualExtra={adjustPhotoManualExtra} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} removeLastPhotoLog={removeLastPhotoLog} pomodoroPrefs={pomodoroPrefs} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} phaseTemplates={phaseTemplates} applyFaseTemplate={applyFaseTemplate} addProjectFase={addProjectFase} removeProjectFase={removeProjectFase} toggleProjectFase={toggleProjectFase} startFaseTimer={startFaseTimer} pauseFaseTimer={pauseFaseTimer} finishFaseTimer={finishFaseTimer} />
+                                    <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} rescheduleSporadicProject={rescheduleSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} adjustPhotoManualExtra={adjustPhotoManualExtra} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} removeLastPhotoLog={removeLastPhotoLog} pomodoroPrefs={pomodoroPrefs} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} phaseTemplates={phaseTemplates} applyFaseTemplate={applyFaseTemplate} addProjectFase={addProjectFase} removeProjectFase={removeProjectFase} toggleProjectFase={toggleProjectFase} setProjectFaseStage={setProjectFaseStage} startFaseTimer={startFaseTimer} pauseFaseTimer={pauseFaseTimer} finishFaseTimer={finishFaseTimer} />
                                 ))}
                             </SortableContext>
                         )}
@@ -847,7 +912,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                         ) : (
                             <SortableContext items={visibleListosParaEntregar.map(p => p.id)} strategy={verticalListSortingStrategy}>
                                 {visibleListosParaEntregar.map(p => (
-                                    <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} rescheduleSporadicProject={rescheduleSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} adjustPhotoManualExtra={adjustPhotoManualExtra} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} removeLastPhotoLog={removeLastPhotoLog} pomodoroPrefs={pomodoroPrefs} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} phaseTemplates={phaseTemplates} applyFaseTemplate={applyFaseTemplate} addProjectFase={addProjectFase} removeProjectFase={removeProjectFase} toggleProjectFase={toggleProjectFase} startFaseTimer={startFaseTimer} pauseFaseTimer={pauseFaseTimer} finishFaseTimer={finishFaseTimer} />
+                                    <SortableProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} rescheduleSporadicProject={rescheduleSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} adjustPhotoManualExtra={adjustPhotoManualExtra} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} removeLastPhotoLog={removeLastPhotoLog} pomodoroPrefs={pomodoroPrefs} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} phaseTemplates={phaseTemplates} applyFaseTemplate={applyFaseTemplate} addProjectFase={addProjectFase} removeProjectFase={removeProjectFase} toggleProjectFase={toggleProjectFase} setProjectFaseStage={setProjectFaseStage} startFaseTimer={startFaseTimer} pauseFaseTimer={pauseFaseTimer} finishFaseTimer={finishFaseTimer} />
                                 ))}
                             </SortableContext>
                         )}
@@ -862,7 +927,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                     </summary>
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem", marginTop: "0.6rem" }}>
                         {visibleCompletados.map(p => (
-                            <ProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} rescheduleSporadicProject={rescheduleSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} adjustPhotoManualExtra={adjustPhotoManualExtra} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} removeLastPhotoLog={removeLastPhotoLog} pomodoroPrefs={pomodoroPrefs} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} phaseTemplates={phaseTemplates} applyFaseTemplate={applyFaseTemplate} addProjectFase={addProjectFase} removeProjectFase={removeProjectFase} toggleProjectFase={toggleProjectFase} startFaseTimer={startFaseTimer} pauseFaseTimer={pauseFaseTimer} finishFaseTimer={finishFaseTimer} />
+                            <ProjectCard key={p.id} p={p} updateSporadicProject={updateSporadicProject} removeSporadicProject={removeSporadicProject} rescheduleSporadicProject={rescheduleSporadicProject} startSporadicTimer={startSporadicTimer} pauseSporadicTimer={pauseSporadicTimer} stopSporadicTimer={stopSporadicTimer} startPhotoTimer={startPhotoTimer} pausePhotoTimer={pausePhotoTimer} finishPhotoTimer={finishPhotoTimer} cancelPhotoTimer={cancelPhotoTimer} adjustPhotoManualExtra={adjustPhotoManualExtra} resetSporadicWorkedTime={resetSporadicWorkedTime} resetSporadicPhotoLog={resetSporadicPhotoLog} removeLastPhotoLog={removeLastPhotoLog} pomodoroPrefs={pomodoroPrefs} calendarEvents={calendarEvents} updateCalendarEvent={updateCalendarEvent} phaseTemplates={phaseTemplates} applyFaseTemplate={applyFaseTemplate} addProjectFase={addProjectFase} removeProjectFase={removeProjectFase} toggleProjectFase={toggleProjectFase} setProjectFaseStage={setProjectFaseStage} startFaseTimer={startFaseTimer} pauseFaseTimer={pauseFaseTimer} finishFaseTimer={finishFaseTimer} />
                         ))}
                     </div>
                 </details>
@@ -922,7 +987,7 @@ const EstadoStepper = ({ current, onSelect }: { current: NotionEstado | undefine
     );
 };
 
-const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, rescheduleSporadicProject, startSporadicTimer, pauseSporadicTimer, stopSporadicTimer, startPhotoTimer, pausePhotoTimer, finishPhotoTimer, cancelPhotoTimer, adjustPhotoManualExtra, resetSporadicWorkedTime, resetSporadicPhotoLog, removeLastPhotoLog, pomodoroPrefs, calendarEvents, updateCalendarEvent, dragHandle, phaseTemplates, applyFaseTemplate, addProjectFase, removeProjectFase, toggleProjectFase, startFaseTimer, pauseFaseTimer, finishFaseTimer }: {
+const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, rescheduleSporadicProject, startSporadicTimer, pauseSporadicTimer, stopSporadicTimer, startPhotoTimer, pausePhotoTimer, finishPhotoTimer, cancelPhotoTimer, adjustPhotoManualExtra, resetSporadicWorkedTime, resetSporadicPhotoLog, removeLastPhotoLog, pomodoroPrefs, calendarEvents, updateCalendarEvent, dragHandle, phaseTemplates, applyFaseTemplate, addProjectFase, removeProjectFase, toggleProjectFase, setProjectFaseStage, startFaseTimer, pauseFaseTimer, finishFaseTimer }: {
     p: SporadicProject;
     updateSporadicProject: (id: number, updates: Partial<SporadicProject>) => void;
     removeSporadicProject: (id: number) => void;
@@ -944,9 +1009,10 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
     dragHandle?: React.ReactNode;
     phaseTemplates: FaseTemplate[];
     applyFaseTemplate: (projectId: number, templateId: number) => void;
-    addProjectFase: (projectId: number, label: string) => void;
+    addProjectFase: (projectId: number, label: string, stage?: NotionEstado) => void;
     removeProjectFase: (projectId: number, faseId: number) => void;
     toggleProjectFase: (projectId: number, faseId: number) => void;
+    setProjectFaseStage: (projectId: number, faseId: number, stage: NotionEstado | undefined) => void;
     startFaseTimer: (projectId: number, faseId: number) => void;
     pauseFaseTimer: (projectId: number, faseId: number) => void;
     finishFaseTimer: (projectId: number, faseId: number) => void;
@@ -1845,23 +1911,25 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                                 <span style={{ fontSize: "0.72rem", color: C.outline }}>Sin plantillas de fases todavía — créalas arriba.</span>
                             )
                         ) : (
-                            <div style={{ display: "flex", flexDirection: "column" }}>
-                                {p.fases.map(f => (
+                            <StageGroups
+                                items={p.fases}
+                                currentStage={linkedEvent?.notionEstado}
+                                addPlaceholder="Agregar paso a esta etapa..."
+                                onAdd={(label, stage) => addProjectFase(p.id, label, stage)}
+                                renderRow={f => (
                                     <FaseRow
                                         key={f.id}
                                         projectId={p.id}
                                         fase={f}
                                         toggleProjectFase={toggleProjectFase}
                                         removeProjectFase={removeProjectFase}
+                                        setProjectFaseStage={setProjectFaseStage}
                                         startFaseTimer={startFaseTimer}
                                         pauseFaseTimer={pauseFaseTimer}
                                         finishFaseTimer={finishFaseTimer}
                                     />
-                                ))}
-                            </div>
-                        )}
-                        {!!p.fases?.length && (
-                            <AddInline placeholder="Agregar paso a este proyecto..." onAdd={label => addProjectFase(p.id, label)} />
+                                )}
+                            />
                         )}
                     </div>
                 </details>

@@ -258,6 +258,7 @@ export interface SporadicPhotoLog {
 export interface FaseStep {
     id: number;
     label: string;
+    stage?: NotionEstado;   // etapa del flujo (Agendado…Entregado) a la que pertenece este paso; sin valor = "sin etapa"
 }
 
 // Plantilla reutilizable de fases (ej. "Fotografía": Selección -> Revelado ->
@@ -277,6 +278,7 @@ export interface ProjectFase {
     id: number;
     label: string;
     done: boolean;
+    stage?: NotionEstado;       // etapa del flujo a la que pertenece este paso (copiada de la plantilla, editable por proyecto)
     activeSince?: number;        // timestamp ms si el cronómetro de esta fase está corriendo ahora mismo
     pausedAccumSeconds?: number; // segundos ya acumulados de esta fase, de tramos previos a una pausa
     seconds?: number;            // segundos totales ya cerrados (una vez marcada "hecha")
@@ -410,14 +412,25 @@ export const DEFAULT_PHASE_TEMPLATES: FaseTemplate[] = [
     {
         id: 1,
         name: 'Fotografía',
+        // Pasos repartidos por etapa del flujo (Agendado…Entregado). Basado en el
+        // flujo real de edición del usuario — pensado para reordenar/editar a mano.
         steps: [
-            { id: 1, label: 'Selección' },
-            { id: 2, label: 'Colorización / revelado' },
-            { id: 3, label: 'Retoque de ojos (Claridad y Textura en Lightroom)' },
-            { id: 4, label: 'Quitar ruido' },
-            { id: 5, label: 'Suavizado de ropa (Photoshop)' },
-            { id: 6, label: 'Estilización de vestido (Photoshop, si aplica)' },
-            { id: 7, label: 'Revisión final' },
+            { id: 11, stage: 'En Edición', label: 'Selección de fotos (1–2 h)' },
+            { id: 12, stage: 'En Edición', label: 'Regla de los 4 Bloques — selección completa antes de abrir Photoshop (16 fotos)' },
+            { id: 13, stage: 'En Edición', label: 'Bloque 1 (Familia): 4 fotos con papá y mamá' },
+            { id: 14, stage: 'En Edición', label: 'Bloque 2 (Bebé sola en el pasto): 4 fotos' },
+            { id: 15, stage: 'En Edición', label: 'Bloque 3 (Bebé con cada uno / detalles): 4 fotos' },
+            { id: 16, stage: 'En Edición', label: 'Bloque 4 (La Torta / Clímax): 4 fotos' },
+            { id: 17, stage: 'En Edición', label: 'Lightroom — revelado: recuperar sombras, exposición global, contraste y color (dejar la foto "equilibrada")' },
+            { id: 18, stage: 'En Edición', label: 'Lightroom — colorización de fotos' },
+            { id: 19, stage: 'En Edición', label: 'Photoshop — Paso 1: limpieza rápida (granos y manchas con el pincel corrector)' },
+            { id: 20, stage: 'En Edición', label: 'Photoshop — Paso 2: separación de frecuencias (suavizar piel sin borrar los poros)' },
+            { id: 21, stage: 'En Edición', label: 'Photoshop — Paso 3: Dodge & Burn (aclarar bajo ojos / nariz / mirada; oscurecer pómulos y borde de la cara)' },
+            { id: 22, stage: 'En Edición', label: 'Photoshop — máscara de rostro con calidad' },
+            { id: 23, stage: 'En Edición', label: 'Photoshop — eliminación de objetos' },
+            { id: 24, stage: 'En Edición', label: 'Finalizar: 2 fotos verticales para IG' },
+            { id: 25, stage: 'Terminado', label: 'USB en bolsita de regalo bonito' },
+            { id: 26, stage: 'Terminado', label: 'Portarretrato y fotos impresas' },
         ],
     },
 ];
@@ -998,6 +1011,25 @@ export const useAlDiaState = () => {
         localStorage.setItem('has_migrated_usb_default', 'true');
     }, [isInitialLoad, hasLoadedFromCloud, sporadicProjects]);
 
+    // Migración de una sola vez: la plantilla "Fotografía" pasó de una lista plana
+    // de 7 pasos a un flujo repartido por etapa (Agendado…Entregado). Si la
+    // plantilla sigue sin ningún paso con `stage` (nadie la reorganizó todavía),
+    // se le cargan los pasos nuevos de DEFAULT_PHASE_TEMPLATES. Pisa lo que
+    // hubiera — a esta altura la plantilla solo trae los 7 pasos de fábrica.
+    useEffect(() => {
+        if (isInitialLoad || !hasLoadedFromCloud) return;
+        if (localStorage.getItem('has_migrated_fotografia_stages')) return;
+
+        const nueva = DEFAULT_PHASE_TEMPLATES.find(t => t.name === 'Fotografía');
+        const actual = phaseTemplates.find(t => t.name === 'Fotografía');
+        if (nueva && actual && !actual.steps.some(s => s.stage)) {
+            localWriteTimestampRef.current = Date.now();
+            setPhaseTemplates(prev => prev.map(t => t.id === actual.id ? { ...t, steps: nueva.steps.map(s => ({ ...s })) } : t));
+            console.info('[AlDía] Migración: plantilla "Fotografía" repartida por etapa del flujo.');
+        }
+        localStorage.setItem('has_migrated_fotografia_stages', 'true');
+    }, [isInitialLoad, hasLoadedFromCloud, phaseTemplates]);
+
     const todayStr = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
     const todayIndex = useMemo(() => (new Date().getDay() + 6) % 7, []); // 0=Mon
 
@@ -1530,15 +1562,22 @@ export const useAlDiaState = () => {
         setPhaseTemplates(prev => prev.map(t => t.id === id ? { ...t, name } : t));
     };
 
-    const addFaseTemplateStep = (templateId: number, label: string) => {
+    const addFaseTemplateStep = (templateId: number, label: string, stage?: NotionEstado) => {
         setPhaseTemplates(prev => prev.map(t => t.id === templateId
-            ? { ...t, steps: [...t.steps, { id: nextBlockId(), label }] }
+            ? { ...t, steps: [...t.steps, { id: nextBlockId(), label, stage }] }
             : t));
     };
 
     const removeFaseTemplateStep = (templateId: number, stepId: number) => {
         setPhaseTemplates(prev => prev.map(t => t.id === templateId
             ? { ...t, steps: t.steps.filter(s => s.id !== stepId) }
+            : t));
+    };
+
+    // Mover un paso de plantilla a otra etapa del flujo (o dejarlo sin etapa).
+    const setFaseTemplateStepStage = (templateId: number, stepId: number, stage: NotionEstado | undefined) => {
+        setPhaseTemplates(prev => prev.map(t => t.id === templateId
+            ? { ...t, steps: t.steps.map(s => s.id === stepId ? { ...s, stage } : s) }
             : t));
     };
 
@@ -1549,13 +1588,20 @@ export const useAlDiaState = () => {
     const applyFaseTemplate = (projectId: number, templateId: number) => {
         const template = phaseTemplates.find(t => t.id === templateId);
         if (!template) return;
-        const fases: ProjectFase[] = template.steps.map(s => ({ id: nextBlockId(), label: s.label, done: false }));
+        const fases: ProjectFase[] = template.steps.map(s => ({ id: nextBlockId(), label: s.label, stage: s.stage, done: false }));
         setSporadicProjects(prev => prev.map(p => p.id === projectId ? { ...p, faseTemplateId: templateId, fases } : p));
     };
 
-    const addProjectFase = (projectId: number, label: string) => {
+    const addProjectFase = (projectId: number, label: string, stage?: NotionEstado) => {
         setSporadicProjects(prev => prev.map(p => p.id === projectId
-            ? { ...p, fases: [...(p.fases || []), { id: nextBlockId(), label, done: false }] }
+            ? { ...p, fases: [...(p.fases || []), { id: nextBlockId(), label, stage, done: false }] }
+            : p));
+    };
+
+    // Mover un paso de un proyecto a otra etapa del flujo (o dejarlo sin etapa).
+    const setProjectFaseStage = (projectId: number, faseId: number, stage: NotionEstado | undefined) => {
+        setSporadicProjects(prev => prev.map(p => p.id === projectId
+            ? { ...p, fases: (p.fases || []).map(f => f.id === faseId ? { ...f, stage } : f) }
             : p));
     };
 
@@ -1737,9 +1783,9 @@ export const useAlDiaState = () => {
         resetSporadicWorkedTime: lw(resetSporadicWorkedTime), resetSporadicPhotoLog: lw(resetSporadicPhotoLog), removeLastPhotoLog: lw(removeLastPhotoLog),
         phaseTemplates,
         addFaseTemplate: lw(addFaseTemplate), removeFaseTemplate: lw(removeFaseTemplate), renameFaseTemplate: lw(renameFaseTemplate),
-        addFaseTemplateStep: lw(addFaseTemplateStep), removeFaseTemplateStep: lw(removeFaseTemplateStep),
+        addFaseTemplateStep: lw(addFaseTemplateStep), removeFaseTemplateStep: lw(removeFaseTemplateStep), setFaseTemplateStepStage: lw(setFaseTemplateStepStage),
         applyFaseTemplate: lw(applyFaseTemplate),
-        addProjectFase: lw(addProjectFase), removeProjectFase: lw(removeProjectFase), toggleProjectFase: lw(toggleProjectFase),
+        addProjectFase: lw(addProjectFase), removeProjectFase: lw(removeProjectFase), toggleProjectFase: lw(toggleProjectFase), setProjectFaseStage: lw(setProjectFaseStage),
         startFaseTimer: lw(startFaseTimer), pauseFaseTimer: lw(pauseFaseTimer), finishFaseTimer: lw(finishFaseTimer),
         markShoppingItemPurchased: lw(markShoppingItemPurchased),
         unmarkShoppingItemPurchased: lw(unmarkShoppingItemPurchased),

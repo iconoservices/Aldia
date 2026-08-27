@@ -1,0 +1,968 @@
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { db, auth } from '../firebase';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { onAuthStateChanged, type User } from 'firebase/auth';
+import { useFinanzasState } from './state/useFinanzasState';
+import { useMisionesState } from './state/useMisionesState';
+import { useProyectosState } from './state/useProyectosState';
+import { useCerebroState } from './state/useCerebroState';
+import { useRitaState } from './state/useRitaState';
+import { useNegocioState } from './state/useNegocioState';
+
+// Tipos de datos
+export interface Mission {
+    id: number;
+    text: string;
+    q: string;
+    critical: boolean;
+    completed: boolean;
+    repeat: 'none' | 'daily' | 'weekly' | 'monthly';
+    dueDate?: string; // YYYY-MM-DD
+    dueTime?: string; // HH:mm
+    noteId?: number; // Referencia opcional a una nota del cerebro
+    labels?: string[]; // Etiquetas para categorizar
+    habitId?: number; // Si es un hábito, ID de la fábrica
+    projectId?: number; // Referencia opcional a un proyecto
+    repeatDays?: number[]; // Índices 0-6 (L-D) para repetición personalizada
+    isRoutine?: boolean; // Para identificar tareas que vienen de una rutina
+    routineId?: number; // Referencia a la rutina de origen
+    isHabit?: boolean; // Para identificar habitos en la lista de misiones
+    habitCount?: number; // Para mostrar cuántas veces se ha completado el hábito
+    uid?: string; // ID único para renderizado (evitar colisiones)
+}
+
+export interface Routine {
+    id: number;
+    title: string; // "Mañana", "Tarde", "Noche"
+    color: string;
+    isActive: boolean;
+    repeatDays?: number[]; // [0,1,2,3,4,5,6]
+    startTime?: string;
+    endTime?: string;
+    items: { 
+        id: number; 
+        text: string; 
+        completed: boolean; 
+        time?: string; 
+        linkedProjectId?: number; 
+        linkedTaskId?: number;
+        linkedObjectiveId?: number;
+        linkedNodeId?: number;
+        completedDate?: string;
+    }[];
+}
+
+export interface Transaction {
+    id: number;
+    text: string;
+    amount: number;
+    type: 'ingreso' | 'gasto';
+    isDebt: boolean;
+    isCashless?: boolean;
+    date: string;     // HH:mm
+    fullDate: string; // YYYY-MM-DD
+    projectId?: number;
+    accountId?: number;
+    category?: string;
+    contact?: string;
+    dueDate?: string; // YYYY-MM-DD, opcional — usado por deudas/préstamos
+}
+
+export interface Account {
+    id: number;
+    name: string;
+    color: string;
+    projectIds?: number[];
+}
+
+export interface FixedExpense {
+    id: number;
+    text: string;
+    amount: number;
+    active: boolean;
+    projectId?: number;
+    accountId?: number; // Cuenta desde la que se paga habitualmente
+    lastPaidMonth?: string; // YYYY-MM, presente solo si se pagó el monto completo
+    dueDay?: number; // 1-31 (Día de cobro en el mes)
+    partialPaid?: { month: string; amount: number }; // Abono parcial del mes en curso, aún no cubre el total
+}
+
+export interface CalendarEvent {
+    id: number;
+    title: string;
+    date: string;      // YYYY-MM-DD
+    startTime: string; // HH:mm
+    endTime: string;   // HH:mm
+    description?: string;
+    projectId?: number;
+}
+
+export interface Habit {
+    id: number;
+    name: string;
+    schedule: number[]; // Array de índices 0-6 (L-D) - Días que debe aparecer
+    completedDates: string[]; // Array de fechas YYYY-MM-DD en que se completó
+    linkedRoutineId?: number;     // Rutina de origen (si fue promovido desde rutina)
+    linkedRoutineItemId?: number; // Ítem de rutina de origen
+}
+
+export interface TimeBlock {
+    id: number;
+    label: string;
+    start: string; // HH:mm
+    end: string;   // HH:mm
+    color: string;
+    projectId?: number;
+}
+
+export interface DailyBlock {
+    id: number;
+    label: string;
+    completed: boolean;
+    period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro';
+    date: string; // YYYY-MM-DD
+    projectId?: number;
+    repeatDays?: number[];
+}
+
+export interface TrashItem {
+    block: DailyBlock;
+    deletedAt: number;
+}
+
+// Cosas por comprar: un gasto que todavía no ha ocurrido.
+// Vive aparte de Transaction porque aún no es dinero movido, solo previsto;
+// al marcarlo como comprado se convierte en una transacción real.
+export interface ShoppingItem {
+    id: number;
+    text: string;
+    estimatedAmount: number;
+    priority: 'necesito' | 'quiero';
+    createdAt: string;          // YYYY-MM-DD
+    purchasedAt?: string;       // YYYY-MM-DD, presente solo si ya se compró
+    projectId?: number;
+    note?: string;
+}
+
+export interface UserPreferences {
+    isBudgetFixed: boolean;
+    fixedIncomes: string; // JSON: { id: number, name: string, amount: number, active: boolean }[]
+}
+
+export const DEFAULT_PREFERENCES: UserPreferences = {
+    isBudgetFixed: false,
+    fixedIncomes: "[]"
+};
+
+export interface ProjectNode {
+    id: number;
+    type: 'task' | 'note' | 'checklist';
+    title: string;
+    completed?: boolean;
+    content?: string;
+    subItems?: { id: number; text: string; completed: boolean }[];
+    dueDate?: string; // YYYY-MM-DD
+    color?: string; // Color específico para esta meta/entrega
+    linkedRoutineId?: number;
+    linkedRoutineItemId?: number;
+}
+
+export interface ProjectObjective {
+    id: number;
+    title: string;
+    completed: boolean;
+    nodes: ProjectNode[];
+    dueDate?: string; // YYYY-MM-DD
+    color?: string; // Color para el objetivo/entrega mayor
+    group?: string; // Grupo/Categoría (ej: "Entregas", "Ventas")
+    linkedRoutineId?: number;
+    linkedRoutineItemId?: number;
+}
+
+export interface Project {
+    id: number;
+    name: string;
+    color: string;
+    status: 'activo' | 'pausado' | 'completado';
+    parentId?: number;
+    targetHoursPerWeek?: number;
+    checklist?: { id: number; text: string; completed: boolean; linkedRoutineId?: number; linkedRoutineItemId?: number }[];
+    inventoryItems?: { id: number; text: string; quantity: number }[];
+    incomeCategories?: string[];
+    expenseCategories?: string[];
+    objectives?: ProjectObjective[]; // Nuevo sistema de nivel 2
+}
+
+export const DEFAULT_INCOME_CATEGORIES = ['Sueldo', 'Venta', 'Inversión', 'Otros'];
+export const DEFAULT_EXPENSE_CATEGORIES = ['Comida', 'Transporte', 'Servicios', 'Suscripciones', 'Salud', 'Ocio', 'Otros'];
+
+export interface Note {
+    id: number;
+    title: string;
+    content: string;
+    type: 'text' | 'checklist';
+    items: { id: number; text: string; completed: boolean }[];
+    q: string; // Cuadrante (opcional, para relevancia)
+    color: string;
+    date: string;
+}
+
+// Generador de IDs para bloques diarios.
+// Date.now() a secas colisionaba: al crear varios bloques en un mismo bucle
+// todos caían en el mismo milisegundo y compartían id, de modo que marcar uno
+// marcaba todos los que tuviesen ese id.
+let lastIssuedBlockId = 0;
+const nextBlockId = () => {
+    const now = Date.now();
+    lastIssuedBlockId = now > lastIssuedBlockId ? now : lastIssuedBlockId + 1;
+    return lastIssuedBlockId;
+};
+
+export const useAlDiaState = () => {
+    const [user, setUser] = useState<User | null>(null);
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+    // 1. Estados Modularizados
+    const {
+        transactions, setTransactions, balance,
+        monthlyBudget, setMonthlyBudget, fixedExpenses, setFixedExpenses,
+        addTransaction, addFixedExpense, removeFixedExpense, toggleFixedExpense,
+        updateFixedExpense, markFixedExpensePaid, payFixedExpensePartial, unmarkFixedExpensePaid, repayDebt: repayDebtBase,
+        todayIncome, todayExpense, todayNet, todayIncomeReal, todayExpenseReal,
+        totalIncomeReal, totalExpenseReal, totalNetReal, debtsOwe, debtsOwed,
+        removeTransaction, updateTransaction, updateTransactionGroup
+    } = useFinanzasState();
+
+    const {
+        missions: misionesState, setMissions: setMisionesDirect,
+        habits, setHabits, agenda, setAgenda,
+        toggleMission, updateMission, removeMission, addMission,
+        toggleHabit, addHabit, removeHabit, addCalendarEvent, removeCalendarEvent, updateCalendarEvent,
+        reorderMissions,
+        performanceScore, missionFocusScore, completedMissionsCount
+    } = useMisionesState();
+
+    const {
+        projects, setProjects, timeBlocks, setTimeBlocks, rutinas, setRutinas,
+        addProject, addProjectTask, toggleProjectTask, removeProjectTask,
+        promoteTaskToRoutine, updateProject, deleteProject, reorderProjectTasks, reorderProjects,
+        addTimeBlock, removeTimeBlock, updateTimeBlock,
+        addInventoryItem, updateInventoryItemQuantity, removeInventoryItem,
+        addRoutineItem, updateRoutineItem, toggleRoutineItem, removeRoutineItem,
+        updateRoutine, addRoutine, removeRoutine, updateProjectTask,
+        addProjectCategory, removeProjectCategory, reorderRoutineItems,
+        addProjectObjective, updateProjectObjective, removeProjectObjective,
+        addProjectNode, updateProjectNode, removeProjectNode, promoteNodeToRoutine,
+        promoteRoutineItemToProject
+    } = useProyectosState();
+
+    const {
+        notes, setNotes, addNote, removeNote, toggleNoteItem, updateNote
+    } = useCerebroState();
+
+    const {
+        ritaEntries, setRitaEntries,
+        addEntry: addRitaEntry, removeEntry: removeRitaEntry, updateEntry: updateRitaEntry,
+        addSubitem: addRitaSubitem, toggleSubitem: toggleRitaSubitem, removeSubitem: removeRitaSubitem
+    } = useRitaState();
+
+    const {
+        negocioProjects, setNegocioProjects,
+        addNegocioProject, removeNegocioProject, updateNegocioProject,
+        addClient, updateClient, removeClient,
+        addWorker, updateWorker, removeWorker,
+        addExpense, updateExpense, removeExpense
+    } = useNegocioState();
+
+    const [accounts, setAccounts] = useState<Account[]>([]);
+    const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
+    const [incomeCategories, setIncomeCategories] = useState<string[]>(DEFAULT_INCOME_CATEGORIES);
+    const [expenseCategories, setExpenseCategories] = useState<string[]>(DEFAULT_EXPENSE_CATEGORIES);
+    const [dailyBlocks, setDailyBlocks] = useState<DailyBlock[]>([]);
+    const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
+    const [trash, setTrash] = useState<TrashItem[]>([]);
+    const [hasLoadedFromCloud, setHasLoadedFromCloud] = useState(false);
+    // Timestamp del último cambio local del usuario. Los snapshots de Firestore con lastSync
+    // anterior a este valor serán ignorados para evitar sobreescribir cambios pendientes.
+    const localWriteTimestampRef = useRef<number>(0);
+    // Timestamp del último snapshot recibido de Firestore.
+    // Si no hubo escritura local después de este punto, no re-guardamos (evita el echo-save
+    // que sobreescribía cambios del otro dispositivo).
+    const lastSnapshotTimestampRef = useRef<number>(0);
+
+
+    // 2. Lógica de Sincronización Real-Time
+    useEffect(() => {
+        // Carga inmediata de LocalStorage (Solo al montar)
+        try {
+            const data = {
+                missions: JSON.parse(localStorage.getItem('aldia_missions') || '[]'),
+                transactions: JSON.parse(localStorage.getItem('aldia_transactions') || '[]'),
+                habits: JSON.parse(localStorage.getItem('aldia_habits') || '[]'),
+                agenda: JSON.parse(localStorage.getItem('aldia_agenda') || '[]'),
+                timeblocks: JSON.parse(localStorage.getItem('aldia_timeblocks') || '[]'),
+                notes: JSON.parse(localStorage.getItem('aldia_notes') || '[]'),
+                projects: JSON.parse(localStorage.getItem('aldia_projects') || '[]'),
+                rutinas: JSON.parse(localStorage.getItem('aldia_rutinas') || '[]'),
+                budget: parseFloat(localStorage.getItem('aldia_monthly_budget') || '0'),
+                fixed: JSON.parse(localStorage.getItem('aldia_fixed_expenses') || '[]'),
+                accounts: JSON.parse(localStorage.getItem('aldia_accounts') || '[]'),
+                preferences: JSON.parse(localStorage.getItem('aldia_preferences') || JSON.stringify(DEFAULT_PREFERENCES)),
+                incomeCategories: JSON.parse(localStorage.getItem('aldia_income_categories') || JSON.stringify(DEFAULT_INCOME_CATEGORIES)),
+                expenseCategories: JSON.parse(localStorage.getItem('aldia_expense_categories') || JSON.stringify(DEFAULT_EXPENSE_CATEGORIES)),
+                dailyblocks: JSON.parse(localStorage.getItem('aldia_dailyblocks') || '[]'),
+                shoppingList: JSON.parse(localStorage.getItem('aldia_shopping_list') || '[]'),
+                ritaEntries: JSON.parse(localStorage.getItem('aldia_rita_entries') || '[]'),
+                trash: JSON.parse(localStorage.getItem('aldia_trash') || '[]'),
+                negocioProjects: JSON.parse(localStorage.getItem('aldia_negocio_projects') || '[]')
+            };
+            setMisionesDirect(data.missions);
+            setTransactions(data.transactions);
+            setHabits(data.habits);
+            setAgenda(data.agenda);
+            setTimeBlocks(data.timeblocks);
+            setNotes(data.notes);
+            setProjects(data.projects);
+            setRutinas(data.rutinas);
+            setMonthlyBudget(data.budget);
+            setFixedExpenses(data.fixed);
+            setAccounts(data.accounts);
+            setPreferences(data.preferences);
+            setIncomeCategories(data.incomeCategories);
+            setExpenseCategories(data.expenseCategories);
+            setDailyBlocks(data.dailyblocks);
+            setShoppingList(data.shoppingList);
+            setRitaEntries(data.ritaEntries);
+            setNegocioProjects(data.negocioProjects);
+            setTrash(data.trash.filter((t: TrashItem) => Date.now() - t.deletedAt < 60 * 24 * 60 * 60 * 1000));
+        } catch (e) { console.error("Error inicial local:", e); }
+    }, []); // Una sola vez al montar
+
+    useEffect(() => {
+        const unsubscribeAuth = onAuthStateChanged(auth, (authUser) => {
+            setUser(authUser);
+            if (!authUser) {
+                setIsInitialLoad(false);
+            }
+        });
+        return () => unsubscribeAuth();
+    }, []);
+
+    // 2. Lógica de Sincronización Real-Time
+    useEffect(() => {
+        if (!user) {
+            // Sin sesión trabajamos en modo local: no hay nube que esperar, así que
+            // habilitamos el guardado igualmente. Antes esto quedaba en false y el
+            // efecto de persistencia salía por el return, de modo que sin login NADA
+            // se escribía en localStorage y el trabajo se perdía al recargar.
+            // El guardado a Firestore sigue protegido por su propio `if (user)`.
+            setHasLoadedFromCloud(true);
+            return;
+        }
+
+        const userId = user.uid;
+        const docRef = doc(db, 'users', userId);
+
+        const unsubSnap = onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const cloud = docSnap.data();
+
+                // Si el snapshot es anterior a nuestro último cambio local, ignorarlo.
+                // Esto previene que snapshots con datos viejos sobreescriban transacciones recién añadidas.
+                const cloudLastSync = cloud.lastSync ? new Date(cloud.lastSync).getTime() : 0;
+                if (cloudLastSync < localWriteTimestampRef.current) {
+                    setHasLoadedFromCloud(true);
+                    setIsInitialLoad(false);
+                    return;
+                }
+
+                // Función helper que usa el setter funcional para no depender del valor actual
+                const sync = (newValue: any, setter: Function) => {
+                    if (newValue !== undefined) {
+                        setter((prev: any) => {
+                            if (JSON.stringify(newValue) !== JSON.stringify(prev)) {
+                                return newValue;
+                            }
+                            return prev;
+                        });
+                    }
+                };
+
+                // Actualizaciones individuales
+                sync(cloud.missions, setMisionesDirect);
+                sync(cloud.transactions, setTransactions);
+                sync(cloud.habits, setHabits);
+                sync(cloud.agenda, setAgenda);
+                sync(cloud.notes, setNotes);
+                sync(cloud.projects, setProjects);
+                sync(cloud.rutinas, setRutinas);
+                sync(cloud.fixedExpenses, setFixedExpenses);
+                sync(cloud.timeBlocks, setTimeBlocks);
+                sync(cloud.accounts, setAccounts);
+                sync(cloud.preferences, setPreferences);
+                sync(cloud.incomeCategories, setIncomeCategories);
+                sync(cloud.expenseCategories, setExpenseCategories);
+                sync(cloud.dailyBlocks, setDailyBlocks);
+                sync(cloud.shoppingList, setShoppingList);
+                sync(cloud.ritaEntries, setRitaEntries);
+                sync(cloud.negocioProjects, setNegocioProjects);
+                sync(cloud.trash, setTrash);
+                if (cloud.monthlyBudget !== undefined) {
+                    setMonthlyBudget(prev => Math.abs(cloud.monthlyBudget - prev) > 0.01 ? Number(cloud.monthlyBudget) : prev);
+                }
+
+                lastSnapshotTimestampRef.current = Date.now();
+                setHasLoadedFromCloud(true);
+                setIsInitialLoad(false);
+            } else {
+                lastSnapshotTimestampRef.current = Date.now();
+                setHasLoadedFromCloud(true);
+                setIsInitialLoad(false);
+            }
+        }, (error) => {
+            console.error("Error Snapshot Firestore:", error);
+            setIsInitialLoad(false);
+        });
+
+        return () => unsubSnap();
+    }, [user?.uid]); // Solo re-suscribir si cambia el usuario
+
+    // Mantenemos la referencia más reciente del estado completo.
+    // Esto previene "stale closures" en el setTimeout del debounced save,
+    // donde un array viejo de transactions podía enviarse a Firestore y causar un rollback visual.
+    const latestStateRef = useRef({
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, ritaEntries, negocioProjects, trash
+    });
+    latestStateRef.current = {
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, ritaEntries, negocioProjects, trash
+    };
+
+    // 3. Persistencia Cloud (Debounced) y Local (Immediate)
+    useEffect(() => {
+        // SEGURIDAD: No guardar si todavía no hemos cargado de la nube
+        if (isInitialLoad || !hasLoadedFromCloud) return;
+
+        // Guardado Local inmediato
+        localStorage.setItem('aldia_missions', JSON.stringify(misionesState));
+        localStorage.setItem('aldia_transactions', JSON.stringify(transactions));
+        localStorage.setItem('aldia_habits', JSON.stringify(habits));
+        localStorage.setItem('aldia_agenda', JSON.stringify(agenda));
+        localStorage.setItem('aldia_timeblocks', JSON.stringify(timeBlocks));
+        localStorage.setItem('aldia_notes', JSON.stringify(notes));
+        localStorage.setItem('aldia_projects', JSON.stringify(projects));
+        localStorage.setItem('aldia_rutinas', JSON.stringify(rutinas));
+        localStorage.setItem('aldia_monthly_budget', JSON.stringify(monthlyBudget));
+        localStorage.setItem('aldia_fixed_expenses', JSON.stringify(fixedExpenses));
+        localStorage.setItem('aldia_accounts', JSON.stringify(accounts));
+        localStorage.setItem('aldia_preferences', JSON.stringify(preferences));
+        localStorage.setItem('aldia_income_categories', JSON.stringify(incomeCategories));
+        localStorage.setItem('aldia_expense_categories', JSON.stringify(expenseCategories));
+        localStorage.setItem('aldia_dailyblocks', JSON.stringify(dailyBlocks));
+        localStorage.setItem('aldia_shopping_list', JSON.stringify(shoppingList));
+        localStorage.setItem('aldia_rita_entries', JSON.stringify(ritaEntries));
+        localStorage.setItem('aldia_negocio_projects', JSON.stringify(negocioProjects));
+        localStorage.setItem('aldia_trash', JSON.stringify(trash));
+
+        // Guardado Cloud debounced
+        if (user) {
+            const timer = setTimeout(() => {
+                // GUARD ANTI-ECHO: Solo guardar si hubo una escritura LOCAL
+                // después del último snapshot recibido. Esto evita que el
+                // dispositivo A re-envíe a Firestore datos que solo cambiaron
+                // porque recibió un snapshot del dispositivo B.
+                if (localWriteTimestampRef.current <= lastSnapshotTimestampRef.current) return;
+
+                const docRef = doc(db, 'users', user.uid);
+                const syncTimestamp = new Date().toISOString();
+                const payload = JSON.parse(JSON.stringify({
+                    ...latestStateRef.current,
+                    lastSync: syncTimestamp
+                }));
+                setDoc(docRef, payload, { merge: true })
+                    .catch(error => {
+                        console.error("🔥 Error crítico guardando en Firestore:", error);
+                        alert("ERROR DE SINCRONIZACIÓN: No se pudo guardar en la nube. " + error.message);
+                    });
+            }, 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, ritaEntries, negocioProjects, trash]);
+
+    // 4. Migraciones y Lógica Derivada
+    useEffect(() => {
+        if (isInitialLoad) return;
+
+        // Migración projectId -> projectIds en Cuentas
+        const migratedAccounts = accounts.map(acc => {
+            const a = acc as any;
+            if (a.projectId !== undefined && (!a.projectIds || a.projectIds.length === 0)) {
+                const { projectId, ...rest } = a;
+                return { ...rest, projectIds: [projectId] } as Account;
+            }
+            return acc;
+        });
+        if (JSON.stringify(migratedAccounts) !== JSON.stringify(accounts)) {
+            setAccounts(migratedAccounts);
+        }
+
+        // Recuperar Proyecto "Personal" con ID 1
+        const hasId1 = transactions.some(tx => tx.projectId === 1) ||
+            misionesState.some(m => m.projectId === 1) ||
+            accounts.some(acc => acc.projectIds?.includes(1));
+        if (hasId1 && !projects.some(p => p.id === 1)) {
+            setProjects(prev => [{ id: 1, name: '☕ Personal (Recuperado)', color: '#888', status: 'activo' }, ...prev]);
+        }
+
+        // Sembrado automático de proyectos y tareas diarias por defecto del ecosistema
+        if (hasLoadedFromCloud) {
+            const requiredProjects = [
+                { id: 1, name: '☕ Personal', color: '#8A9A9D' },
+                { id: 2, name: '🌴 Yo soy de la Selva', color: '#06D6A0' },
+                { id: 3, name: '🎬 RCC', color: '#F72585' },
+                { id: 4, name: '🛒 Boga Marketplace', color: '#6BCB77' },
+                { id: 5, name: '📸 ICONO Agency', color: '#4D96FF' },
+                { id: 6, name: '🎞️ Geekoedia', color: '#CBD5E1' },
+                { id: 7, name: '👤 Juanma', color: '#FF8E53' }
+            ];
+
+            // El sembrado es de una sola vez. Antes se ejecutaba en cada render y
+            // recreaba por nombre cualquier proyecto borrado: era imposible eliminar
+            // ninguno de los 7 por defecto, resucitaban solos.
+            if (!localStorage.getItem('has_seeded_projects')) {
+                const updatedProjects = [...projects];
+                let projectsChanged = false;
+
+                requiredProjects.forEach(rp => {
+                    const searchName = rp.name.split(' ').slice(1).join(' ').toLowerCase();
+                    const exists = projects.some(p => p.name.toLowerCase().includes(searchName));
+                    if (!exists) {
+                        updatedProjects.push({
+                            id: rp.id,
+                            name: rp.name,
+                            color: rp.color,
+                            status: 'activo',
+                            checklist: [],
+                            inventoryItems: []
+                        } as any);
+                        projectsChanged = true;
+                    }
+                });
+
+                if (projectsChanged) {
+                    setProjects(updatedProjects);
+                }
+                localStorage.setItem('has_seeded_projects', 'true');
+            }
+
+            // Sembrar bloques si dailyBlocks está vacío
+            if (dailyBlocks.length === 0 && !localStorage.getItem('has_seeded_daily_blocks')) {
+                const current = new Date();
+                const day = current.getDay();
+                const diff = current.getDate() - day + (day === 0 ? -6 : 1);
+                const startOfWeek = new Date(current.setDate(diff));
+
+                const seededBlocks: DailyBlock[] = [];
+                const taskTemplates = [
+                    { label: 'Bañarme', period: 'Mañana' as const, projectId: 1, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
+                    { label: 'Comer', period: 'Mañana' as const, projectId: 1, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
+                    { label: 'Leer', period: 'Tarde' as const, projectId: 1, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
+                    { label: 'Subir noticia 1', period: 'Mañana' as const, projectId: 2, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
+                    { label: 'Subir noticia 2', period: 'Tarde' as const, projectId: 2, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
+                    { label: 'Subir noticia 3', period: 'Tarde' as const, projectId: 2, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
+                    { label: 'Subir noticia 4', period: 'Noche' as const, projectId: 2, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
+                    { label: 'Subir video Geekpedia', period: 'Tarde' as const, projectId: 6, repeatDays: [2, 5] },
+                    { label: 'Sesiones de fotos / Grabación', period: 'Tarde' as const, projectId: 5, repeatDays: [0, 1, 2, 3, 4] }
+                ];
+
+                for (let i = 0; i < 7; i++) {
+                    const tempDate = new Date(startOfWeek);
+                    tempDate.setDate(startOfWeek.getDate() + i);
+                    const dateStr = tempDate.toLocaleDateString('en-CA');
+                    const dayOfWeek = i;
+
+                    taskTemplates.forEach(t => {
+                        if (t.repeatDays.includes(dayOfWeek)) {
+                            seededBlocks.push({
+                                id: nextBlockId(),
+                                label: t.label,
+                                completed: false,
+                                period: t.period,
+                                date: dateStr,
+                                projectId: t.projectId,
+                                repeatDays: t.repeatDays
+                            });
+                        }
+                    });
+                }
+
+                if (seededBlocks.length > 0) {
+                    setDailyBlocks(seededBlocks);
+                    localStorage.setItem('has_seeded_daily_blocks', 'true');
+                }
+            }
+        }
+    }, [isInitialLoad, transactions.length, misionesState.length, accounts.length, projects.length, hasLoadedFromCloud, dailyBlocks.length]);
+
+    // Migración de una sola vez: IDs duplicados en dailyBlocks.
+    // addDailyBlock usaba Date.now() a secas, así que los bloques creados dentro de
+    // un mismo bucle (una semana entera, p.ej.) compartían id. Como toggleDailyBlock
+    // busca por id, marcar una tarea marcaba a todos sus gemelos, incluso de otros
+    // días y de otras tareas. Reasignamos ids únicos conservando todo lo demás.
+    useEffect(() => {
+        if (isInitialLoad || !hasLoadedFromCloud || dailyBlocks.length === 0) return;
+
+        const vistos = new Set<number>();
+        const hayDuplicados = dailyBlocks.some(b => {
+            if (vistos.has(b.id)) return true;
+            vistos.add(b.id);
+            return false;
+        });
+        if (!hayDuplicados) return;
+
+        // El contador arranca por encima de cualquier id existente para no chocar
+        // con los que se conservan.
+        let siguienteId = Math.max(Date.now(), ...dailyBlocks.map(b => Number(b.id) || 0));
+        const usados = new Set<number>();
+        let reasignados = 0;
+
+        const reparados = dailyBlocks.map(b => {
+            if (!usados.has(b.id)) {
+                usados.add(b.id);
+                return b;
+            }
+            siguienteId += 1;
+            usados.add(siguienteId);
+            reasignados += 1;
+            return { ...b, id: siguienteId };
+        });
+
+        localWriteTimestampRef.current = Date.now();
+        setDailyBlocks(reparados);
+        console.info(`[AlDía] Migración de IDs: ${reasignados} de ${dailyBlocks.length} bloques reasignados.`);
+    }, [isInitialLoad, hasLoadedFromCloud, dailyBlocks]);
+
+    // Limpieza de una sola vez: proyectos sembrados por defecto que nunca se usaron.
+    // El sembrado antiguo los recreaba en cada render, así que se acumularon duplicados
+    // (p. ej. "📸 ICONO Agency" junto al "Icono Growth" real del usuario).
+    // Triple condición para no borrar nada de valor: tiene que ser un id del sembrado,
+    // estar vacío, y no estar referenciado por ningún otro dato.
+    useEffect(() => {
+        if (isInitialLoad || !hasLoadedFromCloud || projects.length === 0) return;
+        if (localStorage.getItem('has_cleaned_seeded_projects')) return;
+
+        const IDS_SEMBRADOS = [1, 2, 3, 4, 5, 6, 7];
+
+        const estaEnUso = (id: number) =>
+            transactions.some(t => t.projectId === id) ||
+            dailyBlocks.some(b => b.projectId === id) ||
+            fixedExpenses.some(f => f.projectId === id) ||
+            misionesState.some(m => m.projectId === id) ||
+            accounts.some(a => (a.projectIds || []).includes(id)) ||
+            timeBlocks.some(t => t.projectId === id);
+
+        const estaVacio = (p: Project) =>
+            !p.checklist?.length && !p.objectives?.length && !p.inventoryItems?.length;
+
+        const aBorrar = projects.filter(p =>
+            IDS_SEMBRADOS.includes(p.id) && estaVacio(p) && !estaEnUso(p.id)
+        );
+
+        if (aBorrar.length) {
+            localWriteTimestampRef.current = Date.now();
+            setProjects(prev => prev.filter(p => !aBorrar.some(b => b.id === p.id)));
+            console.info(`[AlDía] Limpieza: ${aBorrar.length} proyectos sembrados sin usar eliminados (${aBorrar.map(p => p.name).join(', ')}).`);
+        }
+        localStorage.setItem('has_cleaned_seeded_projects', 'true');
+    }, [isInitialLoad, hasLoadedFromCloud, projects, transactions, dailyBlocks, fixedExpenses, misionesState, accounts, timeBlocks]);
+
+    const todayStr = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
+    const todayIndex = useMemo(() => (new Date().getDay() + 6) % 7, []); // 0=Mon
+
+    const habitMissions = useMemo(() => habits
+        .filter(h => h.schedule?.includes(todayIndex))
+        .map(h => ({
+            id: h.id,
+            uid: `habit-${h.id}`,
+            text: h.name,
+            completed: h.completedDates?.includes(todayStr),
+            q: 'Q2' as const, repeat: 'none' as const, critical: false, isHabit: true,
+            habitCount: h.completedDates?.length || 0
+        })), [habits, todayIndex, todayStr]);
+
+    const routineMissions = useMemo(() => rutinas
+        .filter(r => r.isActive && r.repeatDays?.includes(todayIndex))
+        .flatMap(r => (r.items || []).map(item => ({
+            id: item.id,
+            uid: `routine-${r.id}-${item.id}`,
+            text: item.text,
+            completed: item.completed,
+            dueTime: item.time || r.startTime,
+            q: 'Q2' as const, repeat: 'none' as const, critical: false, isRoutine: true, routineId: r.id
+        }))), [rutinas, todayIndex]);
+
+    const todayMissions = useMemo(() => {
+        const baseMissions = [
+            ...misionesState.filter(m => (!m.dueDate || m.dueDate <= todayStr) && !m.isRoutine && !m.isHabit).map(m => ({ ...m, uid: `task-${m.id}` })),
+            ...routineMissions,
+            ...habitMissions
+        ] as Mission[];
+
+        return [...baseMissions].sort((a, b) => {
+            if (a.completed === b.completed) return 0;
+            return a.completed ? 1 : -1;
+        });
+    }, [misionesState, routineMissions, habitMissions, todayStr]);
+
+    // Categorías globales de Ingreso/Gasto (usadas en RegistroMovimiento, el modal
+    // compartido entre Checklist y Finanzas). Empiezan en los defaults pero el
+    // usuario puede agregar o quitar las que quiera desde Finanzas.
+    const addCategory = (type: 'ingreso' | 'gasto', name: string) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        const setter = type === 'ingreso' ? setIncomeCategories : setExpenseCategories;
+        setter(prev => prev.includes(trimmed) ? prev : [...prev, trimmed]);
+    };
+
+    const removeCategory = (type: 'ingreso' | 'gasto', name: string) => {
+        const setter = type === 'ingreso' ? setIncomeCategories : setExpenseCategories;
+        setter(prev => prev.filter(c => c !== name));
+    };
+
+    // Renombrar reasigna también los movimientos ya existentes con esa categoría,
+    // para que el historial no quede huérfano con un nombre que ya no existe.
+    // Si el nuevo nombre coincide con una categoría existente, el efecto es fusionar.
+    const renameCategory = (type: 'ingreso' | 'gasto', oldName: string, newName: string) => {
+        const trimmed = newName.trim();
+        if (!trimmed || trimmed === oldName) return;
+        const setter = type === 'ingreso' ? setIncomeCategories : setExpenseCategories;
+        setter(prev => prev.includes(trimmed) ? prev.filter(c => c !== oldName) : prev.map(c => c === oldName ? trimmed : c));
+        setTransactions(prev => prev.map(t => t.type === type && t.category === oldName ? { ...t, category: trimmed } : t));
+    };
+
+    const mergeCategory = (type: 'ingreso' | 'gasto', sourceName: string, targetName: string) => {
+        if (sourceName === targetName) return;
+        const setter = type === 'ingreso' ? setIncomeCategories : setExpenseCategories;
+        setter(prev => prev.filter(c => c !== sourceName));
+        setTransactions(prev => prev.map(t => t.type === type && t.category === sourceName ? { ...t, category: targetName } : t));
+    };
+
+    const clearAllData = async () => {
+        setMisionesDirect([]); setTransactions([]); setHabits([]); setAgenda([]);
+        setNotes([]); setProjects([]); setRutinas([]); setMonthlyBudget(0);
+        setFixedExpenses([]); setAccounts([]); setDailyBlocks([]); setRitaEntries([]);
+        setNegocioProjects([]);
+        localStorage.clear();
+        if (user) {
+            const docRef = doc(db, 'users', user.uid);
+            await setDoc(docRef, { lastSync: new Date().toISOString() }, { merge: false });
+        }
+    };
+
+    // Reinicio selectivo del pilar Finanzas: a diferencia de clearAllData, deja
+    // Checklist, Negocio y el resto intactos. Las deudas viven dentro del mismo
+    // array de transacciones (flag isDebt), así que se filtran aparte para que
+    // se puedan borrar transacciones normales sin tocar deudas, o al revés.
+    const clearFinanzasSelectivo = (opciones: {
+        transacciones?: boolean; deudas?: boolean; cuentas?: boolean;
+        presupuesto?: boolean; gastosFijos?: boolean;
+    }) => {
+        if (opciones.transacciones || opciones.deudas) {
+            setTransactions(prev => prev.filter(t => {
+                if (opciones.transacciones && !t.isDebt) return false;
+                if (opciones.deudas && t.isDebt) return false;
+                return true;
+            }));
+        }
+        if (opciones.cuentas) setAccounts([]);
+        if (opciones.presupuesto) setMonthlyBudget(0);
+        if (opciones.gastosFijos) setFixedExpenses([]);
+    };
+
+    const addDailyBlock = (label: string, period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro', date: string, completed: boolean = false, projectId?: number, repeatDays?: number[]) => {
+        const newBlock: DailyBlock = {
+            id: nextBlockId(),
+            label,
+            completed,
+            period,
+            date,
+            projectId,
+            repeatDays
+        };
+        setDailyBlocks(prev => [...prev, newBlock]);
+    };
+
+    const toggleDailyBlock = (id: number) => {
+        setDailyBlocks(prev => prev.map(b => b.id === id ? { ...b, completed: !b.completed } : b));
+    };
+
+    const removeDailyBlock = (idOrIds: number | number[]) => {
+        const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+        const removed = dailyBlocks.filter(b => ids.includes(b.id));
+        if (removed.length) {
+            setTrash(t => {
+                const existingIds = new Set(t.map(i => i.block.id));
+                return [...t, ...removed.filter(b => !existingIds.has(b.id)).map(block => ({ block, deletedAt: Date.now() }))];
+            });
+        }
+        setDailyBlocks(prev => prev.filter(b => !ids.includes(b.id)));
+    };
+
+    const restoreFromTrash = (id: number) => {
+        setTrash(prev => {
+            const item = prev.find(t => t.block.id === id);
+            if (item) {
+                setDailyBlocks(b => [...b, item.block]);
+                return prev.filter(t => t.block.id !== id);
+            }
+            return prev;
+        });
+    };
+
+    const clearTrash = () => setTrash([]);
+
+    // Auto-limpiar items de la papelera después de 60 días
+    const TRASH_EXPIRY_MS = 60 * 24 * 60 * 60 * 1000;
+    useEffect(() => {
+        const now = Date.now();
+        setTrash(prev => {
+            const filtered = prev.filter(t => now - t.deletedAt < TRASH_EXPIRY_MS);
+            return filtered.length !== prev.length ? filtered : prev;
+        });
+    }, [trash.length]);
+
+    const updateDailyBlock = (id: number, updates: Partial<DailyBlock>) => {
+        setDailyBlocks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+    };
+
+    /* ── Lista de compras ─────────────────────────────────────────── */
+
+    const addShoppingItem = (
+        text: string,
+        estimatedAmount: number,
+        priority: 'necesito' | 'quiero' = 'necesito',
+        projectId?: number,
+        note?: string
+    ) => {
+        const item: ShoppingItem = {
+            id: nextBlockId(),
+            text,
+            estimatedAmount: Math.abs(estimatedAmount) || 0,
+            priority,
+            createdAt: new Date().toLocaleDateString('en-CA'),
+            projectId,
+            note
+        };
+        setShoppingList(prev => [item, ...prev]);
+    };
+
+    const updateShoppingItem = (id: number, updates: Partial<ShoppingItem>) => {
+        setShoppingList(prev => prev.map(i => i.id === id ? { ...i, ...updates } : i));
+    };
+
+    const removeShoppingItem = (id: number) => {
+        setShoppingList(prev => prev.filter(i => i.id !== id));
+    };
+
+    // Marcar como comprado registra el gasto real de una vez, para no tener que
+    // teclear la misma compra dos veces. El importe final puede diferir del estimado.
+    const markShoppingItemPurchased = (id: number, finalAmount?: number, accountId?: number) => {
+        const item = shoppingList.find(i => i.id === id);
+        if (!item || item.purchasedAt) return;
+
+        const amount = finalAmount !== undefined ? Math.abs(finalAmount) : item.estimatedAmount;
+        addTransaction(item.text, amount, 'gasto', false, item.projectId, accountId, false, 'Compras', undefined);
+        setShoppingList(prev => prev.map(i =>
+            i.id === id
+                ? { ...i, purchasedAt: new Date().toLocaleDateString('en-CA'), estimatedAmount: amount }
+                : i
+        ));
+    };
+
+    const unmarkShoppingItemPurchased = (id: number) => {
+        setShoppingList(prev => prev.map(i => {
+            if (i.id !== id) return i;
+            const { purchasedAt, ...rest } = i;
+            return rest as ShoppingItem;
+        }));
+    };
+
+    // Helper: marca escritura local antes de cualquier mutación.
+    // Garantiza que el debounce de Firestore se active y que el guard anti-echo
+    // sepa que este cambio viene del usuario, no de un snapshot.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const lw = <T extends any[]>(fn: (...args: T) => any) => (...args: T) => {
+        localWriteTimestampRef.current = Date.now();
+        return fn(...args);
+    };
+
+    return {
+        // Misiones
+        missions: misionesState, todayMissions,
+        toggleMission: lw(toggleMission), updateMission: lw(updateMission),
+        addMission: lw(addMission), removeMission: lw(removeMission), reorderMissions: lw(reorderMissions),
+        habits, toggleHabit: lw(toggleHabit), addHabit: lw(addHabit), removeHabit: lw(removeHabit),
+        agenda, addCalendarEvent: lw(addCalendarEvent), removeCalendarEvent: lw(removeCalendarEvent), updateCalendarEvent: lw(updateCalendarEvent),
+        performanceScore, missionFocusScore, completedMissionsCount,
+        // Finanzas
+        transactions, balance, todayIncome, todayExpense, todayNet, todayIncomeReal, todayExpenseReal,
+        totalIncomeReal, totalExpenseReal, totalNetReal, debtsOwe, debtsOwed,
+        monthlyBudget, updateMonthlyBudget: lw((a: number) => setMonthlyBudget(a)),
+        fixedExpenses, addFixedExpense: lw(addFixedExpense), removeFixedExpense: lw(removeFixedExpense),
+        toggleFixedExpense: lw(toggleFixedExpense), updateFixedExpense: lw(updateFixedExpense),
+        markFixedExpensePaid: lw(markFixedExpensePaid), payFixedExpensePartial: lw(payFixedExpensePartial), unmarkFixedExpensePaid: lw(unmarkFixedExpensePaid),
+        repayDebt: lw(repayDebtBase),
+        addTransaction: lw((text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projId?: number, accId?: number, isCashless?: boolean, cat?: string, contact?: string, dueDate?: string) => {
+            addTransaction(text, amount, type, isDebt, projId, accId, isCashless, cat, contact, dueDate);
+            if (projId && accId) {
+                setAccounts(prev => prev.map(acc => {
+                    if (acc.id === accId && !acc.projectIds?.includes(projId)) {
+                        return { ...acc, projectIds: [...(acc.projectIds || []), projId] };
+                    }
+                    return acc;
+                }));
+            }
+        }),
+        removeTransaction: lw(removeTransaction), updateTransaction: lw(updateTransaction), updateTransactionGroup: lw(updateTransactionGroup),
+        // Proyectos
+        projects, addProject: lw(addProject), addProjectTask: lw(addProjectTask),
+        toggleProjectTask: lw(toggleProjectTask), removeProjectTask: lw(removeProjectTask),
+        reorderProjectTasks: lw(reorderProjectTasks), reorderProjects: lw(reorderProjects),
+        promoteTaskToRoutine: lw(promoteTaskToRoutine), promoteNodeToRoutine: lw(promoteNodeToRoutine),
+        updateProject: lw(updateProject), deleteProject: lw(deleteProject), updateProjectTask: lw(updateProjectTask),
+        addInventoryItem: lw(addInventoryItem), updateInventoryItemQuantity: lw(updateInventoryItemQuantity), removeInventoryItem: lw(removeInventoryItem),
+        addProjectObjective: lw(addProjectObjective), updateProjectObjective: lw(updateProjectObjective), removeProjectObjective: lw(removeProjectObjective),
+        addProjectNode: lw(addProjectNode), updateProjectNode: lw(updateProjectNode), removeProjectNode: lw(removeProjectNode),
+        addProjectCategory: lw(addProjectCategory), removeProjectCategory: lw(removeProjectCategory),
+        timeBlocks, addTimeBlock: lw(addTimeBlock), removeTimeBlock: lw(removeTimeBlock), updateTimeBlock: lw(updateTimeBlock),
+        rutinas, addRoutineItem: lw(addRoutineItem), updateRoutineItem: lw(updateRoutineItem),
+        toggleRoutineItem: lw(toggleRoutineItem), removeRoutineItem: lw(removeRoutineItem),
+        updateRoutine: lw(updateRoutine), addRoutine: lw(addRoutine), removeRoutine: lw(removeRoutine), reorderRoutineItems: lw(reorderRoutineItems),
+        promoteRoutineItemToProject: lw(promoteRoutineItemToProject),
+        // Otros
+        notes, addNote: lw(addNote), removeNote: lw(removeNote), toggleNoteItem: lw(toggleNoteItem), updateNote: lw(updateNote),
+        accounts, setAccounts: lw(setAccounts),
+        preferences, updatePreference: lw((key: keyof UserPreferences, value: any) => setPreferences(prev => ({ ...prev, [key]: value }))),
+        incomeCategories, expenseCategories, addCategory: lw(addCategory), removeCategory: lw(removeCategory),
+        renameCategory: lw(renameCategory), mergeCategory: lw(mergeCategory),
+        // Bloques Diarios
+        dailyBlocks, addDailyBlock: lw(addDailyBlock), toggleDailyBlock: lw(toggleDailyBlock), removeDailyBlock: lw(removeDailyBlock), updateDailyBlock: lw(updateDailyBlock),
+        // Lista de compras
+        shoppingList,
+        addShoppingItem: lw(addShoppingItem), updateShoppingItem: lw(updateShoppingItem),
+        removeShoppingItem: lw(removeShoppingItem),
+        markShoppingItemPurchased: lw(markShoppingItemPurchased),
+        unmarkShoppingItemPurchased: lw(unmarkShoppingItemPurchased),
+        trash, restoreFromTrash: lw(restoreFromTrash), clearTrash: lw(clearTrash),
+        // Hoja de Rita
+        ritaEntries,
+        addRitaEntry: lw(addRitaEntry), removeRitaEntry: lw(removeRitaEntry), updateRitaEntry: lw(updateRitaEntry),
+        addRitaSubitem: lw(addRitaSubitem), toggleRitaSubitem: lw(toggleRitaSubitem), removeRitaSubitem: lw(removeRitaSubitem),
+        // Negocio
+        negocioProjects,
+        addNegocioProject: lw(addNegocioProject), removeNegocioProject: lw(removeNegocioProject), updateNegocioProject: lw(updateNegocioProject),
+        addClient: lw(addClient), updateClient: lw(updateClient), removeClient: lw(removeClient),
+        addWorker: lw(addWorker), updateWorker: lw(updateWorker), removeWorker: lw(removeWorker),
+        addExpense: lw(addExpense), updateExpense: lw(updateExpense), removeExpense: lw(removeExpense),
+        user, isInitialLoad, clearAllData, clearFinanzasSelectivo: lw(clearFinanzasSelectivo)
+    };
+};

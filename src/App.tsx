@@ -533,10 +533,12 @@ function App() {
                 removeFaseTemplate={state.removeFaseTemplate}
                 addFaseTemplateStep={state.addFaseTemplateStep}
                 removeFaseTemplateStep={state.removeFaseTemplateStep}
+                setFaseTemplateStepStage={state.setFaseTemplateStepStage}
                 applyFaseTemplate={state.applyFaseTemplate}
                 addProjectFase={state.addProjectFase}
                 removeProjectFase={state.removeProjectFase}
                 toggleProjectFase={state.toggleProjectFase}
+                setProjectFaseStage={state.setProjectFaseStage}
                 startFaseTimer={state.startFaseTimer}
                 pauseFaseTimer={state.pauseFaseTimer}
                 finishFaseTimer={state.finishFaseTimer}
