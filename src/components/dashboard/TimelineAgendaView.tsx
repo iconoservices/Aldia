@@ -491,11 +491,11 @@ export const TimelineAgendaView = ({
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ fontSize: '0.55rem', fontWeight: 900, color: f.color, opacity: 0.8 }}>{f.type}</span>
-                                <div 
+                                <div
                                     onClick={(e) => { e.stopPropagation(); setActiveFilters(prev => ({ ...prev, [f.key]: !prev[f.key as keyof typeof prev] })); }}
-                                    style={{ width: '16px', height: '16px', borderRadius: '4px', border: `2px solid ${f.color}`, background: activeFilters[f.key as keyof typeof activeFilters] ? f.color : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} 
+                                    style={{ width: '13px', height: '13px', borderRadius: '4px', border: `1px solid ${activeFilters[f.key as keyof typeof activeFilters] ? f.color : '#CBD5E1'}`, background: activeFilters[f.key as keyof typeof activeFilters] ? f.color : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', flexShrink: 0, cursor: 'pointer' }}
                                 >
-                                    {activeFilters[f.key as keyof typeof activeFilters] && <div style={{ width: '8px', height: '8px', background: 'white', borderRadius: '2px' }} />}
+                                    {activeFilters[f.key as keyof typeof activeFilters] && <span style={{ color: 'white', fontSize: '9px', fontWeight: 900, lineHeight: 1 }}>✓</span>}
                                 </div>
                             </div>
                         </div>
