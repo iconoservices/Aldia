@@ -1,6 +1,24 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, CalendarDays, Filter, Trash2, Star, Plus, Package, Camera, RefreshCw, Loader2, X, Target, AlertTriangle } from 'lucide-react';
+import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, Filter, Trash2, Star, Plus, Package, Camera, RefreshCw, Loader2, X, Target, AlertTriangle, GripVertical } from 'lucide-react';
+import { DndContext, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// Envoltorio sortable de FOCO: entrega ref + estilo para el nodo y `handleProps`
+// para el asa de arrastre. Si `disabled`, no arrastra (modo auto).
+const FocoSortable = ({ id, disabled, children }: {
+    id: string; disabled: boolean;
+    children: (h: { ref: (n: HTMLElement | null) => void; style: React.CSSProperties; handleProps: Record<string, unknown> }) => React.ReactNode;
+}) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
+    return <>{children({
+        ref: setNodeRef,
+        style: { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1, position: 'relative', zIndex: isDragging ? 5 : undefined },
+        handleProps: disabled ? {} : { ...attributes, ...listeners, style: { touchAction: 'none', cursor: 'grab', display: 'flex', flexShrink: 0 } },
+    })}</>;
+};
 
 interface TimelineAgendaViewProps {
     calendarEvents: any[];
@@ -94,16 +112,9 @@ export const TimelineAgendaView = ({
             return next;
         });
     };
-    // Mueve `id` un lugar (dir -1 = arriba, +1 = abajo) dentro de `base` (el orden
-    // completo actual), devolviendo el nuevo array.
-    const moverEnOrden = (base: (string | number)[], id: string | number, dir: -1 | 1) => {
-        const arr = [...base];
-        const i = arr.findIndex(x => String(x) === String(id));
-        const j = i + dir;
-        if (i === -1 || j < 0 || j >= arr.length) return base;
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-        return arr;
-    };
+    // Un tirón corto (6px) antes de arrastrar, así un tap normal sigue abriendo
+    // el detalle de la fila.
+    const focoSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
     const [activeFilters, setActiveFilters] = useState({
         citas: true,
         rutinas: true,
@@ -406,121 +417,155 @@ export const TimelineAgendaView = ({
         const diasLabel = (d: number) => d < 0 ? `hace ${Math.abs(d)} d${Math.abs(d) === 1 ? 'ía' : 'ías'}` : d === 0 ? 'hoy' : d === 1 ? 'mañana' : `en ${d} días`;
         const { atrasadas, proximas, eventos, checklist } = focoData;
 
-        // Ordena `items` según la lista de ids guardada; los que no estén, al final.
-        const ordenar = <T,>(items: T[], idOf: (t: T) => string | number, key: string): T[] => {
+        const idCheck = (t: any) => `${t.label}||${t.period}`;
+        // Ordena `items` por la lista de ids guardada; lo que no esté, al final.
+        const ordenar = <T,>(items: T[], idOf: (t: T) => string, key: string): T[] => {
             const ord = focoManual.rows[key] || [];
             if (!manual || !ord.length) return items;
             const pos = new Map(ord.map((id, i) => [String(id), i]));
-            return [...items].sort((a, b) => (pos.has(String(idOf(a))) ? pos.get(String(idOf(a)))! : 1e9) - (pos.has(String(idOf(b))) ? pos.get(String(idOf(b)))! : 1e9));
-        };
-        const moverFila = (key: string, ids: (string | number)[], id: string | number, dir: -1 | 1) => {
-            const base = (focoManual.rows[key]?.length ? focoManual.rows[key] : ids);
-            actualizarFocoManual(p => ({ ...p, activo: true, rows: { ...p.rows, [key]: moverEnOrden(base, id, dir) } }));
-        };
-        const moverSeccion = (allKeys: string[], k: string, dir: -1 | 1) => {
-            const base = (focoManual.secs.length ? focoManual.secs.filter(x => allKeys.includes(x)) : allKeys);
-            const full = [...base, ...allKeys.filter(x => !base.includes(x))];
-            actualizarFocoManual(p => ({ ...p, activo: true, secs: moverEnOrden(full, k, dir) as string[] }));
+            return [...items].sort((a, b) => (pos.has(idOf(a)) ? pos.get(idOf(a))! : 1e9) - (pos.has(idOf(b)) ? pos.get(idOf(b))! : 1e9));
         };
 
-        const Arrows = ({ onUp, onDown, first, last }: { onUp: () => void; onDown: () => void; first: boolean; last: boolean }) => (
-            <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-                <button onClick={e => { e.stopPropagation(); onUp(); }} disabled={first} title="Subir" style={{ background: 'none', border: 'none', cursor: first ? 'default' : 'pointer', color: first ? '#E2E8F0' : '#94A3B8', padding: 0, lineHeight: 0.7, display: 'flex' }}><ChevronUp size={13} /></button>
-                <button onClick={e => { e.stopPropagation(); onDown(); }} disabled={last} title="Bajar" style={{ background: 'none', border: 'none', cursor: last ? 'default' : 'pointer', color: last ? '#E2E8F0' : '#94A3B8', padding: 0, lineHeight: 0.7, display: 'flex' }}><ChevronDown size={13} /></button>
-            </div>
-        );
-        const Row = ({ title, right, color, onClick, arrows }: { title: string; right: string; color: string; onClick?: () => void; arrows?: React.ReactNode }) => (
-            <div onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', border: '1px solid #F1F5F9', borderLeft: `4px solid ${color}`, borderRadius: '10px', padding: '8px 10px', cursor: onClick ? 'pointer' : 'default' }}>
-                {arrows}
-                <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</span>
-                <span style={{ fontSize: '0.68rem', fontWeight: 800, color, whiteSpace: 'nowrap', flexShrink: 0 }}>{right}</span>
-            </div>
-        );
-
-        // Descriptores de sección: en auto son 4, en manual las dos de entregas se
-        // funden en una sola lista reordenable.
-        type SecDef = { k: string; icon: React.ReactNode; title: string; tint: string; items: any[]; empty: string; renderItem: (it: any, i: number, arr: any[]) => React.ReactNode };
-        const rowEntrega = (key: string) => (x: any, i: number, arr: any[]) => (
-            <Row key={x.id} title={x.title} right={diasLabel(x.dias)} color={x.color}
-                onClick={x.raw ? () => setEditingItem({ type: 'calendar', data: x.raw }) : undefined}
-                arrows={manual ? <Arrows first={i === 0} last={i === arr.length - 1} onUp={() => moverFila(key, arr.map(a => a.id), x.id, -1)} onDown={() => moverFila(key, arr.map(a => a.id), x.id, 1)} /> : undefined} />
-        );
-        const rowEvento = (x: any, i: number, arr: any[]) => (
-            <Row key={x.id} title={x.title} right={`${x.time ? x.time + ' · ' : ''}${diasLabel(x.dias)}`} color={x.color}
-                onClick={() => setEditingItem({ type: 'calendar', data: x.raw })}
-                arrows={manual ? <Arrows first={i === 0} last={i === arr.length - 1} onUp={() => moverFila('eventos', arr.map(a => a.id), x.id, -1)} onDown={() => moverFila('eventos', arr.map(a => a.id), x.id, 1)} /> : undefined} />
-        );
-        const rowCheck = (t: any, i: number, arr: any[]) => (
-            <div key={`${t.label}-${t.period}`} onClick={() => t.id && toggleDailyBlock?.(t.id)} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', border: '1px solid #F1F5F9', borderRadius: '10px', padding: '8px 10px', cursor: t.id ? 'pointer' : 'default' }}>
-                {manual && <Arrows first={i === 0} last={i === arr.length - 1} onUp={() => moverFila('checklist', arr.map((a: any) => `${a.label}-${a.period}`), `${t.label}-${t.period}`, -1)} onDown={() => moverFila('checklist', arr.map((a: any) => `${a.label}-${a.period}`), `${t.label}-${t.period}`, 1)} />}
-                <span style={{ width: '15px', height: '15px', borderRadius: '5px', border: '2px solid #E2E8F0', flexShrink: 0 }} />
-                <span style={{ flex: 1, fontWeight: 700, fontSize: '0.78rem' }}>{t.label}</span>
-                <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94A3B8' }}>{t.period.toUpperCase()}</span>
-            </div>
-        );
-
-        const secDefs: SecDef[] = manual
-            ? [
-                { k: 'entregas', icon: <Package size={15} color="#059669" />, title: 'Entregas', tint: '#059669', items: ordenar([...atrasadas, ...proximas], x => x.id, 'entregas'), empty: 'Sin entregas pendientes', renderItem: rowEntrega('entregas') },
-                { k: 'eventos', icon: <Calendar size={15} color="#6366F1" />, title: 'Agenda · próximos eventos', tint: '#6366F1', items: ordenar(eventos, x => x.id, 'eventos'), empty: 'Sin eventos próximos', renderItem: rowEvento },
-                { k: 'checklist', icon: <Clock size={15} color="#F59E0B" />, title: 'Checklist de hoy', tint: '#F59E0B', items: ordenar(checklist, t => `${t.label}-${t.period}`, 'checklist'), empty: 'Todo listo por hoy ✅', renderItem: rowCheck },
-            ]
-            : [
-                { k: 'atrasadas', icon: <AlertTriangle size={15} color="#DC2626" />, title: 'Entregas atrasadas', tint: '#DC2626', items: atrasadas, empty: 'Nada atrasado 🎉', renderItem: rowEntrega('atrasadas') },
-                { k: 'proximas', icon: <Package size={15} color="#059669" />, title: 'Próximas entregas', tint: '#059669', items: proximas, empty: 'Nada en las próximas 3 semanas', renderItem: rowEntrega('proximas') },
-                { k: 'eventos', icon: <Calendar size={15} color="#6366F1" />, title: 'Agenda · próximos eventos', tint: '#6366F1', items: eventos, empty: 'Sin eventos próximos', renderItem: rowEvento },
-                { k: 'checklist', icon: <Clock size={15} color="#F59E0B" />, title: 'Checklist de hoy', tint: '#F59E0B', items: checklist, empty: 'Todo listo por hoy ✅', renderItem: rowCheck },
-            ];
-        const allKeys = secDefs.map(s => s.k);
+        // 4 secciones SIEMPRE (igual que en auto). En manual solo se puede
+        // reordenar; el layout no cambia.
+        const secDefs = [
+            { k: 'atrasadas', icon: <AlertTriangle size={15} color="#DC2626" />, title: 'Entregas atrasadas', tint: '#DC2626', empty: 'Nada atrasado 🎉', kind: 'entrega' as const, items: ordenar(atrasadas, (x: any) => String(x.id), 'atrasadas') },
+            { k: 'proximas', icon: <Package size={15} color="#059669" />, title: 'Próximas entregas', tint: '#059669', empty: 'Nada en las próximas 3 semanas', kind: 'entrega' as const, items: ordenar(proximas, (x: any) => String(x.id), 'proximas') },
+            { k: 'eventos', icon: <Calendar size={15} color="#6366F1" />, title: 'Agenda · próximos eventos', tint: '#6366F1', empty: 'Sin eventos próximos', kind: 'evento' as const, items: ordenar(eventos, (x: any) => String(x.id), 'eventos') },
+            { k: 'checklist', icon: <Clock size={15} color="#F59E0B" />, title: 'Checklist de hoy', tint: '#F59E0B', empty: 'Todo listo por hoy ✅', kind: 'check' as const, items: ordenar(checklist, idCheck, 'checklist') },
+        ];
+        const secOf = (k: string) => secDefs.find(s => s.k === k)!;
         const orderedSecs = manual && focoManual.secs.length
             ? [...secDefs].sort((a, b) => {
                 const pa = focoManual.secs.indexOf(a.k); const pb = focoManual.secs.indexOf(b.k);
                 return (pa === -1 ? 1e9 : pa) - (pb === -1 ? 1e9 : pb);
             })
             : secDefs;
+        const idOfSec = (s: typeof secDefs[number]) => (x: any) => s.kind === 'check' ? idCheck(x) : String(x.id);
+
+        const onDragEnd = (e: DragEndEvent) => {
+            const a = String(e.active.id), o = e.over ? String(e.over.id) : '';
+            if (!o || a === o) return;
+            if (a.startsWith('sec§') && o.startsWith('sec§')) {
+                const cur = orderedSecs.map(s => s.k);
+                actualizarFocoManual(p => ({ ...p, activo: true, secs: arrayMove(cur, cur.indexOf(a.slice(4)), cur.indexOf(o.slice(4))) }));
+            } else if (a.startsWith('row§') && o.startsWith('row§')) {
+                const [, ak, aid] = a.split('§'); const [, ok, oid] = o.split('§');
+                if (ak !== ok) return;
+                const cur = secOf(ak).items.map(idOfSec(secOf(ak)));
+                actualizarFocoManual(p => ({ ...p, activo: true, rows: { ...p.rows, [ak]: arrayMove(cur, cur.indexOf(aid), cur.indexOf(oid)) } }));
+            }
+        };
+
+        const rowContent = (s: typeof secDefs[number], it: any) => {
+            if (s.kind === 'check') return {
+                onClick: () => it.id && toggleDailyBlock?.(it.id),
+                borderLeft: undefined as string | undefined,
+                node: <>
+                    <span style={{ width: '15px', height: '15px', borderRadius: '5px', border: '2px solid #E2E8F0', flexShrink: 0 }} />
+                    <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.label}</span>
+                    <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94A3B8', flexShrink: 0 }}>{it.period.toUpperCase()}</span>
+                </>,
+            };
+            const right = s.kind === 'evento' ? `${it.time ? it.time + ' · ' : ''}${diasLabel(it.dias)}` : diasLabel(it.dias);
+            return {
+                onClick: it.raw ? () => setEditingItem({ type: 'calendar', data: it.raw }) : undefined,
+                borderLeft: it.color as string,
+                node: <>
+                    <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</span>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 800, color: it.color, whiteSpace: 'nowrap', flexShrink: 0 }}>{right}</span>
+                </>,
+            };
+        };
+        const rowBox = (bl?: string): React.CSSProperties => ({
+            display: 'flex', alignItems: 'center', gap: '8px', background: 'white', border: '1px solid #F1F5F9',
+            borderLeft: bl ? `4px solid ${bl}` : '1px solid #F1F5F9', borderRadius: '10px', padding: '8px 10px',
+        });
+        const grip = (handleProps: Record<string, unknown>) => (
+            <span {...handleProps} onClick={(ev: React.MouseEvent) => ev.stopPropagation()}><GripVertical size={13} color="#CBD5E1" /></span>
+        );
+
+        const renderSeccion = (s: typeof secDefs[number], dragHandle?: React.ReactNode) => {
+            const abierto = !!focoExpandido[s.k];
+            const visibles = abierto ? s.items : s.items.slice(0, LIMITE);
+            const resto = s.items.length - visibles.length;
+            const idOf = idOfSec(s);
+            const rows = visibles.map((it: any) => {
+                const rid = `row§${s.k}§${idOf(it)}`;
+                const c = rowContent(s, it);
+                if (!manual) return <div key={rid} onClick={c.onClick} style={{ ...rowBox(c.borderLeft), cursor: c.onClick ? 'pointer' : 'default' }}>{c.node}</div>;
+                return (
+                    <FocoSortable key={rid} id={rid} disabled={false}>
+                        {({ ref, style, handleProps }) => (
+                            <div ref={ref} onClick={c.onClick} style={{ ...rowBox(c.borderLeft), ...style, cursor: c.onClick ? 'pointer' : 'default' }}>
+                                {grip(handleProps)}
+                                {c.node}
+                            </div>
+                        )}
+                    </FocoSortable>
+                );
+            });
+            return (
+                <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px' }}>
+                        {dragHandle}
+                        {s.icon}
+                        <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{s.title}</span>
+                        {s.items.length > 0 && <span style={{ fontSize: '0.64rem', fontWeight: 800, color: s.tint, background: `${s.tint}1a`, borderRadius: '999px', padding: '1px 7px' }}>{s.items.length}</span>}
+                    </div>
+                    {s.items.length === 0
+                        ? <div style={{ fontSize: '0.72rem', color: '#94A3B8', paddingLeft: '22px' }}>{s.empty}</div>
+                        : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                {manual
+                                    ? <SortableContext items={visibles.map((it: any) => `row§${s.k}§${idOf(it)}`)} strategy={verticalListSortingStrategy}>{rows}</SortableContext>
+                                    : rows}
+                                {(resto > 0 || abierto) && (
+                                    <button onClick={() => setFocoExpandido(e => ({ ...e, [s.k]: !abierto }))}
+                                        style={{ alignSelf: 'flex-start', background: 'none', border: 'none', cursor: 'pointer', color: s.tint, fontSize: '0.68rem', fontWeight: 800, padding: '2px 2px' }}>
+                                        {abierto ? 'ver menos' : `ver ${resto} más`}
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                </div>
+            );
+        };
+
+        const toggle = (
+            <div style={{ display: 'flex', gap: '4px', background: '#F1F5F9', borderRadius: '999px', padding: '3px', alignSelf: 'flex-start' }}>
+                {(['auto', 'manual'] as const).map(m => {
+                    const on = manual === (m === 'manual');
+                    return (
+                        <button key={m} onClick={() => actualizarFocoManual(p => ({ ...p, activo: m === 'manual' }))}
+                            style={{ border: 'none', borderRadius: '999px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.64rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.03em', background: on ? 'white' : 'transparent', color: on ? 'var(--domain-orange)' : '#64748B' }}>
+                            {m}
+                        </button>
+                    );
+                })}
+            </div>
+        );
+
+        const secciones = orderedSecs.map(s => manual
+            ? (
+                <FocoSortable key={s.k} id={`sec§${s.k}`} disabled={false}>
+                    {({ ref, style, handleProps }) => <div ref={ref} style={style}>{renderSeccion(s, grip(handleProps))}</div>}
+                </FocoSortable>
+            )
+            : <div key={s.k}>{renderSeccion(s)}</div>);
 
         return (
             <div style={{ padding: '12px 12px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ display: 'flex', gap: '4px', background: '#F1F5F9', borderRadius: '999px', padding: '3px', alignSelf: 'flex-start' }}>
-                    {(['auto', 'manual'] as const).map(m => {
-                        const on = manual === (m === 'manual');
-                        return (
-                            <button key={m} onClick={() => actualizarFocoManual(p => ({ ...p, activo: m === 'manual' }))}
-                                style={{ border: 'none', borderRadius: '999px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.64rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.03em', background: on ? 'white' : 'transparent', color: on ? 'var(--domain-orange)' : '#64748B' }}>
-                                {m}
-                            </button>
-                        );
-                    })}
-                </div>
-                {orderedSecs.map((s, si) => {
-                    const abierto = !!focoExpandido[s.k];
-                    // En manual se ven todas (para poder moverlas con las flechitas).
-                    const visibles = (abierto || manual) ? s.items : s.items.slice(0, LIMITE);
-                    const resto = s.items.length - visibles.length;
-                    return (
-                        <div key={s.k}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px' }}>
-                                {manual && <Arrows first={si === 0} last={si === orderedSecs.length - 1} onUp={() => moverSeccion(allKeys, s.k, -1)} onDown={() => moverSeccion(allKeys, s.k, 1)} />}
-                                {s.icon}
-                                <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{s.title}</span>
-                                {s.items.length > 0 && <span style={{ fontSize: '0.64rem', fontWeight: 800, color: s.tint, background: `${s.tint}1a`, borderRadius: '999px', padding: '1px 7px' }}>{s.items.length}</span>}
-                            </div>
-                            {s.items.length === 0
-                                ? <div style={{ fontSize: '0.72rem', color: '#94A3B8', paddingLeft: '22px' }}>{s.empty}</div>
-                                : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                        {visibles.map((it: any, i: number) => s.renderItem(it, i, visibles))}
-                                        {!manual && (resto > 0 || abierto) && (
-                                            <button onClick={() => setFocoExpandido(e => ({ ...e, [s.k]: !abierto }))}
-                                                style={{ alignSelf: 'flex-start', background: 'none', border: 'none', cursor: 'pointer', color: s.tint, fontSize: '0.68rem', fontWeight: 800, padding: '2px 2px' }}>
-                                                {abierto ? 'ver menos' : `ver ${resto} más`}
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-                        </div>
-                    );
-                })}
+                {toggle}
+                {manual
+                    ? (
+                        <DndContext sensors={focoSensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                            <SortableContext items={orderedSecs.map(s => `sec§${s.k}`)} strategy={verticalListSortingStrategy}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>{secciones}</div>
+                            </SortableContext>
+                        </DndContext>
+                    )
+                    : <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>{secciones}</div>}
             </div>
         );
     };
