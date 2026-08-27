@@ -5,7 +5,7 @@ import './App.css';
 import { Header } from './components/layout/Header';
 import { UpcomingList } from './components/dashboard/UpcomingList';
 import { MissionList } from './components/dashboard/MissionList';
-import { VidaDashboard } from './components/dashboard/VidaDashboard';
+import { VidaBloquesDashboard } from './components/dashboard/VidaBloquesDashboard';
 import { CerebroDashboard } from './components/dashboard/CerebroDashboard';
 import { FinanzasDashboard } from './components/dashboard/FinanzasDashboard';
 import { StatsDashboard } from './components/dashboard/StatsDashboard';
@@ -22,7 +22,6 @@ import { ActionBanner } from './components/dashboard/ActionBanner';
 import { useAlDiaState } from './hooks/useAlDiaState';
 import type { Mission, Note } from './hooks/useAlDiaState';
 import { ProfileOverlay } from './components/layout/ProfileOverlay';
-import { BloquesDashboard } from './components/dashboard/BloquesDashboard';
 import { ChecklistDiario } from './components/dashboard/ChecklistDiario';
 import { PlanDashboard } from './components/dashboard/PlanDashboard';
 import { BaseDatosDashboard } from './components/dashboard/BaseDatosDashboard';
@@ -267,8 +266,16 @@ function App() {
                 addDailyBlock={state.addDailyBlock}
                 toggleDailyBlock={state.toggleDailyBlock}
               />
-            ) : activeTab === 'Vida' ? (
-              <VidaDashboard
+            ) : (activeTab === 'Vida' || activeTab === 'Bloques') ? (
+              <VidaBloquesDashboard
+                initial={activeTab === 'Vida' ? 'vida' : 'bloques'}
+                dailyBlocks={state.dailyBlocks}
+                addDailyBlock={state.addDailyBlock}
+                toggleDailyBlock={state.toggleDailyBlock}
+                removeDailyBlock={state.removeDailyBlock}
+                updateDailyBlock={state.updateDailyBlock}
+                preferences={state.preferences}
+                updatePreference={state.updatePreference}
                 habits={state.habits}
                 toggleHabit={state.toggleHabit}
                 addHabit={state.addHabit}
@@ -291,17 +298,6 @@ function App() {
                 removeNote={state.removeNote}
                 toggleNoteItem={state.toggleNoteItem}
                 onOpenNote={setViewingNoteId}
-              />
-            ) : activeTab === 'Bloques' ? (
-              <BloquesDashboard
-                dailyBlocks={state.dailyBlocks}
-                addDailyBlock={state.addDailyBlock}
-                toggleDailyBlock={state.toggleDailyBlock}
-                removeDailyBlock={state.removeDailyBlock}
-                updateDailyBlock={state.updateDailyBlock}
-                projects={state.projects}
-                preferences={state.preferences}
-                updatePreference={state.updatePreference}
               />
             ) : activeTab === 'Checklist' ? (
               <ChecklistDiario

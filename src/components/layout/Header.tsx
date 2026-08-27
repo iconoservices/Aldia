@@ -45,7 +45,6 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Proyección',   tab: 'Proyección',  icon: 'trending_up' },
         { label: 'Movimientos', tab: 'Movimientos', icon: 'list_alt'    },
         { label: 'Pendientes', tab: 'Pendientes', icon: 'checklist' },
-        { label: 'Bloques', tab: 'Bloques',   icon: 'history_edu'    },
         { label: 'Vida',       tab: 'Vida',        icon: 'spa'           },
         { label: 'Listas',    tab: 'Listas',    icon: 'fact_check'    },
         { label: 'Compras',   tab: 'Compras',   icon: 'shopping_cart' },
