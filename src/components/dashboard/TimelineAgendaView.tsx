@@ -22,6 +22,25 @@ interface TimelineAgendaViewProps {
 const DIAS_CORTOS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 const PERIOD_TIME: Record<string, string> = { 'Mañana': '07:00', 'Tarde': '13:00', 'Noche': '19:00', 'Otro': '23:00' };
 
+// Color de un chip de entrega: verde si todavía no vence, rojo si la fecha ya
+// pasó y sigue sin entregarse (el llamador ya filtra las que están en
+// "Entregado"). `fallback` deja pasar el color propio del proyecto para las
+// entregas que no son de Notion mientras no estén atrasadas.
+const ENTREGA_VERDE = '#059669';
+const ENTREGA_ATRASADA = '#DC2626';
+const REAL_HOY = () => new Date().toLocaleDateString('en-CA');
+const colorEntrega = (fecha: string, fallback: string = ENTREGA_VERDE) => (fecha && fecha < REAL_HOY() ? ENTREGA_ATRASADA : fallback);
+
+// Color de una sesión de Notion en el calendario. Futura o de hoy: negro. Ya
+// pasó y sigue "Agendado" (nadie la movió a Realizado): ámbar, avisa que el
+// estado quedó sin actualizar o que quizás no se hizo. Ya pasó y sí avanzó de
+// estado: gris — es historial, solo referencia.
+const SESION_NEGRO = '#191919';
+const colorSesionNotion = (fecha: string, estado: string | undefined) => {
+    if (!fecha || fecha >= REAL_HOY()) return SESION_NEGRO;
+    return estado === 'Agendado' ? '#D97706' : '#94A3B8';
+};
+
 export const TimelineAgendaView = ({
     calendarEvents, projects = [], rutinas = [], missions = [], habits = [], dailyBlocks = [],
     onRemoveEvent, onToggleMission, updateRoutine, updateCalendarEvent, addRoutine, addCalendarEvent,
@@ -230,7 +249,7 @@ export const TimelineAgendaView = ({
             .map(e => ({
                 ...e,
                 itemType: 'event',
-                color: e.notionId ? '#191919' : (e.color || '#3b82f6'),
+                color: e.notionId ? colorSesionNotion(e.date, e.notionEstado) : (e.color || '#3b82f6'),
                 startMin: toMin(e.startTime),
                 endMin: toMin(e.endTime)
             }));
@@ -321,7 +340,7 @@ export const TimelineAgendaView = ({
                     ...e,
                     startMin: toMin(e.startTime),
                     endMin: toMin(e.endTime),
-                    color: e.notionId ? '#191919' : (e.color || '#6366F1')
+                    color: e.notionId ? colorSesionNotion(dStr, e.notionEstado) : (e.color || '#6366F1')
                 }));
 
             const rts = !activeFilters.rutinas ? [] : (rutinas || []).filter(r => r.repeatDays?.includes(dIdx));
@@ -334,13 +353,13 @@ export const TimelineAgendaView = ({
             if (activeFilters.entregas && notionOn) {
                 (calendarEvents || []).forEach(e => {
                     if (e.notionId && e.notionEntregaFecha === dStr && e.notionEstado !== 'Entregado') {
-                        dels.push({ id: `entrega-${e.id}`, title: e.title, color: '#059669', raw: e });
+                        dels.push({ id: `entrega-${e.id}`, title: e.title, color: colorEntrega(dStr), raw: e });
                     }
                 });
             }
             if (activeFilters.entregas) {
                 projects.forEach(p => (p.objectives || []).forEach((obj: any) => {
-                    if (obj.deliveryDate === dStr) dels.push({ id: `obj-${obj.id ?? obj.title}`, title: obj.title, color: p.color || '#059669', raw: null });
+                    if (obj.deliveryDate === dStr) dels.push({ id: `obj-${obj.id ?? obj.title}`, title: obj.title, color: colorEntrega(dStr, p.color || ENTREGA_VERDE), raw: null });
                 }));
             }
 
@@ -374,7 +393,7 @@ export const TimelineAgendaView = ({
                     startTime: e.startTime,
                     endTime: e.endTime,
                     isNotion: !!e.notionId,
-                    color: e.notionId ? '#191919' : (e.color || '#6366F1'),
+                    color: e.notionId ? colorSesionNotion(e.date, e.notionEstado) : (e.color || '#6366F1'),
                     raw: e,
                 });
             });
@@ -389,7 +408,7 @@ export const TimelineAgendaView = ({
                     endTime: '',
                     isNotion: true,
                     isDelivery: true,
-                    color: '#059669',
+                    color: colorEntrega(e.notionEntregaFecha),
                     raw: e,
                 });
             });
@@ -405,7 +424,7 @@ export const TimelineAgendaView = ({
                         startTime: '',
                         endTime: '',
                         isDelivery: true,
-                        color: p.color || '#059669',
+                        color: colorEntrega(obj.deliveryDate, p.color || ENTREGA_VERDE),
                         raw: null,
                     });
                 });
@@ -1022,18 +1041,18 @@ export const TimelineAgendaView = ({
                                         dayEvents.forEach((e: any) => rows.push({
                                             id: `e-${e.id}`, time: e.startTime || '00:00', endTime: e.endTime, kind: 'event',
                                             label: e.title,
-                                            color: e.notionId ? '#191919' : (e.color || '#6366F1'), raw: e
+                                            color: e.notionId ? colorSesionNotion(e.date, e.notionEstado) : (e.color || '#6366F1'), raw: e
                                         }));
                                         if (activeFilters.entregas && notionOn) {
                                             (calendarEvents || []).forEach(e => {
                                                 if (e.notionId && e.notionEntregaFecha === todayStr && e.notionEstado !== 'Entregado') {
-                                                    rows.push({ id: `d-${e.id}`, time: '23:59', kind: 'delivery', label: `Entrega · ${e.title}`, sub: e.notionDiasRestantes, color: '#059669', raw: e });
+                                                    rows.push({ id: `d-${e.id}`, time: '23:59', kind: 'delivery', label: `Entrega · ${e.title}`, sub: e.notionDiasRestantes, color: colorEntrega(e.notionEntregaFecha), raw: e });
                                                 }
                                             });
                                         }
                                         dayDeliveries.forEach((obj: any) => rows.push({
                                             id: `do-${obj.id ?? obj.title}`, time: '23:59', kind: 'delivery',
-                                            label: `Entrega · ${obj.title}`, color: obj.projectColor || '#059669'
+                                            label: `Entrega · ${obj.title}`, color: colorEntrega(obj.deliveryDate, obj.projectColor || ENTREGA_VERDE)
                                         }));
                                         rows.sort((a, b) => a.time.localeCompare(b.time));
 
@@ -1053,7 +1072,7 @@ export const TimelineAgendaView = ({
                                             if (activeFilters.entregas && notionOn) {
                                                 (calendarEvents || []).forEach(e => {
                                                     if (e.notionId && e.notionEntregaFecha === ds && e.notionEstado !== 'Entregado') {
-                                                        items.push({ id: `ud-${e.id}`, time: '23:59', kind: 'delivery', label: `Entrega · ${e.title}`, sub: e.notionDiasRestantes, color: '#059669', raw: e });
+                                                        items.push({ id: `ud-${e.id}`, time: '23:59', kind: 'delivery', label: `Entrega · ${e.title}`, sub: e.notionDiasRestantes, color: colorEntrega(e.notionEntregaFecha), raw: e });
                                                     }
                                                 });
                                             }
