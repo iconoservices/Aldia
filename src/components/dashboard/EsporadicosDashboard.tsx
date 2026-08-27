@@ -1592,7 +1592,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
             {(inSession || p.status !== 'completado') && (
                 <div style={{
                     display: "flex", flexDirection: "column", gap: "8px",
-                    flex: inlinePhotoRow ? (inSession ? "1 1 58%" : "0 0 42%") : undefined,
+                    flex: inlinePhotoRow ? (inSession ? "1 1 44%" : "0 0 42%") : undefined,
                     padding: inSession ? "10px" : 0,
                     background: inSession ? (running ? "rgba(239,68,68,0.06)" : "rgba(230,168,23,0.06)") : "transparent",
                     borderRadius: "12px",
@@ -1633,34 +1633,37 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                             {running && (
                                 <button
                                     onClick={() => pauseSporadicTimer(p.id)}
-                                    style={{ flex: "1 1 auto", whiteSpace: "nowrap", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.ambar, color: "white", border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
+                                    title="Pausar" aria-label="Pausar"
+                                    style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: C.ambar, color: "white", border: "none", borderRadius: "8px", padding: "8px 12px", cursor: "pointer" }}
                                 >
-                                    <Pause size={13} /> Pausar
+                                    <Pause size={15} />
                                 </button>
                             )}
                             {paused && (
                                 <button
                                     onClick={() => startSporadicTimer(p.id, p.activeStage)}
-                                    style={{ flex: "1 1 auto", whiteSpace: "nowrap", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.surfaceContainerLow, color: C.onSurfaceVariant, border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
+                                    title="Reanudar" aria-label="Reanudar"
+                                    style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: C.surfaceContainerLow, color: C.onSurfaceVariant, border: "none", borderRadius: "8px", padding: "8px 12px", cursor: "pointer" }}
                                 >
-                                    <Play size={13} /> Reanudar
+                                    <Play size={15} />
                                 </button>
                             )}
                             {inSession && (
                                 <button
                                     onClick={() => stopSporadicTimer(p.id)}
-                                    style={{ flex: "1 1 auto", whiteSpace: "nowrap", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", background: C.rojo, color: "white", border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}
+                                    title="Terminar sesión" aria-label="Terminar sesión"
+                                    style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: C.rojo, color: "white", border: "none", borderRadius: "8px", padding: "8px 12px", cursor: "pointer" }}
                                 >
-                                    <Square size={13} /> Terminar sesión
+                                    <Square size={15} />
                                 </button>
                             )}
                             {inSession && !breakEndAt && !breakDoneAlert && (
                                 <button
                                     onClick={() => setBreakEndAt(Date.now() + BREAK_MINUTES * 60 * 1000)}
-                                    title="Tomar un descanso de 5 min ahora, sin esperar el aviso"
-                                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: "none", border: `1px solid ${C.outlineVariant}`, borderRadius: "8px", padding: "8px 10px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700, color: C.onSurfaceVariant, flexShrink: 0 }}
+                                    title="Tomar un descanso de 5 min ahora, sin esperar el aviso" aria-label="Descanso de 5 min"
+                                    style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: `1px solid ${C.outlineVariant}`, borderRadius: "8px", padding: "8px 12px", cursor: "pointer", color: C.onSurfaceVariant, flexShrink: 0 }}
                                 >
-                                    <Coffee size={13} />
+                                    <Coffee size={15} />
                                 </button>
                             )}
                         </div>
@@ -1672,7 +1675,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                 entre el timer y los botones de sesión, aportando poco cuando no se
                 está usando. Se reabre sola en cuanto arranca una foto. */}
             {p.status !== 'completado' && (
-                <details open={photoDetailsOpen} onToggle={e => setPhotoDetailsOpen(e.currentTarget.open)} style={{ background: C.surfaceContainerLow, borderRadius: "10px", padding: "8px 10px", flex: inlinePhotoRow ? "1 1 150px" : undefined, minWidth: 0 }}>
+                <details open={photoDetailsOpen} onToggle={e => setPhotoDetailsOpen(e.currentTarget.open)} style={{ background: C.surfaceContainerLow, borderRadius: "10px", padding: "8px 10px", flex: inlinePhotoRow ? "1 1 210px" : undefined, minWidth: 0 }}>
                     <summary style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "4px", cursor: "pointer", listStyle: "none" }}>
                         <span style={{ fontSize: "0.66rem", fontWeight: 800, color: C.onSurfaceVariant, display: "flex", alignItems: "center", gap: "4px", textTransform: "uppercase", letterSpacing: "0.02em" }}>
                             <ImageIcon size={12} /> Tiempo por foto
@@ -1683,7 +1686,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                         </span>
                     </summary>
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "8px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
                             <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.7rem", fontWeight: 700, color: C.onSurfaceVariant, flexShrink: 0 }}>
                                 <Target size={12} /> Meta
                             </span>
@@ -1696,9 +1699,9 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                                     updateSporadicProject(p.id, { photoGoal: v });
                                 }}
                                 placeholder="cantidad de fotos"
-                                style={{ width: "90px", border: `1px solid ${C.outlineVariant}`, borderRadius: "8px", padding: "4px 8px", fontSize: "0.74rem", fontFamily: "inherit", background: "white", color: C.onSurface }}
+                                style={{ flex: "1 1 70px", minWidth: 0, border: `1px solid ${C.outlineVariant}`, borderRadius: "8px", padding: "4px 8px", fontSize: "0.74rem", fontFamily: "inherit", background: "white", color: C.onSurface }}
                             />
-                            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "4px" }}>
+                            <div style={{ marginLeft: "auto", flexShrink: 0, display: "flex", alignItems: "center", gap: "4px" }}>
                                 <button
                                     onClick={() => adjustPhotoManualExtra(p.id, -1)}
                                     disabled={photoProgress === 0}
@@ -1733,7 +1736,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                             </div>
                         )}
                         {(photoCount > 0 || photoManualExtra !== 0) && (
-                            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+                            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-end", gap: "10px" }}>
                                 {photoCount > 0 && (
                                     <button
                                         onClick={() => removeLastPhotoLog(p.id)}
@@ -1774,7 +1777,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                                         <X size={14} />
                                     </button>
                                 </div>
-                                <div style={{ display: "flex", gap: "6px" }}>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                                     {photoRunning && (
                                         <button
                                             onClick={() => pausePhotoTimer(p.id)}
