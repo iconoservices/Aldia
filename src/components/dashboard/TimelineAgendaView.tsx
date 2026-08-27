@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Filter, Trash2, Star, Plus, Package, Camera, RefreshCw, Loader2, X } from 'lucide-react';
+import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Filter, Trash2, Star, Plus, Package, Camera, RefreshCw, Loader2, X, ArrowLeftRight } from 'lucide-react';
 
 interface TimelineAgendaViewProps {
     calendarEvents: any[];
@@ -57,6 +57,13 @@ export const TimelineAgendaView = ({
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [editingItem, setEditingItem] = useState<{ type: 'calendar' | 'routine' | 'timeblock' | 'new', data: any } | null>(null);
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    // Lado del panel de mini-calendario + Categorías + Notion. El usuario lo
+    // quiere a la derecha; el botón de la cabecera lo deja moverlo mientras
+    // decide dónde se queda. Se recuerda entre sesiones.
+    const [sidebarSide, setSidebarSide] = useState<'left' | 'right'>(() => {
+        try { return localStorage.getItem('aldia_agenda_sidebar_side') === 'left' ? 'left' : 'right'; } catch { return 'right'; }
+    });
+    useEffect(() => { try { localStorage.setItem('aldia_agenda_sidebar_side', sidebarSide); } catch { /* storage bloqueado */ } }, [sidebarSide]);
     const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
     const [rightPanelMode, setRightPanelMode] = useState<'citas' | 'rutinas' | 'tareas' | 'habitos' | 'mision'>('mision');
     const [activeFilters, setActiveFilters] = useState({
@@ -495,8 +502,14 @@ export const TimelineAgendaView = ({
 
     return (
         <div className="agenda-layout-container">
-            {/* Sidebar PC Only */}
-            <aside className={`agenda-sidebar ${!sidebarOpen ? 'collapsed' : ''}`}>
+            {/* Sidebar PC Only — su lado (izq/der) sale de `sidebarSide`; se
+                reordena por CSS `order` sin tocar el DOM. */}
+            <aside
+                className={`agenda-sidebar ${!sidebarOpen ? 'collapsed' : ''}`}
+                style={sidebarSide === 'right'
+                    ? { order: 2, borderRight: 'none', borderLeft: '1px solid #E2E8F0' }
+                    : { order: 0 }}
+            >
                 <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid #F1F5F9' }}>
                     <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'var(--domain-orange)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
                         <Calendar size={18} />
@@ -604,18 +617,18 @@ export const TimelineAgendaView = ({
             </aside>
 
             {/* Main Area */}
-            <main className="agenda-main-content">
+            <main className="agenda-main-content" style={{ order: 1 }}>
                 <div style={{ padding: '0.5rem 1rem', background: 'white', borderBottom: 'none', zIndex: 100 }}>
                     <div className="timeline-header-grid" style={{ marginBottom: dayDeliveries.length > 0 ? '0.75rem' : '0' }}>
                         <div className="timeline-title-block" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <button 
+                            <button
                                 onClick={() => setSidebarOpen(!sidebarOpen)}
                                 className="desktop-only"
-                                style={{ 
-                                    background: '#F8FAFC', 
-                                    border: 'none', 
-                                    borderRadius: '10px', 
-                                    padding: '8px', 
+                                style={{
+                                    background: '#F8FAFC',
+                                    border: 'none',
+                                    borderRadius: '10px',
+                                    padding: '8px',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -624,7 +637,17 @@ export const TimelineAgendaView = ({
                                 }}
                                 title={sidebarOpen ? "Contraer lateral" : "Expandir lateral"}
                             >
-                                {sidebarOpen ? <PanelLeftClose size={18} color="var(--domain-orange)" /> : <PanelLeftOpen size={18} color="#64748B" />}
+                                {sidebarSide === 'right'
+                                    ? (sidebarOpen ? <PanelRightClose size={18} color="var(--domain-orange)" /> : <PanelRightOpen size={18} color="#64748B" />)
+                                    : (sidebarOpen ? <PanelLeftClose size={18} color="var(--domain-orange)" /> : <PanelLeftOpen size={18} color="#64748B" />)}
+                            </button>
+                            <button
+                                onClick={() => setSidebarSide(s => s === 'left' ? 'right' : 'left')}
+                                className="desktop-only"
+                                style={{ background: '#F8FAFC', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                                title={sidebarSide === 'right' ? 'Mover panel de Categorías a la izquierda' : 'Mover panel de Categorías a la derecha'}
+                            >
+                                <ArrowLeftRight size={16} color="#64748B" />
                             </button>
                             <div>
                                 <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-carbon)', whiteSpace: 'nowrap' }}>
@@ -924,7 +947,7 @@ export const TimelineAgendaView = ({
             </main>
 
             {/* Panel Lateral Derecho: Inspector (Solo PC) */}
-            <aside className={`agenda-right-sidebar ${!rightSidebarOpen ? 'collapsed' : ''}`}>
+            <aside className={`agenda-right-sidebar ${!rightSidebarOpen ? 'collapsed' : ''}`} style={{ order: 3 }}>
                 {(() => {
                     const configOptions: Record<string, any> = {
                         mision: { title: 'Misión Diaria (Timeline)', icon: <Star size={16} />, color: 'var(--domain-orange)' },
