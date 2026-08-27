@@ -22,6 +22,17 @@ interface TimelineAgendaViewProps {
 const DIAS_CORTOS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 const PERIOD_TIME: Record<string, string> = { 'Mañana': '07:00', 'Tarde': '13:00', 'Noche': '19:00', 'Otro': '23:00' };
 
+// Botón de las cabeceras del calendario — mismo tamaño en todos lados (header
+// principal y cabecera del panel derecho). `HDR_ICON` es el tamaño de icono que
+// les corresponde; para los que llevan texto (HOY, "1d") se le suma padding-x.
+const HDR_ICON = 16;
+const hdrBtn: React.CSSProperties = {
+    background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px',
+    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    transition: 'all 0.2s', flexShrink: 0, color: '#64748B',
+};
+const hdrBtnText: React.CSSProperties = { ...hdrBtn, padding: '6px 10px', fontSize: '0.65rem', fontWeight: 900, lineHeight: `${HDR_ICON}px` };
+
 // Color de un chip de entrega: verde si todavía no vence, rojo si la fecha ya
 // pasó y sigue sin entregarse (el llamador ya filtra las que están en
 // "Entregado"). `fallback` deja pasar el color propio del proyecto para las
@@ -639,20 +650,20 @@ export const TimelineAgendaView = ({
                             <button
                                 onClick={() => { setNewItemType('routine'); setEditingItem({ type: 'new', data: {} }); }}
                                 title="Agregar rutina o cita manualmente"
-                                style={{ background: 'var(--domain-orange)', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'white' }}
+                                style={{ ...hdrBtn, background: 'var(--domain-orange)', color: 'white' }}
                             >
-                                <Plus size={16} />
+                                <Plus size={HDR_ICON} />
                             </button>
                             {viewMode === 'timeline' && !isMobile && (
                                 <>
-                                    <button onClick={() => changeDate(-1)} title="Día anterior" style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1px', fontSize: '0.6rem', fontWeight: 900, color: '#64748B' }}><ChevronLeft size={13} />1d</button>
-                                    <button onClick={() => changeDate(1)} title="Día siguiente" style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1px', fontSize: '0.6rem', fontWeight: 900, color: '#64748B' }}>1d<ChevronRight size={13} /></button>
+                                    <button onClick={() => changeDate(-1)} title="Día anterior" style={{ ...hdrBtnText, gap: '1px' }}><ChevronLeft size={14} />1d</button>
+                                    <button onClick={() => changeDate(1)} title="Día siguiente" style={{ ...hdrBtnText, gap: '1px' }}>1d<ChevronRight size={14} /></button>
                                 </>
                             )}
-                            <button onClick={() => viewMode === 'month' ? changeMonth(-1) : changeDate(viewMode === 'timeline' ? (isMobile ? -1 : -7) : -1)} title={viewMode === 'timeline' && !isMobile ? 'Semana anterior' : undefined} style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer' }}><ChevronLeft size={16} /></button>
-                            <button onClick={() => { setSelectedDate(new Date()); scrollToNow(); setTimeout(scrollToNow, 300); }} style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px 10px', fontSize: '0.65rem', fontWeight: 900, cursor: 'pointer' }}>HOY</button>
-                            <button onClick={() => viewMode === 'month' ? changeMonth(1) : changeDate(viewMode === 'timeline' ? (isMobile ? 1 : 7) : 1)} title={viewMode === 'timeline' && !isMobile ? 'Semana siguiente' : undefined} style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer' }}><ChevronRight size={16} /></button>
-                            
+                            <button onClick={() => viewMode === 'month' ? changeMonth(-1) : changeDate(viewMode === 'timeline' ? (isMobile ? -1 : -7) : -1)} title={viewMode === 'timeline' && !isMobile ? 'Semana anterior' : undefined} style={hdrBtn}><ChevronLeft size={HDR_ICON} /></button>
+                            <button onClick={() => { setSelectedDate(new Date()); scrollToNow(); setTimeout(scrollToNow, 300); }} style={hdrBtnText}>HOY</button>
+                            <button onClick={() => viewMode === 'month' ? changeMonth(1) : changeDate(viewMode === 'timeline' ? (isMobile ? 1 : 7) : 1)} title={viewMode === 'timeline' && !isMobile ? 'Semana siguiente' : undefined} style={hdrBtn}><ChevronRight size={HDR_ICON} /></button>
+
                             {/* Separador — a la derecha van juntos los toggles de los dos
                                 paneles laterales (ambos viven de este lado). */}
                             <div className="desktop-only" style={{ width: '1px', height: '20px', background: '#E2E8F0', margin: '0 4px' }} />
@@ -661,20 +672,20 @@ export const TimelineAgendaView = ({
                             <button
                                 onClick={() => setSidebarOpen(!sidebarOpen)}
                                 className="desktop-only"
-                                style={{ background: sidebarOpen ? 'var(--domain-orange)' : '#F8FAFC', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                                style={{ ...hdrBtn, background: sidebarOpen ? 'var(--domain-orange)' : hdrBtn.background }}
                                 title={sidebarOpen ? 'Ocultar Categorías y calendario' : 'Ver Categorías y calendario'}
                             >
-                                <Filter size={16} color={sidebarOpen ? 'white' : '#64748B'} />
+                                <Filter size={HDR_ICON} color={sidebarOpen ? 'white' : '#64748B'} />
                             </button>
 
                             {/* Panel de Misión Diaria */}
                             <button
                                 onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
                                 className="desktop-only"
-                                style={{ background: rightSidebarOpen ? 'var(--domain-orange)' : '#F8FAFC', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                                style={{ ...hdrBtn, background: rightSidebarOpen ? 'var(--domain-orange)' : hdrBtn.background }}
                                 title={rightSidebarOpen ? 'Ocultar Misión Diaria' : 'Ver Misión Diaria'}
                             >
-                                <Star size={16} color={rightSidebarOpen ? 'white' : '#64748B'} />
+                                <Star size={HDR_ICON} color={rightSidebarOpen ? 'white' : '#64748B'} />
                             </button>
                         </div>
                     </div>
@@ -932,31 +943,31 @@ export const TimelineAgendaView = ({
                                 por día (‹ fecha ›) + cerrar, para ocupar menos alto. La
                                 fecha es un botón: si no es hoy, va en naranja y al tocarla
                                 vuelve a hoy (reemplaza al link "volver a hoy"). */}
-                            <div style={{ padding: '12px 12px', display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid #F1F5F9' }}>
-                                <div style={{ width: '26px', height: '26px', borderRadius: '8px', background: config.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
+                            <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid #F1F5F9' }}>
+                                <div style={{ width: '28px', height: '28px', borderRadius: '10px', background: config.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
                                     {config.icon}
                                 </div>
-                                <div style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--text-carbon)', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{config.title}</div>
-                                <button onClick={() => changeDate(-1)} title="Día anterior" style={{ background: '#F1F5F9', border: 'none', borderRadius: '8px', padding: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#64748B', flexShrink: 0 }}>
-                                    <ChevronLeft size={14} />
+                                <div style={{ fontSize: '0.82rem', fontWeight: 900, color: 'var(--text-carbon)', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{config.title}</div>
+                                <button onClick={() => changeDate(-1)} title="Día anterior" style={hdrBtn}>
+                                    <ChevronLeft size={HDR_ICON} />
                                 </button>
                                 <button
                                     onClick={() => setSelectedDate(new Date())}
                                     disabled={isActualToday}
                                     title={isActualToday ? undefined : 'Volver a hoy'}
-                                    style={{ background: 'none', border: 'none', padding: '0 2px', cursor: isActualToday ? 'default' : 'pointer', fontSize: '0.72rem', fontWeight: 900, color: isActualToday ? 'var(--text-carbon)' : 'var(--domain-orange)', textTransform: 'capitalize', whiteSpace: 'nowrap', flexShrink: 0 }}
+                                    style={{ ...hdrBtnText, background: 'none', cursor: isActualToday ? 'default' : 'pointer', color: isActualToday ? 'var(--text-carbon)' : 'var(--domain-orange)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}
                                 >
                                     {dayNames[dayIdx]} {selectedDate.getDate()} {monthNames[selectedDate.getMonth()].slice(0, 3).toLowerCase()}
                                 </button>
-                                <button onClick={() => changeDate(1)} title="Día siguiente" style={{ background: '#F1F5F9', border: 'none', borderRadius: '8px', padding: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#64748B', flexShrink: 0 }}>
-                                    <ChevronRight size={14} />
+                                <button onClick={() => changeDate(1)} title="Día siguiente" style={hdrBtn}>
+                                    <ChevronRight size={HDR_ICON} />
                                 </button>
                                 <button
                                     onClick={() => setRightSidebarOpen(false)}
                                     title="Cerrar panel"
-                                    style={{ background: '#F1F5F9', border: 'none', borderRadius: '8px', padding: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#64748B', flexShrink: 0 }}
+                                    style={hdrBtn}
                                 >
-                                    <X size={14} />
+                                    <X size={HDR_ICON} />
                                 </button>
                             </div>
 
