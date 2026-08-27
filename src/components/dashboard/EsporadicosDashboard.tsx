@@ -595,147 +595,166 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
         setAddingOpen(false);
     };
 
+    // Pastillas de estado de la cabecera. En desktop van en una grilla pareja
+    // debajo del título; en móvil se meten dentro de un desplegable "Resumen"
+    // (más chicas) para no comerse media pantalla.
+    const statPills = [
+        { label: "por entregar", value: pendientes.length, icon: Timer, color: C.secondary, bg: "rgba(99,102,241,0.12)", filterKey: undefined as undefined | 'atrasados' | 'enEdicion' | 'prioridad' | 'usbGeneral' | 'usbUrgente' },
+        { label: "atrasados", value: atrasados, icon: AlertTriangle, color: C.rojo, bg: "rgba(239,68,68,0.12)", filterKey: 'atrasados' as const },
+        { label: "en edición", value: enEdicion, icon: Pencil, color: ESTADO_COLOR['En Edición'], bg: "rgba(230,168,23,0.12)", filterKey: 'enEdicion' as const },
+        { label: "prioritarios", value: prioritarios, icon: Pin, color: C.ambar, bg: "rgba(230,168,23,0.12)", filterKey: 'prioridad' as const },
+        { label: "listos para entregar", value: listosParaEntregar.length, icon: CheckCircle, color: C.ambar, bg: "rgba(230,168,23,0.12)", filterKey: undefined },
+        { label: "entregados", value: completados.length, icon: CheckCircle2, color: C.verde, bg: "rgba(16,185,129,0.12)", filterKey: undefined },
+        { label: "USB por entregar", value: usbPendientes, icon: Usb, color: C.ambar, bg: "rgba(230,168,23,0.12)", filterKey: 'usbGeneral' as const },
+        { label: "USB urgente", value: usbUrgente, icon: Usb, color: C.rojo, bg: "rgba(239,68,68,0.12)", filterKey: 'usbUrgente' as const },
+    ];
+    const renderStatPill = (stat: typeof statPills[number], compact: boolean) => {
+        const clickable = !!stat.filterKey;
+        const active = clickable && statFilter === stat.filterKey;
+        return (
+            <button
+                key={stat.label}
+                onClick={clickable ? () => setStatFilter(f => f === stat.filterKey ? null : stat.filterKey!) : undefined}
+                title={clickable ? (active ? "Quitar filtro" : `Mostrar solo ${stat.label}`) : undefined}
+                style={{
+                    display: "flex", alignItems: "center", gap: compact ? "4px" : "5px", background: stat.bg, borderRadius: "999px",
+                    padding: compact ? "3px 8px" : "5px 10px",
+                    border: active ? `2px solid ${stat.color}` : "2px solid transparent",
+                    cursor: clickable ? "pointer" : "default", font: "inherit", width: "100%", minWidth: 0,
+                }}
+            >
+                <stat.icon size={compact ? 11 : 12} color={stat.color} style={{ flexShrink: 0 }} />
+                <span style={{ fontWeight: 800, fontSize: compact ? "0.68rem" : "0.76rem", color: C.onSurface }}>{stat.value}</span>
+                <span style={{ fontSize: compact ? "0.58rem" : "0.64rem", color: C.onSurfaceVariant, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{stat.label}</span>
+            </button>
+        );
+    };
+    const totalPill = (compact: boolean) => (
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "rgba(99,102,241,0.12)", borderRadius: "999px", padding: compact ? "4px 10px" : "6px 12px", flexShrink: 0 }}>
+            <Timer size={compact ? 13 : 15} color={C.secondary} />
+            <span style={{ fontWeight: 800, fontSize: compact ? "0.72rem" : "0.8rem", color: C.onSurface }}>{formatElapsed(totalWorkedAllProjects * 60 * 60 * 1000)}</span>
+            <span style={{ fontSize: compact ? "0.62rem" : "0.68rem", color: C.onSurfaceVariant }}>en total</span>
+        </div>
+    );
+    const streakPill = (compact: boolean) => (
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "rgba(230,168,23,0.12)", borderRadius: "999px", padding: compact ? "4px 10px" : "6px 12px", flexShrink: 0 }}>
+            <Flame size={compact ? 13 : 15} color={C.ambar} fill={streak > 0 ? C.ambar : "none"} />
+            <span style={{ fontWeight: 800, fontSize: compact ? "0.72rem" : "0.8rem", color: C.onSurface }}>{streak}</span>
+            <span style={{ fontSize: compact ? "0.62rem" : "0.68rem", color: C.onSurfaceVariant }}>{streak === 1 ? "día seguido" : "días seguidos"}</span>
+        </div>
+    );
+    const ordenManualBtn = customOrder.length > 0 ? (
+        <button onClick={() => saveOrder([])} title="Volver al orden automático por prioridad" style={{ display: "flex", alignItems: "center", gap: "5px", background: "none", border: `1px solid ${C.outlineVariant}`, borderRadius: "999px", padding: "6px 10px", cursor: "pointer", color: C.onSurfaceVariant, fontSize: "0.7rem", fontWeight: 700, flexShrink: 0 }}>
+            <ArrowUpDown size={12} /> Orden manual
+        </button>
+    ) : null;
+    const quitarFiltroBtn = statFilter ? (
+        <button onClick={() => setStatFilter(null)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", background: "none", border: "none", cursor: "pointer", color: C.outline, fontSize: "0.68rem", fontWeight: 700, padding: "5px 6px" }}>
+            <X size={12} /> Quitar filtro
+        </button>
+    ) : null;
+    const gearMenu = (
+        <div style={{ position: "relative", flexShrink: 0 }}>
+            <button
+                onClick={() => setPomodoroSettingsOpen(v => !v)}
+                title="Preferencias del Pomodoro"
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", background: C.surfaceContainerLow, border: `1px solid ${C.outlineVariant}`, borderRadius: "999px", width: "32px", height: "32px", cursor: "pointer", color: C.onSurfaceVariant }}
+            >
+                <Settings size={15} />
+            </button>
+            {pomodoroSettingsOpen && (
+                <div style={{ position: "absolute", top: "100%", right: 0, marginTop: "6px", zIndex: 10, background: "white", border: `1px solid ${C.outlineVariant}`, borderRadius: "12px", boxShadow: "0 8px 20px rgba(0,0,0,0.12)", padding: "12px", width: "230px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <span style={{ ...etiqueta }}>Pomodoro</span>
+                    <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.78rem", fontWeight: 600, color: C.onSurface, cursor: "pointer" }}>
+                        <input type="checkbox" checked={pomodoroPrefs.tickEnabled} onChange={e => setPomodoroPrefs({ tickEnabled: e.target.checked })} />
+                        Tic-tac mientras trabajas
+                    </label>
+                    <div>
+                        <div style={{ fontSize: "0.66rem", fontWeight: 700, color: C.outline, marginBottom: "4px" }}>Sonido de aviso</div>
+                        <select value={pomodoroPrefs.sound} onChange={e => setPomodoroPrefs({ sound: e.target.value as PomodoroSound })} style={{ width: "100%", padding: "6px 8px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", color: C.onSurface, background: "white" }}>
+                            {(Object.keys(SOUND_LABELS) as PomodoroSound[]).map(s => <option key={s} value={s}>{SOUND_LABELS[s]}</option>)}
+                        </select>
+                    </div>
+                    <button onClick={() => playAlertSound(pomodoroPrefs.sound)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: C.surfaceContainerLow, border: "none", borderRadius: "8px", padding: "6px", cursor: "pointer", fontSize: "0.74rem", fontWeight: 700, color: C.onSurfaceVariant }}>
+                        Probar sonido
+                    </button>
+                    <div>
+                        <div style={{ fontSize: "0.66rem", fontWeight: 700, color: C.outline, marginBottom: "4px" }}>Sonido del tic-tac</div>
+                        <select value={pomodoroPrefs.tickSound} onChange={e => setPomodoroPrefs({ tickSound: e.target.value as TickSound })} style={{ width: "100%", padding: "6px 8px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", color: C.onSurface, background: "white" }}>
+                            {(Object.keys(TICK_LABELS) as TickSound[]).map(s => <option key={s} value={s}>{TICK_LABELS[s]}</option>)}
+                        </select>
+                    </div>
+                    <button onClick={() => { playTickSound(pomodoroPrefs.tickSound, false); setTimeout(() => playTickSound(pomodoroPrefs.tickSound, true), 500); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: C.surfaceContainerLow, border: "none", borderRadius: "8px", padding: "6px", cursor: "pointer", fontSize: "0.74rem", fontWeight: 700, color: C.onSurfaceVariant }}>
+                        Probar tic-tac
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+    const searchBox = (
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", background: C.surfaceContainerLow, borderRadius: "999px", padding: "5px 10px", flex: movil ? "1 1 auto" : "0 0 auto", minWidth: 0, width: movil ? undefined : "170px" }}>
+            <Search size={13} color={C.outline} style={{ flexShrink: 0 }} />
+            <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Buscar por título..." style={{ flex: 1, minWidth: 0, border: "none", background: "none", outline: "none", fontSize: "0.78rem", fontFamily: "inherit", color: C.onSurface }} />
+            {searchQuery && (
+                <button onClick={() => setSearchQuery("")} title="Limpiar búsqueda" style={{ background: "none", border: "none", cursor: "pointer", color: C.outline, padding: 0, display: "flex", flexShrink: 0 }}>
+                    <X size={13} />
+                </button>
+            )}
+        </div>
+    );
+
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: movil ? "1rem" : "1.5rem", ...paddingPagina(movil), color: "var(--text-carbon)" }}>
-            {/* Misma cápsula blanca de una sola fila que Finanzas/Analizar: título +
-                pastillas de estado + reloj/racha/ajustes, todo en el mismo nivel en vez
-                de una fila de título grande y otra de pastillas aparte debajo. */}
+            {/* Cabecera. Desktop: fila 1 (título + búsqueda + reloj/racha/ajustes)
+                y fila 2 (pastillas en grilla pareja). Móvil: fila 1 compacta + un
+                desplegable "Resumen" con las pastillas más chicas, para que no se
+                salga de la tarjeta ni ocupe media pantalla. */}
+            {movil ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", background: "white", padding: "10px 12px", borderRadius: "16px", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <h2 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 900, color: C.onSurface, whiteSpace: "nowrap", flexShrink: 0 }}>Entregas</h2>
+                        {searchBox}
+                        {gearMenu}
+                    </div>
+                    <details>
+                        <summary style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px", cursor: "pointer", listStyle: "none", fontSize: "0.7rem", fontWeight: 800, color: C.onSurfaceVariant }}>
+                            <span style={{ textTransform: "uppercase", letterSpacing: "0.02em" }}>Resumen</span>
+                            <span style={{ fontWeight: 700, color: atrasados > 0 ? C.rojo : C.onSurfaceVariant }}>
+                                {atrasados > 0 ? `${atrasados} atrasados · ` : ""}{pendientes.length} por entregar
+                            </span>
+                        </summary>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", marginTop: "8px" }}>
+                            {totalPill(true)}
+                            {streakPill(true)}
+                            {ordenManualBtn}
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5px", marginTop: "6px" }}>
+                            {statPills.map(s => renderStatPill(s, true))}
+                        </div>
+                        {quitarFiltroBtn && <div style={{ marginTop: "4px" }}>{quitarFiltroBtn}</div>}
+                    </details>
+                </div>
+            ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", background: "white", padding: "10px 14px", borderRadius: "18px", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
               {/* Fila 1: título + búsqueda + reloj/racha/ajustes */}
               <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                 <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 900, color: C.onSurface, whiteSpace: "nowrap", flexShrink: 0 }}>Entregas</h2>
-
-                {/* Busca por título entre todos los proyectos (en curso, listos y ya
-                    entregados) -- se combina con el filtro de pastillas de abajo, no lo
-                    reemplaza, para poder acotar por los dos a la vez. */}
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", background: C.surfaceContainerLow, borderRadius: "999px", padding: "5px 10px", flexShrink: 0, width: movil ? "130px" : "170px" }}>
-                    <Search size={13} color={C.outline} style={{ flexShrink: 0 }} />
-                    <input
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        placeholder="Buscar por título..."
-                        style={{ flex: 1, minWidth: 0, border: "none", background: "none", outline: "none", fontSize: "0.78rem", fontFamily: "inherit", color: C.onSurface }}
-                    />
-                    {searchQuery && (
-                        <button onClick={() => setSearchQuery("")} title="Limpiar búsqueda" style={{ background: "none", border: "none", cursor: "pointer", color: C.outline, padding: 0, display: "flex", flexShrink: 0 }}>
-                            <X size={13} />
-                        </button>
-                    )}
-                </div>
-
+                {searchBox}
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto", flexWrap: "wrap", flexShrink: 0 }}>
-                    {customOrder.length > 0 && (
-                        <button onClick={() => saveOrder([])} title="Volver al orden automático por prioridad" style={{ display: "flex", alignItems: "center", gap: "5px", background: "none", border: `1px solid ${C.outlineVariant}`, borderRadius: "999px", padding: "6px 10px", cursor: "pointer", color: C.onSurfaceVariant, fontSize: "0.7rem", fontWeight: 700 }}>
-                            <ArrowUpDown size={12} /> Orden manual
-                        </button>
-                    )}
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "rgba(99,102,241,0.12)", borderRadius: "999px", padding: "6px 12px" }}>
-                        <Timer size={15} color={C.secondary} />
-                        <span style={{ fontWeight: 800, fontSize: "0.8rem", color: C.onSurface }}>{formatElapsed(totalWorkedAllProjects * 60 * 60 * 1000)}</span>
-                        <span style={{ fontSize: "0.68rem", color: C.onSurfaceVariant }}>en total</span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "rgba(230,168,23,0.12)", borderRadius: "999px", padding: "6px 12px" }}>
-                        <Flame size={15} color={C.ambar} fill={streak > 0 ? C.ambar : "none"} />
-                        <span style={{ fontWeight: 800, fontSize: "0.8rem", color: C.onSurface }}>{streak}</span>
-                        <span style={{ fontSize: "0.68rem", color: C.onSurfaceVariant }}>{streak === 1 ? "día seguido" : "días seguidos"}</span>
-                    </div>
-                    <div style={{ position: "relative" }}>
-                        <button
-                            onClick={() => setPomodoroSettingsOpen(v => !v)}
-                            title="Preferencias del Pomodoro"
-                            style={{ display: "flex", alignItems: "center", justifyContent: "center", background: C.surfaceContainerLow, border: `1px solid ${C.outlineVariant}`, borderRadius: "999px", width: "32px", height: "32px", cursor: "pointer", color: C.onSurfaceVariant }}
-                        >
-                            <Settings size={15} />
-                        </button>
-                        {pomodoroSettingsOpen && (
-                            <div style={{ position: "absolute", top: "100%", right: 0, marginTop: "6px", zIndex: 10, background: "white", border: `1px solid ${C.outlineVariant}`, borderRadius: "12px", boxShadow: "0 8px 20px rgba(0,0,0,0.12)", padding: "12px", width: "230px", display: "flex", flexDirection: "column", gap: "10px" }}>
-                                <span style={{ ...etiqueta }}>Pomodoro</span>
-                                <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.78rem", fontWeight: 600, color: C.onSurface, cursor: "pointer" }}>
-                                    <input type="checkbox" checked={pomodoroPrefs.tickEnabled} onChange={e => setPomodoroPrefs({ tickEnabled: e.target.checked })} />
-                                    Tic-tac mientras trabajas
-                                </label>
-                                <div>
-                                    <div style={{ fontSize: "0.66rem", fontWeight: 700, color: C.outline, marginBottom: "4px" }}>Sonido de aviso</div>
-                                    <select
-                                        value={pomodoroPrefs.sound}
-                                        onChange={e => setPomodoroPrefs({ sound: e.target.value as PomodoroSound })}
-                                        style={{ width: "100%", padding: "6px 8px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", color: C.onSurface, background: "white" }}
-                                    >
-                                        {(Object.keys(SOUND_LABELS) as PomodoroSound[]).map(s => (
-                                            <option key={s} value={s}>{SOUND_LABELS[s]}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <button
-                                    onClick={() => playAlertSound(pomodoroPrefs.sound)}
-                                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: C.surfaceContainerLow, border: "none", borderRadius: "8px", padding: "6px", cursor: "pointer", fontSize: "0.74rem", fontWeight: 700, color: C.onSurfaceVariant }}
-                                >
-                                    Probar sonido
-                                </button>
-                                <div>
-                                    <div style={{ fontSize: "0.66rem", fontWeight: 700, color: C.outline, marginBottom: "4px" }}>Sonido del tic-tac</div>
-                                    <select
-                                        value={pomodoroPrefs.tickSound}
-                                        onChange={e => setPomodoroPrefs({ tickSound: e.target.value as TickSound })}
-                                        style={{ width: "100%", padding: "6px 8px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.78rem", color: C.onSurface, background: "white" }}
-                                    >
-                                        {(Object.keys(TICK_LABELS) as TickSound[]).map(s => (
-                                            <option key={s} value={s}>{TICK_LABELS[s]}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <button
-                                    onClick={() => { playTickSound(pomodoroPrefs.tickSound, false); setTimeout(() => playTickSound(pomodoroPrefs.tickSound, true), 500); }}
-                                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", background: C.surfaceContainerLow, border: "none", borderRadius: "8px", padding: "6px", cursor: "pointer", fontSize: "0.74rem", fontWeight: 700, color: C.onSurfaceVariant }}
-                                >
-                                    Probar tic-tac
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                    {ordenManualBtn}
+                    {totalPill(false)}
+                    {streakPill(false)}
+                    {gearMenu}
                 </div>
               </div>
 
-              {/* Fila 2: pastillas de estado en grilla pareja — antes se apilaban
-                  en 2-3 filas irregulares metidas entre el título y los controles. */}
+              {/* Fila 2: pastillas de estado en grilla pareja. */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(148px, 1fr))", gap: "6px" }}>
-                    {([
-                        { label: "por entregar", value: pendientes.length, icon: Timer, color: C.secondary, bg: "rgba(99,102,241,0.12)" },
-                        { label: "atrasados", value: atrasados, icon: AlertTriangle, color: C.rojo, bg: "rgba(239,68,68,0.12)", filterKey: 'atrasados' as const },
-                        { label: "en edición", value: enEdicion, icon: Pencil, color: ESTADO_COLOR['En Edición'], bg: "rgba(230,168,23,0.12)", filterKey: 'enEdicion' as const },
-                        { label: "prioritarios", value: prioritarios, icon: Pin, color: C.ambar, bg: "rgba(230,168,23,0.12)", filterKey: 'prioridad' as const },
-                        { label: "listos para entregar", value: listosParaEntregar.length, icon: CheckCircle, color: C.ambar, bg: "rgba(230,168,23,0.12)" },
-                        { label: "entregados", value: completados.length, icon: CheckCircle2, color: C.verde, bg: "rgba(16,185,129,0.12)" },
-                        { label: "USB por entregar", value: usbPendientes, icon: Usb, color: C.ambar, bg: "rgba(230,168,23,0.12)", filterKey: 'usbGeneral' as const },
-                        { label: "USB urgente", value: usbUrgente, icon: Usb, color: C.rojo, bg: "rgba(239,68,68,0.12)", filterKey: 'usbUrgente' as const },
-                    ]).map(stat => {
-                        const clickable = !!stat.filterKey;
-                        const active = clickable && statFilter === stat.filterKey;
-                        return (
-                            <button
-                                key={stat.label}
-                                onClick={clickable ? () => setStatFilter(f => f === stat.filterKey ? null : stat.filterKey!) : undefined}
-                                title={clickable ? (active ? "Quitar filtro" : `Mostrar solo ${stat.label}`) : undefined}
-                                style={{
-                                    display: "flex", alignItems: "center", gap: "5px", background: stat.bg, borderRadius: "999px", padding: "5px 10px",
-                                    border: active ? `2px solid ${stat.color}` : "2px solid transparent",
-                                    cursor: clickable ? "pointer" : "default",
-                                    font: "inherit", width: "100%", minWidth: 0,
-                                }}
-                            >
-                                <stat.icon size={12} color={stat.color} style={{ flexShrink: 0 }} />
-                                <span style={{ fontWeight: 800, fontSize: "0.76rem", color: C.onSurface }}>{stat.value}</span>
-                                <span style={{ fontSize: "0.64rem", color: C.onSurfaceVariant, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{stat.label}</span>
-                            </button>
-                        );
-                    })}
-                    {statFilter && (
-                        <button onClick={() => setStatFilter(null)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", background: "none", border: "none", cursor: "pointer", color: C.outline, fontSize: "0.68rem", fontWeight: 700, padding: "5px 6px" }}>
-                            <X size={12} /> Quitar filtro
-                        </button>
-                    )}
+                    {statPills.map(s => renderStatPill(s, false))}
+                    {quitarFiltroBtn}
               </div>
             </div>
+            )}
 
             <div style={{ display: "flex", flexDirection: movil ? "column" : "row", flexWrap: "wrap", gap: movil ? "0.8rem" : "0.75rem", alignItems: "flex-start" }}>
             <details style={{ ...bento, padding: "0.9rem 1rem", flex: movil ? undefined : "1 1 260px", minWidth: 0, width: movil ? "100%" : undefined }}>
