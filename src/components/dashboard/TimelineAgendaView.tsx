@@ -70,10 +70,13 @@ export const TimelineAgendaView = ({
     // Arranca oculto: el usuario todavía no decidió cómo ordenar este panel
     // (mini-calendario + Categorías + Notion). Se abre con el botón de la cabecera.
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    // Abierto de entrada en "Misión Diaria": es lo que el usuario quiere ver al
-    // entrar al Calendario, junto con la vista Mes.
+    // Al entrar al Calendario: vista Mes + panel derecho abierto en modo FOCO
+    // (atrasadas / próximas entregas / agenda / checklist).
     const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
-    const [rightPanelMode, setRightPanelMode] = useState<'citas' | 'rutinas' | 'tareas' | 'habitos' | 'mision' | 'foco'>('mision');
+    const [rightPanelMode, setRightPanelMode] = useState<'citas' | 'rutinas' | 'tareas' | 'habitos' | 'mision' | 'foco'>('foco');
+    // Qué secciones de FOCO están expandidas (por defecto se ven solo las 3
+    // primeras filas de cada una + un "ver más").
+    const [focoExpandido, setFocoExpandido] = useState<Record<string, boolean>>({});
     const [activeFilters, setActiveFilters] = useState({
         citas: true,
         rutinas: true,
@@ -371,20 +374,41 @@ export const TimelineAgendaView = ({
     // Contenido de FOCO — se renderiza dentro del panel lateral derecho
     // (rightPanelMode === 'foco'), no como pantalla completa.
     const renderFoco = () => {
+        const LIMITE = 3;
         const diasLabel = (d: number) => d < 0 ? `hace ${Math.abs(d)} d${Math.abs(d) === 1 ? 'ía' : 'ías'}` : d === 0 ? 'hoy' : d === 1 ? 'mañana' : `en ${d} días`;
         const { atrasadas, proximas, eventos, checklist } = focoData;
-        const Section = ({ icon, title, tint, count, children, empty }: { icon: React.ReactNode; title: string; tint: string; count: number; children?: React.ReactNode; empty: string }) => (
-            <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px' }}>
-                    {icon}
-                    <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{title}</span>
-                    {count > 0 && <span style={{ fontSize: '0.64rem', fontWeight: 800, color: tint, background: `${tint}1a`, borderRadius: '999px', padding: '1px 7px' }}>{count}</span>}
+        // Cada sección muestra solo las 3 primeras + "ver N más" / "ver menos".
+        const Section = <T,>({ k, icon, title, tint, items, empty, renderItem }: {
+            k: string; icon: React.ReactNode; title: string; tint: string; items: T[]; empty: string; renderItem: (it: T) => React.ReactNode;
+        }) => {
+            const abierto = !!focoExpandido[k];
+            const visibles = abierto ? items : items.slice(0, LIMITE);
+            const resto = items.length - visibles.length;
+            return (
+                <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px' }}>
+                        {icon}
+                        <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{title}</span>
+                        {items.length > 0 && <span style={{ fontSize: '0.64rem', fontWeight: 800, color: tint, background: `${tint}1a`, borderRadius: '999px', padding: '1px 7px' }}>{items.length}</span>}
+                    </div>
+                    {items.length === 0
+                        ? <div style={{ fontSize: '0.72rem', color: '#94A3B8', paddingLeft: '22px' }}>{empty}</div>
+                        : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                {visibles.map(renderItem)}
+                                {(resto > 0 || abierto) && (
+                                    <button
+                                        onClick={() => setFocoExpandido(e => ({ ...e, [k]: !abierto }))}
+                                        style={{ alignSelf: 'flex-start', background: 'none', border: 'none', cursor: 'pointer', color: tint, fontSize: '0.68rem', fontWeight: 800, padding: '2px 2px' }}
+                                    >
+                                        {abierto ? 'ver menos' : `ver ${resto} más`}
+                                    </button>
+                                )}
+                            </div>
+                        )}
                 </div>
-                {count > 0
-                    ? <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>{children}</div>
-                    : <div style={{ fontSize: '0.72rem', color: '#94A3B8', paddingLeft: '22px' }}>{empty}</div>}
-            </div>
-        );
+            );
+        };
         const Row = ({ title, right, color, onClick }: { title: string; right: string; color: string; onClick?: () => void }) => (
             <div onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', border: '1px solid #F1F5F9', borderLeft: `4px solid ${color}`, borderRadius: '10px', padding: '8px 10px', cursor: onClick ? 'pointer' : 'default' }}>
                 <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</span>
@@ -393,24 +417,20 @@ export const TimelineAgendaView = ({
         );
         return (
             <div style={{ padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <Section icon={<AlertTriangle size={15} color="#DC2626" />} title="Entregas atrasadas" tint="#DC2626" count={atrasadas.length} empty="Nada atrasado 🎉">
-                    {atrasadas.slice(0, 12).map(x => <Row key={x.id} title={x.title} right={diasLabel(x.dias)} color="#DC2626" onClick={x.raw ? () => setEditingItem({ type: 'calendar', data: x.raw }) : undefined} />)}
-                </Section>
-                <Section icon={<Package size={15} color="#059669" />} title="Próximas entregas" tint="#059669" count={proximas.length} empty="Nada en las próximas 3 semanas">
-                    {proximas.slice(0, 15).map(x => <Row key={x.id} title={x.title} right={diasLabel(x.dias)} color={x.color} onClick={x.raw ? () => setEditingItem({ type: 'calendar', data: x.raw }) : undefined} />)}
-                </Section>
-                <Section icon={<Calendar size={15} color="#6366F1" />} title="Agenda · próximos eventos" tint="#6366F1" count={eventos.length} empty="Sin eventos próximos">
-                    {eventos.map(x => <Row key={x.id} title={x.title} right={`${x.time ? x.time + ' · ' : ''}${diasLabel(x.dias)}`} color={x.color} onClick={() => setEditingItem({ type: 'calendar', data: x.raw })} />)}
-                </Section>
-                <Section icon={<Clock size={15} color="#F59E0B" />} title="Checklist de hoy" tint="#F59E0B" count={checklist.length} empty="Todo listo por hoy ✅">
-                    {checklist.map(t => (
+                <Section k="atrasadas" icon={<AlertTriangle size={15} color="#DC2626" />} title="Entregas atrasadas" tint="#DC2626" items={atrasadas} empty="Nada atrasado 🎉"
+                    renderItem={x => <Row key={x.id} title={x.title} right={diasLabel(x.dias)} color="#DC2626" onClick={x.raw ? () => setEditingItem({ type: 'calendar', data: x.raw }) : undefined} />} />
+                <Section k="proximas" icon={<Package size={15} color="#059669" />} title="Próximas entregas" tint="#059669" items={proximas} empty="Nada en las próximas 3 semanas"
+                    renderItem={x => <Row key={x.id} title={x.title} right={diasLabel(x.dias)} color={x.color} onClick={x.raw ? () => setEditingItem({ type: 'calendar', data: x.raw }) : undefined} />} />
+                <Section k="eventos" icon={<Calendar size={15} color="#6366F1" />} title="Agenda · próximos eventos" tint="#6366F1" items={eventos} empty="Sin eventos próximos"
+                    renderItem={x => <Row key={x.id} title={x.title} right={`${x.time ? x.time + ' · ' : ''}${diasLabel(x.dias)}`} color={x.color} onClick={() => setEditingItem({ type: 'calendar', data: x.raw })} />} />
+                <Section k="checklist" icon={<Clock size={15} color="#F59E0B" />} title="Checklist de hoy" tint="#F59E0B" items={checklist} empty="Todo listo por hoy ✅"
+                    renderItem={t => (
                         <div key={`${t.label}-${t.period}`} onClick={() => t.id && toggleDailyBlock?.(t.id)} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', border: '1px solid #F1F5F9', borderRadius: '10px', padding: '8px 10px', cursor: t.id ? 'pointer' : 'default' }}>
                             <span style={{ width: '15px', height: '15px', borderRadius: '5px', border: '2px solid #E2E8F0', flexShrink: 0 }} />
                             <span style={{ flex: 1, fontWeight: 700, fontSize: '0.78rem' }}>{t.label}</span>
                             <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94A3B8' }}>{t.period.toUpperCase()}</span>
                         </div>
-                    ))}
-                </Section>
+                    )} />
             </div>
         );
     };
