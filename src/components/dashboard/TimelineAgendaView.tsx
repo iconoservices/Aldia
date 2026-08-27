@@ -53,7 +53,7 @@ export const TimelineAgendaView = ({
         window.addEventListener('resize', check);
         return () => window.removeEventListener('resize', check);
     }, []);
-    const [viewMode, setViewMode] = useState<'timeline' | 'month' | 'appointments' | 'tasks'>('timeline');
+    const [viewMode, setViewMode] = useState<'timeline' | 'month' | 'appointments' | 'tasks'>('month');
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [editingItem, setEditingItem] = useState<{ type: 'calendar' | 'routine' | 'timeblock' | 'new', data: any } | null>(null);
     const [sidebarOpen, setSidebarOpen] = useState(true);
