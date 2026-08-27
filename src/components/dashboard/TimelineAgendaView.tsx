@@ -888,7 +888,8 @@ export const TimelineAgendaView = ({
                                         {evs.slice(0, 3).map((e: any) => (
                                             <div
                                                 key={e.id}
-                                                title={`${e.startTime ? e.startTime + ' · ' : ''}${e.title}`}
+                                                title={e.raw ? `${e.startTime ? e.startTime + ' · ' : ''}${e.title} — clic para ver detalle` : `${e.startTime ? e.startTime + ' · ' : ''}${e.title}`}
+                                                onClick={ev => { if (e.raw) { ev.stopPropagation(); setEditingItem({ type: 'calendar', data: e.raw }); } }}
                                                 style={{
                                                     fontSize: '0.6rem', fontWeight: 800, lineHeight: 1.25, borderRadius: '5px',
                                                     padding: '2px 4px', color: 'white', background: e.color,
@@ -1254,7 +1255,7 @@ export const TimelineAgendaView = ({
                             style={{ background: 'white', padding: '1.5rem', borderRadius: '24px', width: '320px', maxWidth: '100%' }}
                         >
                             <h3 style={{ marginTop: 0, marginBottom: '1rem', fontSize: '1rem', fontWeight: 900 }}>
-                                {editingItem.type === 'routine' ? 'Editar rutina' : editingItem.type === 'calendar' ? 'Editar evento' : editingItem.type === 'new' ? 'Agregar manualmente' : 'Editar bloque'}
+                                {editingItem.type === 'routine' ? 'Editar rutina' : editingItem.type === 'calendar' ? (editingItem.data?.notionId ? 'Detalle de sesión' : 'Editar evento') : editingItem.type === 'new' ? 'Agregar manualmente' : 'Editar bloque'}
                             </h3>
 
                             {editingItem.type === 'new' && (
@@ -1271,6 +1272,23 @@ export const TimelineAgendaView = ({
                                     >
                                         Evento puntual
                                     </button>
+                                </div>
+                            )}
+
+                            {editingItem.type === 'calendar' && editingItem.data?.notionId && (
+                                <div style={{ marginBottom: '14px', padding: '10px 12px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Sesión de Notion</div>
+                                    {[
+                                        ['Estado', editingItem.data.notionEstado],
+                                        ['Entrega', editingItem.data.notionEntregaFecha],
+                                        ['Días restantes', editingItem.data.notionDiasRestantes],
+                                    ].filter(([, v]) => v !== undefined && v !== null && v !== '').map(([k, v]) => (
+                                        <div key={k as string} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                                            <span style={{ color: '#64748B', fontWeight: 700 }}>{k}</span>
+                                            <span style={{ color: '#0F172A', fontWeight: 800 }}>{String(v)}</span>
+                                        </div>
+                                    ))}
+                                    <div style={{ fontSize: '0.66rem', color: '#94A3B8', fontWeight: 600 }}>El estado se cambia desde Entregas o Notion; editar acá solo mueve la cita local.</div>
                                 </div>
                             )}
 
