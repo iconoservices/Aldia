@@ -56,7 +56,9 @@ export const TimelineAgendaView = ({
     const [viewMode, setViewMode] = useState<'timeline' | 'month' | 'appointments' | 'tasks'>('month');
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [editingItem, setEditingItem] = useState<{ type: 'calendar' | 'routine' | 'timeblock' | 'new', data: any } | null>(null);
-    const [sidebarOpen, setSidebarOpen] = useState(true);
+    // Arranca oculto: el usuario todavía no decidió cómo ordenar este panel
+    // (mini-calendario + Categorías + Notion). Se abre con el botón de la cabecera.
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     // Lado del panel de mini-calendario + Categorías + Notion. El usuario lo
     // quiere a la derecha; el botón de la cabecera lo deja moverlo mientras
     // decide dónde se queda. Se recuerda entre sesiones.
