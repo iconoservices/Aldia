@@ -36,6 +36,7 @@ import { NegocioLienzo } from './components/dashboard/NegocioLienzo';
 import { BuscadorDashboard } from './components/dashboard/BuscadorDashboard';
 import { MovimientosDashboard } from './components/dashboard/MovimientosDashboard';
 import { ListasDashboard } from './components/dashboard/ListasDashboard';
+import { PendientesDashboard } from './components/dashboard/PendientesDashboard';
 import { ComprasDashboard } from './components/dashboard/ComprasDashboard';
 import { ComidasDashboard } from './components/dashboard/ComidasDashboard';
 import { EsporadicosDashboard } from './components/dashboard/EsporadicosDashboard';
@@ -60,6 +61,7 @@ function App() {
     if (path.includes('/tranqueo')) return 'Tranqueo de Vida';
     if (path.includes('/movimientos')) return 'Movimientos';
     if (path.includes('/listas')) return 'Listas';
+    if (path.includes('/pendientes')) return 'Pendientes';
     if (path.includes('/compras')) return 'Compras';
     if (path.includes('/comidas')) return 'Comidas';
     if (path.includes('/tablero')) return 'Tablero';
@@ -123,6 +125,7 @@ function App() {
       else if (path.includes('/tranqueo')) setActiveTab('Tranqueo de Vida');
       else if (path.includes('/movimientos')) setActiveTab('Movimientos');
       else if (path.includes('/listas')) setActiveTab('Listas');
+      else if (path.includes('/pendientes')) setActiveTab('Pendientes');
       else if (path.includes('/compras')) setActiveTab('Compras');
       else if (path.includes('/comidas')) setActiveTab('Comidas');
       else if (path.includes('/tablero')) setActiveTab('Tablero');
@@ -466,6 +469,15 @@ function App() {
                 removeNote={state.removeNote}
                 toggleNoteItem={state.toggleNoteItem}
                 updateNote={state.updateNote}
+              />
+            ) : activeTab === 'Pendientes' ? (
+              <PendientesDashboard
+                notes={state.notes}
+                addNote={state.addNote}
+                removeNote={state.removeNote}
+                toggleNoteItem={state.toggleNoteItem}
+                updateNote={state.updateNote}
+                agenda={state.agenda}
               />
             ) : activeTab === 'Compras' ? (
               <ComprasDashboard

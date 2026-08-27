@@ -25,7 +25,9 @@ const inputStyle: React.CSSProperties = { padding: "8px 10px", borderRadius: "8p
 
 export const ListasDashboard = ({ notes, addNote, removeNote, toggleNoteItem, updateNote }: ListasProps) => {
     const movil = useIsMobile();
-    const listas = notes.filter(n => n.type === "checklist");
+    // Los grupos de "Pendientes" (q: 'pendiente' o la lista histórica "Pendientes")
+    // viven en su propia pestaña — acá solo van los kits reutilizables.
+    const listas = notes.filter(n => n.type === "checklist" && n.q !== "pendiente" && n.title.trim().toLowerCase() !== "pendientes");
 
     const [newListName, setNewListName] = useState("");
     const [addingList, setAddingList] = useState(false);

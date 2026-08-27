@@ -37,6 +37,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     const PRIMARY_ITEMS = [
         { label: 'Checklist', tab: 'Checklist', icon: 'task_alt' },
         { label: 'Agenda', tab: 'Agenda', icon: 'event' },
+        { label: 'Pendientes', tab: 'Pendientes', icon: 'checklist' },
         { label: 'Entregas', tab: 'Entregas', icon: 'local_fire_department' },
         { label: 'Finanzas',  tab: 'Finanzas',  icon: 'payments'      },
         { label: 'Fijos', tab: 'Plan',      icon: 'savings'       },
@@ -132,6 +133,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     const getViewTitle = (tab: string) => {
         switch (tab) {
             case 'Checklist': return 'Checklist Diario';
+            case 'Pendientes': return 'Pendientes';
             case 'Plan': return 'Ingresos y Gastos Fijos';
             case 'Compras': return 'Lista de Compras & Deseos';
             case 'Comidas': return 'Calendario de Comidas';
