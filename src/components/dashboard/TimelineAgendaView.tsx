@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, Filter, Trash2, Star, Plus, Package, Camera, RefreshCw, Loader2, X, Target, AlertTriangle } from 'lucide-react';
+import { Calendar, Clock, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, CalendarDays, Filter, Trash2, Star, Plus, Package, Camera, RefreshCw, Loader2, X, Target, AlertTriangle } from 'lucide-react';
 
 interface TimelineAgendaViewProps {
     calendarEvents: any[];
@@ -77,6 +77,33 @@ export const TimelineAgendaView = ({
     // Qué secciones de FOCO están expandidas (por defecto se ven solo las 3
     // primeras filas de cada una + un "ver más").
     const [focoExpandido, setFocoExpandido] = useState<Record<string, boolean>>({});
+    // Orden manual de FOCO (flechitas ↑↓). `activo` = modo manual; `secs` = orden
+    // de las secciones; `rows[k]` = orden de las filas de esa sección. Persistido.
+    type FocoManual = { activo: boolean; secs: string[]; rows: Record<string, (string | number)[]> };
+    const [focoManual, setFocoManual] = useState<FocoManual>(() => {
+        try {
+            const v = JSON.parse(localStorage.getItem('aldia_foco_manual') || 'null');
+            if (v && typeof v === 'object') return { activo: !!v.activo, secs: Array.isArray(v.secs) ? v.secs : [], rows: v.rows || {} };
+        } catch { /* nada */ }
+        return { activo: false, secs: [], rows: {} };
+    });
+    const actualizarFocoManual = (updater: (prev: FocoManual) => FocoManual) => {
+        setFocoManual(prev => {
+            const next = updater(prev);
+            try { localStorage.setItem('aldia_foco_manual', JSON.stringify(next)); } catch { /* nada */ }
+            return next;
+        });
+    };
+    // Mueve `id` un lugar (dir -1 = arriba, +1 = abajo) dentro de `base` (el orden
+    // completo actual), devolviendo el nuevo array.
+    const moverEnOrden = (base: (string | number)[], id: string | number, dir: -1 | 1) => {
+        const arr = [...base];
+        const i = arr.findIndex(x => String(x) === String(id));
+        const j = i + dir;
+        if (i === -1 || j < 0 || j >= arr.length) return base;
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+        return arr;
+    };
     const [activeFilters, setActiveFilters] = useState({
         citas: true,
         rutinas: true,
@@ -375,62 +402,125 @@ export const TimelineAgendaView = ({
     // (rightPanelMode === 'foco'), no como pantalla completa.
     const renderFoco = () => {
         const LIMITE = 3;
+        const manual = focoManual.activo;
         const diasLabel = (d: number) => d < 0 ? `hace ${Math.abs(d)} d${Math.abs(d) === 1 ? 'ía' : 'ías'}` : d === 0 ? 'hoy' : d === 1 ? 'mañana' : `en ${d} días`;
         const { atrasadas, proximas, eventos, checklist } = focoData;
-        // Cada sección muestra solo las 3 primeras + "ver N más" / "ver menos".
-        const Section = <T,>({ k, icon, title, tint, items, empty, renderItem }: {
-            k: string; icon: React.ReactNode; title: string; tint: string; items: T[]; empty: string; renderItem: (it: T) => React.ReactNode;
-        }) => {
-            const abierto = !!focoExpandido[k];
-            const visibles = abierto ? items : items.slice(0, LIMITE);
-            const resto = items.length - visibles.length;
-            return (
-                <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px' }}>
-                        {icon}
-                        <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{title}</span>
-                        {items.length > 0 && <span style={{ fontSize: '0.64rem', fontWeight: 800, color: tint, background: `${tint}1a`, borderRadius: '999px', padding: '1px 7px' }}>{items.length}</span>}
-                    </div>
-                    {items.length === 0
-                        ? <div style={{ fontSize: '0.72rem', color: '#94A3B8', paddingLeft: '22px' }}>{empty}</div>
-                        : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                {visibles.map(renderItem)}
-                                {(resto > 0 || abierto) && (
-                                    <button
-                                        onClick={() => setFocoExpandido(e => ({ ...e, [k]: !abierto }))}
-                                        style={{ alignSelf: 'flex-start', background: 'none', border: 'none', cursor: 'pointer', color: tint, fontSize: '0.68rem', fontWeight: 800, padding: '2px 2px' }}
-                                    >
-                                        {abierto ? 'ver menos' : `ver ${resto} más`}
-                                    </button>
-                                )}
-                            </div>
-                        )}
-                </div>
-            );
+
+        // Ordena `items` según la lista de ids guardada; los que no estén, al final.
+        const ordenar = <T,>(items: T[], idOf: (t: T) => string | number, key: string): T[] => {
+            const ord = focoManual.rows[key] || [];
+            if (!manual || !ord.length) return items;
+            const pos = new Map(ord.map((id, i) => [String(id), i]));
+            return [...items].sort((a, b) => (pos.has(String(idOf(a))) ? pos.get(String(idOf(a)))! : 1e9) - (pos.has(String(idOf(b))) ? pos.get(String(idOf(b)))! : 1e9));
         };
-        const Row = ({ title, right, color, onClick }: { title: string; right: string; color: string; onClick?: () => void }) => (
+        const moverFila = (key: string, ids: (string | number)[], id: string | number, dir: -1 | 1) => {
+            const base = (focoManual.rows[key]?.length ? focoManual.rows[key] : ids);
+            actualizarFocoManual(p => ({ ...p, activo: true, rows: { ...p.rows, [key]: moverEnOrden(base, id, dir) } }));
+        };
+        const moverSeccion = (allKeys: string[], k: string, dir: -1 | 1) => {
+            const base = (focoManual.secs.length ? focoManual.secs.filter(x => allKeys.includes(x)) : allKeys);
+            const full = [...base, ...allKeys.filter(x => !base.includes(x))];
+            actualizarFocoManual(p => ({ ...p, activo: true, secs: moverEnOrden(full, k, dir) as string[] }));
+        };
+
+        const Arrows = ({ onUp, onDown, first, last }: { onUp: () => void; onDown: () => void; first: boolean; last: boolean }) => (
+            <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+                <button onClick={e => { e.stopPropagation(); onUp(); }} disabled={first} title="Subir" style={{ background: 'none', border: 'none', cursor: first ? 'default' : 'pointer', color: first ? '#E2E8F0' : '#94A3B8', padding: 0, lineHeight: 0.7, display: 'flex' }}><ChevronUp size={13} /></button>
+                <button onClick={e => { e.stopPropagation(); onDown(); }} disabled={last} title="Bajar" style={{ background: 'none', border: 'none', cursor: last ? 'default' : 'pointer', color: last ? '#E2E8F0' : '#94A3B8', padding: 0, lineHeight: 0.7, display: 'flex' }}><ChevronDown size={13} /></button>
+            </div>
+        );
+        const Row = ({ title, right, color, onClick, arrows }: { title: string; right: string; color: string; onClick?: () => void; arrows?: React.ReactNode }) => (
             <div onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', border: '1px solid #F1F5F9', borderLeft: `4px solid ${color}`, borderRadius: '10px', padding: '8px 10px', cursor: onClick ? 'pointer' : 'default' }}>
+                {arrows}
                 <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</span>
                 <span style={{ fontSize: '0.68rem', fontWeight: 800, color, whiteSpace: 'nowrap', flexShrink: 0 }}>{right}</span>
             </div>
         );
+
+        // Descriptores de sección: en auto son 4, en manual las dos de entregas se
+        // funden en una sola lista reordenable.
+        type SecDef = { k: string; icon: React.ReactNode; title: string; tint: string; items: any[]; empty: string; renderItem: (it: any, i: number, arr: any[]) => React.ReactNode };
+        const rowEntrega = (key: string) => (x: any, i: number, arr: any[]) => (
+            <Row key={x.id} title={x.title} right={diasLabel(x.dias)} color={x.color}
+                onClick={x.raw ? () => setEditingItem({ type: 'calendar', data: x.raw }) : undefined}
+                arrows={manual ? <Arrows first={i === 0} last={i === arr.length - 1} onUp={() => moverFila(key, arr.map(a => a.id), x.id, -1)} onDown={() => moverFila(key, arr.map(a => a.id), x.id, 1)} /> : undefined} />
+        );
+        const rowEvento = (x: any, i: number, arr: any[]) => (
+            <Row key={x.id} title={x.title} right={`${x.time ? x.time + ' · ' : ''}${diasLabel(x.dias)}`} color={x.color}
+                onClick={() => setEditingItem({ type: 'calendar', data: x.raw })}
+                arrows={manual ? <Arrows first={i === 0} last={i === arr.length - 1} onUp={() => moverFila('eventos', arr.map(a => a.id), x.id, -1)} onDown={() => moverFila('eventos', arr.map(a => a.id), x.id, 1)} /> : undefined} />
+        );
+        const rowCheck = (t: any, i: number, arr: any[]) => (
+            <div key={`${t.label}-${t.period}`} onClick={() => t.id && toggleDailyBlock?.(t.id)} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', border: '1px solid #F1F5F9', borderRadius: '10px', padding: '8px 10px', cursor: t.id ? 'pointer' : 'default' }}>
+                {manual && <Arrows first={i === 0} last={i === arr.length - 1} onUp={() => moverFila('checklist', arr.map((a: any) => `${a.label}-${a.period}`), `${t.label}-${t.period}`, -1)} onDown={() => moverFila('checklist', arr.map((a: any) => `${a.label}-${a.period}`), `${t.label}-${t.period}`, 1)} />}
+                <span style={{ width: '15px', height: '15px', borderRadius: '5px', border: '2px solid #E2E8F0', flexShrink: 0 }} />
+                <span style={{ flex: 1, fontWeight: 700, fontSize: '0.78rem' }}>{t.label}</span>
+                <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94A3B8' }}>{t.period.toUpperCase()}</span>
+            </div>
+        );
+
+        const secDefs: SecDef[] = manual
+            ? [
+                { k: 'entregas', icon: <Package size={15} color="#059669" />, title: 'Entregas', tint: '#059669', items: ordenar([...atrasadas, ...proximas], x => x.id, 'entregas'), empty: 'Sin entregas pendientes', renderItem: rowEntrega('entregas') },
+                { k: 'eventos', icon: <Calendar size={15} color="#6366F1" />, title: 'Agenda · próximos eventos', tint: '#6366F1', items: ordenar(eventos, x => x.id, 'eventos'), empty: 'Sin eventos próximos', renderItem: rowEvento },
+                { k: 'checklist', icon: <Clock size={15} color="#F59E0B" />, title: 'Checklist de hoy', tint: '#F59E0B', items: ordenar(checklist, t => `${t.label}-${t.period}`, 'checklist'), empty: 'Todo listo por hoy ✅', renderItem: rowCheck },
+            ]
+            : [
+                { k: 'atrasadas', icon: <AlertTriangle size={15} color="#DC2626" />, title: 'Entregas atrasadas', tint: '#DC2626', items: atrasadas, empty: 'Nada atrasado 🎉', renderItem: rowEntrega('atrasadas') },
+                { k: 'proximas', icon: <Package size={15} color="#059669" />, title: 'Próximas entregas', tint: '#059669', items: proximas, empty: 'Nada en las próximas 3 semanas', renderItem: rowEntrega('proximas') },
+                { k: 'eventos', icon: <Calendar size={15} color="#6366F1" />, title: 'Agenda · próximos eventos', tint: '#6366F1', items: eventos, empty: 'Sin eventos próximos', renderItem: rowEvento },
+                { k: 'checklist', icon: <Clock size={15} color="#F59E0B" />, title: 'Checklist de hoy', tint: '#F59E0B', items: checklist, empty: 'Todo listo por hoy ✅', renderItem: rowCheck },
+            ];
+        const allKeys = secDefs.map(s => s.k);
+        const orderedSecs = manual && focoManual.secs.length
+            ? [...secDefs].sort((a, b) => {
+                const pa = focoManual.secs.indexOf(a.k); const pb = focoManual.secs.indexOf(b.k);
+                return (pa === -1 ? 1e9 : pa) - (pb === -1 ? 1e9 : pb);
+            })
+            : secDefs;
+
         return (
-            <div style={{ padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <Section k="atrasadas" icon={<AlertTriangle size={15} color="#DC2626" />} title="Entregas atrasadas" tint="#DC2626" items={atrasadas} empty="Nada atrasado 🎉"
-                    renderItem={x => <Row key={x.id} title={x.title} right={diasLabel(x.dias)} color="#DC2626" onClick={x.raw ? () => setEditingItem({ type: 'calendar', data: x.raw }) : undefined} />} />
-                <Section k="proximas" icon={<Package size={15} color="#059669" />} title="Próximas entregas" tint="#059669" items={proximas} empty="Nada en las próximas 3 semanas"
-                    renderItem={x => <Row key={x.id} title={x.title} right={diasLabel(x.dias)} color={x.color} onClick={x.raw ? () => setEditingItem({ type: 'calendar', data: x.raw }) : undefined} />} />
-                <Section k="eventos" icon={<Calendar size={15} color="#6366F1" />} title="Agenda · próximos eventos" tint="#6366F1" items={eventos} empty="Sin eventos próximos"
-                    renderItem={x => <Row key={x.id} title={x.title} right={`${x.time ? x.time + ' · ' : ''}${diasLabel(x.dias)}`} color={x.color} onClick={() => setEditingItem({ type: 'calendar', data: x.raw })} />} />
-                <Section k="checklist" icon={<Clock size={15} color="#F59E0B" />} title="Checklist de hoy" tint="#F59E0B" items={checklist} empty="Todo listo por hoy ✅"
-                    renderItem={t => (
-                        <div key={`${t.label}-${t.period}`} onClick={() => t.id && toggleDailyBlock?.(t.id)} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', border: '1px solid #F1F5F9', borderRadius: '10px', padding: '8px 10px', cursor: t.id ? 'pointer' : 'default' }}>
-                            <span style={{ width: '15px', height: '15px', borderRadius: '5px', border: '2px solid #E2E8F0', flexShrink: 0 }} />
-                            <span style={{ flex: 1, fontWeight: 700, fontSize: '0.78rem' }}>{t.label}</span>
-                            <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94A3B8' }}>{t.period.toUpperCase()}</span>
+            <div style={{ padding: '12px 12px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', gap: '4px', background: '#F1F5F9', borderRadius: '999px', padding: '3px', alignSelf: 'flex-start' }}>
+                    {(['auto', 'manual'] as const).map(m => {
+                        const on = manual === (m === 'manual');
+                        return (
+                            <button key={m} onClick={() => actualizarFocoManual(p => ({ ...p, activo: m === 'manual' }))}
+                                style={{ border: 'none', borderRadius: '999px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.64rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.03em', background: on ? 'white' : 'transparent', color: on ? 'var(--domain-orange)' : '#64748B' }}>
+                                {m}
+                            </button>
+                        );
+                    })}
+                </div>
+                {orderedSecs.map((s, si) => {
+                    const abierto = !!focoExpandido[s.k];
+                    // En manual se ven todas (para poder moverlas con las flechitas).
+                    const visibles = (abierto || manual) ? s.items : s.items.slice(0, LIMITE);
+                    const resto = s.items.length - visibles.length;
+                    return (
+                        <div key={s.k}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px' }}>
+                                {manual && <Arrows first={si === 0} last={si === orderedSecs.length - 1} onUp={() => moverSeccion(allKeys, s.k, -1)} onDown={() => moverSeccion(allKeys, s.k, 1)} />}
+                                {s.icon}
+                                <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{s.title}</span>
+                                {s.items.length > 0 && <span style={{ fontSize: '0.64rem', fontWeight: 800, color: s.tint, background: `${s.tint}1a`, borderRadius: '999px', padding: '1px 7px' }}>{s.items.length}</span>}
+                            </div>
+                            {s.items.length === 0
+                                ? <div style={{ fontSize: '0.72rem', color: '#94A3B8', paddingLeft: '22px' }}>{s.empty}</div>
+                                : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                        {visibles.map((it: any, i: number) => s.renderItem(it, i, visibles))}
+                                        {!manual && (resto > 0 || abierto) && (
+                                            <button onClick={() => setFocoExpandido(e => ({ ...e, [s.k]: !abierto }))}
+                                                style={{ alignSelf: 'flex-start', background: 'none', border: 'none', cursor: 'pointer', color: s.tint, fontSize: '0.68rem', fontWeight: 800, padding: '2px 2px' }}>
+                                                {abierto ? 'ver menos' : `ver ${resto} más`}
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                         </div>
-                    )} />
+                    );
+                })}
             </div>
         );
     };
