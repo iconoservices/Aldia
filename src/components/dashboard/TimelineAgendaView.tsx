@@ -966,23 +966,22 @@ export const TimelineAgendaView = ({
                             <div style={{ padding: '20px 16px 20px 0', flex: 1, overflowY: 'auto' }}>
                                 <div style={{ position: 'relative', paddingLeft: '8px' }}>
                                     {/* Línea vertical base */}
-                                    <div style={{ position: 'absolute', left: '72px', top: '10px', bottom: '10px', width: '2px', background: '#F1F5F9', zIndex: 0 }} />
+                                    <div style={{ position: 'absolute', left: '55px', top: '10px', bottom: '10px', width: '2px', background: '#F1F5F9', zIndex: 0 }} />
 
                                     {/* MISIÓN DIARIA: tareas del Checklist (dailyBlocks) + citas/sesiones de
                                         Notion + entregas del día, todo junto y ordenado por hora. Debajo,
                                         "Próximos días" con lo que viene (mañana, pasado, resto de la semana)
                                         y cuánto falta para cada uno. */}
                                     {rightPanelMode === 'mision' && (() => {
-                                        type Row = { id: string; time: string; kind: 'checklist' | 'event' | 'delivery'; label: string; sub?: string; completed?: boolean; color: string; task?: any; raw?: any };
+                                        type Row = { id: string; time: string; endTime?: string; kind: 'checklist' | 'event' | 'delivery'; label: string; sub?: string; completed?: boolean; color: string; task?: any; raw?: any };
 
                                         const renderRow = (item: Row) => (
-                                            <div key={item.id} style={{ display: 'flex', gap: '15px', marginBottom: '16px', position: 'relative' }}>
-                                                <div style={{ width: '45px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', paddingTop: '4px', flexShrink: 0 }}>
-                                                    <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{item.kind === 'delivery' ? '📦' : item.time}</span>
+                                            <div key={item.id} style={{ display: 'flex', gap: '9px', marginBottom: '6px', position: 'relative' }}>
+                                                <div style={{ width: '38px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', paddingTop: '7px', flexShrink: 0, lineHeight: 1.15 }}>
+                                                    <span style={{ fontSize: '0.72rem', fontWeight: 900, color: item.completed ? '#CBD5E1' : 'var(--text-carbon)' }}>{item.kind === 'delivery' ? '📦' : item.time}</span>
+                                                    {item.kind === 'event' && item.endTime && <span style={{ fontSize: '0.58rem', fontWeight: 700, color: '#CBD5E1' }}>{item.endTime}</span>}
                                                 </div>
-                                                <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: item.completed ? item.color : '#E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '8px', zIndex: 1, boxShadow: '0 0 0 4px white', flexShrink: 0 }}>
-                                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'white' }} />
-                                                </div>
+                                                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: item.completed ? item.color : '#E2E8F0', marginTop: '9px', zIndex: 1, boxShadow: '0 0 0 3px white', flexShrink: 0 }} />
                                                 <div
                                                     onClick={() => {
                                                         if (item.kind === 'checklist') {
@@ -993,24 +992,22 @@ export const TimelineAgendaView = ({
                                                             setEditingItem({ type: 'calendar', data: item.raw });
                                                         }
                                                     }}
-                                                    style={{ flex: 1, padding: '12px', borderRadius: '16px', border: '1px solid #F8FAFC', borderLeft: `4px solid ${item.color}`, background: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', cursor: 'pointer', opacity: item.completed ? 0.7 : 1 }}
+                                                    style={{ flex: 1, minWidth: 0, padding: '7px 9px', borderRadius: '9px', border: '1px solid #EDF1F5', borderLeft: `3px solid ${item.color}`, background: 'white', cursor: 'pointer', opacity: item.completed ? 0.65 : 1, display: 'flex', alignItems: 'center', gap: '7px' }}
                                                 >
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                        {item.kind === 'checklist' ? (
-                                                            <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${item.completed ? 'var(--domain-green)' : '#E2E8F0'}`, background: item.completed ? 'var(--domain-green)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                                {item.completed && <span style={{ color: 'white', fontSize: '0.65rem', fontWeight: 900 }}>✓</span>}
-                                                            </div>
-                                                        ) : (
-                                                            <div style={{ width: '20px', height: '20px', borderRadius: '6px', background: `${item.color}1A`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                                {item.kind === 'delivery' ? <CalendarDays size={12} color={item.color} /> : <Clock size={12} color={item.color} />}
-                                                            </div>
-                                                        )}
-                                                        <div style={{ minWidth: 0 }}>
-                                                            <span style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: item.completed ? '#94A3B8' : 'var(--text-carbon)', textDecoration: item.completed ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                                {item.label}
-                                                            </span>
-                                                            {item.sub && <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94A3B8' }}>{item.sub}</span>}
+                                                    {item.kind === 'checklist' ? (
+                                                        <div style={{ width: '16px', height: '16px', borderRadius: '5px', border: `2px solid ${item.completed ? 'var(--domain-green)' : '#E2E8F0'}`, background: item.completed ? 'var(--domain-green)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                            {item.completed && <span style={{ color: 'white', fontSize: '0.6rem', fontWeight: 900, lineHeight: 1 }}>✓</span>}
                                                         </div>
+                                                    ) : (
+                                                        <div style={{ width: '16px', height: '16px', borderRadius: '5px', background: `${item.color}1A`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                            {item.kind === 'delivery' ? <Package size={10} color={item.color} /> : <Clock size={10} color={item.color} />}
+                                                        </div>
+                                                    )}
+                                                    <div style={{ minWidth: 0, flex: 1 }}>
+                                                        <span style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, lineHeight: 1.25, color: item.completed ? '#94A3B8' : 'var(--text-carbon)', textDecoration: item.completed ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                            {item.label}
+                                                        </span>
+                                                        {item.sub && <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#94A3B8' }}>{item.sub}</span>}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1023,8 +1020,8 @@ export const TimelineAgendaView = ({
                                             kind: 'checklist', label: t.label, completed: t.completed, color: '#F59E0B', task: t
                                         }));
                                         dayEvents.forEach((e: any) => rows.push({
-                                            id: `e-${e.id}`, time: e.startTime || '00:00', kind: 'event',
-                                            label: e.title, sub: [e.startTime, e.endTime].filter(Boolean).join(' – '),
+                                            id: `e-${e.id}`, time: e.startTime || '00:00', endTime: e.endTime, kind: 'event',
+                                            label: e.title,
                                             color: e.notionId ? '#191919' : (e.color || '#6366F1'), raw: e
                                         }));
                                         if (activeFilters.entregas && notionOn) {
@@ -1051,7 +1048,7 @@ export const TimelineAgendaView = ({
                                                 if (e.date !== ds) return;
                                                 const show = e.notionId ? (activeFilters.agenda && notionOn) : activeFilters.citas;
                                                 if (!show) return;
-                                                items.push({ id: `ue-${e.id}`, time: e.startTime || '00:00', kind: 'event', label: e.title, sub: [e.startTime, e.endTime].filter(Boolean).join(' – '), color: e.notionId ? '#191919' : (e.color || '#6366F1'), raw: e });
+                                                items.push({ id: `ue-${e.id}`, time: e.startTime || '00:00', endTime: e.endTime, kind: 'event', label: e.title, color: e.notionId ? '#191919' : (e.color || '#6366F1'), raw: e });
                                             });
                                             if (activeFilters.entregas && notionOn) {
                                                 (calendarEvents || []).forEach(e => {
@@ -1080,19 +1077,19 @@ export const TimelineAgendaView = ({
                                         return (
                                             <>
                                                 {rows.length > 0 ? rows.map(renderRow) : (
-                                                    <div style={{ fontSize: '0.75rem', color: '#94A3B8', paddingLeft: '60px', marginBottom: '16px' }}>Nada para este día.</div>
+                                                    <div style={{ fontSize: '0.72rem', color: '#94A3B8', paddingLeft: '55px', marginBottom: '12px' }}>Nada para este día.</div>
                                                 )}
                                                 {upcoming.length > 0 && (
                                                     <>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '2px 0 16px', paddingLeft: '60px' }}>
-                                                            <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#94A3B8', letterSpacing: '0.06em' }}>PRÓXIMOS DÍAS</span>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '10px 0 12px', paddingLeft: '55px' }}>
+                                                            <span style={{ fontSize: '0.58rem', fontWeight: 900, color: '#94A3B8', letterSpacing: '0.06em' }}>PRÓXIMOS DÍAS</span>
                                                             <div style={{ flex: 1, height: '1px', background: '#F1F5F9' }} />
                                                         </div>
                                                         {upcoming.map(day => (
-                                                            <div key={day.dateStr} style={{ marginBottom: '4px' }}>
-                                                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', paddingLeft: '60px', marginBottom: '10px' }}>
-                                                                    <span style={{ fontSize: '0.78rem', fontWeight: 900, color: 'var(--text-carbon)', textTransform: 'capitalize' }}>{day.label}</span>
-                                                                    <span style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--domain-orange)' }}>· {day.inDays === 1 ? 'en 1 día' : `en ${day.inDays} días`}</span>
+                                                            <div key={day.dateStr} style={{ marginBottom: '2px' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', paddingLeft: '55px', marginBottom: '7px' }}>
+                                                                    <span style={{ fontSize: '0.74rem', fontWeight: 900, color: 'var(--text-carbon)', textTransform: 'capitalize' }}>{day.label}</span>
+                                                                    <span style={{ fontSize: '0.58rem', fontWeight: 800, color: 'var(--domain-orange)' }}>· {day.inDays === 1 ? 'en 1 día' : `en ${day.inDays} días`}</span>
                                                                 </div>
                                                                 {day.items.map(renderRow)}
                                                             </div>
