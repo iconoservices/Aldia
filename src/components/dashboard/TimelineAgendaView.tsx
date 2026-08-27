@@ -294,18 +294,93 @@ export const TimelineAgendaView = ({
             const rts = !activeFilters.rutinas ? [] : (rutinas || []).filter(r => r.repeatDays?.includes(dIdx));
             const hbs = !activeFilters.habitos ? [] : (habits || []).filter(h => h.schedule?.includes(dIdx));
 
-            days.push({ 
-                date: d, 
-                dateStr: dStr, 
-                dayIdx: dIdx, 
+            // Entregas de ese día (sin hora): las de sesiones de Notion y las de
+            // objetivos de proyecto. Van en una franja arriba de la columna, no
+            // en una hora concreta.
+            const dels: any[] = [];
+            if (activeFilters.notion) {
+                (calendarEvents || []).forEach(e => {
+                    if (e.notionId && e.notionEntregaFecha === dStr && e.notionEstado !== 'Entregado') {
+                        dels.push({ id: `entrega-${e.id}`, title: e.title, color: '#059669', raw: e });
+                    }
+                });
+            }
+            if (activeFilters.citas) {
+                projects.forEach(p => (p.objectives || []).forEach((obj: any) => {
+                    if (obj.deliveryDate === dStr) dels.push({ id: `obj-${obj.id ?? obj.title}`, title: obj.title, color: p.color || '#059669', raw: null });
+                }));
+            }
+
+            days.push({
+                date: d,
+                dateStr: dStr,
+                dayIdx: dIdx,
                 isToday: dStr === new Date().toLocaleDateString('en-CA'),
+                isSelected: dStr === selectedDate.toLocaleDateString('en-CA'),
                 evs,
                 rts,
-                hbs
+                hbs,
+                dels
             });
         }
         return days;
-    }, [selectedDate, calendarEvents, rutinas, habits, activeFilters]);
+    }, [selectedDate, calendarEvents, rutinas, habits, projects, activeFilters]);
+
+    // 7.1 MES — eventos por día del mes visible (citas + sesiones de Notion),
+    // para que la vista Mes no sea solo números: aquí es donde se ve "la agenda"
+    // (lo que viene de Notion) de un vistazo, sin entrar día por día.
+    const monthEventsByDate = useMemo(() => {
+        const map: Record<string, any[]> = {};
+        (calendarEvents || [])
+            .filter(e => e.notionId ? activeFilters.notion : activeFilters.citas)
+            .forEach(e => {
+                if (!e.date) return;
+                (map[e.date] ||= []).push({
+                    id: e.id,
+                    title: e.title,
+                    startTime: e.startTime,
+                    endTime: e.endTime,
+                    isNotion: !!e.notionId,
+                    color: e.notionId ? '#191919' : (e.color || '#6366F1'),
+                    raw: e,
+                });
+            });
+        // Entregas de sesiones de Notion (fecha de entrega calculada allá)
+        if (activeFilters.notion) {
+            (calendarEvents || []).forEach(e => {
+                if (!e.notionId || !e.notionEntregaFecha || e.notionEstado === 'Entregado') return;
+                (map[e.notionEntregaFecha] ||= []).push({
+                    id: `entrega-${e.id}`,
+                    title: `Entrega · ${e.title}`,
+                    startTime: '',
+                    endTime: '',
+                    isNotion: true,
+                    isDelivery: true,
+                    color: '#059669',
+                    raw: e,
+                });
+            });
+        }
+        // Entregas de proyectos (mismas que muestra la barra superior del timeline)
+        if (activeFilters.citas) {
+            projects.forEach(p => {
+                (p.objectives || []).forEach((obj: any) => {
+                    if (!obj.deliveryDate) return;
+                    (map[obj.deliveryDate] ||= []).push({
+                        id: `obj-${obj.id ?? obj.title}`,
+                        title: `Entrega · ${obj.title}`,
+                        startTime: '',
+                        endTime: '',
+                        isDelivery: true,
+                        color: p.color || '#059669',
+                        raw: null,
+                    });
+                });
+            });
+        }
+        Object.values(map).forEach(list => list.sort((a, b) => (a.startTime || '99:99').localeCompare(b.startTime || '99:99')));
+        return map;
+    }, [calendarEvents, projects, activeFilters.notion, activeFilters.citas]);
 
     const currentTime = new Date();
     const currentPos = (currentTime.getHours() * 60) + currentTime.getMinutes();
@@ -478,9 +553,15 @@ export const TimelineAgendaView = ({
                             >
                                 <Plus size={16} />
                             </button>
-                            <button onClick={() => viewMode === 'month' ? changeMonth(-1) : changeDate(viewMode === 'timeline' ? (isMobile ? -1 : -7) : -1)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer' }}><ChevronLeft size={16} /></button>
+                            {viewMode === 'timeline' && !isMobile && (
+                                <>
+                                    <button onClick={() => changeDate(-1)} title="Día anterior" style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1px', fontSize: '0.6rem', fontWeight: 900, color: '#64748B' }}><ChevronLeft size={13} />1d</button>
+                                    <button onClick={() => changeDate(1)} title="Día siguiente" style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1px', fontSize: '0.6rem', fontWeight: 900, color: '#64748B' }}>1d<ChevronRight size={13} /></button>
+                                </>
+                            )}
+                            <button onClick={() => viewMode === 'month' ? changeMonth(-1) : changeDate(viewMode === 'timeline' ? (isMobile ? -1 : -7) : -1)} title={viewMode === 'timeline' && !isMobile ? 'Semana anterior' : undefined} style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer' }}><ChevronLeft size={16} /></button>
                             <button onClick={() => { setSelectedDate(new Date()); scrollToNow(); setTimeout(scrollToNow, 300); }} style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px 10px', fontSize: '0.65rem', fontWeight: 900, cursor: 'pointer' }}>HOY</button>
-                            <button onClick={() => viewMode === 'month' ? changeMonth(1) : changeDate(viewMode === 'timeline' ? (isMobile ? 1 : 7) : 1)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer' }}><ChevronRight size={16} /></button>
+                            <button onClick={() => viewMode === 'month' ? changeMonth(1) : changeDate(viewMode === 'timeline' ? (isMobile ? 1 : 7) : 1)} title={viewMode === 'timeline' && !isMobile ? 'Semana siguiente' : undefined} style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer' }}><ChevronRight size={16} /></button>
                             
                             {/* Separador */}
                             <div className="desktop-only" style={{ width: '1px', height: '20px', background: '#E2E8F0', margin: '0 4px' }} />
@@ -532,17 +613,70 @@ export const TimelineAgendaView = ({
                         const gridCols = `52px repeat(${visibleDays.length}, 1fr)`;
                         return (
                         <div style={{ position: 'relative', minHeight: '1440px', minWidth: isMobile ? undefined : '800px' }}>
-                           {!isMobile && (
-                               <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.95)', display: 'grid', gridTemplateColumns: gridCols, borderBottom: '1px solid #E2E8F0' }}>
-                                   <div />
-                                   {visibleDays.map(wd => (
-                                       <div key={wd.dateStr} onClick={() => setSelectedDate(wd.date)} style={{ textAlign: 'center', padding: '6px 0', borderLeft: '1px solid #E2E8F0', cursor: 'pointer', background: wd.isToday ? 'rgba(255,140,66,0.08)' : 'transparent' }}>
-                                           <div style={{ fontSize: '0.6rem', fontWeight: 900, color: wd.isToday ? 'var(--domain-orange)' : '#94A3B8' }}>{dayNames[wd.dayIdx]}</div>
-                                           <div style={{ fontSize: '1.05rem', fontWeight: 900 }}>{wd.date.getDate()}</div>
+                           {(() => {
+                               // Chips de entregas del día — van pegados al encabezado (sticky),
+                               // NO dentro de la columna de horas, para que no se tapen con la
+                               // línea de "ahora" ni se pierdan al hacer scroll. Van en su
+                               // propia franja debajo de la fila de fecha/día, para que los
+                               // recuadros de fecha sigan alineados entre columnas.
+                               const renderDel = (dl: any) => (
+                                   <div
+                                       key={dl.id}
+                                       onClick={(ev) => { ev.stopPropagation(); if (dl.raw) setEditingItem({ type: 'calendar', data: dl.raw }); }}
+                                       title={`Entrega · ${dl.title}`}
+                                       style={{
+                                           display: 'flex', alignItems: 'center', gap: '3px', maxWidth: '100%', boxSizing: 'border-box',
+                                           fontSize: '0.58rem', fontWeight: 800, background: dl.color, color: 'white',
+                                           borderRadius: '5px', padding: '2px 5px', cursor: dl.raw ? 'pointer' : 'default',
+                                           border: '1px dashed rgba(255,255,255,0.65)'
+                                       }}
+                                   >
+                                       <span style={{ flexShrink: 0 }}>📦</span>
+                                       <span style={{ minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Entrega · {dl.title}</span>
+                                   </div>
+                               );
+                               const renderDels = (wd: any) => {
+                                   if (!wd?.dels?.length) return null;
+                                   return (
+                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, width: '100%' }}>
+                                           {wd.dels.slice(0, 3).map(renderDel)}
+                                           {wd.dels.length > 3 && (
+                                               <div style={{ fontSize: '0.55rem', fontWeight: 800, color: '#94A3B8' }}>+{wd.dels.length - 3} más</div>
+                                           )}
                                        </div>
-                                   ))}
-                               </div>
-                           )}
+                                   );
+                               };
+                               const anyDels = visibleDays.some((wd: any) => wd?.dels?.length);
+                               return !isMobile ? (
+                                   <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.97)', borderBottom: '1px solid #E2E8F0' }}>
+                                       <div style={{ display: 'grid', gridTemplateColumns: gridCols }}>
+                                           <div />
+                                           {visibleDays.map(wd => (
+                                               <div key={wd.dateStr} onClick={() => setSelectedDate(wd.date)} style={{ textAlign: 'center', padding: '6px 0', borderLeft: '1px solid #E2E8F0', cursor: 'pointer', background: wd.isToday ? 'rgba(255,140,66,0.08)' : 'transparent', boxShadow: wd.isSelected && !wd.isToday ? 'inset 0 -3px 0 var(--domain-orange)' : 'none' }}>
+                                                   <div style={{ fontSize: '0.6rem', fontWeight: 900, color: wd.isToday ? 'var(--domain-orange)' : '#94A3B8' }}>{dayNames[wd.dayIdx]}</div>
+                                                   <div style={{ fontSize: '1.05rem', fontWeight: 900, color: wd.isSelected && !wd.isToday ? 'var(--domain-orange)' : undefined }}>{wd.date.getDate()}</div>
+                                               </div>
+                                           ))}
+                                       </div>
+                                       {anyDels && (
+                                           <div style={{ display: 'grid', gridTemplateColumns: gridCols, borderTop: '1px solid #F1F5F9' }}>
+                                               <div />
+                                               {visibleDays.map(wd => (
+                                                   <div key={wd.dateStr} style={{ minWidth: 0, borderLeft: '1px solid #E2E8F0', padding: '3px', background: wd.isToday ? 'rgba(255,140,66,0.08)' : 'transparent' }}>
+                                                       {renderDels(wd)}
+                                                   </div>
+                                               ))}
+                                           </div>
+                                       )}
+                                   </div>
+                               ) : (
+                                   visibleDays[0]?.dels?.length ? (
+                                       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.97)', borderBottom: '1px solid #E2E8F0', padding: '4px 6px' }}>
+                                           {renderDels(visibleDays[0])}
+                                       </div>
+                                   ) : null
+                               );
+                           })()}
                            <div style={{ flex: 1, position: 'relative', display: 'grid', gridTemplateColumns: gridCols }}>
                                {visibleDays.some(w => w?.isToday) && (
                                    <div style={{ position: 'absolute', top: currentPos, left: 52, right: 0, height: '2px', background: '#ef4444', zIndex: 10 }}>
@@ -558,10 +692,16 @@ export const TimelineAgendaView = ({
                                    })}
                                </div>
                                {visibleDays.map((wd, i) => wd && (
-                                   <div key={i} style={{ position: 'relative', borderRight: '1px solid #F1F5F9' }}>
-                                       {hours.map(h => (
-                                            <div key={h} style={{ height: '60px', borderBottom: h % 3 === 2 ? '1px solid #E2E8F0' : '1px solid #F1F5F9', background: (h < 6 || h >= 22) ? '#F8FAFC' : '#FFFFFF' }} />
-                                       ))}
+                                   <div key={i} style={{ position: 'relative', borderRight: '1px solid #F1F5F9', ...(wd.isToday ? { boxShadow: 'inset 0 0 0 1px rgba(255,140,66,0.25)' } : wd.isSelected ? { boxShadow: 'inset 0 0 0 1px rgba(255,140,66,0.18)' } : {}) }}>
+                                       {hours.map(h => {
+                                            const isQuiet = h < 6 || h >= 22;
+                                            const bg = wd.isToday
+                                                ? (isQuiet ? '#FFF3E9' : '#FFF9F4')
+                                                : wd.isSelected
+                                                    ? (isQuiet ? '#FBFAF9' : '#FFFDFB')
+                                                    : (isQuiet ? '#F8FAFC' : '#FFFFFF');
+                                            return <div key={h} style={{ height: '60px', borderBottom: h % 3 === 2 ? '1px solid #E2E8F0' : '1px solid #F1F5F9', background: bg }} />;
+                                       })}
                                        {wd.evs.map((e: any) => (
                                             <div
                                                 key={e.id} onClick={() => setEditingItem({ type: 'calendar', data: e })}
@@ -628,10 +768,43 @@ export const TimelineAgendaView = ({
                     {viewMode === 'month' && (
                         <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
                             {dayNames.map(d => <div key={d} style={{ textAlign: 'center', fontSize: '0.7rem', fontWeight: 900 }}>{d}</div>)}
-                            {monthDays.padding.map((_, i) => <div key={i} />)}
-                            {monthDays.days.map(d => (
-                                <div key={d} onClick={() => { setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), d)); setViewMode('timeline'); }} style={{ height: '70px', background: 'white', borderRadius: '12px', padding: '6px', textAlign: 'center' }}>{d}</div>
-                            ))}
+                            {monthDays.padding.map((_, i) => <div key={`pad-${i}`} />)}
+                            {monthDays.days.map(d => {
+                                const cellDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), d);
+                                const cellStr = cellDate.toLocaleDateString('en-CA');
+                                const isToday = cellStr === new Date().toLocaleDateString('en-CA');
+                                const evs = monthEventsByDate[cellStr] || [];
+                                return (
+                                    <div
+                                        key={`day-${d}`}
+                                        onClick={() => { setSelectedDate(cellDate); setViewMode('timeline'); }}
+                                        style={{
+                                            minHeight: '84px', background: 'white', borderRadius: '12px', padding: '6px',
+                                            display: 'flex', flexDirection: 'column', gap: '3px', cursor: 'pointer',
+                                            border: isToday ? '2px solid var(--domain-orange)' : '1px solid #F1F5F9', overflow: 'hidden'
+                                        }}
+                                    >
+                                        <div style={{ fontSize: '0.72rem', fontWeight: 900, color: isToday ? 'var(--domain-orange)' : '#64748B', textAlign: 'right', flexShrink: 0 }}>{d}</div>
+                                        {evs.slice(0, 3).map((e: any) => (
+                                            <div
+                                                key={e.id}
+                                                title={`${e.startTime ? e.startTime + ' · ' : ''}${e.title}`}
+                                                style={{
+                                                    fontSize: '0.6rem', fontWeight: 800, lineHeight: 1.25, borderRadius: '5px',
+                                                    padding: '2px 4px', color: 'white', background: e.color,
+                                                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                                    opacity: e.isDelivery ? 0.85 : 1
+                                                }}
+                                            >
+                                                {e.startTime ? `${e.startTime} ` : ''}{e.title}
+                                            </div>
+                                        ))}
+                                        {evs.length > 3 && (
+                                            <div style={{ fontSize: '0.58rem', fontWeight: 800, color: '#94A3B8' }}>+{evs.length - 3} más</div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                     {viewMode === 'tasks' && (
@@ -677,47 +850,114 @@ export const TimelineAgendaView = ({
                                 </button>
                             </div>
 
+                            {/* Navegación por día — mueve el día que muestra este panel (y la
+                                columna en móvil) hacia adelante / atrás, de a uno. */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderBottom: '1px solid #F1F5F9' }}>
+                                <button
+                                    onClick={() => changeDate(-1)}
+                                    title="Día anterior"
+                                    style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#64748B' }}
+                                >
+                                    <ChevronLeft size={16} />
+                                </button>
+                                <div style={{ flex: 1, textAlign: 'center' }}>
+                                    <div style={{ fontSize: '0.82rem', fontWeight: 900, color: isActualToday ? 'var(--domain-orange)' : 'var(--text-carbon)', textTransform: 'capitalize' }}>
+                                        {dayNames[dayIdx]} {selectedDate.getDate()} {monthNames[selectedDate.getMonth()].slice(0, 3).toLowerCase()}
+                                    </div>
+                                    {!isActualToday && (
+                                        <button
+                                            onClick={() => setSelectedDate(new Date())}
+                                            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--domain-orange)', fontSize: '0.62rem', fontWeight: 800, textDecoration: 'underline' }}
+                                        >
+                                            volver a hoy
+                                        </button>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={() => changeDate(1)}
+                                    title="Día siguiente"
+                                    style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#64748B' }}
+                                >
+                                    <ChevronRight size={16} />
+                                </button>
+                            </div>
+
                             <div style={{ padding: '20px 16px 20px 0', flex: 1, overflowY: 'auto' }}>
                                 <div style={{ position: 'relative', paddingLeft: '8px' }}>
                                     {/* Línea vertical base */}
                                     <div style={{ position: 'absolute', left: '72px', top: '10px', bottom: '10px', width: '2px', background: '#F1F5F9', zIndex: 0 }} />
 
-                                    {/* MISIÓN DIARIA: refleja exactamente las tareas del Checklist (dailyBlocks) del día. */}
+                                    {/* MISIÓN DIARIA: tareas del Checklist (dailyBlocks) + citas/sesiones de
+                                        Notion + entregas del día, todo junto y ordenado por hora. */}
                                     {rightPanelMode === 'mision' && (() => {
-                                        const items = dayChecklistTasks
-                                            .map(t => ({
-                                                id: `c-${t.label.toLowerCase()}-${t.period}`, time: PERIOD_TIME[t.period] || '23:00',
-                                                type: 'checklist', label: t.label, completed: t.completed, color: '#F59E0B', task: t
-                                            }))
-                                            .sort((a, b) => a.time.localeCompare(b.time));
+                                        type Row = { id: string; time: string; kind: 'checklist' | 'event' | 'delivery'; label: string; sub?: string; completed?: boolean; color: string; task?: any; raw?: any };
+                                        const rows: Row[] = [];
 
-                                        if (items.length === 0) {
-                                            return <div style={{ fontSize: '0.75rem', color: '#94A3B8', textAlign: 'center', padding: '20px' }}>Sin tareas de Checklist para este día</div>;
+                                        dayChecklistTasks.forEach(t => rows.push({
+                                            id: `c-${t.label.toLowerCase()}-${t.period}`, time: PERIOD_TIME[t.period] || '23:00',
+                                            kind: 'checklist', label: t.label, completed: t.completed, color: '#F59E0B', task: t
+                                        }));
+
+                                        dayEvents.forEach((e: any) => rows.push({
+                                            id: `e-${e.id}`, time: e.startTime || '00:00', kind: 'event',
+                                            label: e.title, sub: [e.startTime, e.endTime].filter(Boolean).join(' – '),
+                                            color: e.notionId ? '#191919' : (e.color || '#6366F1'), raw: e
+                                        }));
+
+                                        if (activeFilters.notion) {
+                                            (calendarEvents || []).forEach(e => {
+                                                if (e.notionId && e.notionEntregaFecha === todayStr && e.notionEstado !== 'Entregado') {
+                                                    rows.push({ id: `d-${e.id}`, time: '23:59', kind: 'delivery', label: `Entrega · ${e.title}`, sub: e.notionDiasRestantes, color: '#059669', raw: e });
+                                                }
+                                            });
+                                        }
+                                        dayDeliveries.forEach((obj: any) => rows.push({
+                                            id: `do-${obj.id ?? obj.title}`, time: '23:59', kind: 'delivery',
+                                            label: `Entrega · ${obj.title}`, color: obj.projectColor || '#059669'
+                                        }));
+
+                                        rows.sort((a, b) => a.time.localeCompare(b.time));
+
+                                        if (rows.length === 0) {
+                                            return <div style={{ fontSize: '0.75rem', color: '#94A3B8', textAlign: 'center', padding: '20px' }}>Nada para este día</div>;
                                         }
 
-                                        return items.map((item) => (
+                                        return rows.map((item) => (
                                             <div key={item.id} style={{ display: 'flex', gap: '15px', marginBottom: '16px', position: 'relative' }}>
                                                 <div style={{ width: '45px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', paddingTop: '4px', flexShrink: 0 }}>
-                                                    <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{item.time}</span>
+                                                    <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{item.kind === 'delivery' ? '📦' : item.time}</span>
                                                 </div>
                                                 <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: item.completed ? item.color : '#E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '8px', zIndex: 1, boxShadow: '0 0 0 4px white', flexShrink: 0 }}>
                                                     <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'white' }} />
                                                 </div>
                                                 <div
                                                     onClick={() => {
-                                                        const t = item.task;
-                                                        if (t.id !== undefined) toggleDailyBlock?.(t.id);
-                                                        else addDailyBlock?.(t.label, t.period as any, todayStr, true, undefined, t.repeatDays);
+                                                        if (item.kind === 'checklist') {
+                                                            const t = item.task;
+                                                            if (t.id !== undefined) toggleDailyBlock?.(t.id);
+                                                            else addDailyBlock?.(t.label, t.period as any, todayStr, true, undefined, t.repeatDays);
+                                                        } else if (item.raw) {
+                                                            setEditingItem({ type: 'calendar', data: item.raw });
+                                                        }
                                                     }}
                                                     style={{ flex: 1, padding: '12px', borderRadius: '16px', border: '1px solid #F8FAFC', borderLeft: `4px solid ${item.color}`, background: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', cursor: 'pointer', opacity: item.completed ? 0.7 : 1 }}
                                                 >
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${item.completed ? 'var(--domain-green)' : '#E2E8F0'}`, background: item.completed ? 'var(--domain-green)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                            {item.completed && <span style={{ color: 'white', fontSize: '0.65rem', fontWeight: 900 }}>✓</span>}
+                                                        {item.kind === 'checklist' ? (
+                                                            <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${item.completed ? 'var(--domain-green)' : '#E2E8F0'}`, background: item.completed ? 'var(--domain-green)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                                {item.completed && <span style={{ color: 'white', fontSize: '0.65rem', fontWeight: 900 }}>✓</span>}
+                                                            </div>
+                                                        ) : (
+                                                            <div style={{ width: '20px', height: '20px', borderRadius: '6px', background: `${item.color}1A`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                                {item.kind === 'delivery' ? <CalendarDays size={12} color={item.color} /> : <Clock size={12} color={item.color} />}
+                                                            </div>
+                                                        )}
+                                                        <div style={{ minWidth: 0 }}>
+                                                            <span style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: item.completed ? '#94A3B8' : 'var(--text-carbon)', textDecoration: item.completed ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                {item.label}
+                                                            </span>
+                                                            {item.sub && <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94A3B8' }}>{item.sub}</span>}
                                                         </div>
-                                                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: item.completed ? '#94A3B8' : 'var(--text-carbon)', textDecoration: item.completed ? 'line-through' : 'none' }}>
-                                                            {item.label}
-                                                        </span>
                                                     </div>
                                                 </div>
                                             </div>
