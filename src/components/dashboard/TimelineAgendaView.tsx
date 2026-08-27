@@ -64,7 +64,7 @@ export const TimelineAgendaView = ({
         window.addEventListener('resize', check);
         return () => window.removeEventListener('resize', check);
     }, []);
-    const [viewMode, setViewMode] = useState<'timeline' | 'month' | 'appointments' | 'tasks' | 'foco'>('month');
+    const [viewMode, setViewMode] = useState<'timeline' | 'month' | 'appointments' | 'tasks'>('month');
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [editingItem, setEditingItem] = useState<{ type: 'calendar' | 'routine' | 'timeblock' | 'new', data: any } | null>(null);
     // Arranca oculto: el usuario todavía no decidió cómo ordenar este panel
@@ -73,7 +73,7 @@ export const TimelineAgendaView = ({
     // Abierto de entrada en "Misión Diaria": es lo que el usuario quiere ver al
     // entrar al Calendario, junto con la vista Mes.
     const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
-    const [rightPanelMode, setRightPanelMode] = useState<'citas' | 'rutinas' | 'tareas' | 'habitos' | 'mision'>('mision');
+    const [rightPanelMode, setRightPanelMode] = useState<'citas' | 'rutinas' | 'tareas' | 'habitos' | 'mision' | 'foco'>('mision');
     const [activeFilters, setActiveFilters] = useState({
         citas: true,
         rutinas: true,
@@ -367,6 +367,53 @@ export const TimelineAgendaView = ({
 
         return { atrasadas, proximas, eventos, checklist };
     }, [calendarEvents, projects, dailyBlocks, notionOn]);
+
+    // Contenido de FOCO — se renderiza dentro del panel lateral derecho
+    // (rightPanelMode === 'foco'), no como pantalla completa.
+    const renderFoco = () => {
+        const diasLabel = (d: number) => d < 0 ? `hace ${Math.abs(d)} d${Math.abs(d) === 1 ? 'ía' : 'ías'}` : d === 0 ? 'hoy' : d === 1 ? 'mañana' : `en ${d} días`;
+        const { atrasadas, proximas, eventos, checklist } = focoData;
+        const Section = ({ icon, title, tint, count, children, empty }: { icon: React.ReactNode; title: string; tint: string; count: number; children?: React.ReactNode; empty: string }) => (
+            <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px' }}>
+                    {icon}
+                    <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{title}</span>
+                    {count > 0 && <span style={{ fontSize: '0.64rem', fontWeight: 800, color: tint, background: `${tint}1a`, borderRadius: '999px', padding: '1px 7px' }}>{count}</span>}
+                </div>
+                {count > 0
+                    ? <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>{children}</div>
+                    : <div style={{ fontSize: '0.72rem', color: '#94A3B8', paddingLeft: '22px' }}>{empty}</div>}
+            </div>
+        );
+        const Row = ({ title, right, color, onClick }: { title: string; right: string; color: string; onClick?: () => void }) => (
+            <div onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', border: '1px solid #F1F5F9', borderLeft: `4px solid ${color}`, borderRadius: '10px', padding: '8px 10px', cursor: onClick ? 'pointer' : 'default' }}>
+                <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</span>
+                <span style={{ fontSize: '0.68rem', fontWeight: 800, color, whiteSpace: 'nowrap', flexShrink: 0 }}>{right}</span>
+            </div>
+        );
+        return (
+            <div style={{ padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <Section icon={<AlertTriangle size={15} color="#DC2626" />} title="Entregas atrasadas" tint="#DC2626" count={atrasadas.length} empty="Nada atrasado 🎉">
+                    {atrasadas.slice(0, 12).map(x => <Row key={x.id} title={x.title} right={diasLabel(x.dias)} color="#DC2626" onClick={x.raw ? () => setEditingItem({ type: 'calendar', data: x.raw }) : undefined} />)}
+                </Section>
+                <Section icon={<Package size={15} color="#059669" />} title="Próximas entregas" tint="#059669" count={proximas.length} empty="Nada en las próximas 3 semanas">
+                    {proximas.slice(0, 15).map(x => <Row key={x.id} title={x.title} right={diasLabel(x.dias)} color={x.color} onClick={x.raw ? () => setEditingItem({ type: 'calendar', data: x.raw }) : undefined} />)}
+                </Section>
+                <Section icon={<Calendar size={15} color="#6366F1" />} title="Agenda · próximos eventos" tint="#6366F1" count={eventos.length} empty="Sin eventos próximos">
+                    {eventos.map(x => <Row key={x.id} title={x.title} right={`${x.time ? x.time + ' · ' : ''}${diasLabel(x.dias)}`} color={x.color} onClick={() => setEditingItem({ type: 'calendar', data: x.raw })} />)}
+                </Section>
+                <Section icon={<Clock size={15} color="#F59E0B" />} title="Checklist de hoy" tint="#F59E0B" count={checklist.length} empty="Todo listo por hoy ✅">
+                    {checklist.map(t => (
+                        <div key={`${t.label}-${t.period}`} onClick={() => t.id && toggleDailyBlock?.(t.id)} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', border: '1px solid #F1F5F9', borderRadius: '10px', padding: '8px 10px', cursor: t.id ? 'pointer' : 'default' }}>
+                            <span style={{ width: '15px', height: '15px', borderRadius: '5px', border: '2px solid #E2E8F0', flexShrink: 0 }} />
+                            <span style={{ flex: 1, fontWeight: 700, fontSize: '0.78rem' }}>{t.label}</span>
+                            <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94A3B8' }}>{t.period.toUpperCase()}</span>
+                        </div>
+                    ))}
+                </Section>
+            </div>
+        );
+    };
 
     // 6. Vista Mensual Logic
     const monthDays = useMemo(() => {
@@ -677,9 +724,7 @@ export const TimelineAgendaView = ({
                         <div className="timeline-title-block" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             <div>
                                 <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-carbon)', whiteSpace: 'nowrap' }}>
-                                    {viewMode === 'foco'
-                                        ? 'Foco'
-                                        : viewMode === 'month'
+                                    {viewMode === 'month'
                                         ? monthNames[selectedDate.getMonth()]
                                         : viewMode === 'timeline'
                                             ? (isMobile ? `${dayNames[dayIdx]} ${selectedDate.getDate()} de ${monthNames[selectedDate.getMonth()]}` : `Semana: ${weekDays[0].date.getDate()} - ${weekDays[6].date.getDate()} ${monthNames[selectedDate.getMonth()]}`)
@@ -690,7 +735,6 @@ export const TimelineAgendaView = ({
                         </div>
 
                         <div className="timeline-tabs-block" style={{ display: 'flex', gap: '2px', background: '#F1F5F9', padding: '3px', borderRadius: '14px', width: '100%' }}>
-                            <button onClick={() => setViewMode('foco')} style={{ flex: 1, padding: '7px 2px', border: 'none', borderRadius: '10px', background: viewMode === 'foco' ? 'white' : 'transparent', fontSize: '0.6rem', fontWeight: 900, color: viewMode === 'foco' ? 'var(--domain-orange)' : '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><Target size={11} /> FOCO</button>
                             <button onClick={() => setViewMode('timeline')} style={{ flex: 1, padding: '7px 2px', border: 'none', borderRadius: '10px', background: viewMode === 'timeline' ? 'white' : 'transparent', fontSize: '0.6rem', fontWeight: 900, color: viewMode === 'timeline' ? 'var(--domain-orange)' : '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><Clock size={11} /> TIMELINE</button>
                             <button onClick={() => setViewMode('month')} style={{ flex: 1, padding: '7px 2px', border: 'none', borderRadius: '10px', background: viewMode === 'month' ? 'white' : 'transparent', fontSize: '0.6rem', fontWeight: 900, color: viewMode === 'month' ? 'var(--domain-orange)' : '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><CalendarDays size={11} /> MES</button>
                             <button onClick={() => setViewMode('appointments')} style={{ flex: 1, padding: '7px 2px', border: 'none', borderRadius: '10px', background: viewMode === 'appointments' ? 'white' : 'transparent', fontSize: '0.6rem', fontWeight: 900, color: viewMode === 'appointments' ? 'var(--domain-orange)' : '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><Filter size={11} /> CITAS</button>
@@ -729,15 +773,35 @@ export const TimelineAgendaView = ({
                                 <Filter size={HDR_ICON} color={sidebarOpen ? 'white' : '#64748B'} />
                             </button>
 
-                            {/* Panel de Misión Diaria */}
-                            <button
-                                onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
-                                className="desktop-only"
-                                style={{ ...hdrBtn, background: rightSidebarOpen ? 'var(--domain-orange)' : hdrBtn.background }}
-                                title={rightSidebarOpen ? 'Ocultar Misión Diaria' : 'Ver Misión Diaria'}
-                            >
-                                <Star size={HDR_ICON} color={rightSidebarOpen ? 'white' : '#64748B'} />
-                            </button>
+                            {/* Panel derecho en modo FOCO (atrasadas / próximas entregas / agenda / checklist) */}
+                            {(() => {
+                                const on = rightSidebarOpen && rightPanelMode === 'foco';
+                                return (
+                                    <button
+                                        onClick={() => on ? setRightSidebarOpen(false) : (setRightPanelMode('foco'), setRightSidebarOpen(true))}
+                                        className="desktop-only"
+                                        style={{ ...hdrBtn, background: on ? 'var(--domain-orange)' : hdrBtn.background }}
+                                        title={on ? 'Cerrar Foco' : 'Ver Foco'}
+                                    >
+                                        <Target size={HDR_ICON} color={on ? 'white' : '#64748B'} />
+                                    </button>
+                                );
+                            })()}
+
+                            {/* Panel derecho en modo Misión Diaria */}
+                            {(() => {
+                                const on = rightSidebarOpen && rightPanelMode === 'mision';
+                                return (
+                                    <button
+                                        onClick={() => on ? setRightSidebarOpen(false) : (setRightPanelMode('mision'), setRightSidebarOpen(true))}
+                                        className="desktop-only"
+                                        style={{ ...hdrBtn, background: on ? 'var(--domain-orange)' : hdrBtn.background }}
+                                        title={on ? 'Cerrar Misión Diaria' : 'Ver Misión Diaria'}
+                                    >
+                                        <Star size={HDR_ICON} color={on ? 'white' : '#64748B'} />
+                                    </button>
+                                );
+                            })()}
                         </div>
                     </div>
 
@@ -906,50 +970,6 @@ export const TimelineAgendaView = ({
                         </div>
                         );
                     })()}
-                    {viewMode === 'foco' && (() => {
-                        const diasLabel = (d: number) => d < 0 ? `hace ${Math.abs(d)} d${Math.abs(d) === 1 ? 'ía' : 'ías'}` : d === 0 ? 'hoy' : d === 1 ? 'mañana' : `en ${d} días`;
-                        const { atrasadas, proximas, eventos, checklist } = focoData;
-                        const Section = ({ icon, title, tint, count, children, empty }: any) => (
-                            <div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                    {icon}
-                                    <span style={{ fontSize: '0.78rem', fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{title}</span>
-                                    {count > 0 && <span style={{ fontSize: '0.68rem', fontWeight: 800, color: tint, background: `${tint}1a`, borderRadius: '999px', padding: '1px 8px' }}>{count}</span>}
-                                </div>
-                                {count > 0
-                                    ? <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>{children}</div>
-                                    : <div style={{ fontSize: '0.76rem', color: '#94A3B8', paddingLeft: '26px' }}>{empty}</div>}
-                            </div>
-                        );
-                        const Row = ({ title, right, color, onClick }: any) => (
-                            <div onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'white', border: '1px solid #F1F5F9', borderLeft: `4px solid ${color}`, borderRadius: '12px', padding: '10px 12px', cursor: onClick ? 'pointer' : 'default' }}>
-                                <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: '0.82rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</span>
-                                <span style={{ fontSize: '0.72rem', fontWeight: 800, color, whiteSpace: 'nowrap', flexShrink: 0 }}>{right}</span>
-                            </div>
-                        );
-                        return (
-                            <div style={{ padding: '1.25rem 1rem', display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '760px', margin: '0 auto' }}>
-                                <Section icon={<AlertTriangle size={16} color="#DC2626" />} title="Entregas atrasadas" tint="#DC2626" count={atrasadas.length} empty="Nada atrasado 🎉">
-                                    {atrasadas.slice(0, 10).map(x => <Row key={x.id} title={x.title} right={diasLabel(x.dias)} color="#DC2626" onClick={x.raw ? () => setEditingItem({ type: 'calendar', data: x.raw }) : undefined} />)}
-                                </Section>
-                                <Section icon={<Package size={16} color="#059669" />} title="Próximas entregas" tint="#059669" count={proximas.length} empty="Nada en las próximas 3 semanas">
-                                    {proximas.slice(0, 12).map(x => <Row key={x.id} title={x.title} right={diasLabel(x.dias)} color={x.color} onClick={x.raw ? () => setEditingItem({ type: 'calendar', data: x.raw }) : undefined} />)}
-                                </Section>
-                                <Section icon={<Calendar size={16} color="#6366F1" />} title="Agenda · próximos eventos" tint="#6366F1" count={eventos.length} empty="Sin eventos próximos">
-                                    {eventos.map(x => <Row key={x.id} title={x.title} right={`${x.time ? x.time + ' · ' : ''}${diasLabel(x.dias)}`} color={x.color} onClick={() => setEditingItem({ type: 'calendar', data: x.raw })} />)}
-                                </Section>
-                                <Section icon={<Clock size={16} color="#F59E0B" />} title="Checklist de hoy" tint="#F59E0B" count={checklist.length} empty="Todo listo por hoy ✅">
-                                    {checklist.map(t => (
-                                        <div key={`${t.label}-${t.period}`} onClick={() => t.id && toggleDailyBlock?.(t.id)} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'white', border: '1px solid #F1F5F9', borderRadius: '12px', padding: '10px 12px', cursor: t.id ? 'pointer' : 'default' }}>
-                                            <span style={{ width: '16px', height: '16px', borderRadius: '6px', border: '2px solid #E2E8F0', flexShrink: 0 }} />
-                                            <span style={{ flex: 1, fontWeight: 700, fontSize: '0.82rem' }}>{t.label}</span>
-                                            <span style={{ fontSize: '0.64rem', fontWeight: 800, color: '#94A3B8' }}>{t.period.toUpperCase()}</span>
-                                        </div>
-                                    ))}
-                                </Section>
-                            </div>
-                        );
-                    })()}
                     {viewMode === 'appointments' && (
                         <div style={{ padding: '1.5rem' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1024,12 +1044,14 @@ export const TimelineAgendaView = ({
             <aside className={`agenda-right-sidebar ${!rightSidebarOpen ? 'collapsed' : ''}`} style={{ order: 3 }}>
                 {(() => {
                     const configOptions: Record<string, any> = {
+                        foco: { title: 'Foco', icon: <Target size={15} />, color: 'var(--domain-orange)' },
                         mision: { title: 'Misión Diaria', icon: <Star size={15} />, color: 'var(--domain-orange)' },
                         tareas: { title: 'Tareas', icon: <Filter size={15} />, color: '#F59E0B' },
                         citas: { title: 'Citas y Eventos', icon: <Clock size={15} />, color: '#6366F1' },
                         rutinas: { title: 'Rutinas y Bloques', icon: <CalendarDays size={15} />, color: '#10B981' },
                         habitos: { title: 'Hábitos', icon: <CalendarDays size={15} />, color: '#EC4899' }
                     };
+                    const esFoco = rightPanelMode === 'foco';
                     const config = configOptions[rightPanelMode] || { title: '', icon: null, color: '' };
 
                     return (
@@ -1043,20 +1065,22 @@ export const TimelineAgendaView = ({
                                     {config.icon}
                                 </div>
                                 <div style={{ fontSize: '0.82rem', fontWeight: 900, color: 'var(--text-carbon)', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{config.title}</div>
-                                <button onClick={() => changeDate(-1)} title="Día anterior" style={hdrBtn}>
-                                    <ChevronLeft size={HDR_ICON} />
-                                </button>
-                                <button
-                                    onClick={() => setSelectedDate(new Date())}
-                                    disabled={isActualToday}
-                                    title={isActualToday ? undefined : 'Volver a hoy'}
-                                    style={{ ...hdrBtnText, background: 'none', cursor: isActualToday ? 'default' : 'pointer', color: isActualToday ? 'var(--text-carbon)' : 'var(--domain-orange)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}
-                                >
-                                    {dayNames[dayIdx]} {selectedDate.getDate()} {monthNames[selectedDate.getMonth()].slice(0, 3).toLowerCase()}
-                                </button>
-                                <button onClick={() => changeDate(1)} title="Día siguiente" style={hdrBtn}>
-                                    <ChevronRight size={HDR_ICON} />
-                                </button>
+                                {!esFoco && <>
+                                    <button onClick={() => changeDate(-1)} title="Día anterior" style={hdrBtn}>
+                                        <ChevronLeft size={HDR_ICON} />
+                                    </button>
+                                    <button
+                                        onClick={() => setSelectedDate(new Date())}
+                                        disabled={isActualToday}
+                                        title={isActualToday ? undefined : 'Volver a hoy'}
+                                        style={{ ...hdrBtnText, background: 'none', cursor: isActualToday ? 'default' : 'pointer', color: isActualToday ? 'var(--text-carbon)' : 'var(--domain-orange)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}
+                                    >
+                                        {dayNames[dayIdx]} {selectedDate.getDate()} {monthNames[selectedDate.getMonth()].slice(0, 3).toLowerCase()}
+                                    </button>
+                                    <button onClick={() => changeDate(1)} title="Día siguiente" style={hdrBtn}>
+                                        <ChevronRight size={HDR_ICON} />
+                                    </button>
+                                </>}
                                 <button
                                     onClick={() => setRightSidebarOpen(false)}
                                     title="Cerrar panel"
@@ -1066,6 +1090,9 @@ export const TimelineAgendaView = ({
                                 </button>
                             </div>
 
+                            {esFoco ? (
+                                <div style={{ flex: 1, overflowY: 'auto' }}>{renderFoco()}</div>
+                            ) : (
                             <div style={{ padding: '20px 16px 20px 0', flex: 1, overflowY: 'auto' }}>
                                 <div style={{ position: 'relative', paddingLeft: '8px' }}>
                                     {/* Línea vertical base */}
@@ -1325,6 +1352,7 @@ export const TimelineAgendaView = ({
                                     )}
                                 </div>
                             </div>
+                            )}
                         </>
                     );
                 })()}
