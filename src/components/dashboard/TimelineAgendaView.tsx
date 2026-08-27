@@ -969,41 +969,13 @@ export const TimelineAgendaView = ({
                                     <div style={{ position: 'absolute', left: '72px', top: '10px', bottom: '10px', width: '2px', background: '#F1F5F9', zIndex: 0 }} />
 
                                     {/* MISIÓN DIARIA: tareas del Checklist (dailyBlocks) + citas/sesiones de
-                                        Notion + entregas del día, todo junto y ordenado por hora. */}
+                                        Notion + entregas del día, todo junto y ordenado por hora. Debajo,
+                                        "Próximos días" con lo que viene (mañana, pasado, resto de la semana)
+                                        y cuánto falta para cada uno. */}
                                     {rightPanelMode === 'mision' && (() => {
                                         type Row = { id: string; time: string; kind: 'checklist' | 'event' | 'delivery'; label: string; sub?: string; completed?: boolean; color: string; task?: any; raw?: any };
-                                        const rows: Row[] = [];
 
-                                        dayChecklistTasks.forEach(t => rows.push({
-                                            id: `c-${t.label.toLowerCase()}-${t.period}`, time: PERIOD_TIME[t.period] || '23:00',
-                                            kind: 'checklist', label: t.label, completed: t.completed, color: '#F59E0B', task: t
-                                        }));
-
-                                        dayEvents.forEach((e: any) => rows.push({
-                                            id: `e-${e.id}`, time: e.startTime || '00:00', kind: 'event',
-                                            label: e.title, sub: [e.startTime, e.endTime].filter(Boolean).join(' – '),
-                                            color: e.notionId ? '#191919' : (e.color || '#6366F1'), raw: e
-                                        }));
-
-                                        if (activeFilters.entregas && notionOn) {
-                                            (calendarEvents || []).forEach(e => {
-                                                if (e.notionId && e.notionEntregaFecha === todayStr && e.notionEstado !== 'Entregado') {
-                                                    rows.push({ id: `d-${e.id}`, time: '23:59', kind: 'delivery', label: `Entrega · ${e.title}`, sub: e.notionDiasRestantes, color: '#059669', raw: e });
-                                                }
-                                            });
-                                        }
-                                        dayDeliveries.forEach((obj: any) => rows.push({
-                                            id: `do-${obj.id ?? obj.title}`, time: '23:59', kind: 'delivery',
-                                            label: `Entrega · ${obj.title}`, color: obj.projectColor || '#059669'
-                                        }));
-
-                                        rows.sort((a, b) => a.time.localeCompare(b.time));
-
-                                        if (rows.length === 0) {
-                                            return <div style={{ fontSize: '0.75rem', color: '#94A3B8', textAlign: 'center', padding: '20px' }}>Nada para este día</div>;
-                                        }
-
-                                        return rows.map((item) => (
+                                        const renderRow = (item: Row) => (
                                             <div key={item.id} style={{ display: 'flex', gap: '15px', marginBottom: '16px', position: 'relative' }}>
                                                 <div style={{ width: '45px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', paddingTop: '4px', flexShrink: 0 }}>
                                                     <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{item.kind === 'delivery' ? '📦' : item.time}</span>
@@ -1042,7 +1014,93 @@ export const TimelineAgendaView = ({
                                                     </div>
                                                 </div>
                                             </div>
-                                        ));
+                                        );
+
+                                        // ── Hoy (el día seleccionado) ──
+                                        const rows: Row[] = [];
+                                        dayChecklistTasks.forEach(t => rows.push({
+                                            id: `c-${t.label.toLowerCase()}-${t.period}`, time: PERIOD_TIME[t.period] || '23:00',
+                                            kind: 'checklist', label: t.label, completed: t.completed, color: '#F59E0B', task: t
+                                        }));
+                                        dayEvents.forEach((e: any) => rows.push({
+                                            id: `e-${e.id}`, time: e.startTime || '00:00', kind: 'event',
+                                            label: e.title, sub: [e.startTime, e.endTime].filter(Boolean).join(' – '),
+                                            color: e.notionId ? '#191919' : (e.color || '#6366F1'), raw: e
+                                        }));
+                                        if (activeFilters.entregas && notionOn) {
+                                            (calendarEvents || []).forEach(e => {
+                                                if (e.notionId && e.notionEntregaFecha === todayStr && e.notionEstado !== 'Entregado') {
+                                                    rows.push({ id: `d-${e.id}`, time: '23:59', kind: 'delivery', label: `Entrega · ${e.title}`, sub: e.notionDiasRestantes, color: '#059669', raw: e });
+                                                }
+                                            });
+                                        }
+                                        dayDeliveries.forEach((obj: any) => rows.push({
+                                            id: `do-${obj.id ?? obj.title}`, time: '23:59', kind: 'delivery',
+                                            label: `Entrega · ${obj.title}`, color: obj.projectColor || '#059669'
+                                        }));
+                                        rows.sort((a, b) => a.time.localeCompare(b.time));
+
+                                        // ── Próximos días (los 7 siguientes al día seleccionado) ──
+                                        const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+                                        const upcoming: { dateStr: string; label: string; inDays: number; items: Row[] }[] = [];
+                                        for (let i = 1; i <= 7; i++) {
+                                            const d = new Date(selectedDate); d.setDate(d.getDate() + i);
+                                            const ds = d.toLocaleDateString('en-CA');
+                                            const items: Row[] = [];
+                                            (calendarEvents || []).forEach(e => {
+                                                if (e.date !== ds) return;
+                                                const show = e.notionId ? (activeFilters.agenda && notionOn) : activeFilters.citas;
+                                                if (!show) return;
+                                                items.push({ id: `ue-${e.id}`, time: e.startTime || '00:00', kind: 'event', label: e.title, sub: [e.startTime, e.endTime].filter(Boolean).join(' – '), color: e.notionId ? '#191919' : (e.color || '#6366F1'), raw: e });
+                                            });
+                                            if (activeFilters.entregas && notionOn) {
+                                                (calendarEvents || []).forEach(e => {
+                                                    if (e.notionId && e.notionEntregaFecha === ds && e.notionEstado !== 'Entregado') {
+                                                        items.push({ id: `ud-${e.id}`, time: '23:59', kind: 'delivery', label: `Entrega · ${e.title}`, sub: e.notionDiasRestantes, color: '#059669', raw: e });
+                                                    }
+                                                });
+                                            }
+                                            if (activeFilters.entregas) {
+                                                projects.forEach(p => (p.objectives || []).forEach((obj: any) => {
+                                                    if (obj.deliveryDate === ds) items.push({ id: `udo-${obj.id ?? obj.title}`, time: '23:59', kind: 'delivery', label: `Entrega · ${obj.title}`, color: p.color || '#059669' });
+                                                }));
+                                            }
+                                            if (!items.length) continue;
+                                            items.sort((a, b) => a.time.localeCompare(b.time));
+                                            const dm = new Date(d); dm.setHours(0, 0, 0, 0);
+                                            const inDays = Math.round((dm.getTime() - t0.getTime()) / 86400000);
+                                            const label = inDays === 1 ? 'Mañana' : inDays === 2 ? 'Pasado mañana' : `${dayNames[(d.getDay() + 6) % 7]} ${d.getDate()} ${monthNames[d.getMonth()].slice(0, 3).toLowerCase()}`;
+                                            upcoming.push({ dateStr: ds, label, inDays, items });
+                                        }
+
+                                        if (rows.length === 0 && upcoming.length === 0) {
+                                            return <div style={{ fontSize: '0.75rem', color: '#94A3B8', textAlign: 'center', padding: '20px' }}>Nada para este día ni los próximos</div>;
+                                        }
+
+                                        return (
+                                            <>
+                                                {rows.length > 0 ? rows.map(renderRow) : (
+                                                    <div style={{ fontSize: '0.75rem', color: '#94A3B8', paddingLeft: '60px', marginBottom: '16px' }}>Nada para este día.</div>
+                                                )}
+                                                {upcoming.length > 0 && (
+                                                    <>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '2px 0 16px', paddingLeft: '60px' }}>
+                                                            <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#94A3B8', letterSpacing: '0.06em' }}>PRÓXIMOS DÍAS</span>
+                                                            <div style={{ flex: 1, height: '1px', background: '#F1F5F9' }} />
+                                                        </div>
+                                                        {upcoming.map(day => (
+                                                            <div key={day.dateStr} style={{ marginBottom: '4px' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', paddingLeft: '60px', marginBottom: '10px' }}>
+                                                                    <span style={{ fontSize: '0.78rem', fontWeight: 900, color: 'var(--text-carbon)', textTransform: 'capitalize' }}>{day.label}</span>
+                                                                    <span style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--domain-orange)' }}>· {day.inDays === 1 ? 'en 1 día' : `en ${day.inDays} días`}</span>
+                                                                </div>
+                                                                {day.items.map(renderRow)}
+                                                            </div>
+                                                        ))}
+                                                    </>
+                                                )}
+                                            </>
+                                        );
                                     })()}
                                     {/* TAREAS (Misiones sueltas) */}
                                     {rightPanelMode === 'tareas' && (() => {
