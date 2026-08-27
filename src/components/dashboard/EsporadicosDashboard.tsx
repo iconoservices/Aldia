@@ -600,8 +600,10 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
             {/* Misma cápsula blanca de una sola fila que Finanzas/Analizar: título +
                 pastillas de estado + reloj/racha/ajustes, todo en el mismo nivel en vez
                 de una fila de título grande y otra de pastillas aparte debajo. */}
-            <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", flexWrap: "nowrap", background: "white", padding: "10px 14px", borderRadius: "18px", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
-                <h2 style={{ margin: "5px 0 0", fontSize: "1rem", fontWeight: 900, color: C.onSurface, whiteSpace: "nowrap", flexShrink: 0 }}>Entregas</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", background: "white", padding: "10px 14px", borderRadius: "18px", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
+              {/* Fila 1: título + búsqueda + reloj/racha/ajustes */}
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 900, color: C.onSurface, whiteSpace: "nowrap", flexShrink: 0 }}>Entregas</h2>
 
                 {/* Busca por título entre todos los proyectos (en curso, listos y ya
                     entregados) -- se combina con el filtro de pastillas de abajo, no lo
@@ -621,49 +623,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                     )}
                 </div>
 
-                {/* Las pastillas de estado se acomodan en más de una línea si no
-                    entran todas — ya no las esconde un scroll horizontal, así se
-                    ven siempre completas de un vistazo (aunque la cápsula crezca
-                    un poco de alto en vez de mantenerse en una sola fila). */}
-                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px", minWidth: 0, flex: "1 1 auto" }}>
-                    {([
-                        { label: "por entregar", value: pendientes.length, icon: Timer, color: C.secondary, bg: "rgba(99,102,241,0.12)" },
-                        { label: "atrasados", value: atrasados, icon: AlertTriangle, color: C.rojo, bg: "rgba(239,68,68,0.12)", filterKey: 'atrasados' as const },
-                        { label: "en edición", value: enEdicion, icon: Pencil, color: ESTADO_COLOR['En Edición'], bg: "rgba(230,168,23,0.12)", filterKey: 'enEdicion' as const },
-                        { label: "prioritarios", value: prioritarios, icon: Pin, color: C.ambar, bg: "rgba(230,168,23,0.12)", filterKey: 'prioridad' as const },
-                        { label: "listos para entregar", value: listosParaEntregar.length, icon: CheckCircle, color: C.ambar, bg: "rgba(230,168,23,0.12)" },
-                        { label: "entregados", value: completados.length, icon: CheckCircle2, color: C.verde, bg: "rgba(16,185,129,0.12)" },
-                        { label: "USB por entregar", value: usbPendientes, icon: Usb, color: C.ambar, bg: "rgba(230,168,23,0.12)", filterKey: 'usbGeneral' as const },
-                        { label: "USB urgente", value: usbUrgente, icon: Usb, color: C.rojo, bg: "rgba(239,68,68,0.12)", filterKey: 'usbUrgente' as const },
-                    ]).map(stat => {
-                        const clickable = !!stat.filterKey;
-                        const active = clickable && statFilter === stat.filterKey;
-                        return (
-                            <button
-                                key={stat.label}
-                                onClick={clickable ? () => setStatFilter(f => f === stat.filterKey ? null : stat.filterKey!) : undefined}
-                                title={clickable ? (active ? "Quitar filtro" : `Mostrar solo ${stat.label}`) : undefined}
-                                style={{
-                                    display: "flex", alignItems: "center", gap: "5px", background: stat.bg, borderRadius: "999px", padding: "4px 10px",
-                                    border: active ? `2px solid ${stat.color}` : "2px solid transparent",
-                                    cursor: clickable ? "pointer" : "default",
-                                    font: "inherit", flexShrink: 0,
-                                }}
-                            >
-                                <stat.icon size={12} color={stat.color} />
-                                <span style={{ fontWeight: 800, fontSize: "0.76rem", color: C.onSurface }}>{stat.value}</span>
-                                <span style={{ fontSize: "0.64rem", color: C.onSurfaceVariant }}>{stat.label}</span>
-                            </button>
-                        );
-                    })}
-                    {statFilter && (
-                        <button onClick={() => setStatFilter(null)} style={{ display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", cursor: "pointer", color: C.outline, fontSize: "0.68rem", fontWeight: 700, padding: "5px 6px", flexShrink: 0 }}>
-                            <X size={12} /> Quitar filtro
-                        </button>
-                    )}
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto", flexWrap: "nowrap", flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto", flexWrap: "wrap", flexShrink: 0 }}>
                     {customOrder.length > 0 && (
                         <button onClick={() => saveOrder([])} title="Volver al orden automático por prioridad" style={{ display: "flex", alignItems: "center", gap: "5px", background: "none", border: `1px solid ${C.outlineVariant}`, borderRadius: "999px", padding: "6px 10px", cursor: "pointer", color: C.onSurfaceVariant, fontSize: "0.7rem", fontWeight: 700 }}>
                             <ArrowUpDown size={12} /> Orden manual
@@ -734,6 +694,47 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                         )}
                     </div>
                 </div>
+              </div>
+
+              {/* Fila 2: pastillas de estado en grilla pareja — antes se apilaban
+                  en 2-3 filas irregulares metidas entre el título y los controles. */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(148px, 1fr))", gap: "6px" }}>
+                    {([
+                        { label: "por entregar", value: pendientes.length, icon: Timer, color: C.secondary, bg: "rgba(99,102,241,0.12)" },
+                        { label: "atrasados", value: atrasados, icon: AlertTriangle, color: C.rojo, bg: "rgba(239,68,68,0.12)", filterKey: 'atrasados' as const },
+                        { label: "en edición", value: enEdicion, icon: Pencil, color: ESTADO_COLOR['En Edición'], bg: "rgba(230,168,23,0.12)", filterKey: 'enEdicion' as const },
+                        { label: "prioritarios", value: prioritarios, icon: Pin, color: C.ambar, bg: "rgba(230,168,23,0.12)", filterKey: 'prioridad' as const },
+                        { label: "listos para entregar", value: listosParaEntregar.length, icon: CheckCircle, color: C.ambar, bg: "rgba(230,168,23,0.12)" },
+                        { label: "entregados", value: completados.length, icon: CheckCircle2, color: C.verde, bg: "rgba(16,185,129,0.12)" },
+                        { label: "USB por entregar", value: usbPendientes, icon: Usb, color: C.ambar, bg: "rgba(230,168,23,0.12)", filterKey: 'usbGeneral' as const },
+                        { label: "USB urgente", value: usbUrgente, icon: Usb, color: C.rojo, bg: "rgba(239,68,68,0.12)", filterKey: 'usbUrgente' as const },
+                    ]).map(stat => {
+                        const clickable = !!stat.filterKey;
+                        const active = clickable && statFilter === stat.filterKey;
+                        return (
+                            <button
+                                key={stat.label}
+                                onClick={clickable ? () => setStatFilter(f => f === stat.filterKey ? null : stat.filterKey!) : undefined}
+                                title={clickable ? (active ? "Quitar filtro" : `Mostrar solo ${stat.label}`) : undefined}
+                                style={{
+                                    display: "flex", alignItems: "center", gap: "5px", background: stat.bg, borderRadius: "999px", padding: "5px 10px",
+                                    border: active ? `2px solid ${stat.color}` : "2px solid transparent",
+                                    cursor: clickable ? "pointer" : "default",
+                                    font: "inherit", width: "100%", minWidth: 0,
+                                }}
+                            >
+                                <stat.icon size={12} color={stat.color} style={{ flexShrink: 0 }} />
+                                <span style={{ fontWeight: 800, fontSize: "0.76rem", color: C.onSurface }}>{stat.value}</span>
+                                <span style={{ fontSize: "0.64rem", color: C.onSurfaceVariant, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{stat.label}</span>
+                            </button>
+                        );
+                    })}
+                    {statFilter && (
+                        <button onClick={() => setStatFilter(null)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", background: "none", border: "none", cursor: "pointer", color: C.outline, fontSize: "0.68rem", fontWeight: 700, padding: "5px 6px" }}>
+                            <X size={12} /> Quitar filtro
+                        </button>
+                    )}
+              </div>
             </div>
 
             <div style={{ display: "flex", flexDirection: movil ? "column" : "row", flexWrap: "wrap", gap: movil ? "0.8rem" : "0.75rem", alignItems: "flex-start" }}>
