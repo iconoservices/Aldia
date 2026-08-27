@@ -64,7 +64,9 @@ export const TimelineAgendaView = ({
         try { return localStorage.getItem('aldia_agenda_sidebar_side') === 'left' ? 'left' : 'right'; } catch { return 'right'; }
     });
     useEffect(() => { try { localStorage.setItem('aldia_agenda_sidebar_side', sidebarSide); } catch { /* storage bloqueado */ } }, [sidebarSide]);
-    const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
+    // Abierto de entrada en "Misión Diaria": es lo que el usuario quiere ver al
+    // entrar al Calendario, junto con la vista Mes.
+    const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
     const [rightPanelMode, setRightPanelMode] = useState<'citas' | 'rutinas' | 'tareas' | 'habitos' | 'mision'>('mision');
     const [activeFilters, setActiveFilters] = useState({
         citas: true,
