@@ -36,6 +36,36 @@ const txLabelStyle: React.CSSProperties = { fontSize: "0.6rem", fontWeight: 800,
 const CARD: React.CSSProperties = { ...bento, borderRadius: "10px", padding: "1.5rem" };
 const LABEL: React.CSSProperties = etiqueta;
 
+const fmt = (n: number) => Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2 });
+
+// Panel de resumen (Entró / Salió): un total grande arriba y el desglose por
+// balde debajo. Las filas en cero no se muestran.
+const ResumenPanel = ({ titulo, total, color, filas }: {
+    titulo: string;
+    total: number;
+    color: string;
+    filas: { et: string; val: number; fuerte?: boolean; tenue?: boolean }[];
+}) => {
+    const visibles = filas.filter(f => f.val > 0);
+    return (
+        <div style={{ background: C.surface, borderRadius: "8px", padding: "12px 14px", border: `1px solid ${C.surfaceContainerLow}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "8px" }}>
+                <span style={{ ...LABEL, color: C.outline }}>{titulo}</span>
+                <span style={{ fontWeight: 900, fontSize: "1.05rem", color }}>S/ {fmt(total)}</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {visibles.length === 0 && <span style={{ fontSize: "0.72rem", color: C.outline }}>Sin movimientos</span>}
+                {visibles.map(f => (
+                    <div key={f.et} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.75rem" }}>
+                        <span style={{ color: f.tenue ? C.outline : C.onSurfaceVariant, fontWeight: f.fuerte ? 800 : 600 }}>{f.et}</span>
+                        <span style={{ color: f.tenue ? C.outline : C.onSurface, fontWeight: f.fuerte ? 800 : 700 }}>S/ {fmt(f.val)}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 export const MovimientosDashboard = ({ transactions, removeTransaction, updateTransaction, accounts, incomeCategories = [], expenseCategories = [] }: MovimientosProps) => {
     const movil = useIsMobile();
     const [periodMode, setPeriodMode] = useState<PeriodMode>("month");
@@ -52,15 +82,43 @@ export const MovimientosDashboard = ({ transactions, removeTransaction, updateTr
         transactions.filter(tx => !tx.isDebt && tx.fullDate >= pStart && tx.fullDate <= pEnd),
         [transactions, pStart, pEnd]);
 
-    // periodTxs sigue mostrando las transferencias en la lista (siguen siendo
-    // movimientos reales que el usuario quiere ver/editar), pero se excluyen
-    // acá porque mover plata entre cuentas propias no es ingreso ni gasto real
-    // y duplicaría ambos totales por el mismo monto.
+    // La lista sigue mostrando todo (transferencias y deudas incluidas: son
+    // movimientos reales que el usuario quiere ver/editar), pero el resumen de
+    // arriba reparte cada movimiento en UN solo balde:
+    //   · Transferencia entre cuentas propias → se ignora del todo (mover plata
+    //     de un bolsillo a otro no es ingreso ni gasto).
+    //   · Categorías "Préstamos" / "Deudas" → movimiento de deuda: prestar,
+    //     cobrar o devolver. Tampoco es ingreso ni gasto real — la plata sigue
+    //     siendo tuya, solo cambia de manos. Se muestra aparte.
+    //   · Ingreso con categoría "Ayuda…" → entró de afuera (no lo generaste tú).
+    //   · Lo que queda → lo que realmente generaste / tu consumo real.
     const periodStats = useMemo(() => {
-        const real = periodTxs.filter(t => t.category !== "Transferencia");
-        const income = real.filter(t => t.type === "ingreso").reduce((s, t) => s + (Number(t.amount) || 0), 0);
-        const expense = real.filter(t => t.type === "gasto").reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0);
-        return { income, expense, net: income - expense };
+        let generado = 0, ayuda = 0, cobroDeuda = 0;
+        let gastoReal = 0, prestamoDado = 0, pagoDeuda = 0;
+        for (const t of periodTxs) {
+            const cat = t.category || "";
+            if (cat === "Transferencia") continue;
+            const monto = Math.abs(Number(t.amount) || 0);
+            const esDeuda = cat === "Préstamos" || cat === "Deudas";
+            if (t.type === "ingreso") {
+                if (esDeuda) cobroDeuda += monto;
+                else if (/^ayuda/i.test(cat)) ayuda += monto;
+                else generado += monto;
+            } else if (t.type === "gasto") {
+                if (cat === "Préstamos") prestamoDado += monto;
+                else if (cat === "Deudas") pagoDeuda += monto;
+                else gastoReal += monto;
+            }
+        }
+        const ingresoTotal = generado + ayuda + cobroDeuda;
+        const gastoTotal = gastoReal + prestamoDado + pagoDeuda;
+        return {
+            generado, ayuda, cobroDeuda, ingresoTotal,
+            gastoReal, prestamoDado, pagoDeuda, gastoTotal,
+            // Neto real: lo que generaste + ayuda − consumo. No mete préstamos ni
+            // cobros: esos no cambian tu patrimonio, solo mueven plata ya tuya.
+            netoReal: generado + ayuda - gastoReal,
+        };
     }, [periodTxs]);
 
     const filteredTxs = useMemo(() => {
@@ -112,18 +170,44 @@ export const MovimientosDashboard = ({ transactions, removeTransaction, updateTr
                     </div>
                 )}
 
-                {/* KPI cards */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "10px", marginBottom: "1.2rem" }}>
-                    {[
-                        { label: "Ingresos", val: periodStats.income, color: C.verde, bg: "rgba(16,185,129,0.06)" },
-                        { label: "Gastos", val: periodStats.expense, color: C.rojo, bg: "rgba(239,68,68,0.06)" },
-                        { label: "Neto", val: periodStats.net, color: periodStats.net >= 0 ? C.verde : C.rojo, bg: periodStats.net >= 0 ? "rgba(16,185,129,0.06)" : "rgba(239,68,68,0.06)" },
-                    ].map((k, i) => (
-                        <div key={i} style={{ background: k.bg, borderRadius: "8px", padding: "10px 12px", textAlign: "center" }}>
-                            <div style={{ ...LABEL, color: k.color, marginBottom: "3px" }}>{k.label}</div>
-                            <div style={{ fontWeight: 900, fontSize: "1.05rem", color: k.color }}>S/ {k.val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
-                        </div>
-                    ))}
+                {/* Resumen del período — cada movimiento en un solo balde */}
+                <div style={{ display: "grid", gridTemplateColumns: movil ? "1fr" : "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
+                    <ResumenPanel
+                        titulo="Entró"
+                        total={periodStats.ingresoTotal}
+                        color={C.verde}
+                        filas={[
+                            { et: "Generaste", val: periodStats.generado, fuerte: true },
+                            { et: "Ayuda", val: periodStats.ayuda },
+                            { et: "Cobro de deudas", val: periodStats.cobroDeuda, tenue: true },
+                        ]}
+                    />
+                    <ResumenPanel
+                        titulo="Salió"
+                        total={periodStats.gastoTotal}
+                        color={C.rojo}
+                        filas={[
+                            { et: "Gasto real", val: periodStats.gastoReal, fuerte: true },
+                            { et: "Préstamos que diste", val: periodStats.prestamoDado, tenue: true },
+                            { et: "Pago de deudas", val: periodStats.pagoDeuda, tenue: true },
+                        ]}
+                    />
+                </div>
+
+                {/* Neto real: lo que generaste + ayuda − consumo real */}
+                <div style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    background: periodStats.netoReal >= 0 ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)",
+                    border: `1px solid ${periodStats.netoReal >= 0 ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)"}`,
+                    borderRadius: "8px", padding: "10px 14px", marginBottom: "1.2rem", gap: "10px",
+                }}>
+                    <div style={{ minWidth: 0 }}>
+                        <div style={{ ...LABEL, color: periodStats.netoReal >= 0 ? C.verde : C.rojo }}>Neto real</div>
+                        <div style={{ fontSize: "0.6rem", color: C.outline, fontWeight: 600, marginTop: "1px" }}>generaste + ayuda − gasto real</div>
+                    </div>
+                    <div style={{ fontWeight: 900, fontSize: "1.1rem", whiteSpace: "nowrap", flexShrink: 0, color: periodStats.netoReal >= 0 ? C.verde : C.rojo }}>
+                        {periodStats.netoReal >= 0 ? "+" : "−"}S/ {fmt(periodStats.netoReal)}
+                    </div>
                 </div>
 
                 {/* Search + account filter */}
