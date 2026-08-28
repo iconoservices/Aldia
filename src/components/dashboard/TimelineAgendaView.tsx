@@ -1,22 +1,23 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, Filter, Trash2, Star, Plus, Package, Camera, RefreshCw, Loader2, X, Target, AlertTriangle, GripVertical } from 'lucide-react';
+import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, Filter, Trash2, Star, Plus, Package, Camera, RefreshCw, Loader2, X, Target, AlertTriangle } from 'lucide-react';
 import { DndContext, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// Envoltorio sortable de FOCO: entrega ref + estilo para el nodo y `handleProps`
-// para el asa de arrastre. Si `disabled`, no arrastra (modo auto).
-const FocoSortable = ({ id, disabled, children }: {
-    id: string; disabled: boolean;
+// Envoltorio sortable de FOCO: la fila/cabecera entera es el asa de arrastre
+// (se le pasan ref + estilo + handleProps). Un tap normal sigue funcionando
+// gracias al activationConstraint de distancia del sensor.
+const FocoSortable = ({ id, children }: {
+    id: string;
     children: (h: { ref: (n: HTMLElement | null) => void; style: React.CSSProperties; handleProps: Record<string, unknown> }) => React.ReactNode;
 }) => {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
     return <>{children({
         ref: setNodeRef,
-        style: { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1, position: 'relative', zIndex: isDragging ? 5 : undefined },
-        handleProps: disabled ? {} : { ...attributes, ...listeners, style: { touchAction: 'none', cursor: 'grab', display: 'flex', flexShrink: 0 } },
+        style: { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1, position: 'relative', zIndex: isDragging ? 5 : undefined, touchAction: 'none' },
+        handleProps: { ...attributes, ...listeners },
     })}</>;
 };
 
@@ -95,16 +96,18 @@ export const TimelineAgendaView = ({
     // Qué secciones de FOCO están expandidas (por defecto se ven solo las 3
     // primeras filas de cada una + un "ver más").
     const [focoExpandido, setFocoExpandido] = useState<Record<string, boolean>>({});
-    // Orden manual de FOCO (flechitas ↑↓). `activo` = modo manual; `secs` = orden
-    // de las secciones; `rows[k]` = orden de las filas de esa sección. Persistido.
-    type FocoManual = { activo: boolean; secs: string[]; rows: Record<string, (string | number)[]> };
+    // Orden manual de FOCO: `secs` = orden de las secciones, `rows[k]` = orden de
+    // las filas de esa sección. Vacío = orden por fecha (auto). Se guarda al
+    // arrastrar; no hay modo aparte, FOCO se ve siempre igual.
+    type FocoManual = { secs: string[]; rows: Record<string, string[]> };
     const [focoManual, setFocoManual] = useState<FocoManual>(() => {
         try {
             const v = JSON.parse(localStorage.getItem('aldia_foco_manual') || 'null');
-            if (v && typeof v === 'object') return { activo: !!v.activo, secs: Array.isArray(v.secs) ? v.secs : [], rows: v.rows || {} };
+            if (v && typeof v === 'object') return { secs: Array.isArray(v.secs) ? v.secs : [], rows: v.rows || {} };
         } catch { /* nada */ }
-        return { activo: false, secs: [], rows: {} };
+        return { secs: [], rows: {} };
     });
+    const focoTieneOrden = focoManual.secs.length > 0 || Object.keys(focoManual.rows).length > 0;
     const actualizarFocoManual = (updater: (prev: FocoManual) => FocoManual) => {
         setFocoManual(prev => {
             const next = updater(prev);
@@ -413,21 +416,18 @@ export const TimelineAgendaView = ({
     // (rightPanelMode === 'foco'), no como pantalla completa.
     const renderFoco = () => {
         const LIMITE = 3;
-        const manual = focoManual.activo;
         const diasLabel = (d: number) => d < 0 ? `hace ${Math.abs(d)} d${Math.abs(d) === 1 ? 'ía' : 'ías'}` : d === 0 ? 'hoy' : d === 1 ? 'mañana' : `en ${d} días`;
         const { atrasadas, proximas, eventos, checklist } = focoData;
 
         const idCheck = (t: any) => `${t.label}||${t.period}`;
-        // Ordena `items` por la lista de ids guardada; lo que no esté, al final.
+        // Aplica el orden guardado para esa sección (si hay); lo que no esté, al final.
         const ordenar = <T,>(items: T[], idOf: (t: T) => string, key: string): T[] => {
             const ord = focoManual.rows[key] || [];
-            if (!manual || !ord.length) return items;
+            if (!ord.length) return items;
             const pos = new Map(ord.map((id, i) => [String(id), i]));
             return [...items].sort((a, b) => (pos.has(idOf(a)) ? pos.get(idOf(a))! : 1e9) - (pos.has(idOf(b)) ? pos.get(idOf(b))! : 1e9));
         };
 
-        // 4 secciones SIEMPRE (igual que en auto). En manual solo se puede
-        // reordenar; el layout no cambia.
         const secDefs = [
             { k: 'atrasadas', icon: <AlertTriangle size={15} color="#DC2626" />, title: 'Entregas atrasadas', tint: '#DC2626', empty: 'Nada atrasado 🎉', kind: 'entrega' as const, items: ordenar(atrasadas, (x: any) => String(x.id), 'atrasadas') },
             { k: 'proximas', icon: <Package size={15} color="#059669" />, title: 'Próximas entregas', tint: '#059669', empty: 'Nada en las próximas 3 semanas', kind: 'entrega' as const, items: ordenar(proximas, (x: any) => String(x.id), 'proximas') },
@@ -435,7 +435,7 @@ export const TimelineAgendaView = ({
             { k: 'checklist', icon: <Clock size={15} color="#F59E0B" />, title: 'Checklist de hoy', tint: '#F59E0B', empty: 'Todo listo por hoy ✅', kind: 'check' as const, items: ordenar(checklist, idCheck, 'checklist') },
         ];
         const secOf = (k: string) => secDefs.find(s => s.k === k)!;
-        const orderedSecs = manual && focoManual.secs.length
+        const orderedSecs = focoManual.secs.length
             ? [...secDefs].sort((a, b) => {
                 const pa = focoManual.secs.indexOf(a.k); const pb = focoManual.secs.indexOf(b.k);
                 return (pa === -1 ? 1e9 : pa) - (pb === -1 ? 1e9 : pb);
@@ -448,12 +448,12 @@ export const TimelineAgendaView = ({
             if (!o || a === o) return;
             if (a.startsWith('sec§') && o.startsWith('sec§')) {
                 const cur = orderedSecs.map(s => s.k);
-                actualizarFocoManual(p => ({ ...p, activo: true, secs: arrayMove(cur, cur.indexOf(a.slice(4)), cur.indexOf(o.slice(4))) }));
+                actualizarFocoManual(p => ({ ...p, secs: arrayMove(cur, cur.indexOf(a.slice(4)), cur.indexOf(o.slice(4))) }));
             } else if (a.startsWith('row§') && o.startsWith('row§')) {
                 const [, ak, aid] = a.split('§'); const [, ok, oid] = o.split('§');
                 if (ak !== ok) return;
                 const cur = secOf(ak).items.map(idOfSec(secOf(ak)));
-                actualizarFocoManual(p => ({ ...p, activo: true, rows: { ...p.rows, [ak]: arrayMove(cur, cur.indexOf(aid), cur.indexOf(oid)) } }));
+                actualizarFocoManual(p => ({ ...p, rows: { ...p.rows, [ak]: arrayMove(cur, cur.indexOf(aid), cur.indexOf(oid)) } }));
             }
         };
 
@@ -481,11 +481,8 @@ export const TimelineAgendaView = ({
             display: 'flex', alignItems: 'center', gap: '8px', background: 'white', border: '1px solid #F1F5F9',
             borderLeft: bl ? `4px solid ${bl}` : '1px solid #F1F5F9', borderRadius: '10px', padding: '8px 10px',
         });
-        const grip = (handleProps: Record<string, unknown>) => (
-            <span {...handleProps} onClick={(ev: React.MouseEvent) => ev.stopPropagation()}><GripVertical size={13} color="#CBD5E1" /></span>
-        );
 
-        const renderSeccion = (s: typeof secDefs[number], dragHandle?: React.ReactNode) => {
+        const renderSeccion = (s: typeof secDefs[number], headerHandle: Record<string, unknown>) => {
             const abierto = !!focoExpandido[s.k];
             const visibles = abierto ? s.items : s.items.slice(0, LIMITE);
             const resto = s.items.length - visibles.length;
@@ -493,12 +490,11 @@ export const TimelineAgendaView = ({
             const rows = visibles.map((it: any) => {
                 const rid = `row§${s.k}§${idOf(it)}`;
                 const c = rowContent(s, it);
-                if (!manual) return <div key={rid} onClick={c.onClick} style={{ ...rowBox(c.borderLeft), cursor: c.onClick ? 'pointer' : 'default' }}>{c.node}</div>;
                 return (
-                    <FocoSortable key={rid} id={rid} disabled={false}>
+                    <FocoSortable key={rid} id={rid}>
                         {({ ref, style, handleProps }) => (
-                            <div ref={ref} onClick={c.onClick} style={{ ...rowBox(c.borderLeft), ...style, cursor: c.onClick ? 'pointer' : 'default' }}>
-                                {grip(handleProps)}
+                            // toda la fila es el asa; el tap sigue abriendo el detalle
+                            <div ref={ref} {...handleProps} onClick={c.onClick} style={{ ...rowBox(c.borderLeft), ...style, cursor: c.onClick ? 'pointer' : 'grab' }}>
                                 {c.node}
                             </div>
                         )}
@@ -507,8 +503,7 @@ export const TimelineAgendaView = ({
             });
             return (
                 <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px' }}>
-                        {dragHandle}
+                    <div {...headerHandle} style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px', cursor: 'grab' }}>
                         {s.icon}
                         <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{s.title}</span>
                         {s.items.length > 0 && <span style={{ fontSize: '0.64rem', fontWeight: 800, color: s.tint, background: `${s.tint}1a`, borderRadius: '999px', padding: '1px 7px' }}>{s.items.length}</span>}
@@ -517,9 +512,7 @@ export const TimelineAgendaView = ({
                         ? <div style={{ fontSize: '0.72rem', color: '#94A3B8', paddingLeft: '22px' }}>{s.empty}</div>
                         : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                {manual
-                                    ? <SortableContext items={visibles.map((it: any) => `row§${s.k}§${idOf(it)}`)} strategy={verticalListSortingStrategy}>{rows}</SortableContext>
-                                    : rows}
+                                <SortableContext items={visibles.map((it: any) => `row§${s.k}§${idOf(it)}`)} strategy={verticalListSortingStrategy}>{rows}</SortableContext>
                                 {(resto > 0 || abierto) && (
                                     <button onClick={() => setFocoExpandido(e => ({ ...e, [s.k]: !abierto }))}
                                         style={{ alignSelf: 'flex-start', background: 'none', border: 'none', cursor: 'pointer', color: s.tint, fontSize: '0.68rem', fontWeight: 800, padding: '2px 2px' }}>
@@ -532,40 +525,25 @@ export const TimelineAgendaView = ({
             );
         };
 
-        const toggle = (
-            <div style={{ display: 'flex', gap: '4px', background: '#F1F5F9', borderRadius: '999px', padding: '3px', alignSelf: 'flex-start' }}>
-                {(['auto', 'manual'] as const).map(m => {
-                    const on = manual === (m === 'manual');
-                    return (
-                        <button key={m} onClick={() => actualizarFocoManual(p => ({ ...p, activo: m === 'manual' }))}
-                            style={{ border: 'none', borderRadius: '999px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.64rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.03em', background: on ? 'white' : 'transparent', color: on ? 'var(--domain-orange)' : '#64748B' }}>
-                            {m}
-                        </button>
-                    );
-                })}
-            </div>
-        );
-
-        const secciones = orderedSecs.map(s => manual
-            ? (
-                <FocoSortable key={s.k} id={`sec§${s.k}`} disabled={false}>
-                    {({ ref, style, handleProps }) => <div ref={ref} style={style}>{renderSeccion(s, grip(handleProps))}</div>}
-                </FocoSortable>
-            )
-            : <div key={s.k}>{renderSeccion(s)}</div>);
-
         return (
             <div style={{ padding: '12px 12px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {toggle}
-                {manual
-                    ? (
-                        <DndContext sensors={focoSensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-                            <SortableContext items={orderedSecs.map(s => `sec§${s.k}`)} strategy={verticalListSortingStrategy}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>{secciones}</div>
-                            </SortableContext>
-                        </DndContext>
-                    )
-                    : <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>{secciones}</div>}
+                {focoTieneOrden && (
+                    <button onClick={() => actualizarFocoManual(() => ({ secs: [], rows: {} }))}
+                        style={{ alignSelf: 'flex-start', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: '0.66rem', fontWeight: 800, padding: 0 }}>
+                        ↺ orden por fecha
+                    </button>
+                )}
+                <DndContext sensors={focoSensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                    <SortableContext items={orderedSecs.map(s => `sec§${s.k}`)} strategy={verticalListSortingStrategy}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            {orderedSecs.map(s => (
+                                <FocoSortable key={s.k} id={`sec§${s.k}`}>
+                                    {({ ref, style, handleProps }) => <div ref={ref} style={style}>{renderSeccion(s, handleProps)}</div>}
+                                </FocoSortable>
+                            ))}
+                        </div>
+                    </SortableContext>
+                </DndContext>
             </div>
         );
     };
