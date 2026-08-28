@@ -371,7 +371,6 @@ export const TimelineAgendaView = ({
     const focoData = useMemo(() => {
         const hoy = new Date().toLocaleDateString('en-CA');
         const enDias = (a: string) => Math.round((new Date(a + 'T00:00:00').getTime() - new Date(hoy + 'T00:00:00').getTime()) / 86400000);
-        const limite = (() => { const d = new Date(); d.setDate(d.getDate() + 21); return d.toLocaleDateString('en-CA'); })();
 
         type Entrega = { id: string; title: string; date: string; dias: number; color: string; raw: any };
         const entregas: Entrega[] = [];
@@ -386,7 +385,7 @@ export const TimelineAgendaView = ({
         entregas.sort((a, b) => a.date.localeCompare(b.date));
 
         const atrasadas = entregas.filter(x => x.date < hoy);
-        const proximas = entregas.filter(x => x.date >= hoy && x.date <= limite);
+        const proximas = entregas.filter(x => x.date >= hoy);
 
         const eventos = (calendarEvents || [])
             .filter((e: any) => e.date && e.date >= hoy && (e.notionId ? notionOn : true))
@@ -431,7 +430,7 @@ export const TimelineAgendaView = ({
 
         const secDefs = [
             { k: 'atrasadas', icon: <AlertTriangle size={15} color="#DC2626" />, title: 'Entregas atrasadas', tint: '#DC2626', empty: 'Nada atrasado 🎉', kind: 'entrega' as const, items: ordenar(atrasadas, (x: any) => String(x.id), 'atrasadas') },
-            { k: 'proximas', icon: <Package size={15} color="#059669" />, title: 'Próximas entregas', tint: '#059669', empty: 'Nada en las próximas 3 semanas', kind: 'entrega' as const, items: ordenar(proximas, (x: any) => String(x.id), 'proximas') },
+            { k: 'proximas', icon: <Package size={15} color="#059669" />, title: 'Próximas entregas', tint: '#059669', empty: 'Ninguna por entregar', kind: 'entrega' as const, items: ordenar(proximas, (x: any) => String(x.id), 'proximas') },
             { k: 'eventos', icon: <Calendar size={15} color="#6366F1" />, title: 'Agenda · próximos eventos', tint: '#6366F1', empty: 'Sin eventos próximos', kind: 'evento' as const, items: ordenar(eventos, (x: any) => String(x.id), 'eventos') },
             { k: 'checklist', icon: <Clock size={15} color="#F59E0B" />, title: 'Checklist de hoy', tint: '#F59E0B', empty: 'Todo listo por hoy ✅', kind: 'check' as const, items: ordenar(checklist, idCheck, 'checklist') },
         ];
