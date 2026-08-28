@@ -97,17 +97,18 @@ export const TimelineAgendaView = ({
     // primeras filas de cada una + un "ver más").
     const [focoExpandido, setFocoExpandido] = useState<Record<string, boolean>>({});
     // Orden manual de FOCO: `secs` = orden de las secciones, `rows[k]` = orden de
-    // las filas de esa sección. Vacío = orden por fecha (auto). Se guarda al
-    // arrastrar; no hay modo aparte, FOCO se ve siempre igual.
-    type FocoManual = { secs: string[]; rows: Record<string, string[]> };
+    // las filas de esa sección. `usarOrden` alterna entre ese orden guardado y el
+    // orden por fecha SIN perder lo guardado. Se guarda al arrastrar.
+    type FocoManual = { usarOrden: boolean; secs: string[]; rows: Record<string, string[]> };
     const [focoManual, setFocoManual] = useState<FocoManual>(() => {
         try {
             const v = JSON.parse(localStorage.getItem('aldia_foco_manual') || 'null');
-            if (v && typeof v === 'object') return { secs: Array.isArray(v.secs) ? v.secs : [], rows: v.rows || {} };
+            if (v && typeof v === 'object') return { usarOrden: v.usarOrden !== false, secs: Array.isArray(v.secs) ? v.secs : [], rows: v.rows || {} };
         } catch { /* nada */ }
-        return { secs: [], rows: {} };
+        return { usarOrden: true, secs: [], rows: {} };
     });
-    const focoTieneOrden = focoManual.secs.length > 0 || Object.keys(focoManual.rows).length > 0;
+    const focoHayOrden = focoManual.secs.length > 0 || Object.keys(focoManual.rows).length > 0;
+    const focoAplicaOrden = focoManual.usarOrden && focoHayOrden;
     const actualizarFocoManual = (updater: (prev: FocoManual) => FocoManual) => {
         setFocoManual(prev => {
             const next = updater(prev);
@@ -420,10 +421,10 @@ export const TimelineAgendaView = ({
         const { atrasadas, proximas, eventos, checklist } = focoData;
 
         const idCheck = (t: any) => `${t.label}||${t.period}`;
-        // Aplica el orden guardado para esa sección (si hay); lo que no esté, al final.
+        // Aplica el orden guardado para esa sección (si `usarOrden`); lo que no esté, al final.
         const ordenar = <T,>(items: T[], idOf: (t: T) => string, key: string): T[] => {
             const ord = focoManual.rows[key] || [];
-            if (!ord.length) return items;
+            if (!focoManual.usarOrden || !ord.length) return items;
             const pos = new Map(ord.map((id, i) => [String(id), i]));
             return [...items].sort((a, b) => (pos.has(idOf(a)) ? pos.get(idOf(a))! : 1e9) - (pos.has(idOf(b)) ? pos.get(idOf(b))! : 1e9));
         };
@@ -435,7 +436,7 @@ export const TimelineAgendaView = ({
             { k: 'checklist', icon: <Clock size={15} color="#F59E0B" />, title: 'Checklist de hoy', tint: '#F59E0B', empty: 'Todo listo por hoy ✅', kind: 'check' as const, items: ordenar(checklist, idCheck, 'checklist') },
         ];
         const secOf = (k: string) => secDefs.find(s => s.k === k)!;
-        const orderedSecs = focoManual.secs.length
+        const orderedSecs = focoAplicaOrden && focoManual.secs.length
             ? [...secDefs].sort((a, b) => {
                 const pa = focoManual.secs.indexOf(a.k); const pb = focoManual.secs.indexOf(b.k);
                 return (pa === -1 ? 1e9 : pa) - (pb === -1 ? 1e9 : pb);
@@ -448,12 +449,12 @@ export const TimelineAgendaView = ({
             if (!o || a === o) return;
             if (a.startsWith('sec§') && o.startsWith('sec§')) {
                 const cur = orderedSecs.map(s => s.k);
-                actualizarFocoManual(p => ({ ...p, secs: arrayMove(cur, cur.indexOf(a.slice(4)), cur.indexOf(o.slice(4))) }));
+                actualizarFocoManual(p => ({ ...p, usarOrden: true, secs: arrayMove(cur, cur.indexOf(a.slice(4)), cur.indexOf(o.slice(4))) }));
             } else if (a.startsWith('row§') && o.startsWith('row§')) {
                 const [, ak, aid] = a.split('§'); const [, ok, oid] = o.split('§');
                 if (ak !== ok) return;
                 const cur = secOf(ak).items.map(idOfSec(secOf(ak)));
-                actualizarFocoManual(p => ({ ...p, rows: { ...p.rows, [ak]: arrayMove(cur, cur.indexOf(aid), cur.indexOf(oid)) } }));
+                actualizarFocoManual(p => ({ ...p, usarOrden: true, rows: { ...p.rows, [ak]: arrayMove(cur, cur.indexOf(aid), cur.indexOf(oid)) } }));
             }
         };
 
@@ -527,10 +528,10 @@ export const TimelineAgendaView = ({
 
         return (
             <div style={{ padding: '12px 12px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {focoTieneOrden && (
-                    <button onClick={() => actualizarFocoManual(() => ({ secs: [], rows: {} }))}
+                {focoHayOrden && (
+                    <button onClick={() => actualizarFocoManual(p => ({ ...p, usarOrden: !p.usarOrden }))}
                         style={{ alignSelf: 'flex-start', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: '0.66rem', fontWeight: 800, padding: 0 }}>
-                        ↺ orden por fecha
+                        {focoManual.usarOrden ? '↺ ver por fecha' : '↦ volver a mi orden'}
                     </button>
                 )}
                 <DndContext sensors={focoSensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
