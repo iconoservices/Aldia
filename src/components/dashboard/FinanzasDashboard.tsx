@@ -677,6 +677,10 @@ export const FinanzasDashboard = ({
     // animación y visible solo cuando ya terminó de abrirse.
     const [categoriesOverflowVisible, setCategoriesOverflowVisible] = useState(false);
     const [categoryTab, setCategoryTab] = useState<"gasto" | "ingreso">("gasto");
+    // Filtro de cuenta en el administrador de Categorías: "all" = todo agrupado
+    // por cuenta; un id = solo lo de esa cuenta + lo compartido (y lo nuevo nace
+    // marcado para ella).
+    const [catAccountView, setCatAccountView] = useState<number | "all">("all");
     const [newCategoryName, setNewCategoryName] = useState("");
     const [activeMenuCategory, setActiveMenuCategory] = useState<string | null>(null);
     const [categoryMenuMode, setCategoryMenuMode] = useState<"root" | "merge" | "accounts" | "group" | "desc">("root");
@@ -697,8 +701,10 @@ export const FinanzasDashboard = ({
     const currentCategoriesForTab = useMemo(() => (categoryTab === "gasto" ? expenseCategories : incomeCategories) || [], [categoryTab, expenseCategories, incomeCategories]);
 
     const handleAddCategory = () => {
-        if (!newCategoryName.trim() || !addCategory) return;
-        addCategory(categoryTab, newCategoryName.trim());
+        const n = newCategoryName.trim();
+        if (!n || !addCategory) return;
+        addCategory(categoryTab, n);
+        if (typeof catAccountView === "number") setCategoryAccounts?.(categoryTab, n, [catAccountView]);
         setNewCategoryName("");
     };
 
@@ -713,6 +719,7 @@ export const FinanzasDashboard = ({
         const trimmed = groupDraft.trim();
         if (!trimmed) return;
         setCategoryGroup?.(categoryTab, cat, trimmed);
+        if (typeof catAccountView === "number") setGroupAccounts?.(categoryTab, trimmed, [catAccountView]);
         setGroupDraft("");
         closeCategoryMenu();
     };
@@ -728,6 +735,7 @@ export const FinanzasDashboard = ({
         const trimmed = groupDraft.trim();
         if (!trimmed || !groupCategoryTarget || !setCategoryGroup) return;
         setCategoryGroup(categoryTab, groupCategoryTarget, trimmed);
+        if (typeof catAccountView === "number") setGroupAccounts?.(categoryTab, trimmed, [catAccountView]);
         setGroupDraft("");
         setGroupCategoryTarget("");
         setIsAddingGroup(false);
@@ -741,6 +749,7 @@ export const FinanzasDashboard = ({
         if (!trimmed || !addCategory) return;
         addCategory(categoryTab, trimmed);
         setCategoryGroup?.(categoryTab, trimmed, group);
+        if (typeof catAccountView === "number") setCategoryAccounts?.(categoryTab, trimmed, [catAccountView]);
         setNewCategoryForGroupDraft("");
         setAddingCategoryToGroup(null);
     };
@@ -1327,6 +1336,50 @@ export const FinanzasDashboard = ({
                                         onChange={(v) => setCategoryTab(v as "gasto" | "ingreso")}
                                     />
                                 </div>
+
+                                {accounts.length > 1 && (
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "12px" }}>
+                                        {([{ id: "all" as number | "all", name: "Todas", color: null as string | null }, ...accounts]).map(a => {
+                                            const active = catAccountView === a.id;
+                                            return (
+                                                <button
+                                                    key={String(a.id)}
+                                                    onClick={() => setCatAccountView(a.id)}
+                                                    style={{
+                                                        display: "flex", alignItems: "center", gap: "5px",
+                                                        padding: "4px 11px", borderRadius: "999px",
+                                                        border: `1px solid ${active ? C.secondary : C.outlineVariant}`,
+                                                        background: active ? C.secondary : "transparent",
+                                                        color: active ? "#fff" : C.onSurfaceVariant,
+                                                        fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+                                                    }}
+                                                >
+                                                    {a.color && <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: active ? "#fff" : a.color, flexShrink: 0 }} />}
+                                                    {a.name}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {typeof catAccountView === "number" && aplicarPlantilla && (() => {
+                                    const acc = accounts.find(a => a.id === catAccountView);
+                                    return (
+                                        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "6px", marginBottom: "14px", fontSize: "0.72rem", color: C.onSurfaceVariant }}>
+                                            <span style={{ fontWeight: 700 }}>Plantilla:</span>
+                                            <span>{acc?.plantilla ? PLANTILLAS[acc.plantilla].label : "ninguna"}</span>
+                                            {PLANTILLA_IDS.map(id => (
+                                                <button
+                                                    key={id}
+                                                    onClick={() => { if (window.confirm(`Agrega los grupos y categorías de la plantilla "${PLANTILLAS[id].label}" a ${acc?.name}. No borra nada. ¿Continuar?`)) aplicarPlantilla(catAccountView, id); }}
+                                                    style={{ padding: "3px 9px", borderRadius: "999px", border: `1px solid ${C.outlineVariant}`, background: "transparent", color: C.secondary, fontSize: "0.7rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
+                                                >
+                                                    + {PLANTILLAS[id].label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    );
+                                })()}
                                 <div style={{ marginBottom: "14px" }}>
                                     {!isAddingGroup ? (
                                         <button
@@ -1557,9 +1610,25 @@ export const FinanzasDashboard = ({
                                             }
                                         });
 
-                                        return (
-                                            <>
-                                                {groupOrder.map(g => {
+                                        // Cada grupo / categoría suelta pertenece a UNA cuenta (si está marcado
+                                        // a una sola) o a "shared" (sin marca, o marcado a varias).
+                                        const bucketOfGroup = (g: string): number | "shared" => {
+                                            const ids = groupAccountScope?.[categoryTab]?.[g] || [];
+                                            return ids.length === 1 ? ids[0] : "shared";
+                                        };
+                                        const bucketOfCat = (c: string): number | "shared" => {
+                                            const ids = categoryAccountScope?.[categoryTab]?.[c] || [];
+                                            return ids.length === 1 ? ids[0] : "shared";
+                                        };
+                                        const secciones: { key: number | "shared"; label: string; color: string | null }[] = [
+                                            ...accounts.map(a => ({ key: a.id as number | "shared", label: a.name, color: a.color as string | null })),
+                                            { key: "shared", label: "Compartidas", color: null },
+                                        ];
+                                        const seccionesVisibles = catAccountView === "all"
+                                            ? secciones
+                                            : secciones.filter(s => s.key === catAccountView || s.key === "shared");
+
+                                        const renderGroup = (g: string) => {
                                                     const scopedAccountIds = groupAccountScope?.[categoryTab]?.[g] || [];
                                                     const scopedAccounts = scopedAccountIds.map(id => accounts.find(a => a.id === id)).filter((a): a is typeof accounts[number] => !!a);
                                                     return (
@@ -1683,19 +1752,39 @@ export const FinanzasDashboard = ({
                                                         </div>
                                                     </div>
                                                     );
-                                                })}
-                                                {ungrouped.length > 0 && (
-                                                    <div>
-                                                        {groupOrder.length > 0 && (
-                                                            <div style={{ fontSize: "0.68rem", fontWeight: 800, color: C.outline, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "6px" }}>
-                                                                Sin grupo
-                                                            </div>
-                                                        )}
-                                                        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                                                            {ungrouped.map(renderChip)}
+                                        };
+
+                                        return (
+                                            <>
+                                                {seccionesVisibles.map((sec, si) => {
+                                                    const secGroups = groupOrder.filter(g => bucketOfGroup(g) === sec.key);
+                                                    const secUngrouped = ungrouped.filter(c => bucketOfCat(c) === sec.key);
+                                                    if (!secGroups.length && !secUngrouped.length) return null;
+                                                    const showHeader = catAccountView === "all" || sec.key === "shared";
+                                                    return (
+                                                        <div key={String(sec.key)} style={{ display: "flex", flexDirection: "column", gap: "12px", ...(si > 0 ? { borderTop: `1px solid ${C.outlineVariant}`, paddingTop: "12px" } : {}) }}>
+                                                            {showHeader && (
+                                                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                                    {sec.color && <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: sec.color, flexShrink: 0 }} />}
+                                                                    <span style={{ fontSize: "0.7rem", fontWeight: 900, letterSpacing: "0.05em", textTransform: "uppercase", color: C.onSurface }}>{sec.label}</span>
+                                                                </div>
+                                                            )}
+                                                            {secGroups.map(renderGroup)}
+                                                            {secUngrouped.length > 0 && (
+                                                                <div>
+                                                                    {secGroups.length > 0 && (
+                                                                        <div style={{ fontSize: "0.68rem", fontWeight: 800, color: C.outline, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "6px" }}>
+                                                                            Sin grupo
+                                                                        </div>
+                                                                    )}
+                                                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                                                                        {secUngrouped.map(renderChip)}
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                    </div>
-                                                )}
+                                                    );
+                                                })}
                                                 {currentCategories.length === 0 && (
                                                     <p style={{ fontSize: "0.78rem", color: C.outline, fontStyle: "italic", margin: 0 }}>
                                                         Sin categorías de {categoryTab}.
