@@ -1364,6 +1364,7 @@ export const FinanzasDashboard = ({
 
                                 {typeof catAccountView === "number" && aplicarPlantilla && (() => {
                                     const acc = accounts.find(a => a.id === catAccountView);
+                                    if (!acc) return null;
                                     return (
                                         <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "6px", marginBottom: "14px", fontSize: "0.72rem", color: C.onSurfaceVariant }}>
                                             <span style={{ fontWeight: 700 }}>Plantilla:</span>
@@ -1611,13 +1612,15 @@ export const FinanzasDashboard = ({
                                         });
 
                                         // Cada grupo / categoría suelta pertenece a UNA cuenta (si está marcado
-                                        // a una sola) o a "shared" (sin marca, o marcado a varias).
+                                        // a una sola que aún existe) o a "shared" (sin marca, marcado a varias,
+                                        // o marcado a una cuenta ya borrada — así no desaparece del listado).
+                                        const vivas = (ids: number[]) => ids.filter(id => accounts.some(a => a.id === id));
                                         const bucketOfGroup = (g: string): number | "shared" => {
-                                            const ids = groupAccountScope?.[categoryTab]?.[g] || [];
+                                            const ids = vivas(groupAccountScope?.[categoryTab]?.[g] || []);
                                             return ids.length === 1 ? ids[0] : "shared";
                                         };
                                         const bucketOfCat = (c: string): number | "shared" => {
-                                            const ids = categoryAccountScope?.[categoryTab]?.[c] || [];
+                                            const ids = vivas(categoryAccountScope?.[categoryTab]?.[c] || []);
                                             return ids.length === 1 ? ids[0] : "shared";
                                         };
                                         const secciones: { key: number | "shared"; label: string; color: string | null }[] = [
@@ -1939,6 +1942,7 @@ export const FinanzasDashboard = ({
                         onDelete={() => {
                             if (window.confirm("¿Eliminar esta cuenta?")) {
                                 setAccounts(prev => prev.filter(a => a.id !== selectedAccountId));
+                                if (catAccountView === selectedAccountId) setCatAccountView("all");
                                 setSelectedAccountId(null);
                             }
                         }}
