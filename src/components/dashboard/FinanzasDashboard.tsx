@@ -9,11 +9,12 @@ import {
 import { AnalyticsView } from "./AnalyticsView";
 import { motion, AnimatePresence } from "framer-motion";
 import { ProjectDetailView } from "./ProjectDetailView";
-import type { Transaction, FixedExpense, Project, Routine, UserPreferences } from "../../hooks/useAlDiaState";
+import type { Transaction, FixedExpense, Project, Routine, UserPreferences, Account } from "../../hooks/useAlDiaState";
 import { getPeriodKey } from "../../hooks/useAlDiaState";
 import { C, bento, etiqueta, useIsMobile, paddingPagina, tituloPagina, subtituloPagina, botonPrimario, TOQUE_MINIMO } from "../../theme";
 import { RegistroMovimiento } from "../features/RegistroMovimiento";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
+import { PLANTILLAS, PLANTILLA_IDS, type PlantillaId } from "../../lib/plantillasFinanzas";
 
 interface FinanzasProps {
     balance: number;
@@ -35,8 +36,8 @@ interface FinanzasProps {
     updateTransactionGroup: (oldText: string, oldContact: string | undefined, updates: { text?: string, contact?: string, amount?: number }, originalId: number) => void;
     addTransaction: (text: string, amount: number, type: "ingreso" | "gasto", isDebt: boolean, projectId?: number, accountId?: number, isCashless?: boolean, category?: string, contact?: string) => void;
     projects: Project[];
-    accounts: { id: number, name: string, color: string, projectIds?: number[] }[];
-    setAccounts: React.Dispatch<React.SetStateAction<{ id: number; name: string; color: string; projectIds?: number[] }[]>>;
+    accounts: Account[];
+    setAccounts: React.Dispatch<React.SetStateAction<Account[]>>;
     addProjectTask: (projectId: number, text: string) => void;
     toggleProjectTask: (projectId: number, taskId: number) => void;
     removeProjectTask: (projectId: number, taskId: number) => void;
@@ -67,6 +68,7 @@ interface FinanzasProps {
     deleteCategoryGroup?: (type: "ingreso" | "gasto", groupName: string) => void;
     groupAccountScope?: { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
     setGroupAccounts?: (type: "ingreso" | "gasto", groupName: string, accountIds: number[]) => void;
+    aplicarPlantilla?: (accountId: number, plantillaId: PlantillaId) => void;
 }
 
 export type PeriodMode = "day" | "week" | "month" | "quarter" | "year" | "all";
@@ -205,6 +207,7 @@ const StatSection = ({ title, items }: { title: string; items: StatCellData[] })
 // adentro (menú de opciones), y de paso se ve el historial de esa cuenta.
 const AccountDetailModal = ({
     account, transactions, projects, onClose, onRename, onChangeColor, onDelete,
+    plantillaActual, onAplicarPlantilla,
 }: {
     account: { id: number; name: string; color: string; balance: number; projectIds?: number[] };
     transactions: Transaction[];
@@ -213,6 +216,8 @@ const AccountDetailModal = ({
     onRename: (name: string) => void;
     onChangeColor: (color: string) => void;
     onDelete: () => void;
+    plantillaActual?: PlantillaId;
+    onAplicarPlantilla?: (id: PlantillaId) => void;
 }) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const [editingName, setEditingName] = useState(false);
@@ -256,6 +261,11 @@ const AccountDetailModal = ({
                         ) : (
                             <span style={{ fontSize: "1.1rem", fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{account.name}</span>
                         )}
+                        {plantillaActual && !editingName && (
+                            <span style={{ flexShrink: 0, fontSize: "0.62rem", fontWeight: 800, letterSpacing: "0.03em", textTransform: "uppercase", color: C.secondary, background: `${C.secondary}14`, borderRadius: "999px", padding: "2px 8px" }}>
+                                {PLANTILLAS[plantillaActual].label}
+                            </span>
+                        )}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
                         <div style={{ position: "relative" }}>
@@ -275,6 +285,22 @@ const AccountDetailModal = ({
                                             <input type="color" value={account.color} onChange={e => onChangeColor(e.target.value)} style={{ width: "14px", height: "14px", padding: 0, border: "none", cursor: "pointer" }} />
                                             Cambiar color
                                         </label>
+                                        {onAplicarPlantilla && (
+                                            <div style={{ borderTop: `1px solid ${C.outlineVariant}` }}>
+                                                <div style={{ padding: "8px 14px 4px", fontSize: "0.6rem", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: C.outline, display: "flex", alignItems: "center", gap: "6px" }}>
+                                                    <Layers size={12} /> Aplicar plantilla
+                                                </div>
+                                                {PLANTILLA_IDS.map(id => (
+                                                    <button key={id} onClick={() => {
+                                                        setMenuOpen(false);
+                                                        if (window.confirm(`Agrega los grupos y categorías de la plantilla "${PLANTILLAS[id].label}" a esta cuenta. No borra nada. ¿Continuar?`)) onAplicarPlantilla(id);
+                                                    }} style={{ width: "100%", display: "flex", alignItems: "center", gap: "8px", padding: "8px 14px 8px 20px", background: "none", border: "none", cursor: "pointer", fontSize: "0.82rem", fontWeight: 600, color: C.onSurface, textAlign: "left", fontFamily: "inherit" }}>
+                                                        {PLANTILLAS[id].label}
+                                                        {plantillaActual === id && <span style={{ fontSize: "0.62rem", color: C.outline, fontWeight: 700 }}>· actual</span>}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                         <button onClick={() => { setMenuOpen(false); onDelete(); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", background: "none", border: "none", borderTop: `1px solid ${C.outlineVariant}`, cursor: "pointer", fontSize: "0.82rem", fontWeight: 600, color: C.rojo, textAlign: "left", fontFamily: "inherit" }}>
                                             <Trash2 size={14} /> Eliminar cuenta
                                         </button>
@@ -404,6 +430,7 @@ export const FinanzasDashboard = ({
     categoryAccountScope, setCategoryAccounts,
     categoryGroups, setCategoryGroup, renameCategoryGroup, deleteCategoryGroup,
     groupAccountScope, setGroupAccounts,
+    aplicarPlantilla,
 }: FinanzasProps) => {
 
     // Migración retroactiva: los pares gasto/ingreso que antes se anotaban a mano con
@@ -619,6 +646,7 @@ export const FinanzasDashboard = ({
     const [isAddingAccount, setIsAddingAccount] = useState(false);
     const [newAccountName, setNewAccountName] = useState("");
     const [newAccountColor, setNewAccountColor] = useState("#0055FF");
+    const [newAccountPlantilla, setNewAccountPlantilla] = useState<PlantillaId | "">("");
     const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
 
     // ── Transferir entre cuentas ──────────────────────────────────────────
@@ -754,8 +782,10 @@ export const FinanzasDashboard = ({
 
     const handleAddAccount = () => {
         if (!newAccountName.trim()) return;
-        setAccounts(prev => [...prev, { id: Date.now(), name: newAccountName, color: newAccountColor, projectIds: [] }]);
-        setNewAccountName(""); setIsAddingAccount(false);
+        const id = Date.now();
+        setAccounts(prev => [...prev, { id, name: newAccountName, color: newAccountColor, projectIds: [] }]);
+        if (newAccountPlantilla) aplicarPlantilla?.(id, newAccountPlantilla);
+        setNewAccountName(""); setNewAccountPlantilla(""); setIsAddingAccount(false);
     };
 
     // ─────────────────────────────────────────────────────────────────────
@@ -1041,11 +1071,22 @@ export const FinanzasDashboard = ({
                 </div>
 
                 {isAddingAccount && (
-                    <div style={{ borderRadius: movil ? "10px" : "14px", padding: movil ? "8px" : "12px", border: `1px solid ${C.secondary}`, background: C.surface, display: "flex", gap: "6px", alignItems: "center", marginBottom: movil ? "8px" : "12px" }}>
-                        <input autoFocus placeholder="Nombre de la cuenta" value={newAccountName} onChange={e => setNewAccountName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddAccount()} style={{ flex: 1, minWidth: 0, padding: "6px 8px", borderRadius: "6px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.75rem", outline: "none" }} />
-                        <input type="color" value={newAccountColor} onChange={e => setNewAccountColor(e.target.value)} style={{ width: "28px", height: "28px", borderRadius: "6px", border: `1px solid ${C.outlineVariant}`, padding: "1px", cursor: "pointer", flexShrink: 0 }} />
-                        <button onClick={handleAddAccount} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "6px", padding: "6px 10px", fontSize: "0.7rem", fontWeight: 800, cursor: "pointer", flexShrink: 0 }}>OK</button>
-                        <button onClick={() => setIsAddingAccount(false)} style={{ background: C.outlineVariant, color: C.onSurfaceVariant, border: "none", borderRadius: "6px", padding: "6px 8px", fontSize: "0.7rem", fontWeight: 800, cursor: "pointer", flexShrink: 0 }}>X</button>
+                    <div style={{ borderRadius: movil ? "10px" : "14px", padding: movil ? "8px" : "12px", border: `1px solid ${C.secondary}`, background: C.surface, display: "flex", flexDirection: "column", gap: "6px", marginBottom: movil ? "8px" : "12px" }}>
+                        <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                            <input autoFocus placeholder="Nombre de la cuenta" value={newAccountName} onChange={e => setNewAccountName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddAccount()} style={{ flex: 1, minWidth: 0, padding: "6px 8px", borderRadius: "6px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.75rem", outline: "none" }} />
+                            <input type="color" value={newAccountColor} onChange={e => setNewAccountColor(e.target.value)} style={{ width: "28px", height: "28px", borderRadius: "6px", border: `1px solid ${C.outlineVariant}`, padding: "1px", cursor: "pointer", flexShrink: 0 }} />
+                            <button onClick={handleAddAccount} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "6px", padding: "6px 10px", fontSize: "0.7rem", fontWeight: 800, cursor: "pointer", flexShrink: 0 }}>OK</button>
+                            <button onClick={() => setIsAddingAccount(false)} style={{ background: C.outlineVariant, color: C.onSurfaceVariant, border: "none", borderRadius: "6px", padding: "6px 8px", fontSize: "0.7rem", fontWeight: 800, cursor: "pointer", flexShrink: 0 }}>X</button>
+                        </div>
+                        {aplicarPlantilla && (
+                            <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.68rem", fontWeight: 700, color: C.onSurfaceVariant }}>
+                                Plantilla
+                                <select value={newAccountPlantilla} onChange={e => setNewAccountPlantilla(e.target.value as PlantillaId | "")} style={{ flex: 1, padding: "5px 8px", borderRadius: "6px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.72rem", fontWeight: 700, background: "white", cursor: "pointer" }}>
+                                    <option value="">Sin plantilla</option>
+                                    {PLANTILLA_IDS.map(id => <option key={id} value={id}>{PLANTILLAS[id].label}</option>)}
+                                </select>
+                            </label>
+                        )}
                     </div>
                 )}
 
@@ -1771,6 +1812,8 @@ export const FinanzasDashboard = ({
                                 setSelectedAccountId(null);
                             }
                         }}
+                        plantillaActual={accounts.find(a => a.id === selectedAccountId)?.plantilla}
+                        onAplicarPlantilla={aplicarPlantilla ? (id) => aplicarPlantilla(selectedAccountId, id) : undefined}
                     />
                 )}
             </AnimatePresence>

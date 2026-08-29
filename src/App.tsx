@@ -448,6 +448,7 @@ function App() {
                 deleteCategoryGroup={state.deleteCategoryGroup}
                 groupAccountScope={state.groupAccountScope}
                 setGroupAccounts={state.setGroupAccounts}
+                aplicarPlantilla={state.aplicarPlantilla}
               />
             ) : activeTab === 'Movimientos' ? (
               <MovimientosDashboard

@@ -9,6 +9,7 @@ import { useCerebroState } from './state/useCerebroState';
 import { useRitaState } from './state/useRitaState';
 import { useNegocioState } from './state/useNegocioState';
 import { useMetasState } from './state/useMetasState';
+import { PLANTILLAS, type PlantillaId } from '../lib/plantillasFinanzas';
 
 // Tipos de datos
 export interface Mission {
@@ -75,6 +76,8 @@ export interface Account {
     name: string;
     color: string;
     projectIds?: number[];
+    /** Plantilla de finanzas aplicada a la cuenta (ver src/lib/plantillasFinanzas). */
+    plantilla?: PlantillaId;
 }
 
 // Registro liviano de a quién le debo / quién me debe. Transaction.contact sigue
@@ -1223,6 +1226,26 @@ export const useAlDiaState = () => {
         });
     };
 
+    // Aplica una plantilla de finanzas a una cuenta: crea los grupos y categorías
+    // que le faltan y los vincula a esa cuenta. Es aditivo e idempotente — nunca
+    // borra ni mueve una categoría que ya está en un grupo, así que las categorías
+    // propias que el usuario le puso a la cuenta quedan intactas.
+    const aplicarPlantilla = (accountId: number, plantillaId: PlantillaId) => {
+        const def = PLANTILLAS[plantillaId];
+        if (!def) return;
+        (['gasto', 'ingreso'] as const).forEach(type => {
+            Object.entries(def.grupos[type]).forEach(([grupo, cats]) => {
+                const scope = groupAccountScope[type][grupo] ?? [];
+                if (!scope.includes(accountId)) setGroupAccounts(type, grupo, [...scope, accountId]);
+                cats.forEach(cat => {
+                    addCategory(type, cat);
+                    if (!categoryGroups[type][cat]) setCategoryGroup(type, cat, grupo);
+                });
+            });
+        });
+        setAccounts(prev => prev.map(a => a.id === accountId ? { ...a, plantilla: plantillaId } : a));
+    };
+
     const clearAllData = async () => {
         setMisionesDirect([]); setTransactions([]); setHabits([]); setAgenda([]);
         setNotes([]); setProjects([]); setRutinas([]); setMonthlyBudget(0);
@@ -1768,6 +1791,7 @@ export const useAlDiaState = () => {
         categoryGroups, setCategoryGroup: lw(setCategoryGroup),
         renameCategoryGroup: lw(renameCategoryGroup), deleteCategoryGroup: lw(deleteCategoryGroup),
         groupAccountScope, setGroupAccounts: lw(setGroupAccounts),
+        aplicarPlantilla: lw(aplicarPlantilla),
         // Bloques Diarios
         dailyBlocks, addDailyBlock: lw(addDailyBlock), toggleDailyBlock: lw(toggleDailyBlock), removeDailyBlock: lw(removeDailyBlock), updateDailyBlock: lw(updateDailyBlock),
         // Lista de compras
