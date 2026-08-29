@@ -64,6 +64,8 @@ interface FinanzasProps {
     setCategoryAccounts?: (type: "ingreso" | "gasto", name: string, accountIds: number[]) => void;
     categoryGroups?: { ingreso: Record<string, string>; gasto: Record<string, string> };
     setCategoryGroup?: (type: "ingreso" | "gasto", name: string, groupName: string | null) => void;
+    categoryDescriptions?: { ingreso: Record<string, string>; gasto: Record<string, string> };
+    setCategoryDescription?: (type: "ingreso" | "gasto", name: string, desc: string) => void;
     renameCategoryGroup?: (type: "ingreso" | "gasto", oldGroupName: string, newGroupName: string) => void;
     deleteCategoryGroup?: (type: "ingreso" | "gasto", groupName: string) => void;
     groupAccountScope?: { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
@@ -429,6 +431,7 @@ export const FinanzasDashboard = ({
     incomeCategories, expenseCategories, addCategory, removeCategory, renameCategory, mergeCategory,
     categoryAccountScope, setCategoryAccounts,
     categoryGroups, setCategoryGroup, renameCategoryGroup, deleteCategoryGroup,
+    categoryDescriptions, setCategoryDescription,
     groupAccountScope, setGroupAccounts,
     aplicarPlantilla,
 }: FinanzasProps) => {
@@ -676,9 +679,10 @@ export const FinanzasDashboard = ({
     const [categoryTab, setCategoryTab] = useState<"gasto" | "ingreso">("gasto");
     const [newCategoryName, setNewCategoryName] = useState("");
     const [activeMenuCategory, setActiveMenuCategory] = useState<string | null>(null);
-    const [categoryMenuMode, setCategoryMenuMode] = useState<"root" | "merge" | "accounts" | "group">("root");
+    const [categoryMenuMode, setCategoryMenuMode] = useState<"root" | "merge" | "accounts" | "group" | "desc">("root");
     const [renamingCategory, setRenamingCategory] = useState<string | null>(null);
     const [renameDraft, setRenameDraft] = useState("");
+    const [descDraft, setDescDraft] = useState("");
     const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<string | null>(null);
     const [groupDraft, setGroupDraft] = useState("");
     const [editingGroupName, setEditingGroupName] = useState<string | null>(null);
@@ -1370,12 +1374,18 @@ export const FinanzasDashboard = ({
                                             const isMenuOpen = activeMenuCategory === cat;
                                             const otherCategories = currentCategories.filter(c => c !== cat);
                                             const currentGroup = groupMap[cat];
+                                            const catDesc = (categoryDescriptions?.[categoryTab]?.[cat]) || "";
+                                            const asCard = !!catDesc && !isRenaming;
                                             return (
                                                 <div key={cat} style={{
-                                                    display: "flex", alignItems: "center", gap: "4px",
+                                                    display: "flex", flexDirection: asCard ? "column" : "row",
+                                                    alignItems: asCard ? "stretch" : "center", gap: asCard ? "3px" : "4px",
                                                     background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`,
-                                                    borderRadius: "999px", padding: isRenaming ? "4px 8px" : "6px 4px 6px 12px",
+                                                    borderRadius: asCard ? "12px" : "999px",
+                                                    padding: isRenaming ? "4px 8px" : asCard ? "7px 6px 8px 12px" : "6px 4px 6px 12px",
+                                                    maxWidth: asCard ? "240px" : undefined,
                                                 }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "4px", width: asCard ? "100%" : undefined }}>
                                                     {isRenaming ? (
                                                         <input
                                                             autoFocus
@@ -1388,8 +1398,8 @@ export const FinanzasDashboard = ({
                                                     ) : (
                                                         <span style={{ fontSize: "0.78rem", fontWeight: 700, color: C.onSurfaceVariant }}>{cat}</span>
                                                     )}
-                                                    {!isRenaming && (renameCategory || removeCategory || mergeCategory || setCategoryGroup) && (
-                                                        <div style={{ position: "relative" }}>
+                                                    {!isRenaming && (renameCategory || removeCategory || mergeCategory || setCategoryGroup || setCategoryDescription) && (
+                                                        <div style={{ position: "relative", marginLeft: asCard ? "auto" : undefined }}>
                                                             <button
                                                                 onClick={() => { setActiveMenuCategory(isMenuOpen ? null : cat); setCategoryMenuMode("root"); }}
                                                                 style={{ background: "none", border: "none", cursor: "pointer", color: C.outline, display: "flex", padding: "4px" }}
@@ -1417,6 +1427,11 @@ export const FinanzasDashboard = ({
                                                                                 {setCategoryGroup && (
                                                                                     <button onClick={() => setCategoryMenuMode("group")} style={menuItemStyle}>
                                                                                         <Layers size={13} /> Grupo...
+                                                                                    </button>
+                                                                                )}
+                                                                                {setCategoryDescription && (
+                                                                                    <button onClick={() => { setDescDraft(catDesc); setCategoryMenuMode("desc"); }} style={menuItemStyle}>
+                                                                                        <Tag size={13} /> Descripción...
                                                                                     </button>
                                                                                 )}
                                                                                 {setCategoryAccounts && accounts.length > 1 && (
@@ -1467,6 +1482,28 @@ export const FinanzasDashboard = ({
                                                                                     </button>
                                                                                 </div>
                                                                             </div>
+                                                                        ) : categoryMenuMode === "desc" ? (
+                                                                            <div style={{ padding: "8px 10px", minWidth: "210px" }}>
+                                                                                <div style={{ fontSize: "0.62rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "5px" }}>
+                                                                                    Para qué sirve
+                                                                                </div>
+                                                                                <textarea
+                                                                                    autoFocus
+                                                                                    rows={3}
+                                                                                    value={descDraft}
+                                                                                    onChange={e => setDescDraft(e.target.value)}
+                                                                                    onKeyDown={e => {
+                                                                                        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); setCategoryDescription?.(categoryTab, cat, descDraft); closeCategoryMenu(); }
+                                                                                        if (e.key === "Escape") closeCategoryMenu();
+                                                                                    }}
+                                                                                    placeholder="Ej: mercado, almuerzos, lo del día a día."
+                                                                                    style={{ width: "100%", boxSizing: "border-box", padding: "6px 8px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.76rem", outline: "none", resize: "vertical", fontFamily: "inherit", lineHeight: 1.35 }}
+                                                                                />
+                                                                                <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", marginTop: "6px" }}>
+                                                                                    <button onClick={closeCategoryMenu} style={{ background: "none", border: `1px solid ${C.outlineVariant}`, color: C.onSurfaceVariant, borderRadius: "6px", padding: "4px 10px", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer" }}>Cancelar</button>
+                                                                                    <button onClick={() => { setCategoryDescription?.(categoryTab, cat, descDraft); closeCategoryMenu(); }} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "6px", padding: "4px 12px", fontSize: "0.72rem", fontWeight: 800, cursor: "pointer" }}>Guardar</button>
+                                                                                </div>
+                                                                            </div>
                                                                         ) : (
                                                                             <div style={{ maxHeight: "220px", overflowY: "auto", padding: "6px 4px" }}>
                                                                                 <div style={{ fontSize: "0.62rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.04em", padding: "2px 10px 6px" }}>
@@ -1498,6 +1535,10 @@ export const FinanzasDashboard = ({
                                                                 )}
                                                             </AnimatePresence>
                                                         </div>
+                                                    )}
+                                                    </div>
+                                                    {asCard && (
+                                                        <span style={{ fontSize: "0.64rem", lineHeight: 1.35, color: C.outline, paddingLeft: "1px" }}>{catDesc}</span>
                                                     )}
                                                 </div>
                                             );

@@ -444,6 +444,8 @@ function App() {
                 setCategoryAccounts={state.setCategoryAccounts}
                 categoryGroups={state.categoryGroups}
                 setCategoryGroup={state.setCategoryGroup}
+                categoryDescriptions={state.categoryDescriptions}
+                setCategoryDescription={state.setCategoryDescription}
                 renameCategoryGroup={state.renameCategoryGroup}
                 deleteCategoryGroup={state.deleteCategoryGroup}
                 groupAccountScope={state.groupAccountScope}

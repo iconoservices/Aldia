@@ -339,6 +339,10 @@ export interface UserPreferences {
     // JSON: { ingreso: Record<categoria, grupo>, gasto: Record<categoria, grupo> }.
     // Una categoria sin entrada no pertenece a ningun grupo ("Sin grupo").
     categoryGroups: string;
+    // JSON: { ingreso: Record<categoria, texto>, gasto: Record<categoria, texto> }.
+    // "Para que sirve" cada categoria. Solo informativo, se muestra en Finanzas > Categorias.
+    // Las plantillas siembran una por defecto; el usuario la edita libremente.
+    categoryDescriptions: string;
     // JSON: { ingreso: Record<grupo, accountId[]>, gasto: Record<grupo, accountId[]> }.
     // Mismo mecanismo que categoryAccountScope pero a nivel de grupo: vincula TODAS
     // las categorias de ese grupo a esas cuentas de una sola vez, en vez de repetir
@@ -358,6 +362,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
     fixedIncomes: "[]",
     categoryAccountScope: '{"ingreso":{},"gasto":{}}',
     categoryGroups: '{"ingreso":{},"gasto":{}}',
+    categoryDescriptions: '{"ingreso":{},"gasto":{}}',
     groupAccountScope: '{"ingreso":{},"gasto":{}}',
     blockOrder: '{}',
     notionSyncEnabled: true
@@ -1086,6 +1091,7 @@ export const useAlDiaState = () => {
         setter(prev => prev.filter(c => c !== name));
         setCategoryAccounts(type, name, []);
         setCategoryGroup(type, name, null);
+        setCategoryDescription(type, name, '');
     };
 
     // Renombrar reasigna también los movimientos ya existentes con esa categoría,
@@ -1107,6 +1113,11 @@ export const useAlDiaState = () => {
             setCategoryGroup(type, oldName, null);
             setCategoryGroup(type, trimmed, carriedGroup);
         }
+        const carriedDesc = categoryDescriptions[type][oldName];
+        if (carriedDesc) {
+            setCategoryDescription(type, oldName, '');
+            setCategoryDescription(type, trimmed, carriedDesc);
+        }
     };
 
     const mergeCategory = (type: 'ingreso' | 'gasto', sourceName: string, targetName: string) => {
@@ -1116,6 +1127,7 @@ export const useAlDiaState = () => {
         setTransactions(prev => prev.map(t => t.type === type && t.category === sourceName ? { ...t, category: targetName } : t));
         setCategoryAccounts(type, sourceName, []);
         setCategoryGroup(type, sourceName, null);
+        setCategoryDescription(type, sourceName, '');
     };
 
     // Categorías con alcance por cuenta: sin entrada (o array vacío) = aplica en
@@ -1165,6 +1177,30 @@ export const useAlDiaState = () => {
             if (!trimmed) delete next[type][name];
             else next[type][name] = trimmed;
             return { ...prev, categoryGroups: JSON.stringify(next) };
+        });
+    };
+
+    // "Para que sirve" cada categoria (solo texto informativo). Mismo mecanismo
+    // que categoryGroups: un JSON dentro de preferences.
+    const categoryDescriptions: CategoryGroupMap = useMemo(() => {
+        try {
+            const parsed = JSON.parse(preferences.categoryDescriptions || '{"ingreso":{},"gasto":{}}');
+            return { ingreso: parsed.ingreso || {}, gasto: parsed.gasto || {} };
+        } catch { return { ingreso: {}, gasto: {} }; }
+    }, [preferences.categoryDescriptions]);
+
+    const setCategoryDescription = (type: 'ingreso' | 'gasto', name: string, desc: string) => {
+        setPreferences(prev => {
+            let current: CategoryGroupMap;
+            try {
+                const parsed = JSON.parse(prev.categoryDescriptions || '{"ingreso":{},"gasto":{}}');
+                current = { ingreso: parsed.ingreso || {}, gasto: parsed.gasto || {} };
+            } catch { current = { ingreso: {}, gasto: {} }; }
+            const next = { ...current, [type]: { ...current[type] } };
+            const trimmed = desc?.trim();
+            if (!trimmed) delete next[type][name];
+            else next[type][name] = trimmed;
+            return { ...prev, categoryDescriptions: JSON.stringify(next) };
         });
     };
 
@@ -1238,8 +1274,9 @@ export const useAlDiaState = () => {
                 const scope = groupAccountScope[type][grupo] ?? [];
                 if (!scope.includes(accountId)) setGroupAccounts(type, grupo, [...scope, accountId]);
                 cats.forEach(cat => {
-                    addCategory(type, cat);
-                    if (!categoryGroups[type][cat]) setCategoryGroup(type, cat, grupo);
+                    addCategory(type, cat.nombre);
+                    if (!categoryGroups[type][cat.nombre]) setCategoryGroup(type, cat.nombre, grupo);
+                    if (cat.desc && !categoryDescriptions[type][cat.nombre]) setCategoryDescription(type, cat.nombre, cat.desc);
                 });
             });
         });
@@ -1789,6 +1826,7 @@ export const useAlDiaState = () => {
         renameCategory: lw(renameCategory), mergeCategory: lw(mergeCategory),
         categoryAccountScope, setCategoryAccounts: lw(setCategoryAccounts),
         categoryGroups, setCategoryGroup: lw(setCategoryGroup),
+        categoryDescriptions, setCategoryDescription: lw(setCategoryDescription),
         renameCategoryGroup: lw(renameCategoryGroup), deleteCategoryGroup: lw(deleteCategoryGroup),
         groupAccountScope, setGroupAccounts: lw(setGroupAccounts),
         aplicarPlantilla: lw(aplicarPlantilla),
