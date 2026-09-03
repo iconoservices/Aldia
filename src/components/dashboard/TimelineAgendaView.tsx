@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, Filter, Trash2, Star, Plus, Package, Camera, RefreshCw, Loader2, X, Target, AlertTriangle } from 'lucide-react';
-import { DndContext, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
+import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, Filter, Trash2, Star, Plus, Package, Camera, RefreshCw, Loader2, X, Target, AlertTriangle, ListOrdered } from 'lucide-react';
+import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, useDroppable } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -19,6 +19,24 @@ const FocoSortable = ({ id, children }: {
         style: { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1, position: 'relative', zIndex: isDragging ? 5 : undefined, touchAction: 'none' },
         handleProps: { ...attributes, ...listeners },
     })}</>;
+};
+
+// Zona soltable de la vista "En orden": cada uno de los dos bloques
+// (En proceso / Próximos) es un contenedor donde se puede soltar una fila
+// arrastrada desde el otro bloque. Resalta el borde mientras algo está encima.
+const ColaZona = ({ id, children, style }: {
+    id: string;
+    children: React.ReactNode;
+    style?: React.CSSProperties;
+}) => {
+    const { setNodeRef, isOver } = useDroppable({ id });
+    return (
+        <div ref={setNodeRef} style={{
+            ...style,
+            outline: isOver ? '2px dashed #6366F1' : '2px dashed transparent',
+            outlineOffset: '3px', borderRadius: '12px', transition: 'outline-color 0.15s',
+        }}>{children}</div>
+    );
 };
 
 interface TimelineAgendaViewProps {
@@ -89,10 +107,77 @@ export const TimelineAgendaView = ({
     // Arranca oculto: el usuario todavía no decidió cómo ordenar este panel
     // (mini-calendario + Categorías + Notion). Se abre con el botón de la cabecera.
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    // Al entrar al Calendario: vista Mes + panel derecho abierto en modo FOCO
-    // (atrasadas / próximas entregas / agenda / checklist).
-    const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
-    const [rightPanelMode, setRightPanelMode] = useState<'citas' | 'rutinas' | 'tareas' | 'habitos' | 'mision' | 'foco'>('foco');
+    // Paneles laterales derechos abiertos, en orden de izquierda a derecha. Al
+    // entrar al Calendario arranca con "En orden". "foco" y "cola" ("En orden")
+    // pueden estar abiertos A LA VEZ, lado a lado (el usuario lo pidió así); el
+    // resto (mision/citas/rutinas/tareas/habitos) es de a uno y reemplaza.
+    type RightPanel = 'citas' | 'rutinas' | 'tareas' | 'habitos' | 'mision' | 'foco' | 'cola';
+    const [rightPanels, setRightPanels] = useState<RightPanel[]>(['cola', 'foco']);
+    const rightOpen = rightPanels.length > 0;
+    const panelAbierto = (m: RightPanel) => rightPanels.includes(m);
+    const esPar = (m: RightPanel) => m === 'foco' || m === 'cola';
+    // Abre `m`. Si es foco/cola se suma al lado de su par (máx 2); si no, queda solo.
+    const abrirPanel = (m: RightPanel) => setRightPanels(prev =>
+        prev.includes(m) ? prev : esPar(m) ? [...prev.filter(esPar), m].slice(-2) : [m]
+    );
+    // El botón de la cabecera: si ya está abierto lo cierra, si no lo abre.
+    const togglePanel = (m: RightPanel) => setRightPanels(prev =>
+        prev.includes(m) ? prev.filter(x => x !== m) : esPar(m) ? [...prev.filter(esPar), m].slice(-2) : [m]
+    );
+    const cerrarPanel = (m: RightPanel) => setRightPanels(prev => prev.filter(x => x !== m));
+    // Orden de pintado izq→der: "En orden" (cola) queda siempre a la izquierda
+    // (ahí armo mi plan); Foco, si está, se despliega a su derecha (ahí miro qué
+    // urge). Así el usuario sabe de dónde saca y dónde ordena.
+    const rankPanel = (m: RightPanel) => (m === 'cola' ? 0 : m === 'foco' ? 1 : 2);
+    const panelesEnOrden = [...rightPanels].sort((a, b) => rankPanel(a) - rankPanel(b));
+    // Vista "En orden" (panel derecho, botón propio junto a Foco): lista plana,
+    // sin categorías. Arriba "En proceso" = lo que el usuario arrastró y ordenó a
+    // mano; debajo, las entregas repartidas por estado (listas / atrasadas /
+    // próximas) y los eventos de agenda en "Próximos".
+    // `enProceso` guarda los ids del bloque de arriba EN ORDEN.
+    const [colaManual, setColaManual] = useState<{ enProceso: string[] }>(() => {
+        try {
+            const v = JSON.parse(localStorage.getItem('aldia_cola_manual') || 'null');
+            if (v && Array.isArray(v.enProceso)) return { enProceso: v.enProceso.map(String) };
+        } catch { /* nada */ }
+        return { enProceso: [] };
+    });
+    const actualizarCola = (updater: (prev: { enProceso: string[] }) => { enProceso: string[] }) => {
+        setColaManual(prev => {
+            const next = updater(prev);
+            try { localStorage.setItem('aldia_cola_manual', JSON.stringify(next)); } catch { /* nada */ }
+            return next;
+        });
+    };
+    // Qué secciones de "En orden" están desplegadas (por defecto se ven 3 filas
+    // + un "ver N más"), igual que Foco.
+    const [colaExpandido, setColaExpandido] = useState<Record<string, boolean>>({});
+    // Notas rápidas de "En orden": mini-checklist libre que el usuario escribe a
+    // mano, arriba del todo, para tareítas sueltas que no quiere olvidar. Aparte
+    // del calendario y de Notion. Se guarda en localStorage.
+    type ColaNota = { id: number; text: string; done: boolean };
+    const [colaNotas, setColaNotas] = useState<ColaNota[]>(() => {
+        try {
+            const v = JSON.parse(localStorage.getItem('aldia_cola_notas') || 'null');
+            if (Array.isArray(v)) return v.filter((n: any) => n && typeof n.text === 'string')
+                .map((n: any) => ({ id: Number(n.id) || Date.now() + Math.random(), text: n.text, done: !!n.done }));
+        } catch { /* nada */ }
+        return [];
+    });
+    const [colaNotaNueva, setColaNotaNueva] = useState('');
+    // El input de nueva nota arranca oculto: solo se ve un "+"; al tocarlo
+    // aparece el campo. Vuelve a ocultarse si lo dejas vacío.
+    const [colaNotaAbierta, setColaNotaAbierta] = useState(false);
+    const actualizarNotas = (next: ColaNota[]) => {
+        setColaNotas(next);
+        try { localStorage.setItem('aldia_cola_notas', JSON.stringify(next)); } catch { /* nada */ }
+    };
+    const agregarNota = () => {
+        const t = colaNotaNueva.trim();
+        if (!t) return;
+        actualizarNotas([...colaNotas, { id: Date.now(), text: t, done: false }]);
+        setColaNotaNueva('');
+    };
     // Qué secciones de FOCO están expandidas (por defecto se ven solo las 3
     // primeras filas de cada una + un "ver más").
     const [focoExpandido, setFocoExpandido] = useState<Record<string, boolean>>({});
@@ -548,6 +633,188 @@ export const TimelineAgendaView = ({
         );
     };
 
+    // Vista "En orden" — lista plana (entregas + eventos de agenda, sin
+    // categorías) en dos bloques: "En proceso" (orden manual, arrastrado por el
+    // usuario) y "Próximos" (todo lo demás, por fecha). Se arrastra una fila de
+    // un bloque al otro; el orden de arriba se guarda en localStorage.
+    const renderCola = () => {
+        const diasLabel = (d: number) => d < 0 ? `hace ${Math.abs(d)} d${Math.abs(d) === 1 ? 'ía' : 'ías'}` : d === 0 ? 'hoy' : d === 1 ? 'mañana' : `en ${d} días`;
+        const { atrasadas, proximas, eventos } = focoData;
+
+        // Las entregas (atrasadas + próximas por fecha de entrega) se reparten por
+        // estado; los eventos de agenda que NO son una entrega van a "Próximos".
+        // Una sesión de Notion con fecha de entrega ya sale como entrega, así que
+        // se quita de los eventos para no duplicarla.
+        const entregaEvIds = new Set(
+            [...atrasadas, ...proximas].map((x: any) => x.raw?.id).filter((v: any) => v != null).map((v: any) => `ev-${v}`)
+        );
+        const eventosSolo = eventos.filter((x: any) => {
+            const k = x.raw?.id != null ? `ev-${x.raw.id}` : String(x.id);
+            return !entregaEvIds.has(k);
+        });
+
+        const porId = new Map<string, any>();
+        [...atrasadas, ...proximas, ...eventosSolo].forEach((x: any) => porId.set(String(x.id), x));
+
+        const enProc = (id: string) => colaManual.enProceso.includes(id);
+        const term = (x: any) => x.raw?.notionEstado === 'Terminado';
+
+        const enProcesoIds = colaManual.enProceso.filter(id => porId.has(id));
+        const enProcesoSet = new Set(enProcesoIds);
+        const enProceso = enProcesoIds.map(id => porId.get(id));
+        const libre = (x: any) => !enProcesoSet.has(String(x.id));
+        const porFecha = (a: any, b: any) => String(a.date || '').localeCompare(String(b.date || ''));
+
+        const listasList = [...atrasadas, ...proximas].filter(x => libre(x) && term(x)).sort(porFecha);
+        const atrasadasList = atrasadas.filter(x => libre(x) && !term(x)).sort(porFecha);
+        const proximasEntrList = proximas.filter(x => libre(x) && !term(x)).sort(porFecha);
+        const proximosList = eventosSolo.filter(libre).sort(porFecha);
+
+        const onDragEnd = (e: DragEndEvent) => {
+            const active = String(e.active.id);
+            const over = e.over ? String(e.over.id) : '';
+            if (!over || active === over) return;
+            const destinoProceso = over === 'zona§proceso' || (over !== 'zona§proximos' && enProc(over));
+            if (destinoProceso) {
+                const sin = colaManual.enProceso.filter(x => x !== active);
+                let idx = sin.length;
+                if (enProc(over)) { const p = sin.indexOf(over); if (p !== -1) idx = p; }
+                sin.splice(idx, 0, active);
+                actualizarCola(() => ({ enProceso: sin }));
+            } else if (enProc(active)) {
+                actualizarCola(() => ({ enProceso: colaManual.enProceso.filter(x => x !== active) }));
+            }
+        };
+
+        const fila = (it: any) => {
+            const rid = String(it.id);
+            const right = it.time ? `${it.time} · ${diasLabel(it.dias)}` : diasLabel(it.dias);
+            return (
+                <FocoSortable key={rid} id={rid}>
+                    {({ ref, style, handleProps }) => (
+                        <div ref={ref} {...handleProps}
+                            onClick={it.raw ? () => setEditingItem({ type: 'calendar', data: it.raw }) : undefined}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '8px', background: 'white',
+                                border: '1px solid #F1F5F9', borderLeft: `4px solid ${it.color || '#6366F1'}`,
+                                borderRadius: '10px', padding: '8px 10px', cursor: it.raw ? 'pointer' : 'grab', ...style,
+                            }}>
+                            <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</span>
+                            <span style={{ fontSize: '0.68rem', fontWeight: 800, color: it.color || '#6366F1', whiteSpace: 'nowrap', flexShrink: 0 }}>{right}</span>
+                        </div>
+                    )}
+                </FocoSortable>
+            );
+        };
+
+        const cab = (icon: React.ReactNode, txt: string, n: number, tint: string) => (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '8px' }}>
+                {icon}
+                <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{txt}</span>
+                {n > 0 && <span style={{ fontSize: '0.64rem', fontWeight: 800, color: tint, background: `${tint}1a`, borderRadius: '999px', padding: '1px 7px' }}>{n}</span>}
+            </div>
+        );
+
+        // Una sección. `limite` recorta a 3 filas + "ver N más" (Próximos y
+        // Listas); "En proceso" va sin recorte para poder reordenar a la vista.
+        const LIMITE = 3;
+        const seccion = (o: { key: string; icon: React.ReactNode; txt: string; tint: string; items: any[]; vacio: string; zona?: string; limite?: boolean }) => {
+            const abierto = !!colaExpandido[o.key];
+            const visibles = o.limite && !abierto ? o.items.slice(0, LIMITE) : o.items;
+            const oculto = o.items.length - visibles.length;
+            const cuerpo = (
+                <SortableContext items={visibles.map(x => String(x.id))} strategy={verticalListSortingStrategy}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        {o.items.length === 0
+                            ? <div style={{ fontSize: '0.72rem', color: '#94A3B8', padding: '10px 4px' }}>{o.vacio}</div>
+                            : visibles.map(fila)}
+                        {o.limite && o.items.length > LIMITE && (
+                            <button onClick={() => setColaExpandido(e => ({ ...e, [o.key]: !abierto }))}
+                                style={{ alignSelf: 'flex-start', background: 'none', border: 'none', cursor: 'pointer', color: o.tint, fontSize: '0.68rem', fontWeight: 800, padding: '2px' }}>
+                                {abierto ? 'ver menos' : `ver ${oculto} más`}
+                            </button>
+                        )}
+                    </div>
+                </SortableContext>
+            );
+            return (
+                <div>
+                    {cab(o.icon, o.txt, o.items.length, o.tint)}
+                    {o.zona ? <ColaZona id={o.zona} style={{ minHeight: '48px' }}>{cuerpo}</ColaZona> : cuerpo}
+                </div>
+            );
+        };
+
+        const NOTA_TINT = '#6366F1';
+        // Todo dentro de UN solo cuadro, sin líneas divisorias: check para marcar
+        // hecho, y una "×" al final de cada fila para borrar (pide confirmación).
+        const borrarNota = (n: ColaNota) => {
+            if (window.confirm(`¿Borrar la nota "${n.text}"?`)) {
+                actualizarNotas(colaNotas.filter(x => x.id !== n.id));
+            }
+        };
+        const hayCajaNotas = colaNotas.length > 0 || colaNotaAbierta;
+        const notas = (
+            <div>
+                {/* Cabecera: título + el "+" justo al costado. El input y la caja
+                    solo aparecen si hay notas o si tocaste el "+". */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: hayCajaNotas ? '8px' : '0' }}>
+                    <ListOrdered size={15} color={NOTA_TINT} />
+                    <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Notas rápidas</span>
+                    {colaNotas.length > 0 && <span style={{ fontSize: '0.64rem', fontWeight: 800, color: NOTA_TINT, background: `${NOTA_TINT}1a`, borderRadius: '999px', padding: '1px 7px' }}>{colaNotas.length}</span>}
+                    <button onClick={() => setColaNotaAbierta(v => !v)} title="Agregar nota"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: NOTA_TINT, display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0, padding: '2px', fontSize: '0.68rem', fontWeight: 800 }}>
+                        <Plus size={15} style={{ transform: colaNotaAbierta ? 'rotate(45deg)' : 'none', transition: 'transform 0.15s' }} />
+                        {colaNotaAbierta ? 'cerrar' : 'agregar'}
+                    </button>
+                </div>
+                {hayCajaNotas && (
+                    <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '4px 4px' }}>
+                        {colaNotaAbierta && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '2px 4px 2px 8px' }}>
+                                <input
+                                    autoFocus
+                                    value={colaNotaNueva}
+                                    onChange={e => setColaNotaNueva(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') agregarNota(); else if (e.key === 'Escape') { setColaNotaNueva(''); setColaNotaAbierta(false); } }}
+                                    onBlur={() => { if (!colaNotaNueva.trim()) setColaNotaAbierta(false); }}
+                                    placeholder="Escribe y Enter…"
+                                    style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', padding: '7px 0', fontSize: '0.78rem', fontWeight: 600 }}
+                                />
+                            </div>
+                        )}
+                        {colaNotas.map(n => (
+                            <div key={n.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 8px' }}>
+                                <span
+                                    onClick={() => actualizarNotas(colaNotas.map(x => x.id === n.id ? { ...x, done: !x.done } : x))}
+                                    style={{ width: '15px', height: '15px', borderRadius: '5px', border: `2px solid ${n.done ? NOTA_TINT : '#CBD5E1'}`, background: n.done ? NOTA_TINT : 'transparent', flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.58rem', fontWeight: 900 }}
+                                >{n.done ? '✓' : ''}</span>
+                                <span style={{ flex: 1, minWidth: 0, fontSize: '0.78rem', fontWeight: 700, color: n.done ? '#94A3B8' : '#0F172A', textDecoration: n.done ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n.text}</span>
+                                <button onClick={() => borrarNota(n)} title="Borrar nota"
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#CBD5E1', flexShrink: 0, padding: '2px', display: 'flex' }}>
+                                    <X size={13} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+
+        return (
+            <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                {notas}
+                <DndContext sensors={focoSensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                    {seccion({ key: 'proceso', icon: <Target size={15} color="#6366F1" />, txt: 'En proceso', tint: '#6366F1', items: enProceso, zona: 'zona§proceso', vacio: 'Arrastra aquí lo que estés haciendo, en el orden que lo harás.' })}
+                    {seccion({ key: 'listas', icon: <Package size={15} color="#2563EB" />, txt: 'Listas para entregar', tint: '#2563EB', items: listasList, vacio: 'Nada terminado pendiente de entregar.', limite: true })}
+                    {seccion({ key: 'atrasadas', icon: <AlertTriangle size={15} color="#DC2626" />, txt: 'Entregas atrasadas', tint: '#DC2626', items: atrasadasList, vacio: 'Nada atrasado 🎉', limite: true })}
+                    {seccion({ key: 'proximasEntr', icon: <Package size={15} color="#059669" />, txt: 'Próximas entregas', tint: '#059669', items: proximasEntrList, vacio: 'Ninguna por entregar', limite: true })}
+                    {seccion({ key: 'proximos', icon: <Calendar size={15} color="#94A3B8" />, txt: 'Próximos', tint: '#94A3B8', items: proximosList, zona: 'zona§proximos', vacio: 'Sin eventos próximos', limite: true })}
+                </DndContext>
+            </div>
+        );
+    };
+
     // 6. Vista Mensual Logic
     const monthDays = useMemo(() => {
         const year = selectedDate.getFullYear();
@@ -773,8 +1040,8 @@ export const TimelineAgendaView = ({
                                 padding: '10px 12px',
                                 borderRadius: '12px',
                                 cursor: 'pointer',
-                                background: rightSidebarOpen && rightPanelMode === f.key ? `${f.color}15` : 'transparent',
-                                border: rightSidebarOpen && rightPanelMode === f.key ? `1px solid ${f.color}30` : '1px solid transparent',
+                                background: panelAbierto(f.key as RightPanel) ? `${f.color}15` : 'transparent',
+                                border: panelAbierto(f.key as RightPanel) ? `1px solid ${f.color}30` : '1px solid transparent',
                                 marginBottom: '2px',
                                 opacity: activeFilters[f.key as keyof typeof activeFilters] ? 1 : 0.6,
                                 transition: 'all 0.2s'
@@ -782,10 +1049,10 @@ export const TimelineAgendaView = ({
                         >
                             <div
                                 style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}
-                                onClick={() => { setRightPanelMode(f.key as any); setRightSidebarOpen(true); }}
+                                onClick={() => abrirPanel(f.key as RightPanel)}
                             >
                                 <div style={{ color: f.color }}>{f.icon}</div>
-                                <span style={{ fontSize: '0.75rem', fontWeight: rightSidebarOpen && rightPanelMode === f.key ? 900 : 800, color: '#475569' }}>{f.label}</span>
+                                <span style={{ fontSize: '0.75rem', fontWeight: panelAbierto(f.key as RightPanel) ? 900 : 800, color: '#475569' }}>{f.label}</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ fontSize: '0.55rem', fontWeight: 900, color: f.color, opacity: 0.8 }}>{f.type}</span>
@@ -863,7 +1130,7 @@ export const TimelineAgendaView = ({
                                             ? (isMobile ? `${dayNames[dayIdx]} ${selectedDate.getDate()} de ${monthNames[selectedDate.getMonth()]}` : `Semana: ${weekDays[0].date.getDate()} - ${weekDays[6].date.getDate()} ${monthNames[selectedDate.getMonth()]}`)
                                             : todayStr}
                                 </h2>
-                                <div style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', lineHeight: 1 }}>{viewMode === 'timeline' ? 'SEMANA' : viewMode.toUpperCase()}</div>
+                                <div style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', lineHeight: 1 }}>{({ timeline: 'SEMANA', month: 'MES', appointments: 'CITAS', tasks: 'TAREAS' } as Record<string, string>)[viewMode] || viewMode.toUpperCase()}</div>
                             </div>
                         </div>
 
@@ -906,12 +1173,12 @@ export const TimelineAgendaView = ({
                                 <Filter size={HDR_ICON} color={sidebarOpen ? 'white' : '#64748B'} />
                             </button>
 
-                            {/* Panel derecho en modo FOCO (atrasadas / próximas entregas / agenda / checklist) */}
+                            {/* Panel derecho FOCO. Se puede tener abierto junto con "En orden". */}
                             {(() => {
-                                const on = rightSidebarOpen && rightPanelMode === 'foco';
+                                const on = panelAbierto('foco');
                                 return (
                                     <button
-                                        onClick={() => on ? setRightSidebarOpen(false) : (setRightPanelMode('foco'), setRightSidebarOpen(true))}
+                                        onClick={() => togglePanel('foco')}
                                         className="desktop-only"
                                         style={{ ...hdrBtn, background: on ? 'var(--domain-orange)' : hdrBtn.background }}
                                         title={on ? 'Cerrar Foco' : 'Ver Foco'}
@@ -921,12 +1188,27 @@ export const TimelineAgendaView = ({
                                 );
                             })()}
 
-                            {/* Panel derecho en modo Misión Diaria */}
+                            {/* Panel derecho "En orden" (en proceso / listas / atrasadas / próximas). Se puede tener abierto junto con Foco. */}
                             {(() => {
-                                const on = rightSidebarOpen && rightPanelMode === 'mision';
+                                const on = panelAbierto('cola');
                                 return (
                                     <button
-                                        onClick={() => on ? setRightSidebarOpen(false) : (setRightPanelMode('mision'), setRightSidebarOpen(true))}
+                                        onClick={() => togglePanel('cola')}
+                                        className="desktop-only"
+                                        style={{ ...hdrBtn, background: on ? 'var(--domain-orange)' : hdrBtn.background }}
+                                        title={on ? 'Cerrar En orden' : 'Ver En orden'}
+                                    >
+                                        <ListOrdered size={HDR_ICON} color={on ? 'white' : '#64748B'} />
+                                    </button>
+                                );
+                            })()}
+
+                            {/* Panel derecho en modo Misión Diaria */}
+                            {(() => {
+                                const on = panelAbierto('mision');
+                                return (
+                                    <button
+                                        onClick={() => togglePanel('mision')}
                                         className="desktop-only"
                                         style={{ ...hdrBtn, background: on ? 'var(--domain-orange)' : hdrBtn.background }}
                                         title={on ? 'Cerrar Misión Diaria' : 'Ver Misión Diaria'}
@@ -1173,18 +1455,24 @@ export const TimelineAgendaView = ({
                 </div>
             </main>
 
-            {/* Panel Lateral Derecho: Inspector (Solo PC) */}
-            <aside className={`agenda-right-sidebar ${!rightSidebarOpen ? 'collapsed' : ''}`} style={{ order: 3 }}>
-                {(() => {
+            {/* Panel(es) Lateral(es) Derecho(s): Inspector (Solo PC). Uno por cada
+                modo abierto en `rightPanels`, en fila. Foco + "En orden" pueden
+                estar juntos; el resto va solo. */}
+            {(rightOpen ? panelesEnOrden : ['__none__' as const]).map((paneMode) => (
+              <aside key={paneMode} className={`agenda-right-sidebar ${!rightOpen ? 'collapsed' : ''}`} style={{ order: 3 }}>
+                {rightOpen && (() => {
+                    const rightPanelMode = paneMode as RightPanel;
                     const configOptions: Record<string, any> = {
                         foco: { title: 'Foco', icon: <Target size={15} />, color: 'var(--domain-orange)' },
                         mision: { title: 'Misión Diaria', icon: <Star size={15} />, color: 'var(--domain-orange)' },
                         tareas: { title: 'Tareas', icon: <Filter size={15} />, color: '#F59E0B' },
                         citas: { title: 'Citas y Eventos', icon: <Clock size={15} />, color: '#6366F1' },
                         rutinas: { title: 'Rutinas y Bloques', icon: <CalendarDays size={15} />, color: '#10B981' },
-                        habitos: { title: 'Hábitos', icon: <CalendarDays size={15} />, color: '#EC4899' }
+                        habitos: { title: 'Hábitos', icon: <CalendarDays size={15} />, color: '#EC4899' },
+                        cola: { title: 'En orden', icon: <ListOrdered size={15} />, color: '#6366F1' }
                     };
                     const esFoco = rightPanelMode === 'foco';
+                    const esCola = rightPanelMode === 'cola';
                     const config = configOptions[rightPanelMode] || { title: '', icon: null, color: '' };
 
                     return (
@@ -1198,7 +1486,7 @@ export const TimelineAgendaView = ({
                                     {config.icon}
                                 </div>
                                 <div style={{ fontSize: '0.82rem', fontWeight: 900, color: 'var(--text-carbon)', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{config.title}</div>
-                                {!esFoco && <>
+                                {!esFoco && !esCola && <>
                                     <button onClick={() => changeDate(-1)} title="Día anterior" style={hdrBtn}>
                                         <ChevronLeft size={HDR_ICON} />
                                     </button>
@@ -1215,7 +1503,7 @@ export const TimelineAgendaView = ({
                                     </button>
                                 </>}
                                 <button
-                                    onClick={() => setRightSidebarOpen(false)}
+                                    onClick={() => cerrarPanel(rightPanelMode)}
                                     title="Cerrar panel"
                                     style={hdrBtn}
                                 >
@@ -1225,6 +1513,8 @@ export const TimelineAgendaView = ({
 
                             {esFoco ? (
                                 <div style={{ flex: 1, overflowY: 'auto' }}>{renderFoco()}</div>
+                            ) : esCola ? (
+                                <div style={{ flex: 1, overflowY: 'auto' }}>{renderCola()}</div>
                             ) : (
                             <div style={{ padding: '20px 16px 20px 0', flex: 1, overflowY: 'auto' }}>
                                 <div style={{ position: 'relative', paddingLeft: '8px' }}>
@@ -1489,7 +1779,8 @@ export const TimelineAgendaView = ({
                         </>
                     );
                 })()}
-            </aside>
+              </aside>
+            ))}
 
             <AnimatePresence>
                 {editingItem && (
