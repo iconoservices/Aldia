@@ -67,6 +67,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Lienzo',     tab: 'Lienzo',      icon: 'palette'       },
         { label: 'Lienzo Ops', tab: 'Lienzo Ops',  icon: 'dashboard'     },
         { label: 'Negocio',    tab: 'Negocio',      icon: 'storefront'    },
+        { label: 'Rendimiento', tab: 'Rendimiento', icon: 'monitoring'   },
         { label: 'Datos',      tab: 'Stats',       icon: 'analytics'     },
         { label: 'Bienestar',  tab: 'Bienestar',   icon: 'favorite'      },
     ];
@@ -153,6 +154,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             case 'Lienzo Ops': return 'Lienzo de Operaciones';
             case 'Bienestar': return 'Bienestar';
             case 'Negocio': return 'Simulador de Negocio';
+            case 'Rendimiento': return 'Rendimiento';
             case 'Buscador': return 'Super Buscador Web';
             default: return tab;
         }

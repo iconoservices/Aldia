@@ -184,6 +184,16 @@ export interface DailyBlock {
     repeatDays?: number[];
 }
 
+// Check-in diario de salud, uno por día -- alimenta el score de Salud/Sueño
+// de Rendimiento. Un día sin entrada acá cuenta como "no marcado" (no como
+// hecho), a propósito: si no se registró, no suma al score.
+export interface DailyCheckin {
+    date: string; // YYYY-MM-DD
+    ateWell?: boolean;
+    exercised?: boolean;
+    sleptWell?: boolean;
+}
+
 export interface TrashItem {
     block: DailyBlock;
     deletedAt: number;
@@ -328,6 +338,9 @@ export interface SporadicProject {
                                  // que el usuario se comprometió a sí mismo después de reagendar, para saber
                                  // cuánto le falta para ESA sin tocar Notion ni el atraso real
     rescheduleCount?: number;    // cuántas veces se puso/cambió myDueDateOverride (cada reagendo suma 1, nunca baja)
+    sessionDaysBefore?: number;  // cuántos días antes de dueDate hay que tener terminada la sesión (fotos tomadas,
+                                 // lista para editar) -- siempre tiene un valor efectivo (5 si no está puesto),
+                                 // a diferencia de previewDaysBefore que solo aplica si requiresPreview
 }
 
 export interface UserPreferences {
@@ -564,6 +577,7 @@ export const useAlDiaState = () => {
     const [dailyBlocks, setDailyBlocks] = useState<DailyBlock[]>([]);
     const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
     const [sporadicProjects, setSporadicProjects] = useState<SporadicProject[]>([]);
+    const [dailyCheckins, setDailyCheckins] = useState<DailyCheckin[]>([]);
     const [phaseTemplates, setPhaseTemplates] = useState<FaseTemplate[]>(DEFAULT_PHASE_TEMPLATES);
     const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [mealPlanEntries, setMealPlanEntries] = useState<MealPlanEntry[]>([]);
@@ -609,7 +623,8 @@ export const useAlDiaState = () => {
                 ritaEntries: JSON.parse(localStorage.getItem('aldia_rita_entries') || '[]'),
                 trash: JSON.parse(localStorage.getItem('aldia_trash') || '[]'),
                 negocioProjects: JSON.parse(localStorage.getItem('aldia_negocio_projects') || '[]'),
-                goals: JSON.parse(localStorage.getItem('aldia_goals') || '[]')
+                goals: JSON.parse(localStorage.getItem('aldia_goals') || '[]'),
+                dailyCheckins: JSON.parse(localStorage.getItem('aldia_daily_checkins') || '[]')
             };
             setMisionesDirect(data.missions);
             setTransactions(data.transactions);
@@ -636,6 +651,7 @@ export const useAlDiaState = () => {
             setRitaEntries(data.ritaEntries);
             setNegocioProjects(data.negocioProjects);
             setGoals(data.goals);
+            setDailyCheckins(data.dailyCheckins);
             setTrash(data.trash.filter((t: TrashItem) => Date.now() - t.deletedAt < 60 * 24 * 60 * 60 * 1000));
         } catch (e) { console.error("Error inicial local:", e); }
     }, []); // Una sola vez al montar
@@ -724,6 +740,7 @@ export const useAlDiaState = () => {
                 sync(cloud.negocioProjects, setNegocioProjects);
                 sync(cloud.goals, setGoals);
                 sync(cloud.trash, setTrash);
+                sync(cloud.dailyCheckins, setDailyCheckins);
                 if (cloud.monthlyBudget !== undefined) {
                     setMonthlyBudget(prev => Math.abs(cloud.monthlyBudget - prev) > 0.01 ? Number(cloud.monthlyBudget) : prev);
                 }
@@ -748,10 +765,10 @@ export const useAlDiaState = () => {
     // Esto previene "stale closures" en el setTimeout del debounced save,
     // donde un array viejo de transactions podía enviarse a Firestore y causar un rollback visual.
     const latestStateRef = useRef({
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, phaseTemplates, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, goals, trash
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, phaseTemplates, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, goals, trash, dailyCheckins
     });
     latestStateRef.current = {
-        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, phaseTemplates, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, goals, trash
+        missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, phaseTemplates, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, goals, trash, dailyCheckins
     };
 
     // 3. Persistencia Cloud (Debounced) y Local (Immediate)
@@ -786,6 +803,7 @@ export const useAlDiaState = () => {
         localStorage.setItem('aldia_negocio_projects', JSON.stringify(negocioProjects));
         localStorage.setItem('aldia_goals', JSON.stringify(goals));
         localStorage.setItem('aldia_trash', JSON.stringify(trash));
+        localStorage.setItem('aldia_daily_checkins', JSON.stringify(dailyCheckins));
 
         // Guardado Cloud debounced
         if (user) {
@@ -810,7 +828,7 @@ export const useAlDiaState = () => {
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, phaseTemplates, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, goals, trash]);
+    }, [user, isInitialLoad, hasLoadedFromCloud, misionesState, transactions, habits, agenda, notes, projects, rutinas, fixedExpenses, timeBlocks, monthlyBudget, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, phaseTemplates, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, goals, trash, dailyCheckins]);
 
     // 4. Migraciones y Lógica Derivada
     useEffect(() => {
@@ -1344,6 +1362,16 @@ export const useAlDiaState = () => {
         setDailyBlocks(prev => prev.filter(b => !ids.includes(b.id)));
     };
 
+    // Un solo registro por día -- si no existe todavía para esa fecha lo crea
+    // recién al primer toggle, en vez de precrear uno por cada día que pasa.
+    const toggleDailyCheckin = (date: string, field: 'ateWell' | 'exercised' | 'sleptWell') => {
+        setDailyCheckins(prev => {
+            const existing = prev.find(c => c.date === date);
+            if (!existing) return [...prev, { date, [field]: true }];
+            return prev.map(c => c.date === date ? { ...c, [field]: !c[field] } : c);
+        });
+    };
+
     const restoreFromTrash = (id: number) => {
         setTrash(prev => {
             const item = prev.find(t => t.block.id === id);
@@ -1870,6 +1898,8 @@ export const useAlDiaState = () => {
         goals,
         addGoal: lw(addGoal), updateGoal: lw(updateGoal), removeGoal: lw(removeGoal), reorderGoals: lw(reorderGoals),
         addGoalMilestone: lw(addGoalMilestone), toggleGoalMilestone: lw(toggleGoalMilestone), removeGoalMilestone: lw(removeGoalMilestone),
-        user, isInitialLoad, clearAllData, clearFinanzasSelectivo: lw(clearFinanzasSelectivo)
+        user, isInitialLoad, clearAllData, clearFinanzasSelectivo: lw(clearFinanzasSelectivo),
+        // Rendimiento
+        dailyCheckins, toggleDailyCheckin: lw(toggleDailyCheckin)
     };
 };

@@ -43,6 +43,7 @@ import { NotionDashboard } from './components/dashboard/NotionDashboard';
 import { AgendaDashboard } from './components/dashboard/AgendaDashboard';
 import { TranqueoDeVidaDashboard } from './components/dashboard/TranqueoDeVidaDashboard';
 import { MetasDashboard } from './components/dashboard/MetasDashboard';
+import { RendimientoDashboard } from './components/dashboard/RendimientoDashboard';
 
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -80,6 +81,7 @@ function App() {
     if (path.includes('/negocio')) return 'Negocio';
     if (path.includes('/buscador')) return 'Buscador';
     if (path.includes('/metas')) return 'Metas';
+    if (path.includes('/rendimiento')) return 'Rendimiento';
     if (path.includes('/plan')) return 'Plan';
     return 'Checklist';
   });
@@ -145,6 +147,7 @@ function App() {
     else if (path.includes('/deudas')) setActiveTab('Deudas');
     else if (path.includes('/buscador')) setActiveTab('Buscador');
     else if (path.includes('/metas')) setActiveTab('Metas');
+    else if (path.includes('/rendimiento')) setActiveTab('Rendimiento');
     else if (path.includes('/plan')) setActiveTab('Plan');
       else setActiveTab('Checklist');
     };
@@ -355,6 +358,13 @@ function App() {
                 addGoalMilestone={state.addGoalMilestone}
                 toggleGoalMilestone={state.toggleGoalMilestone}
                 removeGoalMilestone={state.removeGoalMilestone}
+              />
+            ) : activeTab === 'Rendimiento' ? (
+              <RendimientoDashboard
+                sporadicProjects={state.sporadicProjects}
+                transactions={state.transactions}
+                dailyCheckins={state.dailyCheckins}
+                toggleDailyCheckin={state.toggleDailyCheckin}
               />
             ) : activeTab === 'Mapa' ? (
               <EcosistemaMap />

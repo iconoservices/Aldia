@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Minus, X, Trash2, MoreVertical, Play, Pause, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart, Pin, Image as ImageIcon, Check, TimerReset, Settings, Coffee, Bell, BellOff, ListChecks, AlertTriangle, Pencil, Send, Usb, Target, StickyNote, Search, Loader2 } from "lucide-react";
+import { Plus, Minus, X, Trash2, MoreVertical, Play, Pause, Square, CheckCircle2, Flame, RotateCcw, Circle, CheckCircle, Sparkles, GripVertical, ArrowUpDown, Timer, PieChart, Pin, Image as ImageIcon, Check, TimerReset, Settings, Coffee, Bell, BellOff, ListChecks, AlertTriangle, Pencil, Send, Usb, Target, StickyNote, Search, Loader2, Camera } from "lucide-react";
 import {
     DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
@@ -100,6 +100,7 @@ const dateMinusDays = (dateStr: string, days: number) => {
     return d.toLocaleDateString('en-CA');
 };
 const DIAS_ADELANTO_SUGERIDO = 5;
+const DIAS_SESION_SUGERIDO = 5;
 
 const formatElapsed = (ms: number) => {
     const totalSec = Math.max(Math.floor(ms / 1000), 0);
@@ -1053,6 +1054,8 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
     const [failedEstado, setFailedEstado] = useState<NotionEstado | null>(null);
     const [editandoAdelanto, setEditandoAdelanto] = useState(false);
     const [diasAdelanto, setDiasAdelanto] = useState(String(p.previewDaysBefore ?? ''));
+    const [editandoSesion, setEditandoSesion] = useState(false);
+    const [diasSesion, setDiasSesion] = useState(String(p.sessionDaysBefore ?? DIAS_SESION_SUGERIDO));
     const [editandoNota, setEditandoNota] = useState(false);
     const [notaDraft, setNotaDraft] = useState(p.note ?? '');
     const [editandoFecha, setEditandoFecha] = useState(false);
@@ -1228,6 +1231,13 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
     const adelantoDueDate = p.requiresPreview && p.previewDaysBefore != null ? dateMinusDays(p.dueDate, p.previewDaysBefore) : undefined;
     const adelantoDaysLeft = adelantoDueDate && !p.previewSent ? daysBetween(todayStr(), adelantoDueDate) : undefined;
 
+    // Fecha para tener la sesión terminada (fotos tomadas, lista para editar),
+    // siempre visible a diferencia del adelanto -- si no se configuró nada usa
+    // el sugerido (5 días antes de la entrega) en vez de quedar sin mostrar nada.
+    const sessionDaysBefore = p.sessionDaysBefore ?? DIAS_SESION_SUGERIDO;
+    const sessionEndDate = dateMinusDays(p.dueDate, sessionDaysBefore);
+    const sessionDaysLeft = daysBetween(todayStr(), sessionEndDate);
+
     return (
         <div style={{
             background: C.surfaceLowest, borderRadius: RADIO.tarjeta, boxShadow: "0 2px 14px rgba(25,28,29,0.07)",
@@ -1347,6 +1357,52 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                                     style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "1px", display: "flex" }}
                                 ><X size={13} /></button>
                             </span>
+                        )}
+                        {/* Fecha para tener la sesión terminada (fotos tomadas, lista para
+                            editar) -- a diferencia del adelanto, esto SIEMPRE se muestra,
+                            con un valor sugerido (5d antes) si no se configuró nada, porque
+                            aplica a toda entrega y no solo a las que piden un adelanto. */}
+                        {editandoSesion ? (
+                            <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                <Camera size={10} color={C.onSurfaceVariant} />
+                                <input
+                                    autoFocus
+                                    type="number" min="0"
+                                    value={diasSesion}
+                                    onChange={e => setDiasSesion(e.target.value)}
+                                    onKeyDown={e => {
+                                        if (e.key === "Enter") {
+                                            const d = parseInt(diasSesion, 10);
+                                            updateSporadicProject(p.id, { sessionDaysBefore: d >= 0 ? d : undefined });
+                                            setEditandoSesion(false);
+                                        }
+                                        if (e.key === "Escape") setEditandoSesion(false);
+                                    }}
+                                    onBlur={() => {
+                                        const d = parseInt(diasSesion, 10);
+                                        updateSporadicProject(p.id, { sessionDaysBefore: d >= 0 ? d : undefined });
+                                        setEditandoSesion(false);
+                                    }}
+                                    placeholder="días"
+                                    style={{ width: "46px", fontSize: "0.65rem", fontWeight: 700, padding: "2px 5px", borderRadius: "6px", border: `1px solid ${C.outlineVariant}`, outline: "none", fontFamily: "inherit" }}
+                                />
+                                <span style={{ fontSize: "0.65rem" }}>días antes</span>
+                            </span>
+                        ) : (
+                            <button
+                                onClick={() => { setDiasSesion(String(sessionDaysBefore)); setEditandoSesion(true); }}
+                                title="Días antes de la entrega para tener la sesión terminada — tocar para cambiar"
+                                style={{
+                                    display: "flex", alignItems: "center", gap: "4px",
+                                    background: sessionDaysLeft < 0 ? "rgba(239,68,68,0.1)" : sessionDaysLeft <= 1 ? "rgba(230,168,23,0.14)" : C.surfaceContainerLow,
+                                    color: sessionDaysLeft < 0 ? C.rojo : sessionDaysLeft <= 1 ? C.ambar : C.onSurfaceVariant,
+                                    border: "none", borderRadius: "999px", padding: "2px 8px", fontSize: "0.62rem", fontWeight: 800, cursor: "pointer",
+                                }}
+                            >
+                                <Camera size={10} />
+                                Terminar sesión: {sessionEndDate} ({sessionDaysBefore}d antes)
+                                <span> · {sessionDaysLeft < 0 ? `atrasada ${Math.abs(sessionDaysLeft)}d` : sessionDaysLeft === 0 ? 'hoy' : `faltan ${sessionDaysLeft}d`}</span>
+                            </button>
                         )}
                         {/* Fecha "mía" por encima de la real -- puramente informativa: no
                             cambia dueDate, no toca Notion, y no afecta la pastilla de
