@@ -47,6 +47,17 @@ const botonCompactoSecundario = (movil: boolean): React.CSSProperties => ({
     color: C.onSurfaceVariant,
 });
 
+// Mismo semáforo que Rendimiento (rojo/ámbar/verde por umbral) para las
+// barritas de progreso de las tarjetas de resumen de acá abajo.
+const colorPorProgreso = (pct: number) => pct < 40 ? C.rojo : pct < 70 ? C.ambar : C.verde;
+
+// Barra fina de progreso, igual a la de las tarjetas de área en Rendimiento.
+const BarraProgreso = ({ pct }: { pct: number }) => (
+    <div style={{ height: '5px', borderRadius: '999px', background: C.surfaceContainer, overflow: 'hidden', marginTop: '5px' }}>
+        <div style={{ height: '100%', width: `${Math.min(100, Math.max(0, pct))}%`, background: colorPorProgreso(pct), borderRadius: '999px' }} />
+    </div>
+);
+
 interface AgendaProps {
     calendarEvents: CalendarEvent[];
     addCalendarEvent: (title: string, date: string, startTime: string, endTime: string, description: string, projectId?: number) => void;
@@ -784,14 +795,15 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                         <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(230,168,23,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <HardDrive size={16} color={C.ambar} />
                         </div>
-                        <div style={{ minWidth: 0 }}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
                             <div style={etiqueta}>Entregas</div>
                             <div style={{ fontSize: '0.78rem', fontWeight: 800 }}>
                                 <span style={{ color: C.verde }}>{entregadosCount} entregados</span>
                                 {' · '}
                                 <span style={{ color: C.ambar }}>{porEntregarCount} por entregar</span>
                             </div>
-                            <div style={{ fontSize: '0.68rem', color: C.outline, fontWeight: 600 }}>≈ {porEntregarCount} USBs / recursos</div>
+                            <BarraProgreso pct={entregasTotal > 0 ? (entregadosCount / entregasTotal) * 100 : 0} />
+                            <div style={{ fontSize: '0.68rem', color: C.outline, fontWeight: 600, marginTop: '4px' }}>≈ {porEntregarCount} USBs / recursos</div>
                         </div>
                     </div>
                 )}
@@ -828,7 +840,8 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                                         {metaSesiones ? 'editar meta' : '+ meta'}
                                     </button>
                                 </div>
-                                <div style={{ fontSize: '0.68rem', color: C.outline, fontWeight: 600 }}>{sesionesEsteMesHechas} hechas · {sesionesEsteMesCount - sesionesEsteMesHechas} por venir</div>
+                                {metaSesiones ? <BarraProgreso pct={(sesionesEsteMesCount / metaSesiones) * 100} /> : null}
+                                <div style={{ fontSize: '0.68rem', color: C.outline, fontWeight: 600, marginTop: metaSesiones ? '4px' : 0 }}>{sesionesEsteMesHechas} hechas · {sesionesEsteMesCount - sesionesEsteMesHechas} por venir</div>
                             </>
                         )}
                     </div>
