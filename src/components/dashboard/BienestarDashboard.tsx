@@ -31,7 +31,7 @@ const CATEGORIAS_INICIALES: Categoria[] = [
         id: 'cuerpo',
         label: 'Cuerpo',
         icon: Dumbbell,
-        color: '#EF4444',
+        color: '#C63C3C',
         subcategorias: ['Ejercicios', 'Movimiento'],
         items: [
             { id: 1, nombre: 'Caminata', subcategoria: 'Movimiento', duracion: 30, frecuencia: 'diario', notas: 'Mañana o tarde' },
@@ -58,7 +58,7 @@ const CATEGORIAS_INICIALES: Categoria[] = [
         id: 'alimentacion',
         label: 'Alimentación',
         icon: Utensils,
-        color: '#10B981',
+        color: '#0E9F6E',
         subcategorias: ['Alimentos', 'Recetas'],
         items: [
             { id: 10, nombre: 'Huevos', subcategoria: 'Alimentos', precio: 15000, cantidad: 1, unidad: 'cartón' },
@@ -310,7 +310,7 @@ export const BienestarDashboard = () => {
                     <GlassCard 
                         variant="strong"
                         style={{
-                            background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                            background: 'linear-gradient(135deg, #0E9F6E 0%, #0FA97A 100%)',
                             color: 'white',
                             padding: '1.2rem',
                         }}
@@ -426,7 +426,7 @@ export const BienestarDashboard = () => {
             {categoriaActiva ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     {itemsFiltrados.length === 0 ? (
-                        <GlassCard style={{ padding: '3rem', textAlign: 'center', background: '#F8FAFC' }}>
+                        <GlassCard style={{ padding: '3rem', textAlign: 'center', background: '#F7FAF8' }}>
                             <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#888' }}>
                                 No hay items en esta categoría
                             </p>
@@ -599,7 +599,7 @@ export const BienestarDashboard = () => {
                                                 justifyContent: 'center',
                                             }}
                                         >
-                                            <Trash2 size={14} color="#f87171" opacity={0.5} />
+                                            <Trash2 size={14} color="#C63C3C" opacity={0.5} />
                                         </button>
                                     </GlassCard>
                                 </motion.div>
@@ -608,7 +608,7 @@ export const BienestarDashboard = () => {
                     )}
                 </div>
             ) : (
-                <GlassCard style={{ padding: '2rem', textAlign: 'center', background: '#F8FAFC' }}>
+                <GlassCard style={{ padding: '2rem', textAlign: 'center', background: '#F7FAF8' }}>
                     <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#888' }}>
                         👆 Selecciona una categoría del mapa para ver sus items
                     </p>

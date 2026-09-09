@@ -11,35 +11,39 @@ import { useState, useEffect } from 'react';
 
 /* ─── Color ──────────────────────────────────────────────────────── */
 export const C = {
-    primary:                 '#059669',
-    primaryContainer:        '#34D399',
-    onPrimaryContainer:      '#065F46',
-    secondary:               '#6366F1',
+    primary:                 '#0FA97A',
+    primaryContainer:        '#DFF3E9',
+    onPrimaryContainer:      '#0C8F67',
+    secondary:               '#3ED9A0',
 
-    surface:                 '#F1F5F9',
+    surface:                 '#F7FAF8',
     surfaceLowest:           '#ffffff',
-    surfaceContainerLow:     '#F1F5F9',
-    surfaceContainer:        '#E9EEF3',
-    surfaceContainerHigh:    '#E2E8F0',
-    surfaceContainerHighest: '#DDE3EA',
+    surfaceContainerLow:     '#F1F5F3',
+    surfaceContainer:        '#EDF3F0',
+    surfaceContainerHigh:    '#DCE7E1',
+    surfaceContainerHighest: '#C6DBD1',
 
-    onSurface:               '#0F172A',
-    onSurfaceVariant:        '#475569',
-    outline:                 '#94A3B8',
-    outlineVariant:          '#CBD5E1',
+    onSurface:               '#0C2A20',
+    onSurfaceVariant:        '#4A5F58',
+    outline:                 '#6C8079',
+    outlineVariant:          '#DCE7E1',
 
-    // Semánticos: dinero que entra, dinero que sale, avisos
-    verde:                   '#10B981',
-    rojo:                    '#EF4444',
-    ambar:                   '#E6A817',
+    // Semánticos: éxito, error, alerta (línea gráfica v1.0)
+    verde:                   '#0E9F6E',
+    rojo:                    '#C63C3C',
+    ambar:                   '#B9760A',
+    info:                    '#2C7A9E',
 } as const;
+
+/** Tipografía monoespaciada — solo cifras, códigos, fechas y metadatos. Nunca párrafos. */
+export const MONO = "'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace";
 
 /* Franjas del día — compartidas por Checklist y Bloques */
 export const PERIODOS = {
-    'Mañana': { icon: 'wb_sunny',   label: 'MAÑANA', color: '#E6A817', bg: 'rgba(230,168,23,0.12)' },
+    'Mañana': { icon: 'wb_sunny',   label: 'MAÑANA', color: '#B9760A', bg: 'rgba(230,168,23,0.12)' },
     'Tarde':  { icon: 'light_mode', label: 'TARDE',  color: '#E07040', bg: 'rgba(224,112,64,0.12)' },
     'Noche':  { icon: 'dark_mode',  label: 'NOCHE',  color: '#5C6BC0', bg: 'rgba(92,107,192,0.12)' },
-    'Otro':   { icon: 'more_time',  label: 'OTRO',   color: '#94A3B8', bg: 'rgba(135,115,105,0.1)' },
+    'Otro':   { icon: 'more_time',  label: 'OTRO',   color: '#6C8079', bg: 'rgba(135,115,105,0.1)' },
 } as const;
 
 /* ─── Medidas ────────────────────────────────────────────────────── */
@@ -99,7 +103,7 @@ export const botonPrimario = (movil: boolean): React.CSSProperties => ({
     fontWeight: 700,
     fontSize: movil ? '0.9rem' : '0.85rem',
     fontFamily: 'inherit',
-    boxShadow: '0 4px 14px rgba(5, 150, 105,0.25)',
+    boxShadow: '0 4px 14px rgba(15, 169, 122,0.25)',
 });
 
 /** Cabecera de página: título, subtítulo y acciones. */

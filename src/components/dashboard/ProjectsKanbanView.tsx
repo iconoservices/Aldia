@@ -26,7 +26,7 @@ export const ProjectsKanbanView = ({
         <div style={{ height: '100%', minHeight: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}>
             <div style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                 <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-carbon)' }}>📋 Tablero</h2>
-                <span style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 700 }}>{activeProjects.length} proyectos activos</span>
+                <span style={{ fontSize: '0.75rem', color: '#6C8079', fontWeight: 700 }}>{activeProjects.length} proyectos activos</span>
             </div>
 
             <div style={{
@@ -37,8 +37,8 @@ export const ProjectsKanbanView = ({
                 flex: 1,
                 alignItems: 'flex-start',
                 scrollbarWidth: 'thin',
-                scrollbarColor: '#CBD5E1 transparent',
-                borderLeft: '1px solid #E2E8F0'
+                scrollbarColor: '#DCE7E1 transparent',
+                borderLeft: '1px solid #DCE7E1'
             }}>
                 {activeProjects.map(project => (
                     <ProjectColumn
@@ -54,7 +54,7 @@ export const ProjectsKanbanView = ({
 
                 {activeProjects.length === 0 && (
                     <div style={{ width: '100%', textAlign: 'center', padding: '4rem 2rem' }}>
-                        <p style={{ color: '#94A3B8', fontWeight: 700 }}>No hay proyectos activos para mostrar.</p>
+                        <p style={{ color: '#6C8079', fontWeight: 700 }}>No hay proyectos activos para mostrar.</p>
                     </div>
                 )}
             </div>
@@ -121,10 +121,10 @@ const ProjectColumn = ({
             flexShrink: 0,
             display: 'flex',
             flexDirection: 'column',
-            background: '#F8FAFC',
-            borderRight: '1px solid #E2E8F0',
-            borderBottom: '1px solid #E2E8F0',
-            borderTop: '1px solid #E2E8F0'
+            background: '#F7FAF8',
+            borderRight: '1px solid #DCE7E1',
+            borderBottom: '1px solid #DCE7E1',
+            borderTop: '1px solid #DCE7E1'
         }}>
             {/* Header compacto */}
             <div style={{
@@ -141,7 +141,7 @@ const ProjectColumn = ({
                     </span>
                 </div>
                 {/* Barra de progreso ultra fina */}
-                <div style={{ width: '100%', height: '3px', background: '#F1F5F9', borderRadius: '2px', overflow: 'hidden', marginTop: '6px' }}>
+                <div style={{ width: '100%', height: '3px', background: '#F7FAF8', borderRadius: '2px', overflow: 'hidden', marginTop: '6px' }}>
                     <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${progress}%` }}
@@ -181,7 +181,7 @@ const ProjectColumn = ({
                         >
                             {/* Grip */}
                             <div style={{ cursor: 'grab', paddingTop: '2px', opacity: hoveredTaskId === task.id ? 1 : 0, transition: 'opacity 0.15s' }}>
-                                <GripVertical size={12} color="#94A3B8" />
+                                <GripVertical size={12} color="#6C8079" />
                             </div>
 
                             {/* Checkbox */}
@@ -191,7 +191,7 @@ const ProjectColumn = ({
                             >
                                 {task.completed
                                     ? <CheckCircle2 size={16} color={project.color} />
-                                    : <Circle size={16} color="#CBD5E1" />
+                                    : <Circle size={16} color="#DCE7E1" />
                                 }
                             </button>
 
@@ -219,7 +219,7 @@ const ProjectColumn = ({
                                         style={{
                                             fontSize: '0.8rem',
                                             fontWeight: task.completed ? 500 : 600,
-                                            color: task.completed ? '#94A3B8' : '#334155',
+                                            color: task.completed ? '#6C8079' : '#334155',
                                             textDecoration: task.completed ? 'line-through' : 'none',
                                             cursor: 'text',
                                             display: 'block',
@@ -237,7 +237,7 @@ const ProjectColumn = ({
                                 onClick={() => { if (confirm('¿Borrar tarea?')) removeProjectTask(project.id, task.id); }}
                                 style={{
                                     background: 'none', border: 'none', padding: '2px', cursor: 'pointer',
-                                    color: '#EF4444', opacity: hoveredTaskId === task.id ? 0.7 : 0,
+                                    color: '#C63C3C', opacity: hoveredTaskId === task.id ? 0.7 : 0,
                                     transition: 'opacity 0.15s', flexShrink: 0
                                 }}
                             >
@@ -249,7 +249,7 @@ const ProjectColumn = ({
 
                 {/* Input nueva tarea */}
                 {isAdding ? (
-                    <form onSubmit={handleAddTask} style={{ padding: '6px 10px', display: 'flex', gap: '6px', alignItems: 'center', background: 'white', borderTop: '1px solid #E2E8F0' }}>
+                    <form onSubmit={handleAddTask} style={{ padding: '6px 10px', display: 'flex', gap: '6px', alignItems: 'center', background: 'white', borderTop: '1px solid #DCE7E1' }}>
                         <input
                             autoFocus
                             value={newTaskText}
@@ -270,13 +270,13 @@ const ProjectColumn = ({
                         onClick={() => setIsAdding(true)}
                         style={{
                             width: '100%', background: 'none', border: 'none',
-                            color: '#94A3B8', padding: '8px 10px',
+                            color: '#6C8079', padding: '8px 10px',
                             fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer',
                             display: 'flex', alignItems: 'center', gap: '5px',
                             transition: 'color 0.2s'
                         }}
                         onMouseEnter={e => (e.currentTarget.style.color = project.color)}
-                        onMouseLeave={e => (e.currentTarget.style.color = '#94A3B8')}
+                        onMouseLeave={e => (e.currentTarget.style.color = '#6C8079')}
                     >
                         <Plus size={13} /> Añadir tarea
                     </button>

@@ -82,7 +82,7 @@ export const CalendarioView = ({ agenda, timeBlocks, rutinas }: CalendarioViewPr
             {/* HEADER DEL CALENDARIO */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '0.8rem 1.2rem', borderRadius: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ background: 'rgba(5, 150, 105, 0.1)', color: 'var(--domain-orange)', padding: '10px', borderRadius: '14px' }}>
+                    <div style={{ background: 'rgba(15, 169, 122, 0.1)', color: 'var(--domain-orange)', padding: '10px', borderRadius: '14px' }}>
                         <CalendarIcon size={20} />
                     </div>
                     <div>
@@ -98,7 +98,7 @@ export const CalendarioView = ({ agenda, timeBlocks, rutinas }: CalendarioViewPr
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button 
                         onClick={goToToday}
-                        style={{ background: '#ECFDF5', border: 'none', padding: '6px 14px', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 900, color: 'var(--domain-orange)', cursor: 'pointer', marginRight: '8px' }}
+                        style={{ background: '#DFF3E9', border: 'none', padding: '6px 14px', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 900, color: 'var(--domain-orange)', cursor: 'pointer', marginRight: '8px' }}
                     >
                         HOY
                     </button>
@@ -151,7 +151,7 @@ export const CalendarioView = ({ agenda, timeBlocks, rutinas }: CalendarioViewPr
                                 });
 
                                 return (
-                                    <div key={idx} style={{ background: isToday ? 'rgba(5, 150, 105,0.02)' : 'white', minHeight: '1200px', position: 'relative', borderRight: '1px solid #F0F0F0' }}>
+                                    <div key={idx} style={{ background: isToday ? 'rgba(15, 169, 122,0.02)' : 'white', minHeight: '1200px', position: 'relative', borderRight: '1px solid #F0F0F0' }}>
                                         <div style={{ textAlign: 'center', padding: '12px 0', borderBottom: isToday ? '2px solid var(--domain-orange)' : '1px solid #F0F0F0', fontWeight: 900, color: isToday ? 'var(--domain-orange)' : 'var(--text-carbon)', fontSize: '0.75rem', position: 'sticky', top: 0, background: 'white', zIndex: 10 }}>
                                             {dayNames[idx]} {date.getDate()}
                                         </div>
@@ -169,7 +169,7 @@ export const CalendarioView = ({ agenda, timeBlocks, rutinas }: CalendarioViewPr
                                                         key={event.id}
                                                         style={{ 
                                                             position: 'absolute', top: `${top}px`, left: '4px', right: '4px', height: `${Math.max(25, height)}px`, 
-                                                            background: 'rgba(5, 150, 105, 0.15)', borderLeft: '3px solid var(--domain-orange)',
+                                                            background: 'rgba(15, 169, 122, 0.15)', borderLeft: '3px solid var(--domain-orange)',
                                                             borderRadius: '6px', color: 'var(--text-carbon)', padding: '4px 8px', fontSize: '0.65rem', fontWeight: 800, 
                                                             zIndex: 2, overflow: 'hidden'
                                                         }}
@@ -255,7 +255,7 @@ export const CalendarioView = ({ agenda, timeBlocks, rutinas }: CalendarioViewPr
                                     display: 'flex',
                                     flexDirection: 'column',
                                     gap: '4px',
-                                    background: isToday ? 'rgba(5, 150, 105,0.05)' : 'white'
+                                    background: isToday ? 'rgba(15, 169, 122,0.05)' : 'white'
                                 }}>
                                     <span style={{ fontSize: '0.8rem', fontWeight: 900, color: isToday ? 'var(--domain-orange)' : '#BBB' }}>{day}</span>
                                 </div>
@@ -272,13 +272,13 @@ export const CalendarioView = ({ agenda, timeBlocks, rutinas }: CalendarioViewPr
                         <Clock size={18} color="var(--domain-orange)" /> Estadísticas de Tiempo
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <div style={{ background: '#F8FAFC', padding: '1rem', borderRadius: '16px' }}>
+                        <div style={{ background: '#F7FAF8', padding: '1rem', borderRadius: '16px' }}>
                             <p style={{ margin: 0, fontSize: '0.65rem', fontWeight: 800, color: '#888', textTransform: 'uppercase' }}>Focus Time</p>
                             <p style={{ margin: '4px 0 0 0', fontSize: '1.4rem', fontWeight: 900, color: 'var(--domain-orange)' }}>24.5h</p>
                         </div>
                         <div style={{ background: '#F5FCF9', padding: '1rem', borderRadius: '16px' }}>
                             <p style={{ margin: 0, fontSize: '0.65rem', fontWeight: 800, color: '#888', textTransform: 'uppercase' }}>Descanso</p>
-                            <p style={{ margin: '4px 0 0 0', fontSize: '1.4rem', fontWeight: 900, color: '#10B981' }}>12.2h</p>
+                            <p style={{ margin: '4px 0 0 0', fontSize: '1.4rem', fontWeight: 900, color: '#0E9F6E' }}>12.2h</p>
                         </div>
                     </div>
                 </div>

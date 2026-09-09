@@ -12,14 +12,14 @@ import { C, bento, useIsMobile, paddingPagina, money, campo, etiqueta, RADIO, TO
 ══════════════════════════════════════════════════════════════════ */
 
 const ESTADO_COLOR: Record<NotionEstado, string> = {
-    'Agendado': '#6366F1',
+    'Agendado': '#3ED9A0',
     'Realizado': '#8B5CF6',
-    'En Edición': '#E6A817',
+    'En Edición': '#B9760A',
     // Azul, no verde: "Terminado" no es "ya se entregó" -- mismo criterio que
     // en EsporadicosDashboard, para no confundir "listo para entregar" con
     // "ya entregado" solo por el color.
     'Terminado': '#2563EB',
-    'Entregado': '#059669',
+    'Entregado': '#0FA97A',
 };
 
 // Un solo tamaño de botón para toda la pestaña — antes "Agregar" usaba el
@@ -37,7 +37,7 @@ const botonCompactoPrimario = (movil: boolean): React.CSSProperties => ({
     ...botonCompacto(movil),
     background: C.primary,
     color: '#fff',
-    boxShadow: '0 3px 10px rgba(5, 150, 105,0.22)',
+    boxShadow: '0 3px 10px rgba(15, 169, 122,0.22)',
 });
 
 const botonCompactoSecundario = (movil: boolean): React.CSSProperties => ({
@@ -758,7 +758,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
             <div style={{ display: 'grid', gridTemplateColumns: movil ? '1fr' : 'repeat(2, 1fr)', gap: '0.7rem' }}>
                 <div style={{ ...bento, padding: '0.8rem', display: 'flex', gap: '9px', alignItems: 'center' }}>
                     <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(99,102,241,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Camera size={16} color="#6366F1" />
+                        <Camera size={16} color="#3ED9A0" />
                     </div>
                     <div style={{ minWidth: 0 }}>
                         <div style={etiqueta}>Próxima sesión</div>
@@ -774,8 +774,8 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                     </div>
                 </div>
                 <div style={{ ...bento, padding: '0.8rem', display: 'flex', gap: '9px', alignItems: 'center' }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(5,150,105,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <PackageCheck size={16} color="#059669" />
+                    <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(15,169,122,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <PackageCheck size={16} color="#0FA97A" />
                     </div>
                     <div style={{ minWidth: 0 }}>
                         <div style={etiqueta}>Próxima entrega</div>
@@ -809,7 +809,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                 )}
                 <div style={{ ...bento, padding: '0.8rem', display: 'flex', gap: '9px', alignItems: 'center' }}>
                     <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(99,102,241,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <CalendarDays size={16} color="#6366F1" />
+                        <CalendarDays size={16} color="#3ED9A0" />
                     </div>
                     <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={etiqueta}>Sesiones este mes</div>

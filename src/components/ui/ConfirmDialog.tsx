@@ -42,12 +42,12 @@ export const ConfirmDialog = ({ open, title, message, confirmLabel = 'Eliminar',
                             background: '#FEF2F2', display: 'flex', alignItems: 'center',
                             justifyContent: 'center', marginBottom: '16px',
                         }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: '24px', color: '#DC2626' }}>delete</span>
+                            <span className="material-symbols-outlined" style={{ fontSize: '24px', color: '#C63C3C' }}>delete</span>
                         </div>
-                        <h3 style={{ margin: '0 0 8px', fontSize: '1.1rem', fontWeight: 800, color: '#0F172A' }}>
+                        <h3 style={{ margin: '0 0 8px', fontSize: '1.1rem', fontWeight: 800, color: '#0C2A20' }}>
                             {title}
                         </h3>
-                        <p style={{ margin: '0 0 24px', fontSize: '0.9rem', fontWeight: 500, color: '#94A3B8', lineHeight: 1.5 }}>
+                        <p style={{ margin: '0 0 24px', fontSize: '0.9rem', fontWeight: 500, color: '#6C8079', lineHeight: 1.5 }}>
                             {message}
                         </p>
                         <div style={{ display: 'flex', gap: '10px' }}>
@@ -55,7 +55,7 @@ export const ConfirmDialog = ({ open, title, message, confirmLabel = 'Eliminar',
                                 onClick={onCancel}
                                 style={{
                                     flex: 1, padding: '12px', borderRadius: '14px', border: '2px solid #E5E7EB',
-                                    background: 'white', color: '#475569', fontWeight: 800, fontSize: '0.85rem',
+                                    background: 'white', color: '#4A5F58', fontWeight: 800, fontSize: '0.85rem',
                                     cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif",
                                 }}
                             >
@@ -65,7 +65,7 @@ export const ConfirmDialog = ({ open, title, message, confirmLabel = 'Eliminar',
                                 onClick={onConfirm}
                                 style={{
                                     flex: 1, padding: '12px', borderRadius: '14px', border: 'none',
-                                    background: '#DC2626', color: 'white', fontWeight: 800, fontSize: '0.85rem',
+                                    background: '#C63C3C', color: 'white', fontWeight: 800, fontSize: '0.85rem',
                                     cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif",
                                 }}
                             >

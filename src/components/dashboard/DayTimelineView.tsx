@@ -185,7 +185,7 @@ export const DayTimelineView = ({ isOpen, onClose, missions, rutinas, agenda, fi
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                     {item.type !== 'mission' && (
                                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                            {item.completed ? <CheckCircle2 size={16} color="var(--domain-green)" /> : <Circle size={16} color="#CBD5E1" />}
+                                                            {item.completed ? <CheckCircle2 size={16} color="var(--domain-green)" /> : <Circle size={16} color="#DCE7E1" />}
                                                         </div>
                                                     )}
                                                     {item.q && <span style={{ 

@@ -370,7 +370,7 @@ export const ComprasDashboard = ({ shoppingList, addShoppingItem, updateShopping
                         )}
                     </div>
 
-                    <div style={{ background: C.primary, color: 'white', borderRadius: '10px', padding: '1.25rem', boxShadow: '0 12px 24px rgba(5, 150, 105,0.2)' }}>
+                    <div style={{ background: C.primary, color: 'white', borderRadius: '10px', padding: '1.25rem', boxShadow: '0 12px 24px rgba(15, 169, 122,0.2)' }}>
                         <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.85rem', fontWeight: 700, opacity: 0.9 }}>Presupuesto Total Estimado</h3>
                         <div style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.01em', marginBottom: '0.25rem' }}>{money(presupuesto.total)}</div>
                         {presupuesto.ready > 0 && (

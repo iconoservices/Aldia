@@ -61,7 +61,7 @@ export const VidaBloquesDashboard = (props: VidaBloquesProps) => {
         fontSize: '0.78rem',
         fontWeight: 900,
         background: sub === key ? 'white' : 'transparent',
-        color: sub === key ? 'var(--domain-orange)' : '#94A3B8',
+        color: sub === key ? 'var(--domain-orange)' : '#6C8079',
         boxShadow: sub === key ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
         transition: 'all 0.15s',
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
@@ -69,7 +69,7 @@ export const VidaBloquesDashboard = (props: VidaBloquesProps) => {
 
     return (
         <div>
-            <div style={{ display: 'flex', gap: '4px', background: '#F1F5F9', padding: '4px', borderRadius: '14px', maxWidth: '520px', margin: '0 auto 1.2rem', position: 'sticky', top: '8px', zIndex: 30 }}>
+            <div style={{ display: 'flex', gap: '4px', background: '#F7FAF8', padding: '4px', borderRadius: '14px', maxWidth: '520px', margin: '0 auto 1.2rem', position: 'sticky', top: '8px', zIndex: 30 }}>
                 <button onClick={() => setSub('rutina')} style={tabBtn('rutina')}>
                     <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>checklist</span>
                     Rutina

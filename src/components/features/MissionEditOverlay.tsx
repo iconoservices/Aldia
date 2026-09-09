@@ -207,7 +207,7 @@ export const MissionEditOverlay = ({ isOpen, onClose, mission, updateMission, re
                         <div style={{ display: 'flex', gap: '12px', marginTop: '2.5rem' }}>
                             <button 
                                 onClick={handleDelete}
-                                style={{ flex: 1, padding: '1.2rem', borderRadius: '20px', border: 'none', background: '#FEE2E2', color: '#EF4444', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}
+                                style={{ flex: 1, padding: '1.2rem', borderRadius: '20px', border: 'none', background: '#FEE2E2', color: '#C63C3C', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}
                             >
                                 <Trash2 size={20} /> Borrar
                             </button>

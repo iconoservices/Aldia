@@ -6,7 +6,7 @@ import type { Project, Transaction, Routine } from '../../hooks/useAlDiaState';
 import { DEFAULT_INCOME_CATEGORIES, DEFAULT_EXPENSE_CATEGORIES } from '../../hooks/useAlDiaState';
 
 const getDueDateColor = (dateStr: string | undefined, baseColor: string | undefined) => {
-    if (!dateStr) return baseColor || '#94A3B8';
+    if (!dateStr) return baseColor || '#6C8079';
     try {
         const due = new Date(dateStr + 'T12:00:00'); // Midday to avoid TZ issues
         const today = new Date();
@@ -17,7 +17,7 @@ const getDueDateColor = (dateStr: string | undefined, baseColor: string | undefi
         if (diffDays <= 1) return '#f97316'; // Naranja - Hoy/Mañana
         if (diffDays <= 3) return '#eab308'; // Amarillo - Pronto
         return baseColor || '#3b82f6';
-    } catch { return baseColor || '#94A3B8'; }
+    } catch { return baseColor || '#6C8079'; }
 };
 
 const ModernPicker = ({ isOpen, onClose, onSave, data, anchorRect }: any) => {
@@ -45,48 +45,48 @@ const ModernPicker = ({ isOpen, onClose, onSave, data, anchorRect }: any) => {
                 padding: '16px',
                 boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
                 width: '200px',
-                border: '1px solid #E2E8F0',
+                border: '1px solid #DCE7E1',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '12px'
             }}
         >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#64748B', textTransform: 'uppercase' }}>Editar Entrega</span>
-                <X size={16} onClick={onClose} style={{ cursor: 'pointer', color: '#94A3B8' }} />
+                <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#6C8079', textTransform: 'uppercase' }}>Editar Entrega</span>
+                <X size={16} onClick={onClose} style={{ cursor: 'pointer', color: '#6C8079' }} />
             </div>
 
             <div>
-                <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>TÍTULO</label>
+                <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#6C8079', display: 'block', marginBottom: '4px' }}>TÍTULO</label>
                 <input 
                     value={title} 
                     onChange={e => setTitle(e.target.value)}
-                    style={{ width: '100%', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '6px 10px', fontSize: '0.8rem', outline: 'none', background: '#F8FAFC' }}
+                    style={{ width: '100%', border: '1px solid #DCE7E1', borderRadius: '8px', padding: '6px 10px', fontSize: '0.8rem', outline: 'none', background: '#F7FAF8' }}
                 />
             </div>
 
             <div>
-                <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>FECHA</label>
+                <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#6C8079', display: 'block', marginBottom: '4px' }}>FECHA</label>
                 <input 
                     type="date"
                     value={date} 
                     onChange={e => setDate(e.target.value)}
-                    style={{ width: '100%', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '6px 10px', fontSize: '0.8rem', outline: 'none', background: '#F8FAFC' }}
+                    style={{ width: '100%', border: '1px solid #DCE7E1', borderRadius: '8px', padding: '6px 10px', fontSize: '0.8rem', outline: 'none', background: '#F7FAF8' }}
                 />
             </div>
 
             <div>
-                <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>GRUPO</label>
+                <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#6C8079', display: 'block', marginBottom: '4px' }}>GRUPO</label>
                 <input 
                     placeholder="Ventas, Backend..."
                     value={group} 
                     onChange={e => setGroup(e.target.value)}
-                    style={{ width: '100%', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '6px 10px', fontSize: '0.8rem', outline: 'none', background: '#F8FAFC' }}
+                    style={{ width: '100%', border: '1px solid #DCE7E1', borderRadius: '8px', padding: '6px 10px', fontSize: '0.8rem', outline: 'none', background: '#F7FAF8' }}
                 />
             </div>
 
             <div>
-                <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', display: 'block', marginBottom: '4px' }}>COLOR</label>
+                <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#6C8079', display: 'block', marginBottom: '4px' }}>COLOR</label>
                 <div style={{ display: 'flex', gap: '8px' }}>
                     {colors.map(c => (
                         <div 
@@ -133,7 +133,7 @@ const ProjectObjectiveItem = ({ project, obj, updateProjectObjective, removeProj
     return (
         <div style={{ 
             padding: '0 0 1rem 0',
-            borderBottom: '1px dashed #E2E8F0',
+            borderBottom: '1px dashed #DCE7E1',
             opacity: obj.completed ? 0.6 : 1
         }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -142,7 +142,7 @@ const ProjectObjectiveItem = ({ project, obj, updateProjectObjective, removeProj
                         onClick={() => updateProjectObjective && updateProjectObjective(project.id, obj.id, { completed: !obj.completed })}
                         style={{ cursor: 'pointer' }}
                     >
-                        {obj.completed ? <CheckCircle2 size={20} color={project.color} /> : <Circle size={20} color="#CBD5E1" />}
+                        {obj.completed ? <CheckCircle2 size={20} color={project.color} /> : <Circle size={20} color="#DCE7E1" />}
                     </div>
                     
                     {isEditingTitle ? (
@@ -168,7 +168,7 @@ const ProjectObjectiveItem = ({ project, obj, updateProjectObjective, removeProj
                     ) : (
                         <h3 
                             onClick={() => setIsEditingTitle(true)}
-                            style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: obj.completed ? '#94A3B8' : 'var(--text-carbon)', textDecoration: obj.completed ? 'line-through' : 'none', cursor: 'text', flex: 1 }}
+                            style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: obj.completed ? '#6C8079' : 'var(--text-carbon)', textDecoration: obj.completed ? 'line-through' : 'none', cursor: 'text', flex: 1 }}
                         >
                             {obj.title}
                         </h3>
@@ -228,13 +228,13 @@ const ProjectObjectiveItem = ({ project, obj, updateProjectObjective, removeProj
                             anchorRect: e.currentTarget.getBoundingClientRect(),
                             data: { title: obj.title, dueDate: obj.dueDate, color: obj.color, group: obj.group } 
                         })} 
-                        style={{ background: 'transparent', border: 'none', color: obj.dueDate || obj.group ? project.color : '#CBD5E1', cursor: 'pointer', padding: 0 }}
+                        style={{ background: 'transparent', border: 'none', color: obj.dueDate || obj.group ? project.color : '#DCE7E1', cursor: 'pointer', padding: 0 }}
                         title="Configurar entrega/grupo"
                     ><Calendar size={14} /></button>
 
                     <button 
                         onClick={() => removeProjectObjective && window.confirm('¿Borrar objetivo y todas sus metas?') && removeProjectObjective(project.id, obj.id)}
-                        style={{ background: 'transparent', border: 'none', color: '#CBD5E1', cursor: 'pointer', padding: '4px' }}
+                        style={{ background: 'transparent', border: 'none', color: '#DCE7E1', cursor: 'pointer', padding: '4px' }}
                     >
                         <Trash2 size={14} />
                     </button>
@@ -259,7 +259,7 @@ const ProjectObjectiveItem = ({ project, obj, updateProjectObjective, removeProj
                 ))}
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                    <Plus size={14} color="#CBD5E1" />
+                    <Plus size={14} color="#DCE7E1" />
                     <input 
                         placeholder="Agregar meta al objetivo..."
                         onKeyDown={(e) => {
@@ -269,7 +269,7 @@ const ProjectObjectiveItem = ({ project, obj, updateProjectObjective, removeProj
                                 target.value = '';
                             }
                         }}
-                        style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '0.8rem', outline: 'none', color: '#64748B' }}
+                        style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '0.8rem', outline: 'none', color: '#6C8079' }}
                     />
                 </div>
             </div>
@@ -286,10 +286,10 @@ const ProjectNodeItem = ({ project, objectiveId, node, updateProjectNode, remove
     };
 
     return (
-        <div style={{ padding: '6px 0', borderBottom: '1px solid #F1F5F9', marginBottom: '4px' }}>
+        <div style={{ padding: '6px 0', borderBottom: '1px solid #F7FAF8', marginBottom: '4px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                 <div style={{ marginTop: '2px', cursor: 'pointer', display: 'flex' }} onClick={() => updateProjectNode(project.id, objectiveId, node.id, { completed: !node.completed })}>
-                    {node.completed ? <CheckCircle2 size={16} color="var(--domain-green)" /> : <Circle size={16} color="#CBD5E1" />}
+                    {node.completed ? <CheckCircle2 size={16} color="var(--domain-green)" /> : <Circle size={16} color="#DCE7E1" />}
                 </div>
                 
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -313,7 +313,7 @@ const ProjectNodeItem = ({ project, objectiveId, node, updateProjectNode, remove
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span 
                                 onClick={() => setIsEditingTitle(true)}
-                                style={{ fontSize: '0.85rem', color: node.completed ? '#94A3B8' : '#334155', fontWeight: 600, textDecoration: node.completed ? 'line-through' : 'none', cursor: 'text', minHeight: '18px', display: 'inline-block' }}
+                                style={{ fontSize: '0.85rem', color: node.completed ? '#6C8079' : '#334155', fontWeight: 600, textDecoration: node.completed ? 'line-through' : 'none', cursor: 'text', minHeight: '18px', display: 'inline-block' }}
                             >
                                 {node.title}
                             </span>
@@ -337,13 +337,13 @@ const ProjectNodeItem = ({ project, objectiveId, node, updateProjectNode, remove
 
                     {/* Inline Content based on Type */}
                     {(node.type === 'note' || node.type === 'checklist') && !node.completed && (
-                        <div style={{ marginTop: '8px', paddingLeft: '8px', borderLeft: '2px solid #E2E8F0' }}>
+                        <div style={{ marginTop: '8px', paddingLeft: '8px', borderLeft: '2px solid #DCE7E1' }}>
                             {node.type === 'note' && (
                                 <textarea
                                     defaultValue={node.content}
                                     onBlur={e => updateProjectNode(project.id, objectiveId, node.id, { content: e.target.value })}
                                     placeholder="Escribe notas, detalles o información aquí..."
-                                    style={{ width: '100%', minHeight: '60px', border: 'none', background: '#F8FAFC', borderRadius: '8px', padding: '8px', fontSize: '0.8rem', color: '#64748B', outline: 'none', resize: 'vertical' }}
+                                    style={{ width: '100%', minHeight: '60px', border: 'none', background: '#F7FAF8', borderRadius: '8px', padding: '8px', fontSize: '0.8rem', color: '#6C8079', outline: 'none', resize: 'vertical' }}
                                 />
                             )}
                             {node.type === 'checklist' && (
@@ -354,7 +354,7 @@ const ProjectNodeItem = ({ project, objectiveId, node, updateProjectNode, remove
                                                 const newSubs = node.subItems?.map((s:any) => s.id === sub.id ? { ...s, completed: !s.completed } : s);
                                                 updateProjectNode(project.id, objectiveId, node.id, { subItems: newSubs });
                                             }}>
-                                                {sub.completed ? <CheckCircle2 size={12} color="var(--domain-green)" /> : <Circle size={12} color="#CBD5E1" />}
+                                                {sub.completed ? <CheckCircle2 size={12} color="var(--domain-green)" /> : <Circle size={12} color="#DCE7E1" />}
                                             </div>
                                             <input 
                                                 defaultValue={sub.text}
@@ -362,16 +362,16 @@ const ProjectNodeItem = ({ project, objectiveId, node, updateProjectNode, remove
                                                     const newSubs = node.subItems?.map((s:any) => s.id === sub.id ? { ...s, text: e.target.value } : s);
                                                     updateProjectNode(project.id, objectiveId, node.id, { subItems: newSubs });
                                                 }}
-                                                style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '0.75rem', outline: 'none', color: sub.completed ? '#94A3B8' : '#475569', textDecoration: sub.completed ? 'line-through' : 'none' }}
+                                                style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '0.75rem', outline: 'none', color: sub.completed ? '#6C8079' : '#4A5F58', textDecoration: sub.completed ? 'line-through' : 'none' }}
                                             />
                                             <button onClick={() => {
                                                 const newSubs = node.subItems?.filter((s:any) => s.id !== sub.id);
                                                 updateProjectNode(project.id, objectiveId, node.id, { subItems: newSubs });
-                                            }} style={{ background: 'transparent', border: 'none', color: '#E2E8F0', cursor: 'pointer', padding: 0 }}><X size={12} /></button>
+                                            }} style={{ background: 'transparent', border: 'none', color: '#DCE7E1', cursor: 'pointer', padding: 0 }}><X size={12} /></button>
                                         </div>
                                     ))}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
-                                        <Plus size={12} color="#CBD5E1" />
+                                        <Plus size={12} color="#DCE7E1" />
                                         <input
                                             value={newSubTask}
                                             onChange={e => setNewSubTask(e.target.value)}
@@ -394,9 +394,9 @@ const ProjectNodeItem = ({ project, objectiveId, node, updateProjectNode, remove
 
                 {/* Right side Actions */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.6 }}>
-                    {node.type !== 'note' && <button onClick={() => toggleType('note')} style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: 0 }} title="Convertir a Nota"><AlignLeft size={14} /></button>}
-                    {node.type !== 'checklist' && <button onClick={() => toggleType('checklist')} style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: 0 }} title="Convertir a Meta con Tareas"><CheckSquare size={14} /></button>}
-                    {node.type !== 'task' && <button onClick={() => toggleType('task')} style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: 0 }} title="Convertir a Meta Simple"><TypeIcon size={14} /></button>}
+                    {node.type !== 'note' && <button onClick={() => toggleType('note')} style={{ background: 'transparent', border: 'none', color: '#6C8079', cursor: 'pointer', padding: 0 }} title="Convertir a Nota"><AlignLeft size={14} /></button>}
+                    {node.type !== 'checklist' && <button onClick={() => toggleType('checklist')} style={{ background: 'transparent', border: 'none', color: '#6C8079', cursor: 'pointer', padding: 0 }} title="Convertir a Meta con Tareas"><CheckSquare size={14} /></button>}
+                    {node.type !== 'task' && <button onClick={() => toggleType('task')} style={{ background: 'transparent', border: 'none', color: '#6C8079', cursor: 'pointer', padding: 0 }} title="Convertir a Meta Simple"><TypeIcon size={14} /></button>}
                     
                     <button 
                         onClick={() => {
@@ -436,7 +436,7 @@ const ProjectNodeItem = ({ project, objectiveId, node, updateProjectNode, remove
                             anchorRect: e.currentTarget.getBoundingClientRect(),
                             data: { title: node.title, dueDate: node.dueDate, color: node.color } 
                         })} 
-                        style={{ background: 'transparent', border: 'none', color: node.dueDate ? project.color : '#CBD5E1', cursor: 'pointer', padding: 0 }}
+                        style={{ background: 'transparent', border: 'none', color: node.dueDate ? project.color : '#DCE7E1', cursor: 'pointer', padding: 0 }}
                         title="Configurar entrega"
                     ><Calendar size={14} /></button>
                     
@@ -447,11 +447,11 @@ const ProjectNodeItem = ({ project, objectiveId, node, updateProjectNode, remove
                             const color = colors[parseInt(idx)-1] || colors[0];
                             updateProjectNode(project.id, objectiveId, node.id, { color });
                         }} 
-                        style={{ background: 'transparent', border: 'none', color: node.color || '#CBD5E1', cursor: 'pointer', padding: 0 }}
+                        style={{ background: 'transparent', border: 'none', color: node.color || '#DCE7E1', cursor: 'pointer', padding: 0 }}
                         title="Color de meta"
                     ><Palette size={14} /></button>
 
-                    <button onClick={() => removeProjectNode(project.id, objectiveId, node.id)} style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', padding: 0, marginLeft: '6px' }} title="Borrar nodo"><Trash2 size={14} /></button>
+                    <button onClick={() => removeProjectNode(project.id, objectiveId, node.id)} style={{ background: 'transparent', border: 'none', color: '#C63C3C', cursor: 'pointer', padding: 0, marginLeft: '6px' }} title="Borrar nodo"><Trash2 size={14} /></button>
                 </div>
             </div>
         </div>
@@ -546,7 +546,7 @@ export const ProjectDetailView = ({
                     minWidth: '65px',
                     borderRadius: '12px', border: 'none',
                     background: activeTab === tab ? 'white' : 'transparent',
-                    color: activeTab === tab ? project.color : '#64748B',
+                    color: activeTab === tab ? project.color : '#6C8079',
                     fontWeight: 900, fontSize: '0.65rem', cursor: 'pointer',
                     boxShadow: activeTab === tab ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
                     whiteSpace: 'nowrap'
@@ -609,9 +609,9 @@ export const ProjectDetailView = ({
 
             {/* PARENT LINK IF EXISTS */}
             {project.parentId && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#F1F5F9', padding: '8px 12px', borderRadius: '12px', marginBottom: '0.5rem' }}>
-                    <FolderTree size={14} color="#64748B" />
-                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#F7FAF8', padding: '8px 12px', borderRadius: '12px', marginBottom: '0.5rem' }}>
+                    <FolderTree size={14} color="#6C8079" />
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#6C8079' }}>
                         Sub-proyecto de: <span style={{ color: 'var(--text-carbon)' }}>{projects.find(p => p.id === project.parentId)?.name || '...'}</span>
                     </span>
                     <button 
@@ -643,7 +643,7 @@ export const ProjectDetailView = ({
                                             setNewObjectiveTitle('');
                                         }
                                     }}
-                                    style={{ flex: 1, border: '1px solid #E2E8F0', borderRadius: '10px', padding: '10px 14px', fontSize: '0.9rem', outline: 'none', fontWeight: 700, background: '#F8FAFC' }}
+                                    style={{ flex: 1, border: '1px solid #DCE7E1', borderRadius: '10px', padding: '10px 14px', fontSize: '0.9rem', outline: 'none', fontWeight: 700, background: '#F7FAF8' }}
                                 />
                                 <button 
                                     onClick={() => {
@@ -671,9 +671,9 @@ export const ProjectDetailView = ({
                                 return Object.entries(groups).map(([groupName, groupObjs]) => (
                                     <div key={groupName} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                                         {groupName !== 'Sin Grupo' && (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 8px', background: '#F1F5F9', borderRadius: '8px', width: 'fit-content', marginTop: '1rem' }}>
-                                                <Folder size={12} color="#64748B" />
-                                                <span style={{ fontSize: '0.7rem', fontWeight: 900, color: '#64748B', textTransform: 'uppercase' }}>{groupName}</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 8px', background: '#F7FAF8', borderRadius: '8px', width: 'fit-content', marginTop: '1rem' }}>
+                                                <Folder size={12} color="#6C8079" />
+                                                <span style={{ fontSize: '0.7rem', fontWeight: 900, color: '#6C8079', textTransform: 'uppercase' }}>{groupName}</span>
                                             </div>
                                         )}
                                         
@@ -701,7 +701,7 @@ export const ProjectDetailView = ({
 
                     {/* 2. Tareas Sueltas (Varios / Legacy Checklist) */}
                     <div style={{ padding: '0.5rem', marginTop: '1rem' }}>
-                        <h4 style={{ margin: '0 0 10px 0', fontSize: '0.85rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Tareas Sueltas</h4>
+                        <h4 style={{ margin: '0 0 10px 0', fontSize: '0.85rem', fontWeight: 800, color: '#6C8079', textTransform: 'uppercase' }}>Tareas Sueltas</h4>
                         <Reorder.Group 
                             axis="y" 
                             values={project.checklist || []} 
@@ -709,13 +709,13 @@ export const ProjectDetailView = ({
                             style={{ display: 'flex', flexDirection: 'column', gap: '6px', listStyle: 'none', padding: 0, margin: 0 }}
                         >
                             {(project.checklist || []).map((task: any) => (
-                                <Reorder.Item key={task.id} value={task} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderBottom: '1px solid #F1F5F9' }}>
-                                    <GripVertical size={14} color="#CBD5E1" style={{ cursor: 'grab' }} />
+                                <Reorder.Item key={task.id} value={task} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderBottom: '1px solid #F7FAF8' }}>
+                                    <GripVertical size={14} color="#DCE7E1" style={{ cursor: 'grab' }} />
                                     <div onClick={() => toggleProjectTask(project.id, task.id)} style={{ cursor: 'pointer', display: 'flex' }}>
-                                        {task.completed ? <CheckCircle2 size={16} color="var(--domain-green)" /> : <Circle size={16} color="#CBD5E1" />}
+                                        {task.completed ? <CheckCircle2 size={16} color="var(--domain-green)" /> : <Circle size={16} color="#DCE7E1" />}
                                     </div>
                                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <span style={{ fontSize: '0.85rem', color: task.completed ? '#94A3B8' : '#334155', textDecoration: task.completed ? 'line-through' : 'none', fontWeight: 500 }}>
+                                        <span style={{ fontSize: '0.85rem', color: task.completed ? '#6C8079' : '#334155', textDecoration: task.completed ? 'line-through' : 'none', fontWeight: 500 }}>
                                             {task.text}
                                         </span>
                                         {task.linkedRoutineId && (
@@ -725,7 +725,7 @@ export const ProjectDetailView = ({
                                         )}
                                     </div>
                                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center', opacity: 0.6 }}>
-                                        <button onClick={() => { const t = prompt('Editar tarea:', task.text); if(t) updateProjectTask(project.id, task.id, { text: t }); }} style={{ background: 'transparent', border: 'none', color: '#CBD5E1', cursor: 'pointer', padding: 0 }}><Edit2 size={12} /></button>
+                                        <button onClick={() => { const t = prompt('Editar tarea:', task.text); if(t) updateProjectTask(project.id, task.id, { text: t }); }} style={{ background: 'transparent', border: 'none', color: '#DCE7E1', cursor: 'pointer', padding: 0 }}><Edit2 size={12} /></button>
                                         <button 
                                             onClick={() => {
                                                 const opt = prompt(`¿Dónde quieres enviar esta tarea?\n1. A la Agenda (Misión única)\n2. A una Rutina (Tarea repetitiva)`);
@@ -751,7 +751,7 @@ export const ProjectDetailView = ({
                                                     }
                                                 }
                                             }} 
-                                            style={{ background: 'transparent', border: 'none', color: task.linkedRoutineId ? '#86efac' : '#CBD5E1', cursor: 'pointer', padding: 0 }}
+                                            style={{ background: 'transparent', border: 'none', color: task.linkedRoutineId ? '#86efac' : '#DCE7E1', cursor: 'pointer', padding: 0 }}
                                         ><Zap size={12} /></button>
                                         <button 
                                             onClick={() => {
@@ -760,7 +760,7 @@ export const ProjectDetailView = ({
                                                 }
                                                 removeProjectTask(project.id, task.id);
                                             }} 
-                                            style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', padding: 0, marginLeft: '4px' }}
+                                            style={{ background: 'transparent', border: 'none', color: '#C63C3C', cursor: 'pointer', padding: 0, marginLeft: '4px' }}
                                         ><Trash2 size={12} /></button>
                                     </div>
                                 </Reorder.Item>
@@ -772,9 +772,9 @@ export const ProjectDetailView = ({
                                 value={newTaskText}
                                 onChange={(e) => setNewTaskText(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-                                style={{ flex: 1, border: '1px dashed #CBD5E1', borderRadius: '8px', padding: '6px 10px', fontSize: '0.8rem', outline: 'none', background: 'transparent' }}
+                                style={{ flex: 1, border: '1px dashed #DCE7E1', borderRadius: '8px', padding: '6px 10px', fontSize: '0.8rem', outline: 'none', background: 'transparent' }}
                             />
-                            <button onClick={handleAddTask} style={{ background: '#E2E8F0', color: '#475569', border: 'none', borderRadius: '8px', padding: '0 10px', cursor: 'pointer' }}>
+                            <button onClick={handleAddTask} style={{ background: '#DCE7E1', color: '#4A5F58', border: 'none', borderRadius: '8px', padding: '0 10px', cursor: 'pointer' }}>
                                 <Plus size={16} />
                             </button>
                         </div>
@@ -786,7 +786,7 @@ export const ProjectDetailView = ({
             {activeTab === 'subprojects' && (
                 <section style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ padding: '1rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #F1F5F9', paddingBottom: '8px', marginBottom: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #F7FAF8', paddingBottom: '8px', marginBottom: '1rem' }}>
                             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 900 }}>📂 Sub-proyectos</h3>
                             <button 
                                 onClick={() => {
@@ -797,7 +797,7 @@ export const ProjectDetailView = ({
                                     const idx = parseInt(idxStr || '0') - 1;
                                     if (available[idx]) updateProject(available[idx].id, { parentId: project.id });
                                 }}
-                                style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '4px 8px', fontSize: '0.6rem', fontWeight: 900, color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                style={{ background: 'white', border: '1px solid #DCE7E1', borderRadius: '6px', padding: '4px 8px', fontSize: '0.6rem', fontWeight: 900, color: '#6C8079', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                             >
                                 <Link size={10} /> ABSORBER
                             </button>
@@ -808,7 +808,7 @@ export const ProjectDetailView = ({
                                 <div 
                                     key={sp.id} 
                                     onClick={() => onOpenSubProject && onOpenSubProject(sp.id)}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderRadius: '12px', background: '#F8FAFC', border: '1px solid #F1F5F9', cursor: 'pointer' }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderRadius: '12px', background: '#F7FAF8', border: '1px solid #F7FAF8', cursor: 'pointer' }}
                                 >
                                     <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: sp.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
                                         <FolderTree size={14} />
@@ -818,12 +818,12 @@ export const ProjectDetailView = ({
                                     </div>
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); updateProject(sp.id, { parentId: undefined }); }}
-                                        style={{ background: 'transparent', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '2px 6px', fontSize: '0.6rem', fontWeight: 800, color: '#94A3B8', cursor: 'pointer' }}
+                                        style={{ background: 'transparent', border: '1px solid #DCE7E1', borderRadius: '6px', padding: '2px 6px', fontSize: '0.6rem', fontWeight: 800, color: '#6C8079', cursor: 'pointer' }}
                                     >SOLTAR</button>
                                 </div>
                             ))}
                             {projects.filter(p => p.parentId === project.id).length === 0 && (
-                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#94A3B8', fontStyle: 'italic' }}>No hay sub-proyectos.</p>
+                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#6C8079', fontStyle: 'italic' }}>No hay sub-proyectos.</p>
                             )}
                         </div>
                     </div>
@@ -834,19 +834,19 @@ export const ProjectDetailView = ({
             {activeTab === 'inventory' && (
                 <section style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ padding: '1rem' }}>
-                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 900, borderBottom: '2px solid #F1F5F9', paddingBottom: '8px' }}>📦 Inventario Rápido</h3>
+                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 900, borderBottom: '2px solid #F7FAF8', paddingBottom: '8px' }}>📦 Inventario Rápido</h3>
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             {(project.inventoryItems || []).map((item: any) => (
-                                <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#F8FAFC', padding: '6px 10px', borderRadius: '10px', border: `1px solid ${item.quantity === 0 ? '#FECACA' : '#F1F5F9'}` }}>
-                                    <span style={{ flex: 1, fontSize: '0.8rem', fontWeight: 600, color: item.quantity === 0 ? '#EF4444' : '#334155' }}>
+                                <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#F7FAF8', padding: '6px 10px', borderRadius: '10px', border: `1px solid ${item.quantity === 0 ? '#FECACA' : '#F7FAF8'}` }}>
+                                    <span style={{ flex: 1, fontSize: '0.8rem', fontWeight: 600, color: item.quantity === 0 ? '#C63C3C' : '#334155' }}>
                                         {item.quantity === 0 ? '⚠️ ' : ''}{item.text}
                                     </span>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <button onClick={() => updateInventoryItemQuantity && updateInventoryItemQuantity(project.id, item.id, -1)} style={{ width: '24px', height: '24px', borderRadius: '6px', border: '1px solid #E2E8F0', background: 'white', cursor: 'pointer', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
-                                        <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 900, fontSize: '0.85rem', color: item.quantity === 0 ? '#EF4444' : project.color }}>{item.quantity}</span>
-                                        <button onClick={() => updateInventoryItemQuantity && updateInventoryItemQuantity(project.id, item.id, 1)} style={{ width: '24px', height: '24px', borderRadius: '6px', border: '1px solid #E2E8F0', background: 'white', cursor: 'pointer', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
-                                        <button onClick={() => removeInventoryItem && removeInventoryItem(project.id, item.id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px' }}><Trash2 size={12} color="#f87171" opacity={0.5} /></button>
+                                        <button onClick={() => updateInventoryItemQuantity && updateInventoryItemQuantity(project.id, item.id, -1)} style={{ width: '24px', height: '24px', borderRadius: '6px', border: '1px solid #DCE7E1', background: 'white', cursor: 'pointer', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                                        <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 900, fontSize: '0.85rem', color: item.quantity === 0 ? '#C63C3C' : project.color }}>{item.quantity}</span>
+                                        <button onClick={() => updateInventoryItemQuantity && updateInventoryItemQuantity(project.id, item.id, 1)} style={{ width: '24px', height: '24px', borderRadius: '6px', border: '1px solid #DCE7E1', background: 'white', cursor: 'pointer', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                                        <button onClick={() => removeInventoryItem && removeInventoryItem(project.id, item.id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px' }}><Trash2 size={12} color="#C63C3C" opacity={0.5} /></button>
                                     </div>
                                 </div>
                             ))}
@@ -855,12 +855,12 @@ export const ProjectDetailView = ({
                                     placeholder="Producto..."
                                     value={newItemText}
                                     onChange={e => setNewItemText(e.target.value)}
-                                    style={{ flex: 1, border: '1px solid #E2E8F0', borderRadius: '8px', padding: '6px 10px', fontSize: '0.8rem', outline: 'none' }}
+                                    style={{ flex: 1, border: '1px solid #DCE7E1', borderRadius: '8px', padding: '6px 10px', fontSize: '0.8rem', outline: 'none' }}
                                 />
                                 <input
                                     type="number" min="0" placeholder="Qty" value={newItemQty}
                                     onChange={e => setNewItemQty(e.target.value)}
-                                    style={{ width: '50px', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '6px', fontSize: '0.8rem', outline: 'none', textAlign: 'center' }}
+                                    style={{ width: '50px', border: '1px solid #DCE7E1', borderRadius: '8px', padding: '6px', fontSize: '0.8rem', outline: 'none', textAlign: 'center' }}
                                 />
                                 <button
                                     onClick={() => {
@@ -869,7 +869,7 @@ export const ProjectDetailView = ({
                                             setNewItemText(''); setNewItemQty('0');
                                         }
                                     }}
-                                    style={{ background: '#E2E8F0', color: '#475569', border: 'none', borderRadius: '8px', padding: '0 10px', cursor: 'pointer' }}
+                                    style={{ background: '#DCE7E1', color: '#4A5F58', border: 'none', borderRadius: '8px', padding: '0 10px', cursor: 'pointer' }}
                                 ><Plus size={16} /></button>
                             </div>
                         </div>
@@ -881,11 +881,11 @@ export const ProjectDetailView = ({
             {activeTab === 'categorias' && (
                 <section style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
                     <div style={{ padding: '1rem' }}>
-                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 900, borderBottom: '2px solid #F1F5F9', paddingBottom: '8px' }}>🏷️ Categorías Financieras</h3>
+                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 900, borderBottom: '2px solid #F7FAF8', paddingBottom: '8px' }}>🏷️ Categorías Financieras</h3>
                         
                         <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
-                            <button onClick={() => setCategoryType('ingreso')} style={{ flex: 1, padding: '6px', borderRadius: '8px', border: 'none', background: categoryType === 'ingreso' ? '#16a34a' : '#F8FAFC', color: categoryType === 'ingreso' ? 'white' : '#64748B', fontWeight: 800, fontSize: '0.7rem', cursor: 'pointer' }}>INGRESOS</button>
-                            <button onClick={() => setCategoryType('gasto')} style={{ flex: 1, padding: '6px', borderRadius: '8px', border: 'none', background: categoryType === 'gasto' ? '#dc2626' : '#F8FAFC', color: categoryType === 'gasto' ? 'white' : '#64748B', fontWeight: 800, fontSize: '0.7rem', cursor: 'pointer' }}>GASTOS</button>
+                            <button onClick={() => setCategoryType('ingreso')} style={{ flex: 1, padding: '6px', borderRadius: '8px', border: 'none', background: categoryType === 'ingreso' ? '#16a34a' : '#F7FAF8', color: categoryType === 'ingreso' ? 'white' : '#6C8079', fontWeight: 800, fontSize: '0.7rem', cursor: 'pointer' }}>INGRESOS</button>
+                            <button onClick={() => setCategoryType('gasto')} style={{ flex: 1, padding: '6px', borderRadius: '8px', border: 'none', background: categoryType === 'gasto' ? '#dc2626' : '#F7FAF8', color: categoryType === 'gasto' ? 'white' : '#6C8079', fontWeight: 800, fontSize: '0.7rem', cursor: 'pointer' }}>GASTOS</button>
                         </div>
                         
                         <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
@@ -899,7 +899,7 @@ export const ProjectDetailView = ({
                                         setNewCategoryName('');
                                     }
                                 }}
-                                style={{ flex: 1, padding: '6px 10px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '0.8rem', outline: 'none' }} 
+                                style={{ flex: 1, padding: '6px 10px', borderRadius: '8px', border: '1px solid #DCE7E1', fontSize: '0.8rem', outline: 'none' }} 
                             />
                             <button 
                                 onClick={() => {
@@ -908,7 +908,7 @@ export const ProjectDetailView = ({
                                         setNewCategoryName('');
                                     }
                                 }} 
-                                style={{ background: '#E2E8F0', color: '#475569', border: 'none', borderRadius: '8px', padding: '0 10px', cursor: 'pointer' }}
+                                style={{ background: '#DCE7E1', color: '#4A5F58', border: 'none', borderRadius: '8px', padding: '0 10px', cursor: 'pointer' }}
                             >
                                 <Plus size={16} />
                             </button>
@@ -919,15 +919,15 @@ export const ProjectDetailView = ({
                                 const defaults = categoryType === 'ingreso' ? DEFAULT_INCOME_CATEGORIES : DEFAULT_EXPENSE_CATEGORIES;
                                 const list = categoryType === 'ingreso' ? (project.incomeCategories ?? defaults) : (project.expenseCategories ?? defaults);
                                 
-                                if (list.length === 0) return <p style={{ fontSize: '0.75rem', color: '#94A3B8', fontStyle: 'italic', width: '100%' }}>No hay categorías de {categoryType}.</p>;
+                                if (list.length === 0) return <p style={{ fontSize: '0.75rem', color: '#6C8079', fontStyle: 'italic', width: '100%' }}>No hay categorías de {categoryType}.</p>;
                                 
                                 return list.map(cat => (
-                                    <div key={cat} style={{ display: 'flex', alignItems: 'center', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '4px 8px' }}>
-                                        <span style={{ fontSize: '0.7rem', color: '#475569', fontWeight: 700 }}>{cat}</span>
+                                    <div key={cat} style={{ display: 'flex', alignItems: 'center', background: '#F7FAF8', border: '1px solid #DCE7E1', borderRadius: '8px', padding: '4px 8px' }}>
+                                        <span style={{ fontSize: '0.7rem', color: '#4A5F58', fontWeight: 700 }}>{cat}</span>
                                         {removeProjectCategory && (
                                             <button 
                                                 onClick={() => { if (window.confirm(`¿Eliminar la categoría "${cat}"?`)) removeProjectCategory(project.id, categoryType, cat); }} 
-                                                style={{ background: 'transparent', border: 'none', marginLeft: '6px', cursor: 'pointer', padding: 0, color: '#f87171', display: 'flex' }}
+                                                style={{ background: 'transparent', border: 'none', marginLeft: '6px', cursor: 'pointer', padding: 0, color: '#C63C3C', display: 'flex' }}
                                             ><X size={10} /></button>
                                         )}
                                     </div>
@@ -941,7 +941,7 @@ export const ProjectDetailView = ({
             {activeTab === 'accounts' && (
                 <section style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
                     <div style={{ padding: '1rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #F1F5F9', paddingBottom: '8px', marginBottom: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #F7FAF8', paddingBottom: '8px', marginBottom: '1rem' }}>
                             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 900 }}>💳 Contenedores de Dinero</h3>
                             <div style={{ display: 'flex', gap: '6px' }}>
                                 <button
@@ -956,7 +956,7 @@ export const ProjectDetailView = ({
                                         };
                                         setAccounts([...(accounts || []), nuevaCuenta]);
                                     }}
-                                    style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '4px 8px', fontSize: '0.6rem', fontWeight: 900, color: 'var(--domain-orange)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                    style={{ background: 'white', border: '1px solid #DCE7E1', borderRadius: '6px', padding: '4px 8px', fontSize: '0.6rem', fontWeight: 900, color: 'var(--domain-orange)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                                 >
                                     <Plus size={10} /> CREAR
                                 </button>
@@ -977,7 +977,7 @@ export const ProjectDetailView = ({
                                             setAccounts(newAccounts);
                                         }
                                     }}
-                                    style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '4px 8px', fontSize: '0.6rem', fontWeight: 900, color: '#16a34a', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                    style={{ background: 'white', border: '1px solid #DCE7E1', borderRadius: '6px', padding: '4px 8px', fontSize: '0.6rem', fontWeight: 900, color: '#16a34a', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                                 >
                                     <Plus size={10} /> VINCULAR
                                 </button>
@@ -986,13 +986,13 @@ export const ProjectDetailView = ({
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {(accounts || []).filter(a => a.projectIds?.includes(project.id)).map(acc => (
-                                <div key={acc.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '14px', background: '#F8FAFC', border: '1px solid #F1F5F9' }}>
+                                <div key={acc.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '14px', background: '#F7FAF8', border: '1px solid #F7FAF8' }}>
                                     <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: acc.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
                                         <CreditCard size={16} />
                                     </div>
                                     <div style={{ flex: 1 }}>
                                         <h5 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{acc.name}</h5>
-                                        <p style={{ margin: 0, fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>ID: {acc.id.toString().slice(-4)}</p>
+                                        <p style={{ margin: 0, fontSize: '0.7rem', color: '#6C8079', fontWeight: 600 }}>ID: {acc.id.toString().slice(-4)}</p>
                                     </div>
                                     <button 
                                         onClick={() => {
@@ -1001,13 +1001,13 @@ export const ProjectDetailView = ({
                                             );
                                             setAccounts(newAccounts);
                                         }}
-                                        style={{ background: 'transparent', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '2px 6px', fontSize: '0.6rem', fontWeight: 800, color: '#f87171', cursor: 'pointer' }}
+                                        style={{ background: 'transparent', border: '1px solid #DCE7E1', borderRadius: '6px', padding: '2px 6px', fontSize: '0.6rem', fontWeight: 800, color: '#C63C3C', cursor: 'pointer' }}
                                     >DESVINCULAR</button>
                                 </div>
                             ))}
                             {(accounts || []).filter(a => a.projectIds?.includes(project.id)).length === 0 && (
-                                <div style={{ textAlign: 'center', padding: '2rem 1rem', border: '2px dashed #F1F5F9', borderRadius: '16px' }}>
-                                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#94A3B8', fontWeight: 600 }}>No hay cuentas vinculadas a este proyecto.</p>
+                                <div style={{ textAlign: 'center', padding: '2rem 1rem', border: '2px dashed #F7FAF8', borderRadius: '16px' }}>
+                                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#6C8079', fontWeight: 600 }}>No hay cuentas vinculadas a este proyecto.</p>
                                 </div>
                             )}
                         </div>
@@ -1025,24 +1025,24 @@ export const ProjectDetailView = ({
                             </h2>
                         </div>
 
-                        <h4 style={{ margin: '1rem 0 10px 0', fontSize: '0.85rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Historial del Proyecto</h4>
+                        <h4 style={{ margin: '1rem 0 10px 0', fontSize: '0.85rem', fontWeight: 800, color: '#6C8079', textTransform: 'uppercase' }}>Historial del Proyecto</h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {transactions.filter(t => t.projectId === project.id).slice(0, 15).map(tx => (
-                                <div key={tx.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderRadius: '12px', background: '#F8FAFC', border: '1px solid #F1F5F9' }}>
-                                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: tx.amount > 0 ? '#DCFCE7' : '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: tx.amount > 0 ? '#16A34A' : '#DC2626' }}>
+                                <div key={tx.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderRadius: '12px', background: '#F7FAF8', border: '1px solid #F7FAF8' }}>
+                                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: tx.amount > 0 ? '#DCFCE7' : '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: tx.amount > 0 ? '#16A34A' : '#C63C3C' }}>
                                         {tx.amount > 0 ? <Plus size={14} /> : <Trash2 size={14} style={{ transform: 'rotate(45deg)' }} />}
                                     </div>
                                     <div style={{ flex: 1 }}>
                                         <h5 style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: '#334155' }}>{tx.text}</h5>
-                                        <p style={{ margin: 0, fontSize: '0.65rem', color: '#94A3B8' }}>{tx.date} • {tx.category || 'Sin categoría'}</p>
+                                        <p style={{ margin: 0, fontSize: '0.65rem', color: '#6C8079' }}>{tx.date} • {tx.category || 'Sin categoría'}</p>
                                     </div>
-                                    <span style={{ fontSize: '0.85rem', fontWeight: 900, color: tx.amount > 0 ? '#16A34A' : '#DC2626' }}>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 900, color: tx.amount > 0 ? '#16A34A' : '#C63C3C' }}>
                                         {tx.amount > 0 ? '+' : ''}{tx.amount.toLocaleString()}
                                     </span>
                                 </div>
                             ))}
                             {transactions.filter(t => t.projectId === project.id).length === 0 && (
-                                <p style={{ fontSize: '0.75rem', color: '#94A3B8', fontStyle: 'italic', textAlign: 'center' }}>No hay transacciones registradas.</p>
+                                <p style={{ fontSize: '0.75rem', color: '#6C8079', fontStyle: 'italic', textAlign: 'center' }}>No hay transacciones registradas.</p>
                             )}
                         </div>
                     </div>

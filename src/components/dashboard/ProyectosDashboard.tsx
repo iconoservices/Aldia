@@ -14,7 +14,7 @@ interface ProyectosProps {
     reorderProjects: (newOrder: Project[]) => void;
 }
 
-const PROJECT_COLORS = ['#0055FF', '#059669', '#10B981', '#EF4444', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4'];
+const PROJECT_COLORS = ['#0055FF', '#0FA97A', '#0E9F6E', '#C63C3C', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4'];
 
 export const ProyectosDashboard = ({
     projects, addProject, deleteProject, updateProject, onOpenDetail, reorderProjects
@@ -57,7 +57,7 @@ export const ProyectosDashboard = ({
                             <span style={{ background: 'var(--domain-blue)', color: 'white', fontSize: '0.6rem', fontWeight: 900, padding: '2px 8px', borderRadius: '10px' }}>
                                 {activeItems.length} ACT
                             </span>
-                            <span style={{ background: '#F1F5F9', color: '#94A3B8', fontSize: '0.6rem', fontWeight: 900, padding: '2px 8px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                            <span style={{ background: '#F7FAF8', color: '#6C8079', fontSize: '0.6rem', fontWeight: 900, padding: '2px 8px', borderRadius: '10px', border: '1px solid #DCE7E1' }}>
                                 {archivedItems.length} ARCH
                             </span>
                         </div>
@@ -75,7 +75,7 @@ export const ProyectosDashboard = ({
                     <button 
                         onClick={() => setIsDetailedView(!isDetailedView)}
                         style={{ 
-                            background: isDetailedView ? '#ECFDF5' : 'white', 
+                            background: isDetailedView ? '#DFF3E9' : 'white', 
                             color: isDetailedView ? 'var(--domain-purple)' : '#888', border: '1px solid #EEE', borderRadius: '12px', padding: '6px 10px', 
                             display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', 
                             fontWeight: 900, fontSize: '0.65rem', transition: 'all 0.2s',
@@ -89,7 +89,7 @@ export const ProyectosDashboard = ({
                     <button 
                         onClick={() => setShowArchived(!showArchived)}
                         style={{ 
-                            background: showArchived ? '#ECFDF5' : 'white', 
+                            background: showArchived ? '#DFF3E9' : 'white', 
                             color: showArchived ? 'var(--text-carbon)' : '#888', border: '1px solid #EEE', borderRadius: '12px', padding: '6px 10px', 
                             display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', 
                             fontWeight: 900, fontSize: '0.65rem', transition: 'all 0.2s',
@@ -179,8 +179,8 @@ export const ProyectosDashboard = ({
             </div>
 
             {displayedProjects.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '4rem 2rem', background: 'white', borderRadius: '24px', border: '2px dashed #F1F5F9' }}>
-                    <p style={{ color: '#94A3B8', fontWeight: 700, margin: 0 }}>
+                <div style={{ textAlign: 'center', padding: '4rem 2rem', background: 'white', borderRadius: '24px', border: '2px dashed #F7FAF8' }}>
+                    <p style={{ color: '#6C8079', fontWeight: 700, margin: 0 }}>
                         {showArchived ? 'No tienes proyectos archivados.' : 'No hay proyectos activos. ¡Crea uno para empezar!'}
                     </p>
                 </div>
@@ -287,7 +287,7 @@ const ProjectCard = ({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                     <div style={{ padding: '2px 0', cursor: 'grab' }}>
-                        <GripVertical size={16} color="#CBD5E1" />
+                        <GripVertical size={16} color="#DCE7E1" />
                     </div>
                     <div>
                         <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)', lineHeight: 1.2 }}>
@@ -300,7 +300,7 @@ const ProjectCard = ({
                                 </span>
                             )}
                             {project.parentId && (
-                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#888', background: '#F1F5F9', padding: '4px 8px', borderRadius: '8px' }}>
+                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#888', background: '#F7FAF8', padding: '4px 8px', borderRadius: '8px' }}>
                                     En: {allProjects.find(p => p.id === project.parentId)?.name || '...'}
                                 </span>
                             )}
@@ -310,15 +310,15 @@ const ProjectCard = ({
                 <div style={{ display: 'flex', gap: '6px', marginLeft: '12px' }}>
                     <button 
                         onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                        style={{ background: '#F8FAFC', border: 'none', color: '#64748B', borderRadius: '10px', padding: '8px', cursor: 'pointer', transition: 'background 0.2s' }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#E2E8F0'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = '#F8FAFC'}
+                        style={{ background: '#F7FAF8', border: 'none', color: '#6C8079', borderRadius: '10px', padding: '8px', cursor: 'pointer', transition: 'background 0.2s' }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#DCE7E1'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#F7FAF8'}
                     >
                         <Edit2 size={16} />
                     </button>
                     <button 
                         onClick={(e) => { e.stopPropagation(); if(confirm('¿Borrar proyecto?')) deleteProject(project.id); }}
-                        style={{ background: '#FEF2F2', border: 'none', color: '#EF4444', borderRadius: '10px', padding: '8px', cursor: 'pointer', transition: 'background 0.2s' }}
+                        style={{ background: '#FEF2F2', border: 'none', color: '#C63C3C', borderRadius: '10px', padding: '8px', cursor: 'pointer', transition: 'background 0.2s' }}
                         onMouseEnter={(e) => e.currentTarget.style.background = '#FEE2E2'}
                         onMouseLeave={(e) => e.currentTarget.style.background = '#FEF2F2'}
                     >
@@ -329,13 +329,13 @@ const ProjectCard = ({
 
             <div style={{ marginTop: 'auto', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#F8FAFC', padding: '4px 10px', borderRadius: '12px' }}>
-                        <ListTodo size={14} color="#64748B" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#F7FAF8', padding: '4px 10px', borderRadius: '12px' }}>
+                        <ListTodo size={14} color="#6C8079" />
                         <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#334155' }}>{completedCount}/{totalCount} Tareas</span>
                     </div>
                     <span style={{ fontSize: '1rem', fontWeight: 900, color: project.color }}>{Math.round(progress)}%</span>
                 </div>
-                <div style={{ width: '100%', height: '8px', background: '#F1F5F9', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ width: '100%', height: '8px', background: '#F7FAF8', borderRadius: '4px', overflow: 'hidden' }}>
                     <motion.div 
                         initial={{ width: 0 }}
                         animate={{ width: `${progress}%` }}

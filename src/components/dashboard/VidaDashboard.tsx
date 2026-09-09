@@ -192,7 +192,7 @@ export const VidaDashboard = ({
                                     </div>
                                     <div>
                                         <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800, color: C.onSurface }}>{habit.name}</h4>
-                                        <p style={{ margin: '2px 0 0', fontSize: '0.68rem', color: C.onSurfaceVariant, fontWeight: 600 }}>{habit.schedule?.length || 0} días · racha</p>
+                                        <p style={{ margin: '2px 0 0', fontSize: '0.68rem', color: C.onSurfaceVariant, fontWeight: 600 }}><span className="num">{habit.schedule?.length || 0}</span> días · racha</p>
                                     </div>
                                 </div>
 
@@ -575,7 +575,7 @@ export const VidaDashboard = ({
                                                                 onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
                                                                 onMouseLeave={(e) => e.currentTarget.style.opacity = '0.1'}
                                                             >
-                                                                <Trash2 size={10} color="#f87171" />
+                                                                <Trash2 size={10} color="#C63C3C" />
                                                             </button>
                                                         </Reorder.Item>
                                                     );

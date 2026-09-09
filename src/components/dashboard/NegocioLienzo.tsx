@@ -923,7 +923,7 @@ export const NegocioLienzo = () => {
                                                                                 outline: 'none', fontFamily: 'inherit', 
                                                                                 fontSize: isHeader ? '0.75rem' : '0.85rem',
                                                                                 fontWeight: isHeader ? 700 : (item.type === 'gantt' && cIndex === 0 ? 600 : 400),
-                                                                                color: isHeader ? (item.type === 'gantt' ? '#1e40af' : '#475569') : '#333',
+                                                                                color: isHeader ? (item.type === 'gantt' ? '#1e40af' : '#4A5F58') : '#333',
                                                                                 lineHeight: '1.4',
                                                                                 overflow: 'hidden'
                                                                             }}

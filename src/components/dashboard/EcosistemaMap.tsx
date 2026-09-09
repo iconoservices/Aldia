@@ -224,7 +224,7 @@ const ECOSYSTEM: Domain[] = [
           'Canal de reviews, listas y análisis de películas. Desactivado mientras se resuelve el modelo sin derechos de autor. Reactivar cuando haya más capacidad.',
         status: 'en-espera',
         generatesIncome: false,
-        color: '#94A3B8',
+        color: '#6C8079',
         tags: ['Películas', 'Geek', 'Reviews'],
         note: '⏸ Inactivo — Reactivar cuando haya capacidad y modelo de contenido definido.',
         phases: [
@@ -378,9 +378,9 @@ const ECOSYSTEM: Domain[] = [
 // ─── Helpers visuales ─────────────────────────────────────────────────────────
 
 const STATUS_BADGE: Record<string, { bg: string; color: string; label: string }> = {
-  activo:        { bg: '#D1FAE5', color: '#059669', label: '● Activo' },
+  activo:        { bg: '#CDEDDD', color: '#0FA97A', label: '● Activo' },
   'en-progreso': { bg: '#FFF3E8', color: '#FF8E53', label: '▶ En progreso' },
-  'en-espera':   { bg: '#F1F5F9', color: '#94A3B8', label: '⏸ En espera' },
+  'en-espera':   { bg: '#F7FAF8', color: '#6C8079', label: '⏸ En espera' },
   idea:          { bg: '#F5F3FF', color: '#8B5CF6', label: '💡 Idea' },
 };
 
@@ -399,8 +399,8 @@ const ProjectCard = ({ project }: { project: Project }) => {
       animate={{ opacity: 1, y: 0 }}
       style={{
         borderRadius: '16px',
-        border: `2px solid ${open ? project.color + '55' : isOnHold ? '#E2E8F0' : '#F1F5F9'}`,
-        background: isOnHold ? '#F8FAFC' : 'white',
+        border: `2px solid ${open ? project.color + '55' : isOnHold ? '#DCE7E1' : '#F7FAF8'}`,
+        background: isOnHold ? '#F7FAF8' : 'white',
         overflow: 'hidden',
         opacity: isOnHold ? 0.6 : 1,
         filter: isOnHold ? 'grayscale(0.5)' : 'none',
@@ -411,7 +411,7 @@ const ProjectCard = ({ project }: { project: Project }) => {
       {/* Barra de color top */}
       <div style={{
         height: '3px',
-        background: isOnHold ? '#CBD5E1' : `linear-gradient(90deg, ${project.color}, ${project.color}66)`,
+        background: isOnHold ? '#DCE7E1' : `linear-gradient(90deg, ${project.color}, ${project.color}66)`,
       }} />
 
       {/* Header */}
@@ -432,7 +432,7 @@ const ProjectCard = ({ project }: { project: Project }) => {
               {project.name}
             </span>
             {project.generatesIncome && !isOnHold && (
-              <span style={{ fontSize: '0.58rem', fontWeight: 900, background: '#D1FAE5', color: '#059669', padding: '2px 6px', borderRadius: '20px' }}>
+              <span style={{ fontSize: '0.58rem', fontWeight: 900, background: '#CDEDDD', color: '#0FA97A', padding: '2px 6px', borderRadius: '20px' }}>
                 💰
               </span>
             )}
@@ -536,7 +536,7 @@ const ProjectCard = ({ project }: { project: Project }) => {
                           : <AlertCircle size={12} color="#D97706" style={{ flexShrink: 0, marginTop: 1 }} />}
                         <span style={{ fontWeight: 600 }}>
                           {gap.question}
-                          {gap.answer && <span style={{ display: 'block', color: '#059669', fontStyle: 'italic', marginTop: '2px' }}>{gap.answer}</span>}
+                          {gap.answer && <span style={{ display: 'block', color: '#0FA97A', fontStyle: 'italic', marginTop: '2px' }}>{gap.answer}</span>}
                         </span>
                       </div>
                     ))}
@@ -550,10 +550,10 @@ const ProjectCard = ({ project }: { project: Project }) => {
                   {project.tags.map(tag => (
                     <span key={tag} style={{
                       fontSize: '0.62rem', fontWeight: 800,
-                      background: `${isOnHold ? '#94A3B8' : project.color}15`,
-                      color: isOnHold ? '#64748B' : project.color,
+                      background: `${isOnHold ? '#6C8079' : project.color}15`,
+                      color: isOnHold ? '#6C8079' : project.color,
                       padding: '2px 8px', borderRadius: '20px',
-                      border: `1px solid ${isOnHold ? '#94A3B8' : project.color}28`
+                      border: `1px solid ${isOnHold ? '#6C8079' : project.color}28`
                     }}>
                       {tag}
                     </span>

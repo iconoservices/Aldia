@@ -128,13 +128,13 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
             </div>
 
             {/* Toggle Mode */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#E2E8F0', padding: '4px', borderRadius: '16px', gap: '4px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#DCE7E1', padding: '4px', borderRadius: '16px', gap: '4px' }}>
                 <button 
                     onClick={() => setMode('owe')}
                     style={{ 
                         padding: '10px', borderRadius: '12px', border: 'none', 
                         background: mode === 'owe' ? 'white' : 'transparent',
-                        color: mode === 'owe' ? '#f87171' : '#64748B',
+                        color: mode === 'owe' ? '#C63C3C' : '#6C8079',
                         fontWeight: 900, fontSize: '0.75rem', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
                     }}
@@ -146,7 +146,7 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
                     style={{ 
                         padding: '10px', borderRadius: '12px', border: 'none', 
                         background: mode === 'owed' ? 'white' : 'transparent',
-                        color: mode === 'owed' ? '#10B981' : '#64748B',
+                        color: mode === 'owed' ? '#0E9F6E' : '#6C8079',
                         fontWeight: 900, fontSize: '0.75rem', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
                     }}
@@ -161,9 +161,9 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
                     <button 
                         onClick={() => setIsAddingMode(true)}
                         style={{ 
-                            background: 'white', border: '2px dashed #CBD5E1', borderRadius: '16px', padding: '12px',
+                            background: 'white', border: '2px dashed #DCE7E1', borderRadius: '16px', padding: '12px',
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', 
-                            color: '#64748B', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer'
+                            color: '#6C8079', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer'
                         }}
                     >
                         <Plus size={18} /> AGREGAR REGISTRO MANUAL
@@ -244,7 +244,7 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
                                 type="button"
                                 onClick={() => setIsCashTransaction(!isCashTransaction)}
                                 style={{ 
-                                    display: 'flex', alignItems: 'center', gap: '8px', background: isCashTransaction ? (mode === 'owe' ? '#fee2e2' : '#dcfce7') : '#F8FAFC', 
+                                    display: 'flex', alignItems: 'center', gap: '8px', background: isCashTransaction ? (mode === 'owe' ? '#fee2e2' : '#dcfce7') : '#F7FAF8', 
                                     padding: '8px 12px', borderRadius: '10px', border: '1px solid #EEE', cursor: 'pointer', transition: 'all 0.2s' 
                                 }}
                             >
@@ -335,7 +335,7 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
                                                 value={editContact}
                                                 onChange={(e) => setEditContact(e.target.value)}
                                                 placeholder="Nombre / Cliente"
-                                                style={{ padding: '6px', borderRadius: '8px', border: '1px solid #DDD', fontSize: '0.8rem', fontWeight: 800, background: '#F8FAFC' }}
+                                                style={{ padding: '6px', borderRadius: '8px', border: '1px solid #DDD', fontSize: '0.8rem', fontWeight: 800, background: '#F7FAF8' }}
                                             />
                                             <input
                                                 value={editName}
@@ -382,7 +382,7 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
                                             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
                                                 <span style={{ fontSize: '0.65rem', color: '#AAA', fontWeight: 600 }}>{item.originalTx.date} - {item.originalTx.fullDate}</span>
                                                 {item.originalTx.accountId && accounts.find(a => a.id === item.originalTx.accountId) ? (
-                                                    <span style={{ fontSize: '0.62rem', fontWeight: 800, color: '#64748B', background: '#F1F5F9', padding: '2px 7px', borderRadius: '999px' }}>
+                                                    <span style={{ fontSize: '0.62rem', fontWeight: 800, color: '#6C8079', background: '#F7FAF8', padding: '2px 7px', borderRadius: '999px' }}>
                                                         {accounts.find(a => a.id === item.originalTx.accountId)!.name}
                                                     </span>
                                                 ) : (
@@ -414,7 +414,7 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
                                                     setEditAccountId(item.originalTx.accountId);
                                                     setEditDueDate(item.originalTx.dueDate || '');
                                                 }}
-                                                style={{ background: 'transparent', border: 'none', color: '#CBD5E1', cursor: 'pointer', padding: '4px' }}
+                                                style={{ background: 'transparent', border: 'none', color: '#DCE7E1', cursor: 'pointer', padding: '4px' }}
                                             >
                                                 <Edit2 size={12} />
                                             </button>
@@ -422,7 +422,7 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
                                                 onClick={() => setConfirmDelete({ id: item.originalTx.id, name: item.name })}
                                                 style={{ background: 'transparent', border: 'none', color: '#fee2e2', cursor: 'pointer', padding: '4px' }}
                                             >
-                                                <Trash2 size={12} color="#f87171" style={{ opacity: 0.5 }} />
+                                                <Trash2 size={12} color="#C63C3C" style={{ opacity: 0.5 }} />
                                             </button>
                                         </div>
                                     )}
@@ -457,7 +457,7 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
                                             <div style={{ display: 'flex', gap: '6px' }}>
                                                 <button 
                                                     onClick={() => setRepayingId(null)}
-                                                    style={{ flex: 1, background: '#F1F5F9', color: '#64748B', border: 'none', borderRadius: '10px', padding: '8px', fontWeight: 800, fontSize: '0.7rem', cursor: 'pointer' }}
+                                                    style={{ flex: 1, background: '#F7FAF8', color: '#6C8079', border: 'none', borderRadius: '10px', padding: '8px', fontWeight: 800, fontSize: '0.7rem', cursor: 'pointer' }}
                                                 >CANCELAR</button>
                                                 <button 
                                                     onClick={() => handleRepay(item)}
@@ -474,7 +474,7 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
                                         style={{ 
                                             width: '100%', padding: '8px', borderRadius: '12px', border: 'none',
                                             background: mode === 'owe' ? '#fee2e2' : '#dcfce7',
-                                            color: mode === 'owe' ? '#ef4444' : '#10B981',
+                                            color: mode === 'owe' ? '#ef4444' : '#0E9F6E',
                                             fontSize: '0.7rem', fontWeight: 900, cursor: 'pointer',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                                         }}
@@ -488,9 +488,9 @@ export const DebtDetailView = ({ transactions, accounts, initialMode, onClose, r
                     ))}
 
                     {debtList.length === 0 && (
-                        <div style={{ textAlign: 'center', padding: '3rem 1rem', background: 'white', borderRadius: '24px', border: '2px dashed #E2E8F0' }}>
-                            <p style={{ margin: 0, color: '#94A3B8', fontSize: '0.85rem', fontWeight: 600 }}>No hay {mode === 'owe' ? 'deudas' : 'préstamos'} pendientes.</p>
-                            <span style={{ fontSize: '0.7rem', color: '#CBD5E1' }}>¡Todo al día por aquí! 🎉</span>
+                        <div style={{ textAlign: 'center', padding: '3rem 1rem', background: 'white', borderRadius: '24px', border: '2px dashed #DCE7E1' }}>
+                            <p style={{ margin: 0, color: '#6C8079', fontSize: '0.85rem', fontWeight: 600 }}>No hay {mode === 'owe' ? 'deudas' : 'préstamos'} pendientes.</p>
+                            <span style={{ fontSize: '0.7rem', color: '#DCE7E1' }}>¡Todo al día por aquí! 🎉</span>
                         </div>
                     )}
                 </div>

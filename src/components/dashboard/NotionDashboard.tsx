@@ -14,13 +14,13 @@ import { C, bento, useIsMobile, paddingPagina, cabecera, tituloPagina, subtitulo
 ══════════════════════════════════════════════════════════════════ */
 
 const ESTADO_COLOR: Record<NotionEstado, string> = {
-    'Agendado': '#6366F1',
+    'Agendado': '#3ED9A0',
     'Realizado': '#8B5CF6',
-    'En Edición': '#E6A817',
+    'En Edición': '#B9760A',
     // Azul, no verde: mismo criterio que en EsporadicosDashboard/AgendaDashboard --
     // "Terminado" no es "ya se entregó".
     'Terminado': '#2563EB',
-    'Entregado': '#059669',
+    'Entregado': '#0FA97A',
 };
 
 interface NotionProps {

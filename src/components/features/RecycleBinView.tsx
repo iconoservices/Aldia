@@ -38,20 +38,20 @@ export const RecycleBinView = ({ open, trash, onRestore, onClear, onClose }: Pro
                         }}
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span className="material-symbols-outlined" style={{ fontSize: '22px', color: '#059669' }}>delete</span>
+                            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0C2A20', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: '22px', color: '#0FA97A' }}>delete</span>
                                 Papelera
                             </h3>
                             <button onClick={onClose} style={{
                                 background: 'none', border: 'none', cursor: 'pointer',
-                                color: '#94A3B8', padding: '4px', display: 'flex',
+                                color: '#6C8079', padding: '4px', display: 'flex',
                             }}>
                                 <span className="material-symbols-outlined">close</span>
                             </button>
                         </div>
 
                         {trash.length === 0 ? (
-                            <p style={{ textAlign: 'center', color: '#94A3B8', fontSize: '0.85rem', fontWeight: 600, padding: '40px 0' }}>
+                            <p style={{ textAlign: 'center', color: '#6C8079', fontSize: '0.85rem', fontWeight: 600, padding: '40px 0' }}>
                                 La papelera está vacía
                             </p>
                         ) : (
@@ -66,17 +66,17 @@ export const RecycleBinView = ({ open, trash, onRestore, onClear, onClose }: Pro
                                             background: '#D1D5DB', flexShrink: 0,
                                         }} />
                                         <div style={{ flex: 1, minWidth: 0 }}>
-                                            <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: '#0C2A20', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                 {item.block.label}
                                             </p>
-                                            <p style={{ margin: 0, fontSize: '0.7rem', color: '#94A3B8' }}>
+                                            <p style={{ margin: 0, fontSize: '0.7rem', color: '#6C8079' }}>
                                                 {item.block.period} · {new Date(item.deletedAt).toLocaleDateString('es-MX')} {new Date(item.deletedAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
                                             </p>
                                         </div>
                                         <button onClick={() => onRestore(item.block.id)} style={{
                                             background: '#F3F4F6', border: 'none', borderRadius: '10px',
                                             padding: '6px 12px', fontWeight: 700, fontSize: '0.7rem',
-                                            color: '#059669', cursor: 'pointer', whiteSpace: 'nowrap',
+                                            color: '#0FA97A', cursor: 'pointer', whiteSpace: 'nowrap',
                                             fontFamily: "'Plus Jakarta Sans', sans-serif",
                                         }}>
                                             <span className="material-symbols-outlined" style={{ fontSize: '14px', verticalAlign: 'middle' }}>undo</span> Restaurar
@@ -86,7 +86,7 @@ export const RecycleBinView = ({ open, trash, onRestore, onClear, onClose }: Pro
                                 <button onClick={onClear} style={{
                                     width: '100%', marginTop: '16px', padding: '10px',
                                     borderRadius: '12px', border: 'none', background: '#FEF2F2',
-                                    color: '#DC2626', fontWeight: 700, fontSize: '0.8rem',
+                                    color: '#C63C3C', fontWeight: 700, fontSize: '0.8rem',
                                     cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif",
                                 }}>
                                     Vaciar papelera

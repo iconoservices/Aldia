@@ -33,7 +33,7 @@ const ColaZona = ({ id, children, style }: {
     return (
         <div ref={setNodeRef} style={{
             ...style,
-            outline: isOver ? '2px dashed #6366F1' : '2px dashed transparent',
+            outline: isOver ? '2px dashed #3ED9A0' : '2px dashed transparent',
             outlineOffset: '3px', borderRadius: '12px', transition: 'outline-color 0.15s',
         }}>{children}</div>
     );
@@ -64,9 +64,9 @@ const PERIOD_TIME: Record<string, string> = { 'Mañana': '07:00', 'Tarde': '13:0
 // les corresponde; para los que llevan texto (HOY, "1d") se le suma padding-x.
 const HDR_ICON = 16;
 const hdrBtn: React.CSSProperties = {
-    background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '6px',
+    background: '#F7FAF8', border: 'none', borderRadius: '10px', padding: '6px',
     cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    transition: 'all 0.2s', flexShrink: 0, color: '#64748B',
+    transition: 'all 0.2s', flexShrink: 0, color: '#6C8079',
 };
 const hdrBtnText: React.CSSProperties = { ...hdrBtn, padding: '6px 10px', fontSize: '0.65rem', fontWeight: 900, lineHeight: `${HDR_ICON}px` };
 
@@ -74,8 +74,8 @@ const hdrBtnText: React.CSSProperties = { ...hdrBtn, padding: '6px 10px', fontSi
 // pasó y sigue sin entregarse (el llamador ya filtra las que están en
 // "Entregado"). `fallback` deja pasar el color propio del proyecto para las
 // entregas que no son de Notion mientras no estén atrasadas.
-const ENTREGA_VERDE = '#059669';
-const ENTREGA_ATRASADA = '#DC2626';
+const ENTREGA_VERDE = '#0FA97A';
+const ENTREGA_ATRASADA = '#C63C3C';
 const REAL_HOY = () => new Date().toLocaleDateString('en-CA');
 const colorEntrega = (fecha: string, fallback: string = ENTREGA_VERDE) => (fecha && fecha < REAL_HOY() ? ENTREGA_ATRASADA : fallback);
 
@@ -86,7 +86,7 @@ const colorEntrega = (fecha: string, fallback: string = ENTREGA_VERDE) => (fecha
 const SESION_NEGRO = '#191919';
 const colorSesionNotion = (fecha: string, estado: string | undefined) => {
     if (!fecha || fecha >= REAL_HOY()) return SESION_NEGRO;
-    return estado === 'Agendado' ? '#D97706' : '#94A3B8';
+    return estado === 'Agendado' ? '#D97706' : '#6C8079';
 };
 
 export const TimelineAgendaView = ({
@@ -476,7 +476,7 @@ export const TimelineAgendaView = ({
             .filter((e: any) => e.date && e.date >= hoy && (e.notionId ? notionOn : true))
             .sort((a: any, b: any) => (a.date + (a.startTime || '99:99')).localeCompare(b.date + (b.startTime || '99:99')))
             .slice(0, 10)
-            .map((e: any) => ({ id: `fv-${e.id}`, title: e.title, date: e.date, time: e.startTime, dias: enDias(e.date), isNotion: !!e.notionId, color: e.notionId ? colorSesionNotion(e.date, e.notionEstado) : (e.color || '#6366F1'), raw: e }));
+            .map((e: any) => ({ id: `fv-${e.id}`, title: e.title, date: e.date, time: e.startTime, dias: enDias(e.date), isNotion: !!e.notionId, color: e.notionId ? colorSesionNotion(e.date, e.notionEstado) : (e.color || '#3ED9A0'), raw: e }));
 
         // checklist de hoy real (misma deducción plantilla+registro que dayChecklistTasks)
         const hoyIdx = (new Date().getDay() + 6) % 7;
@@ -514,9 +514,9 @@ export const TimelineAgendaView = ({
         };
 
         const secDefs = [
-            { k: 'atrasadas', icon: <AlertTriangle size={15} color="#DC2626" />, title: 'Entregas atrasadas', tint: '#DC2626', empty: 'Nada atrasado 🎉', kind: 'entrega' as const, items: ordenar(atrasadas, (x: any) => String(x.id), 'atrasadas') },
-            { k: 'proximas', icon: <Package size={15} color="#059669" />, title: 'Próximas entregas', tint: '#059669', empty: 'Ninguna por entregar', kind: 'entrega' as const, items: ordenar(proximas, (x: any) => String(x.id), 'proximas') },
-            { k: 'eventos', icon: <Calendar size={15} color="#6366F1" />, title: 'Agenda · próximos eventos', tint: '#6366F1', empty: 'Sin eventos próximos', kind: 'evento' as const, items: ordenar(eventos, (x: any) => String(x.id), 'eventos') },
+            { k: 'atrasadas', icon: <AlertTriangle size={15} color="#C63C3C" />, title: 'Entregas atrasadas', tint: '#C63C3C', empty: 'Nada atrasado 🎉', kind: 'entrega' as const, items: ordenar(atrasadas, (x: any) => String(x.id), 'atrasadas') },
+            { k: 'proximas', icon: <Package size={15} color="#0FA97A" />, title: 'Próximas entregas', tint: '#0FA97A', empty: 'Ninguna por entregar', kind: 'entrega' as const, items: ordenar(proximas, (x: any) => String(x.id), 'proximas') },
+            { k: 'eventos', icon: <Calendar size={15} color="#3ED9A0" />, title: 'Agenda · próximos eventos', tint: '#3ED9A0', empty: 'Sin eventos próximos', kind: 'evento' as const, items: ordenar(eventos, (x: any) => String(x.id), 'eventos') },
             { k: 'checklist', icon: <Clock size={15} color="#F59E0B" />, title: 'Checklist de hoy', tint: '#F59E0B', empty: 'Todo listo por hoy ✅', kind: 'check' as const, items: ordenar(checklist, idCheck, 'checklist') },
         ];
         const secOf = (k: string) => secDefs.find(s => s.k === k)!;
@@ -547,9 +547,9 @@ export const TimelineAgendaView = ({
                 onClick: () => it.id && toggleDailyBlock?.(it.id),
                 borderLeft: undefined as string | undefined,
                 node: <>
-                    <span style={{ width: '15px', height: '15px', borderRadius: '5px', border: '2px solid #E2E8F0', flexShrink: 0 }} />
+                    <span style={{ width: '15px', height: '15px', borderRadius: '5px', border: '2px solid #DCE7E1', flexShrink: 0 }} />
                     <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.label}</span>
-                    <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94A3B8', flexShrink: 0 }}>{it.period.toUpperCase()}</span>
+                    <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#6C8079', flexShrink: 0 }}>{it.period.toUpperCase()}</span>
                 </>,
             };
             const right = s.kind === 'evento' ? `${it.time ? it.time + ' · ' : ''}${diasLabel(it.dias)}` : diasLabel(it.dias);
@@ -563,8 +563,8 @@ export const TimelineAgendaView = ({
             };
         };
         const rowBox = (bl?: string): React.CSSProperties => ({
-            display: 'flex', alignItems: 'center', gap: '8px', background: 'white', border: '1px solid #F1F5F9',
-            borderLeft: bl ? `4px solid ${bl}` : '1px solid #F1F5F9', borderRadius: '10px', padding: '8px 10px',
+            display: 'flex', alignItems: 'center', gap: '8px', background: 'white', border: '1px solid #F7FAF8',
+            borderLeft: bl ? `4px solid ${bl}` : '1px solid #F7FAF8', borderRadius: '10px', padding: '8px 10px',
         });
 
         const renderSeccion = (s: typeof secDefs[number], headerHandle: Record<string, unknown>) => {
@@ -590,11 +590,11 @@ export const TimelineAgendaView = ({
                 <div>
                     <div {...headerHandle} style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px', cursor: 'grab' }}>
                         {s.icon}
-                        <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{s.title}</span>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#0C2A20', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{s.title}</span>
                         {s.items.length > 0 && <span style={{ fontSize: '0.64rem', fontWeight: 800, color: s.tint, background: `${s.tint}1a`, borderRadius: '999px', padding: '1px 7px' }}>{s.items.length}</span>}
                     </div>
                     {s.items.length === 0
-                        ? <div style={{ fontSize: '0.72rem', color: '#94A3B8', paddingLeft: '22px' }}>{s.empty}</div>
+                        ? <div style={{ fontSize: '0.72rem', color: '#6C8079', paddingLeft: '22px' }}>{s.empty}</div>
                         : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                 <SortableContext items={visibles.map((it: any) => `row§${s.k}§${idOf(it)}`)} strategy={verticalListSortingStrategy}>{rows}</SortableContext>
@@ -614,7 +614,7 @@ export const TimelineAgendaView = ({
             <div style={{ padding: '12px 12px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {focoHayOrden && (
                     <button onClick={() => actualizarFocoManual(p => ({ ...p, usarOrden: !p.usarOrden }))}
-                        style={{ alignSelf: 'flex-start', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: '0.66rem', fontWeight: 800, padding: 0 }}>
+                        style={{ alignSelf: 'flex-start', background: 'none', border: 'none', cursor: 'pointer', color: '#6C8079', fontSize: '0.66rem', fontWeight: 800, padding: 0 }}>
                         {focoManual.usarOrden ? '↺ ver por fecha' : '↦ volver a mi orden'}
                     </button>
                 )}
@@ -696,11 +696,11 @@ export const TimelineAgendaView = ({
                             onClick={it.raw ? () => setEditingItem({ type: 'calendar', data: it.raw }) : undefined}
                             style={{
                                 display: 'flex', alignItems: 'center', gap: '8px', background: 'white',
-                                border: '1px solid #F1F5F9', borderLeft: `4px solid ${it.color || '#6366F1'}`,
+                                border: '1px solid #F7FAF8', borderLeft: `4px solid ${it.color || '#3ED9A0'}`,
                                 borderRadius: '10px', padding: '8px 10px', cursor: it.raw ? 'pointer' : 'grab', ...style,
                             }}>
                             <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</span>
-                            <span style={{ fontSize: '0.68rem', fontWeight: 800, color: it.color || '#6366F1', whiteSpace: 'nowrap', flexShrink: 0 }}>{right}</span>
+                            <span style={{ fontSize: '0.68rem', fontWeight: 800, color: it.color || '#3ED9A0', whiteSpace: 'nowrap', flexShrink: 0 }}>{right}</span>
                         </div>
                     )}
                 </FocoSortable>
@@ -710,7 +710,7 @@ export const TimelineAgendaView = ({
         const cab = (icon: React.ReactNode, txt: string, n: number, tint: string) => (
             <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '8px' }}>
                 {icon}
-                <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{txt}</span>
+                <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#0C2A20', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{txt}</span>
                 {n > 0 && <span style={{ fontSize: '0.64rem', fontWeight: 800, color: tint, background: `${tint}1a`, borderRadius: '999px', padding: '1px 7px' }}>{n}</span>}
             </div>
         );
@@ -726,7 +726,7 @@ export const TimelineAgendaView = ({
                 <SortableContext items={visibles.map(x => String(x.id))} strategy={verticalListSortingStrategy}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                         {o.items.length === 0
-                            ? <div style={{ fontSize: '0.72rem', color: '#94A3B8', padding: '10px 4px' }}>{o.vacio}</div>
+                            ? <div style={{ fontSize: '0.72rem', color: '#6C8079', padding: '10px 4px' }}>{o.vacio}</div>
                             : visibles.map(fila)}
                         {o.limite && o.items.length > LIMITE && (
                             <button onClick={() => setColaExpandido(e => ({ ...e, [o.key]: !abierto }))}
@@ -745,7 +745,7 @@ export const TimelineAgendaView = ({
             );
         };
 
-        const NOTA_TINT = '#6366F1';
+        const NOTA_TINT = '#3ED9A0';
         // Todo dentro de UN solo cuadro, sin líneas divisorias: check para marcar
         // hecho, y una "×" al final de cada fila para borrar (pide confirmación).
         const borrarNota = (n: ColaNota) => {
@@ -760,7 +760,7 @@ export const TimelineAgendaView = ({
                     solo aparecen si hay notas o si tocaste el "+". */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: hayCajaNotas ? '8px' : '0' }}>
                     <ListOrdered size={15} color={NOTA_TINT} />
-                    <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Notas rápidas</span>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#0C2A20', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Notas rápidas</span>
                     {colaNotas.length > 0 && <span style={{ fontSize: '0.64rem', fontWeight: 800, color: NOTA_TINT, background: `${NOTA_TINT}1a`, borderRadius: '999px', padding: '1px 7px' }}>{colaNotas.length}</span>}
                     <button onClick={() => setColaNotaAbierta(v => !v)} title="Agregar nota"
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: NOTA_TINT, display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0, padding: '2px', fontSize: '0.68rem', fontWeight: 800 }}>
@@ -769,7 +769,7 @@ export const TimelineAgendaView = ({
                     </button>
                 </div>
                 {hayCajaNotas && (
-                    <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '4px 4px' }}>
+                    <div style={{ background: 'white', border: '1px solid #DCE7E1', borderRadius: '12px', padding: '4px 4px' }}>
                         {colaNotaAbierta && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '2px 4px 2px 8px' }}>
                                 <input
@@ -787,11 +787,11 @@ export const TimelineAgendaView = ({
                             <div key={n.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 8px' }}>
                                 <span
                                     onClick={() => actualizarNotas(colaNotas.map(x => x.id === n.id ? { ...x, done: !x.done } : x))}
-                                    style={{ width: '15px', height: '15px', borderRadius: '5px', border: `2px solid ${n.done ? NOTA_TINT : '#CBD5E1'}`, background: n.done ? NOTA_TINT : 'transparent', flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.58rem', fontWeight: 900 }}
+                                    style={{ width: '15px', height: '15px', borderRadius: '5px', border: `2px solid ${n.done ? NOTA_TINT : '#DCE7E1'}`, background: n.done ? NOTA_TINT : 'transparent', flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.58rem', fontWeight: 900 }}
                                 >{n.done ? '✓' : ''}</span>
-                                <span style={{ flex: 1, minWidth: 0, fontSize: '0.78rem', fontWeight: 700, color: n.done ? '#94A3B8' : '#0F172A', textDecoration: n.done ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n.text}</span>
+                                <span style={{ flex: 1, minWidth: 0, fontSize: '0.78rem', fontWeight: 700, color: n.done ? '#6C8079' : '#0C2A20', textDecoration: n.done ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n.text}</span>
                                 <button onClick={() => borrarNota(n)} title="Borrar nota"
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#CBD5E1', flexShrink: 0, padding: '2px', display: 'flex' }}>
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DCE7E1', flexShrink: 0, padding: '2px', display: 'flex' }}>
                                     <X size={13} />
                                 </button>
                             </div>
@@ -805,11 +805,11 @@ export const TimelineAgendaView = ({
             <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
                 {notas}
                 <DndContext sensors={focoSensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-                    {seccion({ key: 'proceso', icon: <Target size={15} color="#6366F1" />, txt: 'En proceso', tint: '#6366F1', items: enProceso, zona: 'zona§proceso', vacio: 'Arrastra aquí lo que estés haciendo, en el orden que lo harás.' })}
+                    {seccion({ key: 'proceso', icon: <Target size={15} color="#3ED9A0" />, txt: 'En proceso', tint: '#3ED9A0', items: enProceso, zona: 'zona§proceso', vacio: 'Arrastra aquí lo que estés haciendo, en el orden que lo harás.' })}
                     {seccion({ key: 'listas', icon: <Package size={15} color="#2563EB" />, txt: 'Listas para entregar', tint: '#2563EB', items: listasList, vacio: 'Nada terminado pendiente de entregar.', limite: true })}
-                    {seccion({ key: 'atrasadas', icon: <AlertTriangle size={15} color="#DC2626" />, txt: 'Entregas atrasadas', tint: '#DC2626', items: atrasadasList, vacio: 'Nada atrasado 🎉', limite: true })}
-                    {seccion({ key: 'proximasEntr', icon: <Package size={15} color="#059669" />, txt: 'Próximas entregas', tint: '#059669', items: proximasEntrList, vacio: 'Ninguna por entregar', limite: true })}
-                    {seccion({ key: 'proximos', icon: <Calendar size={15} color="#94A3B8" />, txt: 'Próximos', tint: '#94A3B8', items: proximosList, zona: 'zona§proximos', vacio: 'Sin eventos próximos', limite: true })}
+                    {seccion({ key: 'atrasadas', icon: <AlertTriangle size={15} color="#C63C3C" />, txt: 'Entregas atrasadas', tint: '#C63C3C', items: atrasadasList, vacio: 'Nada atrasado 🎉', limite: true })}
+                    {seccion({ key: 'proximasEntr', icon: <Package size={15} color="#0FA97A" />, txt: 'Próximas entregas', tint: '#0FA97A', items: proximasEntrList, vacio: 'Ninguna por entregar', limite: true })}
+                    {seccion({ key: 'proximos', icon: <Calendar size={15} color="#6C8079" />, txt: 'Próximos', tint: '#6C8079', items: proximosList, zona: 'zona§proximos', vacio: 'Sin eventos próximos', limite: true })}
                 </DndContext>
             </div>
         );
@@ -850,7 +850,7 @@ export const TimelineAgendaView = ({
                     ...e,
                     startMin: toMin(e.startTime),
                     endMin: toMin(e.endTime),
-                    color: e.notionId ? colorSesionNotion(dStr, e.notionEstado) : (e.color || '#6366F1')
+                    color: e.notionId ? colorSesionNotion(dStr, e.notionEstado) : (e.color || '#3ED9A0')
                 }));
 
             const rts = !activeFilters.rutinas ? [] : (rutinas || []).filter(r => r.repeatDays?.includes(dIdx));
@@ -903,7 +903,7 @@ export const TimelineAgendaView = ({
                     startTime: e.startTime,
                     endTime: e.endTime,
                     isNotion: !!e.notionId,
-                    color: e.notionId ? colorSesionNotion(e.date, e.notionEstado) : (e.color || '#6366F1'),
+                    color: e.notionId ? colorSesionNotion(e.date, e.notionEstado) : (e.color || '#3ED9A0'),
                     raw: e,
                 });
             });
@@ -977,7 +977,7 @@ export const TimelineAgendaView = ({
                         display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px',
                         fontSize: '0.75rem', cursor: 'pointer',
                         background: isSelected ? 'var(--domain-orange)' : (isToday ? '#FFF7ED' : 'transparent'),
-                        color: !isCurrentMonth ? '#CBD5E1' : isSelected ? 'white' : (isToday ? 'var(--domain-orange)' : '#64748B'),
+                        color: !isCurrentMonth ? '#DCE7E1' : isSelected ? 'white' : (isToday ? 'var(--domain-orange)' : '#6C8079'),
                         fontWeight: isToday || isSelected ? 900 : 700
                     }}
                 >
@@ -996,7 +996,7 @@ export const TimelineAgendaView = ({
                     </div>
                 </div>
                 <div className="mini-calendar-grid">
-                    {dayNames.map(d => <div key={d} style={{ fontSize: '0.6rem', color: '#94A3B8', textAlign: 'center', fontWeight: 900 }}>{d[0]}</div>)}
+                    {dayNames.map(d => <div key={d} style={{ fontSize: '0.6rem', color: '#6C8079', textAlign: 'center', fontWeight: 900 }}>{d[0]}</div>)}
                     {days}
                 </div>
             </div>
@@ -1009,16 +1009,16 @@ export const TimelineAgendaView = ({
                 se reordena por CSS `order` sin tocar el DOM. */}
             <aside
                 className={`agenda-sidebar ${!sidebarOpen ? 'collapsed' : ''}`}
-                style={{ order: 2, borderRight: 'none', borderLeft: '1px solid #E2E8F0' }}
+                style={{ order: 2, borderRight: 'none', borderLeft: '1px solid #DCE7E1' }}
             >
-                <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid #F1F5F9' }}>
+                <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid #F7FAF8' }}>
                     <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'var(--domain-orange)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
                         <Calendar size={18} />
                     </div>
                     <div style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--text-carbon)' }}>Agenda Central</div>
                 </div>
 
-                <div style={{ padding: '4px 0', borderBottom: '1px solid #F1F5F9' }}>
+                <div style={{ padding: '4px 0', borderBottom: '1px solid #F7FAF8' }}>
                     {renderMiniCalendar()}
                 </div>
 
@@ -1027,8 +1027,8 @@ export const TimelineAgendaView = ({
                     {[
                         { key: 'mision', label: 'Misión Diaria (Timeline)', color: 'var(--domain-orange)', icon: <Star size={14} />, type: 'UNIFICADO' },
                         { key: 'tareas', label: 'Tareas', color: '#F59E0B', icon: <Filter size={14} />, type: 'MICRO' },
-                        { key: 'citas', label: 'Citas y Eventos', color: '#6366F1', icon: <Clock size={14} />, type: 'MACRO' },
-                        { key: 'rutinas', label: 'Horario', color: '#10B981', icon: <CalendarDays size={14} />, type: 'MACRO' },
+                        { key: 'citas', label: 'Citas y Eventos', color: '#3ED9A0', icon: <Clock size={14} />, type: 'MACRO' },
+                        { key: 'rutinas', label: 'Horario', color: '#0E9F6E', icon: <CalendarDays size={14} />, type: 'MACRO' },
                         { key: 'habitos', label: 'Hábitos (Habits)', color: '#EC4899', icon: <CalendarDays size={14} />, type: 'MICRO' },
                     ].map(f => (
                         <div
@@ -1052,13 +1052,13 @@ export const TimelineAgendaView = ({
                                 onClick={() => abrirPanel(f.key as RightPanel)}
                             >
                                 <div style={{ color: f.color }}>{f.icon}</div>
-                                <span style={{ fontSize: '0.75rem', fontWeight: panelAbierto(f.key as RightPanel) ? 900 : 800, color: '#475569' }}>{f.label}</span>
+                                <span style={{ fontSize: '0.75rem', fontWeight: panelAbierto(f.key as RightPanel) ? 900 : 800, color: '#4A5F58' }}>{f.label}</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ fontSize: '0.55rem', fontWeight: 900, color: f.color, opacity: 0.8 }}>{f.type}</span>
                                 <div
                                     onClick={(e) => { e.stopPropagation(); setActiveFilters(prev => ({ ...prev, [f.key]: !prev[f.key as keyof typeof prev] })); }}
-                                    style={{ width: '13px', height: '13px', borderRadius: '4px', border: `1px solid ${activeFilters[f.key as keyof typeof activeFilters] ? f.color : '#CBD5E1'}`, background: activeFilters[f.key as keyof typeof activeFilters] ? f.color : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', flexShrink: 0, cursor: 'pointer' }}
+                                    style={{ width: '13px', height: '13px', borderRadius: '4px', border: `1px solid ${activeFilters[f.key as keyof typeof activeFilters] ? f.color : '#DCE7E1'}`, background: activeFilters[f.key as keyof typeof activeFilters] ? f.color : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', flexShrink: 0, cursor: 'pointer' }}
                                 >
                                     {activeFilters[f.key as keyof typeof activeFilters] && <span style={{ color: 'white', fontSize: '9px', fontWeight: 900, lineHeight: 1 }}>✓</span>}
                                 </div>
@@ -1069,8 +1069,8 @@ export const TimelineAgendaView = ({
                     {/* Agenda y Entregas — filtros generales: muestran/ocultan sus items
                         vengan de Notion o creados a mano. El sync de Notion es aparte (abajo). */}
                     {([
-                        { key: 'agenda', label: 'Agenda', color: '#6366F1', icon: <Camera size={14} /> },
-                        { key: 'entregas', label: 'Entregas', color: '#059669', icon: <Package size={14} /> },
+                        { key: 'agenda', label: 'Agenda', color: '#3ED9A0', icon: <Camera size={14} /> },
+                        { key: 'entregas', label: 'Entregas', color: '#0FA97A', icon: <Package size={14} /> },
                     ] as const).map(f => {
                         const on = activeFilters[f.key];
                         return (
@@ -1081,9 +1081,9 @@ export const TimelineAgendaView = ({
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <div style={{ color: f.color }}>{f.icon}</div>
-                                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#475569' }}>{f.label}</span>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#4A5F58' }}>{f.label}</span>
                                 </div>
-                                <div style={{ width: '13px', height: '13px', borderRadius: '4px', border: `1px solid ${on ? f.color : '#CBD5E1'}`, background: on ? f.color : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <div style={{ width: '13px', height: '13px', borderRadius: '4px', border: `1px solid ${on ? f.color : '#DCE7E1'}`, background: on ? f.color : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                     {on && <span style={{ color: 'white', fontSize: '9px', fontWeight: 900, lineHeight: 1 }}>✓</span>}
                                 </div>
                             </div>
@@ -1094,7 +1094,7 @@ export const TimelineAgendaView = ({
                         sincronizado de Notion (sesiones + entregas). Encenderlo lo vuelve a
                         mostrar y dispara una sincronización. Va aparte porque Notion lo
                         usan varias pestañas, no solo el calendario. */}
-                    <div style={{ margin: '8px 4px 0', borderTop: '1px solid #F1F5F9', paddingTop: '8px' }}>
+                    <div style={{ margin: '8px 4px 0', borderTop: '1px solid #F7FAF8', paddingTop: '8px' }}>
                         <div
                             onClick={notionSyncing ? undefined : toggleNotion}
                             title={notionOn ? 'Apagar Notion (ocultar lo sincronizado)' : 'Prender Notion y sincronizar'}
@@ -1104,14 +1104,14 @@ export const TimelineAgendaView = ({
                                 {notionSyncing
                                     ? <Loader2 size={14} color="#191919" style={{ animation: 'spin-slow 0.8s linear infinite' }} />
                                     : <RefreshCw size={14} color="#191919" />}
-                                <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#475569' }}>Notion</span>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#4A5F58' }}>Notion</span>
                             </div>
-                            <div style={{ width: '34px', height: '18px', borderRadius: '10px', background: notionOn ? '#191919' : '#CBD5E1', position: 'relative', flexShrink: 0, transition: 'background 0.15s' }}>
+                            <div style={{ width: '34px', height: '18px', borderRadius: '10px', background: notionOn ? '#191919' : '#DCE7E1', position: 'relative', flexShrink: 0, transition: 'background 0.15s' }}>
                                 <div style={{ width: '14px', height: '14px', borderRadius: '50%', background: 'white', position: 'absolute', top: '2px', left: notionOn ? '18px' : '2px', transition: 'left 0.15s' }} />
                             </div>
                         </div>
                         {notionSyncMsg && (
-                            <div style={{ fontSize: '0.62rem', color: '#94A3B8', fontWeight: 700, padding: '2px 12px 0' }}>{notionSyncMsg}</div>
+                            <div style={{ fontSize: '0.62rem', color: '#6C8079', fontWeight: 700, padding: '2px 12px 0' }}>{notionSyncMsg}</div>
                         )}
                     </div>
                 </div>
@@ -1130,15 +1130,15 @@ export const TimelineAgendaView = ({
                                             ? (isMobile ? `${dayNames[dayIdx]} ${selectedDate.getDate()} de ${monthNames[selectedDate.getMonth()]}` : `Semana: ${weekDays[0].date.getDate()} - ${weekDays[6].date.getDate()} ${monthNames[selectedDate.getMonth()]}`)
                                             : todayStr}
                                 </h2>
-                                <div style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', lineHeight: 1 }}>{({ timeline: 'SEMANA', month: 'MES', appointments: 'CITAS', tasks: 'TAREAS' } as Record<string, string>)[viewMode] || viewMode.toUpperCase()}</div>
+                                <div style={{ fontSize: '0.6rem', fontWeight: 800, color: '#6C8079', textTransform: 'uppercase', lineHeight: 1 }}>{({ timeline: 'SEMANA', month: 'MES', appointments: 'CITAS', tasks: 'TAREAS' } as Record<string, string>)[viewMode] || viewMode.toUpperCase()}</div>
                             </div>
                         </div>
 
-                        <div className="timeline-tabs-block" style={{ display: 'flex', gap: '2px', background: '#F1F5F9', padding: '3px', borderRadius: '14px', width: '100%' }}>
-                            <button onClick={() => setViewMode('timeline')} style={{ flex: 1, padding: '7px 2px', border: 'none', borderRadius: '10px', background: viewMode === 'timeline' ? 'white' : 'transparent', fontSize: '0.6rem', fontWeight: 900, color: viewMode === 'timeline' ? 'var(--domain-orange)' : '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><Clock size={11} /> TIMELINE</button>
-                            <button onClick={() => setViewMode('month')} style={{ flex: 1, padding: '7px 2px', border: 'none', borderRadius: '10px', background: viewMode === 'month' ? 'white' : 'transparent', fontSize: '0.6rem', fontWeight: 900, color: viewMode === 'month' ? 'var(--domain-orange)' : '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><CalendarDays size={11} /> MES</button>
-                            <button onClick={() => setViewMode('appointments')} style={{ flex: 1, padding: '7px 2px', border: 'none', borderRadius: '10px', background: viewMode === 'appointments' ? 'white' : 'transparent', fontSize: '0.6rem', fontWeight: 900, color: viewMode === 'appointments' ? 'var(--domain-orange)' : '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><Filter size={11} /> CITAS</button>
-                            <button onClick={() => setViewMode('tasks')} style={{ flex: 1, padding: '7px 2px', border: 'none', borderRadius: '10px', background: viewMode === 'tasks' ? 'white' : 'transparent', fontSize: '0.6rem', fontWeight: 900, color: viewMode === 'tasks' ? 'var(--domain-orange)' : '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><Calendar size={11} /> TAREAS</button>
+                        <div className="timeline-tabs-block" style={{ display: 'flex', gap: '2px', background: '#F7FAF8', padding: '3px', borderRadius: '14px', width: '100%' }}>
+                            <button onClick={() => setViewMode('timeline')} style={{ flex: 1, padding: '7px 2px', border: 'none', borderRadius: '10px', background: viewMode === 'timeline' ? 'white' : 'transparent', fontSize: '0.6rem', fontWeight: 900, color: viewMode === 'timeline' ? 'var(--domain-orange)' : '#6C8079', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><Clock size={11} /> TIMELINE</button>
+                            <button onClick={() => setViewMode('month')} style={{ flex: 1, padding: '7px 2px', border: 'none', borderRadius: '10px', background: viewMode === 'month' ? 'white' : 'transparent', fontSize: '0.6rem', fontWeight: 900, color: viewMode === 'month' ? 'var(--domain-orange)' : '#6C8079', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><CalendarDays size={11} /> MES</button>
+                            <button onClick={() => setViewMode('appointments')} style={{ flex: 1, padding: '7px 2px', border: 'none', borderRadius: '10px', background: viewMode === 'appointments' ? 'white' : 'transparent', fontSize: '0.6rem', fontWeight: 900, color: viewMode === 'appointments' ? 'var(--domain-orange)' : '#6C8079', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><Filter size={11} /> CITAS</button>
+                            <button onClick={() => setViewMode('tasks')} style={{ flex: 1, padding: '7px 2px', border: 'none', borderRadius: '10px', background: viewMode === 'tasks' ? 'white' : 'transparent', fontSize: '0.6rem', fontWeight: 900, color: viewMode === 'tasks' ? 'var(--domain-orange)' : '#6C8079', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><Calendar size={11} /> TAREAS</button>
                         </div>
 
                         <div className="timeline-nav-buttons" style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end', alignItems: 'center' }}>
@@ -1161,7 +1161,7 @@ export const TimelineAgendaView = ({
 
                             {/* Separador — a la derecha van juntos los toggles de los dos
                                 paneles laterales (ambos viven de este lado). */}
-                            <div className="desktop-only" style={{ width: '1px', height: '20px', background: '#E2E8F0', margin: '0 4px' }} />
+                            <div className="desktop-only" style={{ width: '1px', height: '20px', background: '#DCE7E1', margin: '0 4px' }} />
 
                             {/* Panel de Categorías / mini-calendario / Notion */}
                             <button
@@ -1170,7 +1170,7 @@ export const TimelineAgendaView = ({
                                 style={{ ...hdrBtn, background: sidebarOpen ? 'var(--domain-orange)' : hdrBtn.background }}
                                 title={sidebarOpen ? 'Ocultar Categorías y calendario' : 'Ver Categorías y calendario'}
                             >
-                                <Filter size={HDR_ICON} color={sidebarOpen ? 'white' : '#64748B'} />
+                                <Filter size={HDR_ICON} color={sidebarOpen ? 'white' : '#6C8079'} />
                             </button>
 
                             {/* Panel derecho FOCO. Se puede tener abierto junto con "En orden". */}
@@ -1183,7 +1183,7 @@ export const TimelineAgendaView = ({
                                         style={{ ...hdrBtn, background: on ? 'var(--domain-orange)' : hdrBtn.background }}
                                         title={on ? 'Cerrar Foco' : 'Ver Foco'}
                                     >
-                                        <Target size={HDR_ICON} color={on ? 'white' : '#64748B'} />
+                                        <Target size={HDR_ICON} color={on ? 'white' : '#6C8079'} />
                                     </button>
                                 );
                             })()}
@@ -1198,7 +1198,7 @@ export const TimelineAgendaView = ({
                                         style={{ ...hdrBtn, background: on ? 'var(--domain-orange)' : hdrBtn.background }}
                                         title={on ? 'Cerrar En orden' : 'Ver En orden'}
                                     >
-                                        <ListOrdered size={HDR_ICON} color={on ? 'white' : '#64748B'} />
+                                        <ListOrdered size={HDR_ICON} color={on ? 'white' : '#6C8079'} />
                                     </button>
                                 );
                             })()}
@@ -1213,7 +1213,7 @@ export const TimelineAgendaView = ({
                                         style={{ ...hdrBtn, background: on ? 'var(--domain-orange)' : hdrBtn.background }}
                                         title={on ? 'Cerrar Misión Diaria' : 'Ver Misión Diaria'}
                                     >
-                                        <Star size={HDR_ICON} color={on ? 'white' : '#64748B'} />
+                                        <Star size={HDR_ICON} color={on ? 'white' : '#6C8079'} />
                                     </button>
                                 );
                             })()}
@@ -1273,28 +1273,28 @@ export const TimelineAgendaView = ({
                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, width: '100%' }}>
                                            {wd.dels.slice(0, 3).map(renderDel)}
                                            {wd.dels.length > 3 && (
-                                               <div style={{ fontSize: '0.55rem', fontWeight: 800, color: '#94A3B8' }}>+{wd.dels.length - 3} más</div>
+                                               <div style={{ fontSize: '0.55rem', fontWeight: 800, color: '#6C8079' }}>+{wd.dels.length - 3} más</div>
                                            )}
                                        </div>
                                    );
                                };
                                const anyDels = visibleDays.some((wd: any) => wd?.dels?.length);
                                return !isMobile ? (
-                                   <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.97)', borderBottom: '1px solid #E2E8F0' }}>
+                                   <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.97)', borderBottom: '1px solid #DCE7E1' }}>
                                        <div style={{ display: 'grid', gridTemplateColumns: gridCols }}>
                                            <div />
                                            {visibleDays.map(wd => (
-                                               <div key={wd.dateStr} onClick={() => setSelectedDate(wd.date)} style={{ textAlign: 'center', padding: '6px 0', borderLeft: '1px solid #E2E8F0', cursor: 'pointer', background: wd.isToday ? 'rgba(5, 150, 105,0.08)' : 'transparent', boxShadow: wd.isSelected && !wd.isToday ? 'inset 0 -3px 0 var(--domain-orange)' : 'none' }}>
-                                                   <div style={{ fontSize: '0.6rem', fontWeight: 900, color: wd.isToday ? 'var(--domain-orange)' : '#94A3B8' }}>{dayNames[wd.dayIdx]}</div>
+                                               <div key={wd.dateStr} onClick={() => setSelectedDate(wd.date)} style={{ textAlign: 'center', padding: '6px 0', borderLeft: '1px solid #DCE7E1', cursor: 'pointer', background: wd.isToday ? 'rgba(15, 169, 122,0.08)' : 'transparent', boxShadow: wd.isSelected && !wd.isToday ? 'inset 0 -3px 0 var(--domain-orange)' : 'none' }}>
+                                                   <div style={{ fontSize: '0.6rem', fontWeight: 900, color: wd.isToday ? 'var(--domain-orange)' : '#6C8079' }}>{dayNames[wd.dayIdx]}</div>
                                                    <div style={{ fontSize: '1.05rem', fontWeight: 900, color: wd.isSelected && !wd.isToday ? 'var(--domain-orange)' : undefined }}>{wd.date.getDate()}</div>
                                                </div>
                                            ))}
                                        </div>
                                        {anyDels && (
-                                           <div style={{ display: 'grid', gridTemplateColumns: gridCols, borderTop: '1px solid #F1F5F9' }}>
+                                           <div style={{ display: 'grid', gridTemplateColumns: gridCols, borderTop: '1px solid #F7FAF8' }}>
                                                <div />
                                                {visibleDays.map(wd => (
-                                                   <div key={wd.dateStr} style={{ minWidth: 0, borderLeft: '1px solid #E2E8F0', padding: '3px', background: wd.isToday ? 'rgba(5, 150, 105,0.08)' : 'transparent' }}>
+                                                   <div key={wd.dateStr} style={{ minWidth: 0, borderLeft: '1px solid #DCE7E1', padding: '3px', background: wd.isToday ? 'rgba(15, 169, 122,0.08)' : 'transparent' }}>
                                                        {renderDels(wd)}
                                                    </div>
                                                ))}
@@ -1303,7 +1303,7 @@ export const TimelineAgendaView = ({
                                    </div>
                                ) : (
                                    visibleDays[0]?.dels?.length ? (
-                                       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.97)', borderBottom: '1px solid #E2E8F0', padding: '4px 6px' }}>
+                                       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.97)', borderBottom: '1px solid #DCE7E1', padding: '4px 6px' }}>
                                            {renderDels(visibleDays[0])}
                                        </div>
                                    ) : null
@@ -1315,24 +1315,24 @@ export const TimelineAgendaView = ({
                                        <div style={{ position: 'absolute', left: '-5px', top: '-4px', width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444' }} />
                                    </div>
                                )}
-                               <div style={{ borderRight: '1px solid #E2E8F0' }}>
+                               <div style={{ borderRight: '1px solid #DCE7E1' }}>
                                    {hours.map(h => {
                                         const isQuiet = h < 6 || h >= 22;
                                         return (
-                                            <div key={h} style={{ height: '60px', borderBottom: h % 3 === 2 ? '1px solid #E2E8F0' : '1px solid #F1F5F9', textAlign: 'right', paddingRight: '8px', fontSize: '0.65rem', color: isQuiet ? '#CBD5E1' : '#94A3B8', background: isQuiet ? '#F8FAFC' : '#FFFFFF', fontWeight: 700 }}>{String(h).padStart(2, '0')}:00</div>
+                                            <div key={h} style={{ height: '60px', borderBottom: h % 3 === 2 ? '1px solid #DCE7E1' : '1px solid #F7FAF8', textAlign: 'right', paddingRight: '8px', fontSize: '0.65rem', color: isQuiet ? '#DCE7E1' : '#6C8079', background: isQuiet ? '#F7FAF8' : '#FFFFFF', fontWeight: 700 }}>{String(h).padStart(2, '0')}:00</div>
                                         );
                                    })}
                                </div>
                                {visibleDays.map((wd, i) => wd && (
-                                   <div key={i} style={{ position: 'relative', borderRight: '1px solid #F1F5F9', ...(wd.isToday ? { boxShadow: 'inset 0 0 0 1px rgba(5, 150, 105,0.25)' } : wd.isSelected ? { boxShadow: 'inset 0 0 0 1px rgba(5, 150, 105,0.18)' } : {}) }}>
+                                   <div key={i} style={{ position: 'relative', borderRight: '1px solid #F7FAF8', ...(wd.isToday ? { boxShadow: 'inset 0 0 0 1px rgba(15, 169, 122,0.25)' } : wd.isSelected ? { boxShadow: 'inset 0 0 0 1px rgba(15, 169, 122,0.18)' } : {}) }}>
                                        {hours.map(h => {
                                             const isQuiet = h < 6 || h >= 22;
                                             const bg = wd.isToday
-                                                ? (isQuiet ? '#ECFDF5' : '#F0FDFA')
+                                                ? (isQuiet ? '#DFF3E9' : '#F1FAF5')
                                                 : wd.isSelected
-                                                    ? (isQuiet ? '#F2FBF6' : '#F6FEFB')
-                                                    : (isQuiet ? '#F8FAFC' : '#FFFFFF');
-                                            return <div key={h} style={{ height: '60px', borderBottom: h % 3 === 2 ? '1px solid #E2E8F0' : '1px solid #F1F5F9', background: bg }} />;
+                                                    ? (isQuiet ? '#F1F5F3' : '#F7FAF8')
+                                                    : (isQuiet ? '#F7FAF8' : '#FFFFFF');
+                                            return <div key={h} style={{ height: '60px', borderBottom: h % 3 === 2 ? '1px solid #DCE7E1' : '1px solid #F7FAF8', background: bg }} />;
                                        })}
                                        {wd.evs.map((e: any) => (
                                             <div
@@ -1391,7 +1391,7 @@ export const TimelineAgendaView = ({
                                 {dayEvents.map((e: any) => (
                                     <div key={e.id} onClick={() => setEditingItem({ type: 'calendar', data: e })} style={{ background: 'white', padding: '16px', borderRadius: '18px', borderLeft: `6px solid ${e.color}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <div><div style={{ fontWeight: 900 }}>{e.title}</div><div style={{ fontSize: '0.8rem', opacity: 0.6 }}>{e.startTime} - {e.endTime}</div></div>
-                                        <button onClick={(ev) => { ev.stopPropagation(); onRemoveEvent?.(e.id); }} style={{ background: '#FEF2F2', border: 'none', color: '#EF4444', padding: '8px', borderRadius: '10px' }}><Trash2 size={16} /></button>
+                                        <button onClick={(ev) => { ev.stopPropagation(); onRemoveEvent?.(e.id); }} style={{ background: '#FEF2F2', border: 'none', color: '#C63C3C', padding: '8px', borderRadius: '10px' }}><Trash2 size={16} /></button>
                                     </div>
                                 ))}
                             </div>
@@ -1413,10 +1413,10 @@ export const TimelineAgendaView = ({
                                         style={{
                                             minHeight: '84px', background: 'white', borderRadius: '12px', padding: '6px',
                                             display: 'flex', flexDirection: 'column', gap: '3px', cursor: 'pointer',
-                                            border: isToday ? '2px solid var(--domain-orange)' : '1px solid #F1F5F9', overflow: 'hidden'
+                                            border: isToday ? '2px solid var(--domain-orange)' : '1px solid #F7FAF8', overflow: 'hidden'
                                         }}
                                     >
-                                        <div style={{ fontSize: '0.72rem', fontWeight: 900, color: isToday ? 'var(--domain-orange)' : '#64748B', textAlign: 'right', flexShrink: 0 }}>{d}</div>
+                                        <div style={{ fontSize: '0.72rem', fontWeight: 900, color: isToday ? 'var(--domain-orange)' : '#6C8079', textAlign: 'right', flexShrink: 0 }}>{d}</div>
                                         {evs.slice(0, 3).map((e: any) => (
                                             <div
                                                 key={e.id}
@@ -1433,7 +1433,7 @@ export const TimelineAgendaView = ({
                                             </div>
                                         ))}
                                         {evs.length > 3 && (
-                                            <div style={{ fontSize: '0.58rem', fontWeight: 800, color: '#94A3B8' }}>+{evs.length - 3} más</div>
+                                            <div style={{ fontSize: '0.58rem', fontWeight: 800, color: '#6C8079' }}>+{evs.length - 3} más</div>
                                         )}
                                     </div>
                                 );
@@ -1466,10 +1466,10 @@ export const TimelineAgendaView = ({
                         foco: { title: 'Foco', icon: <Target size={15} />, color: 'var(--domain-orange)' },
                         mision: { title: 'Misión Diaria', icon: <Star size={15} />, color: 'var(--domain-orange)' },
                         tareas: { title: 'Tareas', icon: <Filter size={15} />, color: '#F59E0B' },
-                        citas: { title: 'Citas y Eventos', icon: <Clock size={15} />, color: '#6366F1' },
-                        rutinas: { title: 'Horario', icon: <CalendarDays size={15} />, color: '#10B981' },
+                        citas: { title: 'Citas y Eventos', icon: <Clock size={15} />, color: '#3ED9A0' },
+                        rutinas: { title: 'Horario', icon: <CalendarDays size={15} />, color: '#0E9F6E' },
                         habitos: { title: 'Hábitos', icon: <CalendarDays size={15} />, color: '#EC4899' },
-                        cola: { title: 'En orden', icon: <ListOrdered size={15} />, color: '#6366F1' }
+                        cola: { title: 'En orden', icon: <ListOrdered size={15} />, color: '#3ED9A0' }
                     };
                     const esFoco = rightPanelMode === 'foco';
                     const esCola = rightPanelMode === 'cola';
@@ -1481,7 +1481,7 @@ export const TimelineAgendaView = ({
                                 por día (‹ fecha ›) + cerrar, para ocupar menos alto. La
                                 fecha es un botón: si no es hoy, va en naranja y al tocarla
                                 vuelve a hoy (reemplaza al link "volver a hoy"). */}
-                            <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid #F1F5F9' }}>
+                            <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid #F7FAF8' }}>
                                 <div style={{ width: '28px', height: '28px', borderRadius: '10px', background: config.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
                                     {config.icon}
                                 </div>
@@ -1519,7 +1519,7 @@ export const TimelineAgendaView = ({
                             <div style={{ padding: '20px 16px 20px 0', flex: 1, overflowY: 'auto' }}>
                                 <div style={{ position: 'relative', paddingLeft: '8px' }}>
                                     {/* Línea vertical base */}
-                                    <div style={{ position: 'absolute', left: '55px', top: '10px', bottom: '10px', width: '2px', background: '#F1F5F9', zIndex: 0 }} />
+                                    <div style={{ position: 'absolute', left: '55px', top: '10px', bottom: '10px', width: '2px', background: '#F7FAF8', zIndex: 0 }} />
 
                                     {/* MISIÓN DIARIA: tareas del Checklist (dailyBlocks) + citas/sesiones de
                                         Notion + entregas del día, todo junto y ordenado por hora. Debajo,
@@ -1531,10 +1531,10 @@ export const TimelineAgendaView = ({
                                         const renderRow = (item: Row) => (
                                             <div key={item.id} style={{ display: 'flex', gap: '9px', marginBottom: '6px', position: 'relative' }}>
                                                 <div style={{ width: '38px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', paddingTop: '7px', flexShrink: 0, lineHeight: 1.15 }}>
-                                                    <span style={{ fontSize: '0.72rem', fontWeight: 900, color: item.completed ? '#CBD5E1' : 'var(--text-carbon)' }}>{item.kind === 'delivery' ? '📦' : item.time}</span>
-                                                    {item.kind === 'event' && item.endTime && <span style={{ fontSize: '0.58rem', fontWeight: 700, color: '#CBD5E1' }}>{item.endTime}</span>}
+                                                    <span style={{ fontSize: '0.72rem', fontWeight: 900, color: item.completed ? '#DCE7E1' : 'var(--text-carbon)' }}>{item.kind === 'delivery' ? '📦' : item.time}</span>
+                                                    {item.kind === 'event' && item.endTime && <span style={{ fontSize: '0.58rem', fontWeight: 700, color: '#DCE7E1' }}>{item.endTime}</span>}
                                                 </div>
-                                                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: item.completed ? item.color : '#E2E8F0', marginTop: '9px', zIndex: 1, boxShadow: '0 0 0 3px white', flexShrink: 0 }} />
+                                                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: item.completed ? item.color : '#DCE7E1', marginTop: '9px', zIndex: 1, boxShadow: '0 0 0 3px white', flexShrink: 0 }} />
                                                 <div
                                                     onClick={() => {
                                                         if (item.kind === 'checklist') {
@@ -1548,7 +1548,7 @@ export const TimelineAgendaView = ({
                                                     style={{ flex: 1, minWidth: 0, padding: '7px 9px', borderRadius: '9px', border: '1px solid #EDF1F5', borderLeft: `3px solid ${item.color}`, background: 'white', cursor: 'pointer', opacity: item.completed ? 0.65 : 1, display: 'flex', alignItems: 'center', gap: '7px' }}
                                                 >
                                                     {item.kind === 'checklist' ? (
-                                                        <div style={{ width: '16px', height: '16px', borderRadius: '5px', border: `2px solid ${item.completed ? 'var(--domain-green)' : '#E2E8F0'}`, background: item.completed ? 'var(--domain-green)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                        <div style={{ width: '16px', height: '16px', borderRadius: '5px', border: `2px solid ${item.completed ? 'var(--domain-green)' : '#DCE7E1'}`, background: item.completed ? 'var(--domain-green)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                                             {item.completed && <span style={{ color: 'white', fontSize: '0.6rem', fontWeight: 900, lineHeight: 1 }}>✓</span>}
                                                         </div>
                                                     ) : (
@@ -1557,10 +1557,10 @@ export const TimelineAgendaView = ({
                                                         </div>
                                                     )}
                                                     <div style={{ minWidth: 0, flex: 1 }}>
-                                                        <span style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, lineHeight: 1.25, color: item.completed ? '#94A3B8' : 'var(--text-carbon)', textDecoration: item.completed ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        <span style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, lineHeight: 1.25, color: item.completed ? '#6C8079' : 'var(--text-carbon)', textDecoration: item.completed ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                             {item.label}
                                                         </span>
-                                                        {item.sub && <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#94A3B8' }}>{item.sub}</span>}
+                                                        {item.sub && <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#6C8079' }}>{item.sub}</span>}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1575,7 +1575,7 @@ export const TimelineAgendaView = ({
                                         dayEvents.forEach((e: any) => rows.push({
                                             id: `e-${e.id}`, time: e.startTime || '00:00', endTime: e.endTime, kind: 'event',
                                             label: e.title,
-                                            color: e.notionId ? colorSesionNotion(e.date, e.notionEstado) : (e.color || '#6366F1'), raw: e
+                                            color: e.notionId ? colorSesionNotion(e.date, e.notionEstado) : (e.color || '#3ED9A0'), raw: e
                                         }));
                                         if (activeFilters.entregas && notionOn) {
                                             (calendarEvents || []).forEach(e => {
@@ -1601,7 +1601,7 @@ export const TimelineAgendaView = ({
                                                 if (e.date !== ds) return;
                                                 const show = e.notionId ? (activeFilters.agenda && notionOn) : activeFilters.citas;
                                                 if (!show) return;
-                                                items.push({ id: `ue-${e.id}`, time: e.startTime || '00:00', endTime: e.endTime, kind: 'event', label: e.title, color: e.notionId ? '#191919' : (e.color || '#6366F1'), raw: e });
+                                                items.push({ id: `ue-${e.id}`, time: e.startTime || '00:00', endTime: e.endTime, kind: 'event', label: e.title, color: e.notionId ? '#191919' : (e.color || '#3ED9A0'), raw: e });
                                             });
                                             if (activeFilters.entregas && notionOn) {
                                                 (calendarEvents || []).forEach(e => {
@@ -1612,7 +1612,7 @@ export const TimelineAgendaView = ({
                                             }
                                             if (activeFilters.entregas) {
                                                 projects.forEach(p => (p.objectives || []).forEach((obj: any) => {
-                                                    if (obj.deliveryDate === ds) items.push({ id: `udo-${obj.id ?? obj.title}`, time: '23:59', kind: 'delivery', label: `Entrega · ${obj.title}`, color: p.color || '#059669' });
+                                                    if (obj.deliveryDate === ds) items.push({ id: `udo-${obj.id ?? obj.title}`, time: '23:59', kind: 'delivery', label: `Entrega · ${obj.title}`, color: p.color || '#0FA97A' });
                                                 }));
                                             }
                                             if (!items.length) continue;
@@ -1624,19 +1624,19 @@ export const TimelineAgendaView = ({
                                         }
 
                                         if (rows.length === 0 && upcoming.length === 0) {
-                                            return <div style={{ fontSize: '0.75rem', color: '#94A3B8', textAlign: 'center', padding: '20px' }}>Nada para este día ni los próximos</div>;
+                                            return <div style={{ fontSize: '0.75rem', color: '#6C8079', textAlign: 'center', padding: '20px' }}>Nada para este día ni los próximos</div>;
                                         }
 
                                         return (
                                             <>
                                                 {rows.length > 0 ? rows.map(renderRow) : (
-                                                    <div style={{ fontSize: '0.72rem', color: '#94A3B8', paddingLeft: '55px', marginBottom: '12px' }}>Nada para este día.</div>
+                                                    <div style={{ fontSize: '0.72rem', color: '#6C8079', paddingLeft: '55px', marginBottom: '12px' }}>Nada para este día.</div>
                                                 )}
                                                 {upcoming.length > 0 && (
                                                     <>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '10px 0 12px', paddingLeft: '55px' }}>
-                                                            <span style={{ fontSize: '0.58rem', fontWeight: 900, color: '#94A3B8', letterSpacing: '0.06em' }}>PRÓXIMOS DÍAS</span>
-                                                            <div style={{ flex: 1, height: '1px', background: '#F1F5F9' }} />
+                                                            <span style={{ fontSize: '0.58rem', fontWeight: 900, color: '#6C8079', letterSpacing: '0.06em' }}>PRÓXIMOS DÍAS</span>
+                                                            <div style={{ flex: 1, height: '1px', background: '#F7FAF8' }} />
                                                         </div>
                                                         {upcoming.map(day => (
                                                             <div key={day.dateStr} style={{ marginBottom: '2px' }}>
@@ -1668,18 +1668,18 @@ export const TimelineAgendaView = ({
                                                 <div style={{ width: '45px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', paddingTop: '4px', flexShrink: 0 }}>
                                                     <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{item.time}</span>
                                                 </div>
-                                                <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: item.completed ? item.color : '#E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '8px', zIndex: 1, boxShadow: '0 0 0 4px white', flexShrink: 0 }}>
+                                                <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: item.completed ? item.color : '#DCE7E1', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '8px', zIndex: 1, boxShadow: '0 0 0 4px white', flexShrink: 0 }}>
                                                     <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'white' }} />
                                                 </div>
                                                 <div
                                                     onClick={() => onToggleMission?.(item.rawId)}
-                                                    style={{ flex: 1, padding: '12px', borderRadius: '16px', border: '1px solid #F8FAFC', borderLeft: `4px solid ${item.color}`, background: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', cursor: 'pointer', opacity: item.completed ? 0.7 : 1 }}
+                                                    style={{ flex: 1, padding: '12px', borderRadius: '16px', border: '1px solid #F7FAF8', borderLeft: `4px solid ${item.color}`, background: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', cursor: 'pointer', opacity: item.completed ? 0.7 : 1 }}
                                                 >
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${item.completed ? 'var(--domain-green)' : '#E2E8F0'}`, background: item.completed ? 'var(--domain-green)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${item.completed ? 'var(--domain-green)' : '#DCE7E1'}`, background: item.completed ? 'var(--domain-green)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                                             {item.completed && <span style={{ color: 'white', fontSize: '0.65rem', fontWeight: 900 }}>✓</span>}
                                                         </div>
-                                                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: item.completed ? '#94A3B8' : 'var(--text-carbon)', textDecoration: item.completed ? 'line-through' : 'none' }}>
+                                                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: item.completed ? '#6C8079' : 'var(--text-carbon)', textDecoration: item.completed ? 'line-through' : 'none' }}>
                                                             {item.label}
                                                         </span>
                                                     </div>
@@ -1688,7 +1688,7 @@ export const TimelineAgendaView = ({
                                         ));
                                     })()}
                                     {rightPanelMode === 'tareas' && (missions || []).length === 0 && dayRoutines.length === 0 && dayEvents.length === 0 && (
-                                        <div style={{ fontSize: '0.75rem', color: '#94A3B8', textAlign: 'center', padding: '20px' }}>Tu línea de tiempo está vacía hoy</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#6C8079', textAlign: 'center', padding: '20px' }}>Tu línea de tiempo está vacía hoy</div>
                                     )}
 
                                     {/* CITAS */}
@@ -1701,13 +1701,13 @@ export const TimelineAgendaView = ({
                                             <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: e.color || config.color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '8px', zIndex: 1, boxShadow: '0 0 0 4px white', flexShrink: 0 }}>
                                                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'white' }} />
                                             </div>
-                                            <div style={{ flex: 1, padding: '12px', borderRadius: '16px', border: '1px solid #F8FAFC', borderLeft: `4px solid ${e.color || config.color}`, background: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+                                            <div style={{ flex: 1, padding: '12px', borderRadius: '16px', border: '1px solid #F7FAF8', borderLeft: `4px solid ${e.color || config.color}`, background: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
                                                 <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-carbon)' }}>{e.title}</div>
                                             </div>
                                         </div>
                                     ))}
                                     {rightPanelMode === 'citas' && dayEvents.length === 0 && (
-                                        <div style={{ fontSize: '0.75rem', color: '#94A3B8', textAlign: 'center', padding: '20px' }}>No hay citas hoy</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#6C8079', textAlign: 'center', padding: '20px' }}>No hay citas hoy</div>
                                     )}
 
                                     {/* RUTINAS / BLOQUES */}
@@ -1720,13 +1720,13 @@ export const TimelineAgendaView = ({
                                             <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: r.color || config.color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '8px', zIndex: 1, boxShadow: '0 0 0 4px white', flexShrink: 0 }}>
                                                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'white' }} />
                                             </div>
-                                            <div style={{ flex: 1, padding: '12px', borderRadius: '16px', border: '1px solid #F8FAFC', borderLeft: `4px solid ${r.color || config.color}`, background: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+                                            <div style={{ flex: 1, padding: '12px', borderRadius: '16px', border: '1px solid #F7FAF8', borderLeft: `4px solid ${r.color || config.color}`, background: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
                                                 <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-carbon)', marginBottom: '6px' }}>{r.title}</div>
                                                 {r.items && r.items.length > 0 && (
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                                         {r.items.map((sub: any) => (
-                                                            <div key={sub.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', color: '#94A3B8' }}>
-                                                                <div style={{ width: '12px', height: '12px', borderRadius: '50%', border: '1px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                            <div key={sub.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', color: '#6C8079' }}>
+                                                                <div style={{ width: '12px', height: '12px', borderRadius: '50%', border: '1px solid #DCE7E1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                                     {sub.completed && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--domain-green)' }} />}
                                                                 </div>
                                                                 <span style={{ textDecoration: sub.completed ? 'line-through' : 'none' }}>{sub.text}</span>
@@ -1738,7 +1738,7 @@ export const TimelineAgendaView = ({
                                         </div>
                                     ))}
                                     {rightPanelMode === 'rutinas' && dayRoutines.length === 0 && (
-                                        <div style={{ fontSize: '0.75rem', color: '#94A3B8', textAlign: 'center', padding: '20px' }}>No hay bloques de horario activos</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#6C8079', textAlign: 'center', padding: '20px' }}>No hay bloques de horario activos</div>
                                     )}
 
                                     {/* HÁBITOS */}
@@ -1752,15 +1752,15 @@ export const TimelineAgendaView = ({
                                                 const isCompleted = (h.completedDates || []).includes(todayStr);
                                                 return (
                                                     <>
-                                                        <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: isCompleted ? config.color : '#E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '8px', zIndex: 1, boxShadow: '0 0 0 4px white', flexShrink: 0 }}>
+                                                        <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: isCompleted ? config.color : '#DCE7E1', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '8px', zIndex: 1, boxShadow: '0 0 0 4px white', flexShrink: 0 }}>
                                                             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'white' }} />
                                                         </div>
-                                                        <div style={{ flex: 1, padding: '12px', borderRadius: '16px', border: '1px solid #F8FAFC', borderLeft: `4px solid ${config.color}`, background: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', opacity: isCompleted ? 0.7 : 1 }}>
+                                                        <div style={{ flex: 1, padding: '12px', borderRadius: '16px', border: '1px solid #F7FAF8', borderLeft: `4px solid ${config.color}`, background: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', opacity: isCompleted ? 0.7 : 1 }}>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                                <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${isCompleted ? 'var(--domain-green)' : '#E2E8F0'}`, background: isCompleted ? 'var(--domain-green)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                                <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${isCompleted ? 'var(--domain-green)' : '#DCE7E1'}`, background: isCompleted ? 'var(--domain-green)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                                                     {isCompleted && <span style={{ color: 'white', fontSize: '0.65rem', fontWeight: 900 }}>✓</span>}
                                                                 </div>
-                                                                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: isCompleted ? '#94A3B8' : 'var(--text-carbon)', textDecoration: isCompleted ? 'line-through' : 'none' }}>
+                                                                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: isCompleted ? '#6C8079' : 'var(--text-carbon)', textDecoration: isCompleted ? 'line-through' : 'none' }}>
                                                                     {h.name}
                                                                 </span>
                                                             </div>
@@ -1771,7 +1771,7 @@ export const TimelineAgendaView = ({
                                         </div>
                                     ))}
                                     {rightPanelMode === 'habitos' && dayHabits.length === 0 && (
-                                        <div style={{ fontSize: '0.75rem', color: '#94A3B8', textAlign: 'center', padding: '20px' }}>No hay hábitos hoy</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#6C8079', textAlign: 'center', padding: '20px' }}>No hay hábitos hoy</div>
                                     )}
                                 </div>
                             </div>
@@ -1794,16 +1794,16 @@ export const TimelineAgendaView = ({
                             </h3>
 
                             {editingItem.type === 'new' && (
-                                <div style={{ display: 'flex', gap: '6px', background: '#F1F5F9', padding: '4px', borderRadius: '10px', marginBottom: '14px' }}>
+                                <div style={{ display: 'flex', gap: '6px', background: '#F7FAF8', padding: '4px', borderRadius: '10px', marginBottom: '14px' }}>
                                     <button
                                         onClick={() => setNewItemType('routine')}
-                                        style={{ flex: 1, padding: '8px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 900, background: newItemType === 'routine' ? 'white' : 'transparent', color: newItemType === 'routine' ? 'var(--domain-orange)' : '#64748B' }}
+                                        style={{ flex: 1, padding: '8px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 900, background: newItemType === 'routine' ? 'white' : 'transparent', color: newItemType === 'routine' ? 'var(--domain-orange)' : '#6C8079' }}
                                     >
                                         Horario (se repite)
                                     </button>
                                     <button
                                         onClick={() => setNewItemType('calendar')}
-                                        style={{ flex: 1, padding: '8px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 900, background: newItemType === 'calendar' ? 'white' : 'transparent', color: newItemType === 'calendar' ? 'var(--domain-orange)' : '#64748B' }}
+                                        style={{ flex: 1, padding: '8px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 900, background: newItemType === 'calendar' ? 'white' : 'transparent', color: newItemType === 'calendar' ? 'var(--domain-orange)' : '#6C8079' }}
                                     >
                                         Evento puntual
                                     </button>
@@ -1811,27 +1811,27 @@ export const TimelineAgendaView = ({
                             )}
 
                             {editingItem.type === 'calendar' && editingItem.data?.notionId && (
-                                <div style={{ marginBottom: '14px', padding: '10px 12px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                    <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Sesión de Notion</div>
+                                <div style={{ marginBottom: '14px', padding: '10px 12px', background: '#F7FAF8', border: '1px solid #DCE7E1', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#6C8079', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Sesión de Notion</div>
                                     {[
                                         ['Estado', editingItem.data.notionEstado],
                                         ['Entrega', editingItem.data.notionEntregaFecha],
                                         ['Días restantes', editingItem.data.notionDiasRestantes],
                                     ].filter(([, v]) => v !== undefined && v !== null && v !== '').map(([k, v]) => (
                                         <div key={k as string} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                                            <span style={{ color: '#64748B', fontWeight: 700 }}>{k}</span>
-                                            <span style={{ color: '#0F172A', fontWeight: 800 }}>{String(v)}</span>
+                                            <span style={{ color: '#6C8079', fontWeight: 700 }}>{k}</span>
+                                            <span style={{ color: '#0C2A20', fontWeight: 800 }}>{String(v)}</span>
                                         </div>
                                     ))}
-                                    <div style={{ fontSize: '0.66rem', color: '#94A3B8', fontWeight: 600 }}>El estado se cambia desde Entregas o Notion; editar acá solo mueve la cita local.</div>
+                                    <div style={{ fontSize: '0.66rem', color: '#6C8079', fontWeight: 600 }}>El estado se cambia desde Entregas o Notion; editar acá solo mueve la cita local.</div>
                                 </div>
                             )}
 
-                            <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Título</label>
+                            <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#6C8079', textTransform: 'uppercase' }}>Título</label>
                             <input
                                 type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
                                 placeholder="Ej. Edición de fotos"
-                                style={{ width: '100%', marginTop: '4px', marginBottom: '14px', padding: '10px 12px', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '0.85rem', fontWeight: 700, boxSizing: 'border-box' }}
+                                style={{ width: '100%', marginTop: '4px', marginBottom: '14px', padding: '10px 12px', borderRadius: '10px', border: '1px solid #DCE7E1', fontSize: '0.85rem', fontWeight: 700, boxSizing: 'border-box' }}
                             />
 
                             {(() => {
@@ -1844,43 +1844,43 @@ export const TimelineAgendaView = ({
                                 <>
                                     {showDate && (
                                         <div style={{ marginBottom: '14px' }}>
-                                            <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Fecha</label>
+                                            <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#6C8079', textTransform: 'uppercase' }}>Fecha</label>
                                             <input
                                                 type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)}
-                                                style={{ width: '100%', marginTop: '4px', padding: '10px 12px', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '0.85rem', fontWeight: 700, boxSizing: 'border-box' }}
+                                                style={{ width: '100%', marginTop: '4px', padding: '10px 12px', borderRadius: '10px', border: '1px solid #DCE7E1', fontSize: '0.85rem', fontWeight: 700, boxSizing: 'border-box' }}
                                             />
                                         </div>
                                     )}
                                     <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
                                         <div style={{ flex: 1 }}>
-                                            <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Inicio</label>
+                                            <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#6C8079', textTransform: 'uppercase' }}>Inicio</label>
                                             <input
                                                 type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)}
-                                                style={{ width: '100%', marginTop: '4px', padding: '10px 12px', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '0.85rem', fontWeight: 700, boxSizing: 'border-box' }}
+                                                style={{ width: '100%', marginTop: '4px', padding: '10px 12px', borderRadius: '10px', border: '1px solid #DCE7E1', fontSize: '0.85rem', fontWeight: 700, boxSizing: 'border-box' }}
                                             />
                                         </div>
                                         <div style={{ flex: 1 }}>
-                                            <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Fin</label>
+                                            <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#6C8079', textTransform: 'uppercase' }}>Fin</label>
                                             <input
                                                 type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)}
-                                                style={{ width: '100%', marginTop: '4px', padding: '10px 12px', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '0.85rem', fontWeight: 700, boxSizing: 'border-box' }}
+                                                style={{ width: '100%', marginTop: '4px', padding: '10px 12px', borderRadius: '10px', border: '1px solid #DCE7E1', fontSize: '0.85rem', fontWeight: 700, boxSizing: 'border-box' }}
                                             />
                                         </div>
                                     </div>
 
                                     {showNotionOption && (
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px', cursor: 'pointer', padding: '10px 12px', background: '#F9FAFB', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px', cursor: 'pointer', padding: '10px 12px', background: '#F9FAFB', borderRadius: '10px', border: '1px solid #DCE7E1' }}>
                                             <input
                                                 type="checkbox" checked={saveToNotion} onChange={(e) => setSaveToNotion(e.target.checked)}
                                                 style={{ width: '16px', height: '16px', accentColor: 'var(--domain-orange)' }}
                                             />
-                                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Guardar también en Notion</span>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#4A5F58' }}>Guardar también en Notion</span>
                                         </label>
                                     )}
 
                                     {showRepeat && (
                                         <div style={{ marginBottom: '14px' }}>
-                                            <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Se repite</label>
+                                            <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#6C8079', textTransform: 'uppercase' }}>Se repite</label>
                                             <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
                                                 {DIAS_CORTOS.map((d, i) => {
                                                     const isSet = editRepeatDays.includes(i);
@@ -1891,8 +1891,8 @@ export const TimelineAgendaView = ({
                                                             style={{
                                                                 width: '30px', height: '30px', borderRadius: '8px', border: 'none', cursor: 'pointer',
                                                                 fontSize: '0.7rem', fontWeight: 900,
-                                                                background: isSet ? 'var(--domain-orange)' : '#F1F5F9',
-                                                                color: isSet ? 'white' : '#94A3B8'
+                                                                background: isSet ? 'var(--domain-orange)' : '#F7FAF8',
+                                                                color: isSet ? 'white' : '#6C8079'
                                                             }}
                                                         >
                                                             {d}
@@ -1907,7 +1907,7 @@ export const TimelineAgendaView = ({
                             })()}
 
                             <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
-                                <button onClick={() => setEditingItem(null)} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid #E2E8F0', background: 'white', fontWeight: 800, cursor: 'pointer' }}>Cancelar</button>
+                                <button onClick={() => setEditingItem(null)} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid #DCE7E1', background: 'white', fontWeight: 800, cursor: 'pointer' }}>Cancelar</button>
                                 <button onClick={saveEditingItem} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: 'var(--domain-orange)', color: 'white', fontWeight: 800, cursor: 'pointer' }}>Guardar</button>
                             </div>
                         </motion.div>

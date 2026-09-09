@@ -19,7 +19,7 @@ interface Props {
     removeExpense: (projectId: number, expenseId: number) => void;
 }
 
-const COLORS = ['#059669', '#4D96FF', '#06D6A0', '#F72585', '#7209B7', '#3A0CA3', '#4CC9F0', '#F94144', '#90BE6D', '#F9C74F'];
+const COLORS = ['#0FA97A', '#4D96FF', '#06D6A0', '#F72585', '#7209B7', '#3A0CA3', '#4CC9F0', '#F94144', '#90BE6D', '#F9C74F'];
 
 const fmt = (n: number) => n.toLocaleString('es-PE', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
@@ -137,7 +137,7 @@ export const NegocioDashboard = ({
                 >
                     <div style={{
                         position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                        background: 'radial-gradient(circle at 50% 50%, rgba(5, 150, 105,0.12) 0%, transparent 70%)',
+                        background: 'radial-gradient(circle at 50% 50%, rgba(15, 169, 122,0.12) 0%, transparent 70%)',
                         pointerEvents: 'none'
                     }} />
 
@@ -323,7 +323,7 @@ export const NegocioDashboard = ({
                                                                 <div key={client.id} style={{
                                                                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                                                                     padding: '0.5rem 0.75rem', borderRadius: '10px',
-                                                                    background: 'var(--bg-cream, #F8FAFC)', fontSize: '0.8rem'
+                                                                    background: 'var(--bg-cream, #F7FAF8)', fontSize: '0.8rem'
                                                                 }}>
                                                                     <span style={{ fontWeight: 600 }}>{client.name}</span>
                                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -507,13 +507,13 @@ export const NegocioDashboard = ({
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setAddingProject(true)}
                     style={{
-                        background: 'var(--bg-cream, #F8FAFC)',
-                        border: '2px dashed #CBD5E1',
+                        background: 'var(--bg-cream, #F7FAF8)',
+                        border: '2px dashed #DCE7E1',
                         borderRadius: '20px',
                         padding: '1.5rem',
                         cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                        color: '#059669', fontWeight: 700, fontSize: '0.9rem',
+                        color: '#0FA97A', fontWeight: 700, fontSize: '0.9rem',
                         fontFamily: 'inherit'
                     }}
                 >
@@ -534,7 +534,7 @@ export const NegocioDashboard = ({
                         value={newProjectName}
                         onChange={e => setNewProjectName(e.target.value)}
                         style={{
-                            width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1px solid #E2E8F0',
+                            width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1px solid #DCE7E1',
                             fontSize: '0.9rem', fontFamily: 'inherit', marginBottom: '0.75rem', boxSizing: 'border-box',
                             outline: 'none'
                         }}
@@ -547,7 +547,7 @@ export const NegocioDashboard = ({
                                 key={c}
                                 onClick={() => setNewProjectColor(c)}
                                 style={{
-                                    width: '28px', height: '28px', borderRadius: '50%', border: newProjectColor === c ? `3px solid ${c}` : '2px solid #E2E8F0',
+                                    width: '28px', height: '28px', borderRadius: '50%', border: newProjectColor === c ? `3px solid ${c}` : '2px solid #DCE7E1',
                                     background: c, cursor: 'pointer', transition: 'all 0.15s',
                                     transform: newProjectColor === c ? 'scale(1.2)' : 'scale(1)'
                                 }}
@@ -558,7 +558,7 @@ export const NegocioDashboard = ({
                         <button
                             onClick={handleAddProject}
                             style={{
-                                background: '#059669', color: '#fff', border: 'none', borderRadius: '12px',
+                                background: '#0FA97A', color: '#fff', border: 'none', borderRadius: '12px',
                                 padding: '10px 20px', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem', fontFamily: 'inherit'
                             }}
                         >
@@ -567,7 +567,7 @@ export const NegocioDashboard = ({
                         <button
                             onClick={() => { setAddingProject(false); setNewProjectName(''); }}
                             style={{
-                                background: 'transparent', color: '#888', border: '1px solid #E2E8F0', borderRadius: '12px',
+                                background: 'transparent', color: '#888', border: '1px solid #DCE7E1', borderRadius: '12px',
                                 padding: '10px 20px', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem', fontFamily: 'inherit'
                             }}
                         >
@@ -636,7 +636,7 @@ interface ItemRowProps {
 const ItemRow = ({ label, sublabel, amount, amountColor, onEdit, onRemove }: ItemRowProps) => (
     <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '8px 12px', borderRadius: '10px', background: 'var(--bg-cream, #F8FAFC)',
+        padding: '8px 12px', borderRadius: '10px', background: 'var(--bg-cream, #F7FAF8)',
         transition: 'background 0.15s'
     }}>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -667,8 +667,8 @@ const AddForm = ({ fields, onAdd, onCancel }: AddFormProps) => (
         animate={{ opacity: 1, height: 'auto' }}
         exit={{ opacity: 0, height: 0 }}
         style={{
-            padding: '10px 12px', borderRadius: '12px', background: '#F1F5F9',
-            border: '1px solid #E2E8F0'
+            padding: '10px 12px', borderRadius: '12px', background: '#F7FAF8',
+            border: '1px solid #DCE7E1'
         }}
     >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
@@ -680,7 +680,7 @@ const AddForm = ({ fields, onAdd, onCancel }: AddFormProps) => (
                     onChange={e => f.set(e.target.value)}
                     type={f.type || 'text'}
                     style={{
-                        padding: '8px 12px', borderRadius: '8px', border: '1px solid #E2E8F0',
+                        padding: '8px 12px', borderRadius: '8px', border: '1px solid #DCE7E1',
                         fontSize: '0.8rem', fontFamily: 'inherit', outline: 'none', width: '100%', boxSizing: 'border-box'
                     }}
                     onKeyDown={e => { if (e.key === 'Enter') onAdd(); }}
@@ -688,10 +688,10 @@ const AddForm = ({ fields, onAdd, onCancel }: AddFormProps) => (
             ))}
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
-            <button onClick={onAdd} style={{ background: '#059669', color: '#fff', border: 'none', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer', fontWeight: 700, fontSize: '0.75rem', fontFamily: 'inherit' }}>
+            <button onClick={onAdd} style={{ background: '#0FA97A', color: '#fff', border: 'none', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer', fontWeight: 700, fontSize: '0.75rem', fontFamily: 'inherit' }}>
                 Agregar
             </button>
-            <button onClick={onCancel} style={{ background: 'transparent', color: '#888', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer', fontWeight: 600, fontSize: '0.75rem', fontFamily: 'inherit' }}>
+            <button onClick={onCancel} style={{ background: 'transparent', color: '#888', border: '1px solid #DCE7E1', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer', fontWeight: 600, fontSize: '0.75rem', fontFamily: 'inherit' }}>
                 Cancelar
             </button>
         </div>
@@ -720,7 +720,7 @@ const InlineEdit = ({ fields, editValue, setEditValue, onSave, onCancel }: Inlin
                     onChange={e => setEditValue({ ...editValue, [f.key]: f.type === 'number' ? (e.target.value === '' ? '' : parseFloat(e.target.value) || 0) : e.target.value })}
                     type={f.type || 'text'}
                     style={{
-                        padding: '8px 12px', borderRadius: '8px', border: '1px solid #E2E8F0',
+                        padding: '8px 12px', borderRadius: '8px', border: '1px solid #DCE7E1',
                         fontSize: '0.8rem', fontFamily: 'inherit', outline: 'none', width: '100%', boxSizing: 'border-box'
                     }}
                     onKeyDown={e => { if (e.key === 'Enter') onSave(); if (e.key === 'Escape') onCancel(); }}
@@ -732,7 +732,7 @@ const InlineEdit = ({ fields, editValue, setEditValue, onSave, onCancel }: Inlin
             <button onClick={onSave} style={{ background: '#06D6A0', color: '#fff', border: 'none', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, fontSize: '0.75rem', fontFamily: 'inherit' }}>
                 <Check size={13} /> Guardar
             </button>
-            <button onClick={onCancel} style={{ background: 'transparent', color: '#888', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600, fontSize: '0.75rem', fontFamily: 'inherit' }}>
+            <button onClick={onCancel} style={{ background: 'transparent', color: '#888', border: '1px solid #DCE7E1', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600, fontSize: '0.75rem', fontFamily: 'inherit' }}>
                 <X size={13} /> Cancelar
             </button>
         </div>

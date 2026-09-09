@@ -191,8 +191,8 @@ export const BentoGrid = ({ performanceScore, missions }: BentoGridProps) => {
                             className="pomo-mode-select"
                             style={{ 
                                 fontSize: '0.65rem', 
-                                background: 'rgba(5, 150, 105, 0.15)', 
-                                border: '1px solid rgba(5, 150, 105, 0.3)', 
+                                background: 'rgba(15, 169, 122, 0.15)', 
+                                border: '1px solid rgba(15, 169, 122, 0.3)', 
                                 borderRadius: '8px',
                                 color: 'var(--domain-orange)',
                                 fontWeight: 900,
@@ -243,7 +243,7 @@ export const BentoGrid = ({ performanceScore, missions }: BentoGridProps) => {
                     onClick={toggleTimer}
                     style={{ 
                         cursor: 'pointer',
-                        background: `conic-gradient(${isBreak ? 'var(--domain-green)' : 'var(--domain-orange)'} ${circleProgress}deg, #FFF5EB 0deg)`,
+                        background: `conic-gradient(${isBreak ? 'var(--domain-green)' : 'var(--domain-orange)'} ${circleProgress}deg, #EDF3F0 0deg)`,
                         border: 'none',
                         position: 'relative',
                         display: 'flex',
@@ -312,7 +312,7 @@ export const BentoGrid = ({ performanceScore, missions }: BentoGridProps) => {
                                 flex: 1, 
                                 height: '6px', 
                                 borderRadius: '3px', 
-                                background: s < currentSession ? 'var(--domain-orange)' : (s === currentSession ? '#ECFDF5' : '#F9F9F9'),
+                                background: s < currentSession ? 'var(--domain-orange)' : (s === currentSession ? '#DFF3E9' : '#F9F9F9'),
                                 overflow: 'hidden',
                                 position: 'relative',
                                 border: s === currentSession ? '1.5px solid #EEE' : 'none'

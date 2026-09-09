@@ -16,15 +16,15 @@ import { ConfirmDialog } from "../ui/ConfirmDialog";
 const ORDER_STORAGE_KEY = "aldia_esporadicos_custom_order";
 
 const ESTADO_COLOR: Record<NotionEstado, string> = {
-    'Agendado': '#6366F1',
+    'Agendado': '#3ED9A0',
     'Realizado': '#8B5CF6',
-    'En Edición': '#E6A817',
+    'En Edición': '#B9760A',
     // Azul, no verde: "Terminado" es solo "ya no le falta edición", NO que ya se
     // entregó -- si usa el mismo verde que "Entregado" (o que el resto de la app
     // usa para "listo/hecho"), la pastilla da la falsa sensación de que ya está
     // todo resuelto y el USB físico se queda sin salir porque parece innecesario.
     'Terminado': '#2563EB',
-    'Entregado': '#059669',
+    'Entregado': '#0FA97A',
 };
 
 // Escribe el Estado de vuelta en Notion; el llamador ya actualiza el estado local
@@ -1481,7 +1481,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                                     title="Días antes de la entrega para mandar el adelanto — tocar para cambiar"
                                     style={{
                                         display: "flex", alignItems: "center", gap: "4px",
-                                        background: adelantoDaysLeft !== undefined && adelantoDaysLeft < 0 ? "rgba(239,68,68,0.1)" : adelantoDaysLeft !== undefined && adelantoDaysLeft <= 1 ? "rgba(230,168,23,0.14)" : "rgba(5, 150, 105,0.08)",
+                                        background: adelantoDaysLeft !== undefined && adelantoDaysLeft < 0 ? "rgba(239,68,68,0.1)" : adelantoDaysLeft !== undefined && adelantoDaysLeft <= 1 ? "rgba(230,168,23,0.14)" : "rgba(15, 169, 122,0.08)",
                                         color: adelantoDaysLeft !== undefined && adelantoDaysLeft < 0 ? C.rojo : adelantoDaysLeft !== undefined && adelantoDaysLeft <= 1 ? C.ambar : C.secondary,
                                         border: "none", borderRadius: "999px", padding: "2px 8px", fontSize: "0.62rem", fontWeight: 800, cursor: "pointer",
                                     }}

@@ -50,10 +50,10 @@ const CAT_STYLES: Record<string, { color: string; bg: string; label: string }> =
 };
 
 const STATUS_STYLES: Record<string, { color: string; bg: string; label: string }> = {
-  pendiente:     { color: '#94A3B8', bg: '#F1F5F9', label: 'Pendiente' },
+  pendiente:     { color: '#6C8079', bg: '#F7FAF8', label: 'Pendiente' },
   'en-progreso': { color: '#FF8E53', bg: '#FFF3E8', label: 'En progreso' },
   completado:    { color: '#6BCB77', bg: '#F0FFF4', label: 'Completado ✓' },
-  'en-espera':   { color: '#CBD5E1', bg: '#F8FAFC', label: '⏸ En espera' },
+  'en-espera':   { color: '#DCE7E1', bg: '#F7FAF8', label: '⏸ En espera' },
 };
 
 const formatMXN = (n: number) =>
@@ -189,7 +189,7 @@ const DEFAULT_MILESTONES: RitaMilestone[] = [
     title: 'Geekoedia — Canal de Películas',
     description: 'Canal de contenido cinematográfico / reviews / listas de películas. Actualmente en espera / desactivado. Puede reactivarse cuando haya más capacidad o se encuentre un modelo de contenido sin problemas de derechos. Potencial: monetización + comunidad geek.',
     cost: 0, status: 'en-espera' as any,
-    color: '#94A3B8', category: 'personal',
+    color: '#6C8079', category: 'personal',
     subitems: [
       { id: 91, text: 'Definir nicho exacto (reviews, listas, análisis)', completed: false },
       { id: 92, text: 'Resolver tema de derechos de autor', completed: false },
@@ -455,7 +455,7 @@ export const RitaDashboard = ({
                   : milestone.status === 'en-progreso'
                   ? `linear-gradient(135deg, ${milestone.color}, ${milestone.color}cc)`
                   : isOnHold
-                  ? '#F1F5F9'
+                  ? '#F7FAF8'
                   : 'white',
                 border: `3px solid ${milestone.color}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -627,7 +627,7 @@ export const RitaDashboard = ({
                     <span style={{
                       fontSize: '0.67rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px',
                       background: milestone.generatesIncome ? '#E6F9F0' : '#F5F5F5',
-                      color: milestone.generatesIncome ? '#10B981' : '#6B7280'
+                      color: milestone.generatesIncome ? '#0E9F6E' : '#6B7280'
                     }}>
                       {milestone.generatesIncome ? '💰 Genera Ingresos' : '💸 Sin Retorno Directo'}
                     </span>
@@ -875,7 +875,7 @@ export const RitaDashboard = ({
                     {milestone.generatesIncome && (
                       <span style={{
                         position: 'absolute', right: '-4px', top: '-4px',
-                        background: '#10B981', color: 'white', borderRadius: '50%',
+                        background: '#0E9F6E', color: 'white', borderRadius: '50%',
                         width: '16px', height: '16px', display: 'flex', alignItems: 'center',
                         justifyContent: 'center', fontSize: '9px', fontWeight: 900,
                         border: '2px solid white'
@@ -1036,7 +1036,7 @@ export const RitaDashboard = ({
               <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#aaa' }}>{completedCount} de {entries.length} hitos</span>
             </div>
             {/* Barra de progreso */}
-            <div style={{ height: '8px', background: '#F1F5F9', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{ height: '8px', background: '#F7FAF8', borderRadius: '4px', overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${progressPercent}%`, background: 'linear-gradient(90deg, #6BCB77, #4D96FF)', borderRadius: '4px' }} />
             </div>
           </div>
@@ -1119,7 +1119,7 @@ export const RitaDashboard = ({
                     <span>{line.completed}/{line.total} ({line.percent}%)</span>
                   </div>
                   {/* Mini barra de progreso */}
-                  <div style={{ height: '5px', background: '#F1F5F9', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ height: '5px', background: '#F7FAF8', borderRadius: '3px', overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${line.percent}%`, background: line.color, borderRadius: '3px' }} />
                   </div>
                 </div>
@@ -1135,15 +1135,15 @@ export const RitaDashboard = ({
               </h4>
               <span style={{
                 fontSize: '0.72rem', fontWeight: 900, padding: '3px 10px', borderRadius: '20px',
-                background: dailyDoneCount === DAILY_HABITS.length ? '#D1FAE5' : '#FFF3E8',
-                color: dailyDoneCount === DAILY_HABITS.length ? '#059669' : '#F59E0B'
+                background: dailyDoneCount === DAILY_HABITS.length ? '#CDEDDD' : '#FFF3E8',
+                color: dailyDoneCount === DAILY_HABITS.length ? '#0FA97A' : '#F59E0B'
               }}>
                 {dailyDoneCount}/{DAILY_HABITS.length} hoy
               </span>
             </div>
 
             {/* Barra de progreso del día */}
-            <div style={{ height: '6px', background: '#F1F5F9', borderRadius: '4px', overflow: 'hidden', marginBottom: '1.2rem' }}>
+            <div style={{ height: '6px', background: '#F7FAF8', borderRadius: '4px', overflow: 'hidden', marginBottom: '1.2rem' }}>
               <div style={{
                 height: '100%',
                 width: `${(dailyDoneCount / DAILY_HABITS.length) * 100}%`,
@@ -1192,9 +1192,9 @@ export const RitaDashboard = ({
 
             {dailyDoneCount === DAILY_HABITS.length && (
               <div style={{
-                marginTop: '1rem', background: 'linear-gradient(135deg, #D1FAE5, #A7F3D0)',
+                marginTop: '1rem', background: 'linear-gradient(135deg, #CDEDDD, #A7F3D0)',
                 borderRadius: '14px', padding: '12px', textAlign: 'center',
-                fontSize: '0.82rem', fontWeight: 900, color: '#059669'
+                fontSize: '0.82rem', fontWeight: 900, color: '#0FA97A'
               }}>
                 🎉 ¡Todo listo por hoy! Sigue así.
               </div>
@@ -1273,7 +1273,7 @@ export const RitaDashboard = ({
               </div>
 
               {/* Checkbox Generación de Dinero */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.87rem', fontWeight: 800, color: '#333', background: '#F0FFF4', padding: '10px 14px', borderRadius: '12px', border: '1px solid #D1FAE5' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.87rem', fontWeight: 800, color: '#333', background: '#F0FFF4', padding: '10px 14px', borderRadius: '12px', border: '1px solid #CDEDDD' }}>
                 <input type="checkbox" checked={form.generatesIncome} onChange={e => setForm(p => ({ ...p, generatesIncome: e.target.checked }))}
                   style={{ width: '18px', height: '18px', cursor: 'pointer' }} />
                 💰 ¿Genera ingresos o dinero?

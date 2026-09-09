@@ -863,7 +863,7 @@ export const useAlDiaState = () => {
                 { id: 3, name: '🎬 RCC', color: '#F72585' },
                 { id: 4, name: '🛒 Boga Marketplace', color: '#6BCB77' },
                 { id: 5, name: '📸 ICONO Agency', color: '#4D96FF' },
-                { id: 6, name: '🎞️ Geekoedia', color: '#CBD5E1' },
+                { id: 6, name: '🎞️ Geekoedia', color: '#DCE7E1' },
                 { id: 7, name: '👤 Juanma', color: '#FF8E53' }
             ];
 

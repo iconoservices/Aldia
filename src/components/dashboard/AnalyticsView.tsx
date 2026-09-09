@@ -75,27 +75,27 @@ const AccountSelectModal = ({ open, accounts, initialSelection, onSave, onCancel
                         style={{ background: 'white', borderRadius: '20px', padding: '1.4rem', width: '100%', maxWidth: '380px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
                     >
                         <h3 style={{ margin: '0 0 6px', fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-carbon)' }}>¿Qué cuentas quieres ver?</h3>
-                        <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', color: '#64748B', lineHeight: 1.4 }}>
+                        <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', color: '#6C8079', lineHeight: 1.4 }}>
                             El análisis solo mostrará los movimientos de las cuentas que marques.
                         </p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto', marginBottom: '1rem' }}>
                             <button
                                 onClick={() => toggle(NONE_ACCOUNT_KEY)}
-                                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '12px', border: `1px solid ${isSelected(NONE_ACCOUNT_KEY) ? '#0F172A' : '#E2E8F0'}`, background: 'white', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '12px', border: `1px solid ${isSelected(NONE_ACCOUNT_KEY) ? '#0C2A20' : '#DCE7E1'}`, background: 'white', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
                             >
-                                <span style={{ width: '18px', height: '18px', borderRadius: '5px', border: '2px solid #0F172A', background: isSelected(NONE_ACCOUNT_KEY) ? '#0F172A' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <span style={{ width: '18px', height: '18px', borderRadius: '5px', border: '2px solid #0C2A20', background: isSelected(NONE_ACCOUNT_KEY) ? '#0C2A20' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                     {isSelected(NONE_ACCOUNT_KEY) && <Check size={12} color="white" />}
                                 </span>
-                                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#94A3B8', flexShrink: 0 }} />
+                                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#6C8079', flexShrink: 0 }} />
                                 <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-carbon)' }}>Sin cuenta</span>
                             </button>
                             {accounts.map(a => (
                                 <button
                                     key={a.id}
                                     onClick={() => toggle(a.id)}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '12px', border: `1px solid ${isSelected(a.id) ? '#0F172A' : '#E2E8F0'}`, background: 'white', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '12px', border: `1px solid ${isSelected(a.id) ? '#0C2A20' : '#DCE7E1'}`, background: 'white', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
                                 >
-                                    <span style={{ width: '18px', height: '18px', borderRadius: '5px', border: '2px solid #0F172A', background: isSelected(a.id) ? '#0F172A' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    <span style={{ width: '18px', height: '18px', borderRadius: '5px', border: '2px solid #0C2A20', background: isSelected(a.id) ? '#0C2A20' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                         {isSelected(a.id) && <Check size={12} color="white" />}
                                     </span>
                                     <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: a.color, flexShrink: 0 }} />
@@ -104,12 +104,12 @@ const AccountSelectModal = ({ open, accounts, initialSelection, onSave, onCancel
                             ))}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-                            <span style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600 }}>{count} seleccionada{count === 1 ? '' : 's'}</span>
+                            <span style={{ fontSize: '0.75rem', color: '#6C8079', fontWeight: 600 }}>{count} seleccionada{count === 1 ? '' : 's'}</span>
                             <div style={{ display: 'flex', gap: '8px' }}>
-                                <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: '10px', border: '1px solid #E2E8F0', background: 'white', color: '#475569', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: '10px', border: '1px solid #DCE7E1', background: 'white', color: '#4A5F58', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit' }}>
                                     Cancelar
                                 </button>
-                                <button onClick={() => onSave(draft)} style={{ padding: '9px 16px', borderRadius: '10px', border: 'none', background: '#0F172A', color: 'white', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                <button onClick={() => onSave(draft)} style={{ padding: '9px 16px', borderRadius: '10px', border: 'none', background: '#0C2A20', color: 'white', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit' }}>
                                     Guardar selección
                                 </button>
                             </div>
@@ -236,7 +236,7 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
     // De qué cuenta sale cada porción de una fila (Categoría/Grupo) — para pintar
     // la barra "partida" por color de cuenta en vez de un solo color, y así ver
     // de un vistazo si ese gasto es de Personal, del negocio, o de ambos.
-    const SIN_CUENTA_COLOR = '#CBD5E1';
+    const SIN_CUENTA_COLOR = '#DCE7E1';
     const breakdownAccountSegments = useMemo(() => {
         if (breakdownGroupBy === 'account') return {} as Record<string, { color: string; amount: number }[]>;
         const byKey: Record<string, Record<string, number>> = {};
@@ -317,7 +317,7 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
     const netDebt = owe - owed;
 
     const health = useMemo(() => {
-        if (periodStats.income <= 0) return { label: 'Sin datos', color: '#64748B', bg: '#F1F5F9' };
+        if (periodStats.income <= 0) return { label: 'Sin datos', color: '#6C8079', bg: '#F7FAF8' };
         if (savingsRate < 0) return { label: 'En rojo', color: '#ef4444', bg: '#fee2e2' };
         if (savingsRate < 10) return { label: 'Ajustado', color: '#f59e0b', bg: '#fef3c7' };
         if (savingsRate < 20) return { label: 'Aceptable', color: '#f59e0b', bg: '#fef3c7' };
@@ -325,7 +325,7 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
     }, [savingsRate, periodStats.income]);
 
     const donutGradient = useMemo(() => {
-        if (breakdownData.length === 0 || breakdownTotal <= 0) return 'conic-gradient(#F1F5F9 0% 100%)';
+        if (breakdownData.length === 0 || breakdownTotal <= 0) return 'conic-gradient(#F7FAF8 0% 100%)';
         let acc = 0;
         const stops = breakdownData.map((cat, i) => {
             const pct = (cat.amount / breakdownTotal) * 100;
@@ -422,23 +422,23 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                         <button
                             onClick={() => setAccountModalOpen(true)}
                             title={`Cuentas: ${accountFilterLabel}`}
-                            style={{ padding: '5px 7px', borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', background: '#F1F5F9', color: '#64748B' }}
+                            style={{ padding: '5px 7px', borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', background: '#F7FAF8', color: '#6C8079' }}
                         >
                             <Filter size={13} />
                         </button>
                     )}
-                    <div style={{ display: 'flex', background: '#F1F5F9', padding: '3px', borderRadius: '10px', gap: '2px' }}>
+                    <div style={{ display: 'flex', background: '#F7FAF8', padding: '3px', borderRadius: '10px', gap: '2px' }}>
                         <button
                             onClick={() => setCategoryView('bars')}
                             title="Ver como lista"
-                            style={{ padding: '5px 7px', borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', background: categoryView === 'bars' ? 'white' : 'transparent', color: categoryView === 'bars' ? breakdownAccent : '#94A3B8', boxShadow: categoryView === 'bars' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}
+                            style={{ padding: '5px 7px', borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', background: categoryView === 'bars' ? 'white' : 'transparent', color: categoryView === 'bars' ? breakdownAccent : '#6C8079', boxShadow: categoryView === 'bars' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}
                         >
                             <List size={13} />
                         </button>
                         <button
                             onClick={() => setCategoryView('pie')}
                             title="Ver como gráfico circular"
-                            style={{ padding: '5px 7px', borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', background: categoryView === 'pie' ? 'white' : 'transparent', color: categoryView === 'pie' ? breakdownAccent : '#94A3B8', boxShadow: categoryView === 'pie' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}
+                            style={{ padding: '5px 7px', borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', background: categoryView === 'pie' ? 'white' : 'transparent', color: categoryView === 'pie' ? breakdownAccent : '#6C8079', boxShadow: categoryView === 'pie' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}
                         >
                             <PieChart size={13} />
                         </button>
@@ -447,19 +447,19 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto' }}>
-                <div style={{ display: 'flex', background: '#F1F5F9', borderRadius: '999px', padding: '3px', gap: '2px', flexShrink: 0 }}>
+                <div style={{ display: 'flex', background: '#F7FAF8', borderRadius: '999px', padding: '3px', gap: '2px', flexShrink: 0 }}>
                     {([['gasto', 'Gastos'], ['ingreso', 'Ingresos']] as ['gasto' | 'ingreso', string][]).map(([t, label]) => (
                         <button
                             key={t}
                             onClick={() => setBreakdownType(t)}
-                            style={{ border: 'none', borderRadius: '999px', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap', padding: '5px 9px', fontSize: '0.66rem', fontWeight: 700, fontFamily: 'inherit', background: breakdownType === t ? 'white' : 'transparent', color: breakdownType === t ? (t === 'gasto' ? '#ef4444' : '#10b981') : '#94A3B8', boxShadow: breakdownType === t ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}
+                            style={{ border: 'none', borderRadius: '999px', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap', padding: '5px 9px', fontSize: '0.66rem', fontWeight: 700, fontFamily: 'inherit', background: breakdownType === t ? 'white' : 'transparent', color: breakdownType === t ? (t === 'gasto' ? '#ef4444' : '#10b981') : '#6C8079', boxShadow: breakdownType === t ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}
                         >
                             {label}
                         </button>
                     ))}
                 </div>
                 {(accounts.length > 0 || hasGroups) && (
-                    <div style={{ display: 'flex', background: '#F1F5F9', borderRadius: '999px', padding: '3px', gap: '2px', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', background: '#F7FAF8', borderRadius: '999px', padding: '3px', gap: '2px', flexShrink: 0 }}>
                         {([
                             ['category', 'Categoría'],
                             ...(hasGroups ? [['group', 'Grupo']] as const : []),
@@ -468,7 +468,7 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                             <button
                                 key={g}
                                 onClick={() => setBreakdownGroupBy(g)}
-                                style={{ border: 'none', borderRadius: '999px', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap', padding: '5px 9px', fontSize: '0.66rem', fontWeight: 700, fontFamily: 'inherit', background: breakdownGroupBy === g ? 'white' : 'transparent', color: breakdownGroupBy === g ? '#475569' : '#94A3B8', boxShadow: breakdownGroupBy === g ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}
+                                style={{ border: 'none', borderRadius: '999px', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap', padding: '5px 9px', fontSize: '0.66rem', fontWeight: 700, fontFamily: 'inherit', background: breakdownGroupBy === g ? 'white' : 'transparent', color: breakdownGroupBy === g ? '#4A5F58' : '#6C8079', boxShadow: breakdownGroupBy === g ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}
                             >
                                 {label}
                             </button>
@@ -483,12 +483,12 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
             {showAccountSplit && categoryView === 'bars' && breakdownData.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '-4px' }}>
                     {accounts.map(a => (
-                        <span key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.66rem', fontWeight: 700, color: '#64748B' }}>
+                        <span key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.66rem', fontWeight: 700, color: '#6C8079' }}>
                             <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: a.color, flexShrink: 0 }} />
                             {a.name}
                         </span>
                     ))}
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.66rem', fontWeight: 700, color: '#64748B' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.66rem', fontWeight: 700, color: '#6C8079' }}>
                         <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: SIN_CUENTA_COLOR, flexShrink: 0 }} />
                         Sin cuenta
                     </span>
@@ -514,7 +514,7 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                                     <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-carbon)' }}>{cat.name}</span>
                                     <span style={{ fontSize: '0.85rem', fontWeight: 900, color: '#666' }}>S/.{cat.amount.toLocaleString()} ({percentage.toFixed(1)}%)</span>
                                 </div>
-                                <div style={{ height: '8px', background: '#F1F5F9', borderRadius: '4px', overflow: 'hidden', display: 'flex' }}>
+                                <div style={{ height: '8px', background: '#F7FAF8', borderRadius: '4px', overflow: 'hidden', display: 'flex' }}>
                                     {showAccountSplit ? (
                                         (breakdownAccountSegments[cat.name] || []).map((seg, si) => (
                                             <motion.div
@@ -533,11 +533,11 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                                     )}
                                 </div>
                                 {isExpanded && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', padding: '8px 0 2px 12px', borderLeft: '2px solid #F1F5F9', marginLeft: '4px' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', padding: '8px 0 2px 12px', borderLeft: '2px solid #F7FAF8', marginLeft: '4px' }}>
                                         {getSubBreakdown(cat.name).map(sub => (
                                             <div key={sub.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                                                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748B' }}>{sub.name}</span>
-                                                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#94A3B8' }}>S/.{sub.amount.toLocaleString()} ({((sub.amount / (cat.amount || 1)) * 100).toFixed(0)}%)</span>
+                                                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#6C8079' }}>{sub.name}</span>
+                                                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#6C8079' }}>S/.{sub.amount.toLocaleString()} ({((sub.amount / (cat.amount || 1)) * 100).toFixed(0)}%)</span>
                                             </div>
                                         ))}
                                     </div>
@@ -550,7 +550,7 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.2rem' }}>
                     <div style={{ width: '160px', height: '160px', borderRadius: '50%', background: donutGradient, position: 'relative', flexShrink: 0 }}>
                         <div style={{ position: 'absolute', inset: '24px', background: 'white', borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-                            <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#94A3B8' }}>{breakdownType === 'gasto' ? 'GASTO' : 'INGRESO'} TOTAL</span>
+                            <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#6C8079' }}>{breakdownType === 'gasto' ? 'GASTO' : 'INGRESO'} TOTAL</span>
                             <span style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-carbon)' }}>S/.{breakdownTotal.toLocaleString()}</span>
                         </div>
                     </div>
@@ -672,10 +672,10 @@ export const AnalyticsView = ({ transactions, onClose, owe = 0, owed = 0, accoun
 
                 const Stat = ({ label, value, color, trend }: { label: string; value: string; color?: string; trend?: string }) => (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                        <span style={{ fontSize: '0.58rem', fontWeight: 800, color: '#94A3B8', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>{label}</span>
+                        <span style={{ fontSize: '0.58rem', fontWeight: 800, color: '#6C8079', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>{label}</span>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px' }}>
                             <span style={{ fontSize: isDesktop ? '0.92rem' : '0.82rem', fontWeight: 900, color: color || 'var(--text-carbon)', whiteSpace: 'nowrap' }}>{value}</span>
-                            {trend && <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94A3B8' }}>{trend}</span>}
+                            {trend && <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#6C8079' }}>{trend}</span>}
                         </div>
                     </div>
                 );

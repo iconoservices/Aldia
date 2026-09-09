@@ -17,10 +17,10 @@ export const TimeBlockModal = ({ isOpen, onClose, onAdd }: TimeBlockModalProps) 
     const colors = [
         { name: 'Purple', value: '#8A5CF6' },
         { name: 'Blue', value: '#3B82F6' },
-        { name: 'Orange', value: '#059669' },
-        { name: 'Green', value: '#10B981' },
+        { name: 'Orange', value: '#0FA97A' },
+        { name: 'Green', value: '#0E9F6E' },
         { name: 'Pink', value: '#EC4899' },
-        { name: 'Indigo', value: '#6366F1' }
+        { name: 'Indigo', value: '#3ED9A0' }
     ];
 
     const handleSubmit = (e: React.FormEvent) => {

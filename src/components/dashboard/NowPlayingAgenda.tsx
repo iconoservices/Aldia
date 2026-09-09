@@ -53,7 +53,7 @@ export const NowPlayingAgenda = ({ agenda }: NowPlayingAgendaProps) => {
                         color: currentEvent ? 'var(--domain-orange)' : '#888',
                         textTransform: 'uppercase',
                         letterSpacing: '1px',
-                        background: currentEvent ? 'rgba(5, 150, 105, 0.1)' : '#F5F5F5',
+                        background: currentEvent ? 'rgba(15, 169, 122, 0.1)' : '#F5F5F5',
                         padding: '4px 10px',
                         borderRadius: '8px'
                     }}>
@@ -93,7 +93,7 @@ export const NowPlayingAgenda = ({ agenda }: NowPlayingAgendaProps) => {
 
             {/* Pequeño indicador de progreso de la reunión si está activa */}
             {currentEvent && (
-                <div style={{ width: '100%', height: '4px', background: '#ECFDF5', borderRadius: '2px', marginTop: '15px', overflow: 'hidden' }}>
+                <div style={{ width: '100%', height: '4px', background: '#DFF3E9', borderRadius: '2px', marginTop: '15px', overflow: 'hidden' }}>
                     <div style={{ width: '45%', height: '100%', background: 'var(--domain-orange)', borderRadius: '2px' }}></div>
                 </div>
             )}

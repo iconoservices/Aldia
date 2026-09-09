@@ -14,13 +14,13 @@ const CARD: React.CSSProperties = {
     background: "#FFFFFF",
     borderRadius: "16px",
     padding: "1.5rem",
-    border: "1px solid #E2E8F0",
+    border: "1px solid #DCE7E1",
     boxShadow: "0px 4px 12px rgba(15,23,42,0.04)",
 };
 const LABEL: React.CSSProperties = {
     fontSize: "0.68rem",
     fontWeight: 800,
-    color: "#64748B",
+    color: "#6C8079",
     textTransform: "uppercase" as const,
     letterSpacing: "0.06em",
 };
@@ -60,7 +60,7 @@ const MiniCalculator = () => {
                 <CalculatorIcon size={15} color="#F59E0B" />
                 <span style={LABEL}>Calculadora</span>
             </div>
-            <div style={{ background: '#F8FAFC', borderRadius: '10px', padding: '10px 12px', marginBottom: '10px', minHeight: '2.4rem', fontSize: '1.3rem', fontWeight: 700, color: '#0F172A', textAlign: 'right', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+            <div style={{ background: '#F7FAF8', borderRadius: '10px', padding: '10px 12px', marginBottom: '10px', minHeight: '2.4rem', fontSize: '1.3rem', fontWeight: 700, color: '#0C2A20', textAlign: 'right', overflowX: 'auto', whiteSpace: 'nowrap' }}>
                 {expr || '0'}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
@@ -73,8 +73,8 @@ const MiniCalculator = () => {
                         cursor: 'pointer',
                         fontSize: '0.9rem',
                         fontWeight: 700,
-                        background: k.kind === 'equals' ? '#F59E0B' : k.kind === 'op' ? '#FEF3C7' : k.kind === 'clear' ? '#FEE2E2' : '#F1F5F9',
-                        color: k.kind === 'equals' ? '#fff' : k.kind === 'clear' ? '#DC2626' : '#0F172A',
+                        background: k.kind === 'equals' ? '#F59E0B' : k.kind === 'op' ? '#FEF3C7' : k.kind === 'clear' ? '#FEE2E2' : '#F7FAF8',
+                        color: k.kind === 'equals' ? '#fff' : k.kind === 'clear' ? '#C63C3C' : '#0C2A20',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                         {k.kind === 'back' ? <Delete size={15} /> : k.label}
@@ -163,32 +163,32 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                         <FlaskConical size={15} color="#F59E0B" />
                         <span style={LABEL}>Plan del Mes</span>
                     </div>
-                    <button onClick={reiniciarSimulacion} title="Reiniciar plan (vuelve a partir de tus gastos/ingresos fijos reales)" style={{ display: "flex", alignItems: "center", gap: "4px", background: "transparent", border: "1px solid #E2E8F0", borderRadius: "8px", padding: "4px 9px", fontSize: "0.68rem", fontWeight: 700, color: "#64748B", cursor: "pointer" }}>
+                    <button onClick={reiniciarSimulacion} title="Reiniciar plan (vuelve a partir de tus gastos/ingresos fijos reales)" style={{ display: "flex", alignItems: "center", gap: "4px", background: "transparent", border: "1px solid #DCE7E1", borderRadius: "8px", padding: "4px 9px", fontSize: "0.68rem", fontWeight: 700, color: "#6C8079", cursor: "pointer" }}>
                         <RotateCcw size={12} /> Reiniciar
                     </button>
                 </div>
-                <p style={{ margin: "0 0 1rem", fontSize: "0.72rem", color: "#94A3B8" }}>
+                <p style={{ margin: "0 0 1rem", fontSize: "0.72rem", color: "#6C8079" }}>
                     Se guarda solo, no toca tus gastos/ingresos fijos reales. Sumá, borrá o marcá cosas acá para probar "¿y si...?".
                 </p>
 
                 <div style={{ background: simQueda < 0 ? "rgba(239,68,68,0.06)" : "rgba(16,185,129,0.06)", borderRadius: "12px", padding: "1rem 1.1rem", marginBottom: "1.1rem" }}>
-                    <span style={{ ...LABEL, color: simQueda < 0 ? "#EF4444" : "#10B981" }}>Te quedaría</span>
-                    <div style={{ fontSize: "2rem", fontWeight: 900, color: simQueda < 0 ? "#EF4444" : "#0F172A", lineHeight: 1, margin: "4px 0 8px" }}>
+                    <span style={{ ...LABEL, color: simQueda < 0 ? "#C63C3C" : "#0E9F6E" }}>Te quedaría</span>
+                    <div style={{ fontSize: "2rem", fontWeight: 900, color: simQueda < 0 ? "#C63C3C" : "#0C2A20", lineHeight: 1, margin: "4px 0 8px" }}>
                         {simQueda < 0 ? "−" : ""}{money(Math.abs(simQueda))}
                     </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px", fontSize: "0.72rem", color: "#64748B" }}>
-                        <span>Ingresos: <b style={{ color: "#0F172A" }}>{money(simIngresoPrevisto)}</b></span>
-                        <span>Gastos: <b style={{ color: "#0F172A" }}>−{money(simFijosTotal)}</b></span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px", fontSize: "0.72rem", color: "#6C8079" }}>
+                        <span>Ingresos: <b style={{ color: "#0C2A20" }}>{money(simIngresoPrevisto)}</b></span>
+                        <span>Gastos: <b style={{ color: "#0C2A20" }}>−{money(simFijosTotal)}</b></span>
                     </div>
                 </div>
 
                 {hayCustom && (
                     <div style={{ background: "rgba(245,158,11,0.08)", borderRadius: "12px", padding: "0.8rem 1.1rem", marginBottom: "1.1rem" }}>
                         <span style={{ ...LABEL, color: "#B45309" }}>Resultado de solo lo que agregaste vos</span>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px", fontSize: "0.78rem", color: "#64748B", marginTop: "4px" }}>
-                            <span>Ingresos: <b style={{ color: "#10B981" }}>+{money(customIngresos)}</b></span>
-                            <span>Gastos: <b style={{ color: "#EF4444" }}>−{money(customGastos)}</b></span>
-                            <span>Neto: <b style={{ color: customNeto < 0 ? "#EF4444" : "#10B981" }}>{customNeto < 0 ? "−" : "+"}{money(Math.abs(customNeto))}</b></span>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px", fontSize: "0.78rem", color: "#6C8079", marginTop: "4px" }}>
+                            <span>Ingresos: <b style={{ color: "#0E9F6E" }}>+{money(customIngresos)}</b></span>
+                            <span>Gastos: <b style={{ color: "#C63C3C" }}>−{money(customGastos)}</b></span>
+                            <span>Neto: <b style={{ color: customNeto < 0 ? "#C63C3C" : "#0E9F6E" }}>{customNeto < 0 ? "−" : "+"}{money(Math.abs(customNeto))}</b></span>
                         </div>
                     </div>
                 )}
@@ -198,26 +198,26 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                     {/* Gastos fijos simulados */}
                     <div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px", flexWrap: "wrap", gap: "4px" }}>
-                            <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0F172A" }}>Gastos fijos</span>
+                            <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0C2A20" }}>Gastos fijos</span>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#94A3B8" }}>{simFijosPagados.length}/{plan.fixedExpenses.length} pagados</span>
-                                <button type="button" onClick={() => setUsarCantidadGasto(v => !v)} title="Cargar por cantidad × precio unitario (ej: 5 × S/10)" style={{ display: "flex", alignItems: "center", gap: "3px", background: usarCantidadGasto ? "#F59E0B" : "transparent", color: usarCantidadGasto ? "#fff" : "#94A3B8", border: usarCantidadGasto ? "none" : "1px solid #E2E8F0", borderRadius: "6px", padding: "2px 6px", fontSize: "0.62rem", fontWeight: 700, cursor: "pointer" }}>
+                                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#6C8079" }}>{simFijosPagados.length}/{plan.fixedExpenses.length} pagados</span>
+                                <button type="button" onClick={() => setUsarCantidadGasto(v => !v)} title="Cargar por cantidad × precio unitario (ej: 5 × S/10)" style={{ display: "flex", alignItems: "center", gap: "3px", background: usarCantidadGasto ? "#F59E0B" : "transparent", color: usarCantidadGasto ? "#fff" : "#6C8079", border: usarCantidadGasto ? "none" : "1px solid #DCE7E1", borderRadius: "6px", padding: "2px 6px", fontSize: "0.62rem", fontWeight: 700, cursor: "pointer" }}>
                                     Cant. × precio
                                 </button>
                             </div>
                         </div>
-                        {plan.fixedExpenses.length === 0 && <p style={{ fontSize: "0.72rem", color: "#94A3B8", margin: 0 }}>Sin gastos fijos activos.</p>}
+                        {plan.fixedExpenses.length === 0 && <p style={{ fontSize: "0.72rem", color: "#6C8079", margin: 0 }}>Sin gastos fijos activos.</p>}
                         {[...simFijosPend, ...simFijosPagados].map(f => {
                             const pagado = f.lastPaidMonth === currentMonthStr;
                             return (
-                                <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 9px", marginBottom: "4px", borderRadius: "8px", background: "#F8FAFC", opacity: pagado ? 0.55 : 1 }}>
-                                    <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0F172A", textDecoration: pagado ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.text}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
-                                    <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0F172A" }}>{money(f.amount)}</span>
+                                <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 9px", marginBottom: "4px", borderRadius: "8px", background: "#F7FAF8", opacity: pagado ? 0.55 : 1 }}>
+                                    <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0C2A20", textDecoration: pagado ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.text}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
+                                    <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0C2A20" }}>{money(f.amount)}</span>
                                     <button onClick={() => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, lastPaidMonth: pagado ? undefined : currentMonthStr } : x) })}
-                                        style={{ background: pagado ? "transparent" : "#10B981", color: pagado ? "#94A3B8" : "#fff", border: pagado ? "1px solid #E2E8F0" : "none", borderRadius: "6px", padding: "3px 8px", fontSize: "0.65rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+                                        style={{ background: pagado ? "transparent" : "#0E9F6E", color: pagado ? "#6C8079" : "#fff", border: pagado ? "1px solid #DCE7E1" : "none", borderRadius: "6px", padding: "3px 8px", fontSize: "0.65rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
                                         {pagado ? "Deshacer" : "Pagué"}
                                     </button>
-                                    <button onClick={() => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.filter(x => x.id !== f.id) })} style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer", display: "flex", flexShrink: 0 }}><Trash2 size={13} /></button>
+                                    <button onClick={() => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.filter(x => x.id !== f.id) })} style={{ background: "none", border: "none", color: "#6C8079", cursor: "pointer", display: "flex", flexShrink: 0 }}><Trash2 size={13} /></button>
                                 </div>
                             );
                         })}
@@ -228,16 +228,16 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                             savePlan({ ...plan, fixedExpenses: [...plan.fixedExpenses, { id: Date.now(), text: nuevoGasto.text.trim(), amount: monto, active: true, custom: true }] });
                             setNuevoGasto({ text: "", amount: "", cantidad: "" });
                         }} style={{ display: "flex", gap: "6px", marginTop: "6px", flexWrap: "wrap", alignItems: "center" }}>
-                            <input value={nuevoGasto.text} onChange={e => setNuevoGasto(v => ({ ...v, text: e.target.value }))} placeholder="Nuevo gasto fijo…" style={{ flex: 1, minWidth: 0, padding: "6px 8px", borderRadius: "7px", border: "1px solid #E2E8F0", fontSize: "0.78rem", outline: "none" }} />
+                            <input value={nuevoGasto.text} onChange={e => setNuevoGasto(v => ({ ...v, text: e.target.value }))} placeholder="Nuevo gasto fijo…" style={{ flex: 1, minWidth: 0, padding: "6px 8px", borderRadius: "7px", border: "1px solid #DCE7E1", fontSize: "0.78rem", outline: "none" }} />
                             {usarCantidadGasto ? (
                                 <>
-                                    <input value={nuevoGasto.cantidad} onChange={e => setNuevoGasto(v => ({ ...v, cantidad: e.target.value }))} type="number" placeholder="Cant." style={{ width: "55px", padding: "6px 8px", borderRadius: "7px", border: "1px solid #E2E8F0", fontSize: "0.78rem", outline: "none" }} />
-                                    <span style={{ fontSize: "0.72rem", color: "#94A3B8" }}>×</span>
-                                    <input value={nuevoGasto.amount} onChange={e => setNuevoGasto(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="S/ c/u" style={{ width: "65px", padding: "6px 8px", borderRadius: "7px", border: "1px solid #E2E8F0", fontSize: "0.78rem", outline: "none" }} />
-                                    <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#0F172A" }}>= {money(nuevoGastoTotal)}</span>
+                                    <input value={nuevoGasto.cantidad} onChange={e => setNuevoGasto(v => ({ ...v, cantidad: e.target.value }))} type="number" placeholder="Cant." style={{ width: "55px", padding: "6px 8px", borderRadius: "7px", border: "1px solid #DCE7E1", fontSize: "0.78rem", outline: "none" }} />
+                                    <span style={{ fontSize: "0.72rem", color: "#6C8079" }}>×</span>
+                                    <input value={nuevoGasto.amount} onChange={e => setNuevoGasto(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="S/ c/u" style={{ width: "65px", padding: "6px 8px", borderRadius: "7px", border: "1px solid #DCE7E1", fontSize: "0.78rem", outline: "none" }} />
+                                    <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#0C2A20" }}>= {money(nuevoGastoTotal)}</span>
                                 </>
                             ) : (
-                                <input value={nuevoGasto.amount} onChange={e => setNuevoGasto(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="S/" style={{ width: "70px", padding: "6px 8px", borderRadius: "7px", border: "1px solid #E2E8F0", fontSize: "0.78rem", outline: "none" }} />
+                                <input value={nuevoGasto.amount} onChange={e => setNuevoGasto(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="S/" style={{ width: "70px", padding: "6px 8px", borderRadius: "7px", border: "1px solid #DCE7E1", fontSize: "0.78rem", outline: "none" }} />
                             )}
                             <button type="submit" style={{ background: "#F59E0B", color: "#fff", border: "none", borderRadius: "7px", padding: "0 10px", cursor: "pointer", display: "flex", alignItems: "center", flexShrink: 0 }}><Plus size={14} /></button>
                         </form>
@@ -246,26 +246,26 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                     {/* Ingresos fijos simulados */}
                     <div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px", flexWrap: "wrap", gap: "4px" }}>
-                            <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0F172A" }}>Ingresos fijos</span>
+                            <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0C2A20" }}>Ingresos fijos</span>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#94A3B8" }}>{simIngresosRecibidos.length}/{plan.fixedIncomes.length} recibidos</span>
-                                <button type="button" onClick={() => setUsarCantidadIngreso(v => !v)} title="Cargar por cantidad × precio unitario (ej: 5 × S/10)" style={{ display: "flex", alignItems: "center", gap: "3px", background: usarCantidadIngreso ? "#F59E0B" : "transparent", color: usarCantidadIngreso ? "#fff" : "#94A3B8", border: usarCantidadIngreso ? "none" : "1px solid #E2E8F0", borderRadius: "6px", padding: "2px 6px", fontSize: "0.62rem", fontWeight: 700, cursor: "pointer" }}>
+                                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#6C8079" }}>{simIngresosRecibidos.length}/{plan.fixedIncomes.length} recibidos</span>
+                                <button type="button" onClick={() => setUsarCantidadIngreso(v => !v)} title="Cargar por cantidad × precio unitario (ej: 5 × S/10)" style={{ display: "flex", alignItems: "center", gap: "3px", background: usarCantidadIngreso ? "#F59E0B" : "transparent", color: usarCantidadIngreso ? "#fff" : "#6C8079", border: usarCantidadIngreso ? "none" : "1px solid #DCE7E1", borderRadius: "6px", padding: "2px 6px", fontSize: "0.62rem", fontWeight: 700, cursor: "pointer" }}>
                                     Cant. × precio
                                 </button>
                             </div>
                         </div>
-                        {plan.fixedIncomes.length === 0 && <p style={{ fontSize: "0.72rem", color: "#94A3B8", margin: 0 }}>Sin ingresos fijos activos.</p>}
+                        {plan.fixedIncomes.length === 0 && <p style={{ fontSize: "0.72rem", color: "#6C8079", margin: 0 }}>Sin ingresos fijos activos.</p>}
                         {[...simIngresosPend, ...simIngresosRecibidos].map(f => {
                             const recibido = f.lastReceivedMonth === currentMonthStr;
                             return (
-                                <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 9px", marginBottom: "4px", borderRadius: "8px", background: "#F8FAFC", opacity: recibido ? 0.55 : 1 }}>
-                                    <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0F172A", textDecoration: recibido ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
-                                    <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0F172A" }}>{money(f.amount)}</span>
+                                <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 9px", marginBottom: "4px", borderRadius: "8px", background: "#F7FAF8", opacity: recibido ? 0.55 : 1 }}>
+                                    <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0C2A20", textDecoration: recibido ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
+                                    <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0C2A20" }}>{money(f.amount)}</span>
                                     <button onClick={() => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, lastReceivedMonth: recibido ? undefined : currentMonthStr } : x) })}
-                                        style={{ background: recibido ? "transparent" : "#10B981", color: recibido ? "#94A3B8" : "#fff", border: recibido ? "1px solid #E2E8F0" : "none", borderRadius: "6px", padding: "3px 8px", fontSize: "0.65rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+                                        style={{ background: recibido ? "transparent" : "#0E9F6E", color: recibido ? "#6C8079" : "#fff", border: recibido ? "1px solid #DCE7E1" : "none", borderRadius: "6px", padding: "3px 8px", fontSize: "0.65rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
                                         {recibido ? "Deshacer" : "Recibí"}
                                     </button>
-                                    <button onClick={() => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.filter(x => x.id !== f.id) })} style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer", display: "flex", flexShrink: 0 }}><Trash2 size={13} /></button>
+                                    <button onClick={() => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.filter(x => x.id !== f.id) })} style={{ background: "none", border: "none", color: "#6C8079", cursor: "pointer", display: "flex", flexShrink: 0 }}><Trash2 size={13} /></button>
                                 </div>
                             );
                         })}
@@ -276,16 +276,16 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                             savePlan({ ...plan, fixedIncomes: [...plan.fixedIncomes, { id: Date.now(), name: nuevoIngresoFijo.name.trim(), amount: monto, active: true, custom: true }] });
                             setNuevoIngresoFijo({ name: "", amount: "", cantidad: "" });
                         }} style={{ display: "flex", gap: "6px", marginTop: "6px", flexWrap: "wrap", alignItems: "center" }}>
-                            <input value={nuevoIngresoFijo.name} onChange={e => setNuevoIngresoFijo(v => ({ ...v, name: e.target.value }))} placeholder="Nuevo ingreso fijo…" style={{ flex: 1, minWidth: 0, padding: "6px 8px", borderRadius: "7px", border: "1px solid #E2E8F0", fontSize: "0.78rem", outline: "none" }} />
+                            <input value={nuevoIngresoFijo.name} onChange={e => setNuevoIngresoFijo(v => ({ ...v, name: e.target.value }))} placeholder="Nuevo ingreso fijo…" style={{ flex: 1, minWidth: 0, padding: "6px 8px", borderRadius: "7px", border: "1px solid #DCE7E1", fontSize: "0.78rem", outline: "none" }} />
                             {usarCantidadIngreso ? (
                                 <>
-                                    <input value={nuevoIngresoFijo.cantidad} onChange={e => setNuevoIngresoFijo(v => ({ ...v, cantidad: e.target.value }))} type="number" placeholder="Cant." style={{ width: "55px", padding: "6px 8px", borderRadius: "7px", border: "1px solid #E2E8F0", fontSize: "0.78rem", outline: "none" }} />
-                                    <span style={{ fontSize: "0.72rem", color: "#94A3B8" }}>×</span>
-                                    <input value={nuevoIngresoFijo.amount} onChange={e => setNuevoIngresoFijo(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="S/ c/u" style={{ width: "65px", padding: "6px 8px", borderRadius: "7px", border: "1px solid #E2E8F0", fontSize: "0.78rem", outline: "none" }} />
-                                    <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#0F172A" }}>= {money(nuevoIngresoTotal)}</span>
+                                    <input value={nuevoIngresoFijo.cantidad} onChange={e => setNuevoIngresoFijo(v => ({ ...v, cantidad: e.target.value }))} type="number" placeholder="Cant." style={{ width: "55px", padding: "6px 8px", borderRadius: "7px", border: "1px solid #DCE7E1", fontSize: "0.78rem", outline: "none" }} />
+                                    <span style={{ fontSize: "0.72rem", color: "#6C8079" }}>×</span>
+                                    <input value={nuevoIngresoFijo.amount} onChange={e => setNuevoIngresoFijo(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="S/ c/u" style={{ width: "65px", padding: "6px 8px", borderRadius: "7px", border: "1px solid #DCE7E1", fontSize: "0.78rem", outline: "none" }} />
+                                    <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#0C2A20" }}>= {money(nuevoIngresoTotal)}</span>
                                 </>
                             ) : (
-                                <input value={nuevoIngresoFijo.amount} onChange={e => setNuevoIngresoFijo(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="S/" style={{ width: "70px", padding: "6px 8px", borderRadius: "7px", border: "1px solid #E2E8F0", fontSize: "0.78rem", outline: "none" }} />
+                                <input value={nuevoIngresoFijo.amount} onChange={e => setNuevoIngresoFijo(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="S/" style={{ width: "70px", padding: "6px 8px", borderRadius: "7px", border: "1px solid #DCE7E1", fontSize: "0.78rem", outline: "none" }} />
                             )}
                             <button type="submit" style={{ background: "#F59E0B", color: "#fff", border: "none", borderRadius: "7px", padding: "0 10px", cursor: "pointer", display: "flex", alignItems: "center", flexShrink: 0 }}><Plus size={14} /></button>
                         </form>

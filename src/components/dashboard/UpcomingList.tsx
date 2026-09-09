@@ -75,7 +75,7 @@ export const UpcomingList = ({ agenda, title = "Agenda" }: UpcomingListProps) =>
                                             height: '8px', 
                                             borderRadius: '50%', 
                                             background: isLive ? 'var(--domain-orange)' : (isNext ? 'var(--domain-green)' : '#DDD'),
-                                            boxShadow: isLive ? '0 0 8px rgba(5, 150, 105,0.4)' : 'none'
+                                            boxShadow: isLive ? '0 0 8px rgba(15, 169, 122,0.4)' : 'none'
                                         }}></div>
                                         <span style={{ 
                                             fontSize: '0.85rem', 

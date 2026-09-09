@@ -83,22 +83,22 @@ export const BaseDatosDashboard = () => {
         padding: '8px 12px',
         fontSize: '0.75rem',
         fontWeight: 600,
-        borderBottom: '1px solid #E9EEF3',
+        borderBottom: '1px solid #EDF3F0',
         whiteSpace: 'nowrap',
     };
 
     const headerCellStyle: React.CSSProperties = {
         ...cellStyle,
-        background: '#F1F5F9',
+        background: '#F7FAF8',
         fontWeight: 900,
         fontSize: '0.65rem',
-        color: '#94A3B8',
+        color: '#6C8079',
         textTransform: 'uppercase',
         letterSpacing: '0.05em',
         position: 'sticky',
         top: 0,
         zIndex: 10,
-        borderBottom: '2px solid #E2E8F0',
+        borderBottom: '2px solid #DCE7E1',
     };
 
     return (
@@ -134,7 +134,7 @@ export const BaseDatosDashboard = () => {
                         onClick={exportCSV}
                         style={{
                             display: 'flex', alignItems: 'center', gap: '6px',
-                            background: '#10B981', color: 'white', border: 'none',
+                            background: '#0E9F6E', color: 'white', border: 'none',
                             borderRadius: '10px', padding: '8px 16px',
                             fontSize: '0.7rem', fontWeight: 900, cursor: 'pointer',
                         }}
@@ -149,7 +149,7 @@ export const BaseDatosDashboard = () => {
                     <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#666' }}>
                         Filtrados: <strong>{itemsFiltrados.length}</strong>
                     </span>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#10B981' }}>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#0E9F6E' }}>
                         Presupuesto alimentos: <strong>${totalAlimentos.toLocaleString()}</strong>
                     </span>
                 </div>
@@ -159,7 +159,7 @@ export const BaseDatosDashboard = () => {
             <div style={{
                 overflowX: 'auto',
                 borderRadius: '12px',
-                border: '1px solid #E2E8F0',
+                border: '1px solid #DCE7E1',
                 background: 'white',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
             }}>
@@ -181,8 +181,8 @@ export const BaseDatosDashboard = () => {
                     <tbody>
                         {itemsFiltrados.map((item, idx) => {
                             const colorCategoria =
-                                item.categoria === 'Cuerpo' ? '#EF4444' :
-                                item.categoria === 'Mente' ? '#8B5CF6' : '#10B981';
+                                item.categoria === 'Cuerpo' ? '#C63C3C' :
+                                item.categoria === 'Mente' ? '#8B5CF6' : '#0E9F6E';
                             return (
                                 <motion.tr
                                     key={item.id}

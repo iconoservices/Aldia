@@ -22,7 +22,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import type { DailyBlock } from '../../hooks/useAlDiaState';
 
-import { C, bento as bentoCard, useIsMobile, TOQUE_MINIMO } from '../../theme';
+import { C, bento as bentoCard, useIsMobile, TOQUE_MINIMO, MONO } from '../../theme';
 import { RegistroMovimiento } from '../features/RegistroMovimiento';
 
 /* ─── Period ────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ const TaskCard = ({
                     ...bentoTarea,
                     padding: '14px 16px',
                     display: 'flex', alignItems: 'center', gap: '10px',
-                    background: isDone ? '#F1F5F9' : C.surfaceLowest,
+                    background: isDone ? '#F7FAF8' : C.surfaceLowest,
                     opacity: isDone ? 0.72 : 1,
                     cursor: isDragging ? 'grabbing' : 'default',
                 }}
@@ -147,7 +147,7 @@ const TaskCard = ({
                     className="menu-btn"
                     style={{
                         background: 'none', border: 'none', cursor: 'pointer',
-                        color: '#94A3B8', opacity: 0, transition: 'opacity 0.15s',
+                        color: '#6C8079', opacity: 0, transition: 'opacity 0.15s',
                         padding: '4px', display: 'flex', alignItems: 'center',
                         borderRadius: '8px', flexShrink: 0,
                     }}
@@ -320,7 +320,7 @@ export const ChecklistDiario = ({
         // Se cuenta contra las tareas de HOY, no contra los bloques ya materializados:
         // las tareas que nunca se han tocado aún no tienen bloque creado.
         if (totalToday > 0 && completedToday + 1 === totalToday) {
-            confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 }, colors: ['#34D399', '#FFD700', '#A8DADC'] });
+            confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 }, colors: ['#3ED9A0', '#FFD700', '#A8DADC'] });
         }
     }, [completedToday, totalToday]);
 
@@ -478,7 +478,7 @@ export const ChecklistDiario = ({
                         title={pendientesFirst ? 'Pendientes primero: ON' : 'Pendientes primero: OFF'}
                         style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: pendientesFirst ? 'rgba(5, 150, 105,0.10)' : C.surfaceContainerHigh,
+                            background: pendientesFirst ? 'rgba(15, 169, 122,0.10)' : C.surfaceContainerHigh,
                             border: `1.5px solid ${pendientesFirst ? C.primary : C.outlineVariant}`,
                             borderRadius: '999px', padding: '0 12px',
                             minWidth: `${TOQUE_MINIMO}px`, minHeight: `${TOQUE_MINIMO}px`,
@@ -496,7 +496,7 @@ export const ChecklistDiario = ({
                         title={groupByProject ? 'Agrupado por proyecto' : 'Agrupar por proyecto'}
                         style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: groupByProject ? 'rgba(5, 150, 105,0.10)' : C.surfaceContainerHigh,
+                            background: groupByProject ? 'rgba(15, 169, 122,0.10)' : C.surfaceContainerHigh,
                             border: `1.5px solid ${groupByProject ? C.primary : 'transparent'}`,
                             borderRadius: '999px', padding: '0 12px',
                             minWidth: `${TOQUE_MINIMO}px`, minHeight: `${TOQUE_MINIMO}px`,
@@ -513,7 +513,7 @@ export const ChecklistDiario = ({
                             title="Restaurar orden automático"
                             style={{
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                background: 'rgba(5, 150, 105,0.08)', border: 'none',
+                                background: 'rgba(15, 169, 122,0.08)', border: 'none',
                                 borderRadius: '999px', padding: '0 12px',
                                 minWidth: `${TOQUE_MINIMO}px`, minHeight: `${TOQUE_MINIMO}px`,
                                 cursor: 'pointer', flexShrink: 0,
@@ -546,9 +546,9 @@ export const ChecklistDiario = ({
                                  'Sin tareas completadas hoy.'}
                             </p>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'baseline', color: C.primary }}>
-                            <span style={{ fontSize: '2.2rem', fontWeight: 800 }}>{progressPct}</span>
-                            <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>%</span>
+                        <div style={{ display: 'flex', alignItems: 'baseline', color: C.primary, fontFamily: MONO }}>
+                            <span style={{ fontSize: '2.2rem', fontWeight: 600 }}>{progressPct}</span>
+                            <span style={{ fontSize: '1.1rem', fontWeight: 600 }}>%</span>
                         </div>
                     </div>
 
@@ -556,14 +556,14 @@ export const ChecklistDiario = ({
                         <motion.div
                             animate={{ width: `${progressPct}%` }}
                             transition={{ duration: 0.7, ease: 'easeOut' }}
-                            style={{ height: '100%', background: '#34D399', borderRadius: '999px' }}
+                            style={{ height: '100%', background: '#3ED9A0', borderRadius: '999px' }}
                         />
                     </div>
 
                     <div style={{ display: 'flex', gap: '8px' }}>
                         <div style={{
                             display: 'flex', alignItems: 'center', gap: '6px',
-                            background: 'rgba(5, 150, 105,0.08)', color: C.primary,
+                            background: 'rgba(15, 169, 122,0.08)', color: C.primary,
                             padding: '6px 12px', borderRadius: '999px',
                             fontSize: '0.75rem', fontWeight: 700,
                         }}>
@@ -739,7 +739,7 @@ export const ChecklistDiario = ({
                                 }}
                                 onClick={e => e.stopPropagation()}
                             >
-                                <h4 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: 800, color: '#0F172A' }}>Editar tarea</h4>
+                                <h4 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: 800, color: '#0C2A20' }}>Editar tarea</h4>
                                 <input
                                     value={editText}
                                     onChange={e => setEditText(e.target.value)}
@@ -755,12 +755,12 @@ export const ChecklistDiario = ({
                                     <button onClick={() => setEditingTask(null)} style={{
                                         flex: 1, padding: '10px', borderRadius: '12px',
                                         border: '2px solid #E5E7EB', background: 'white',
-                                        color: '#475569', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
+                                        color: '#4A5F58', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
                                         fontFamily: "'Plus Jakarta Sans', sans-serif",
                                     }}>Cancelar</button>
                                     <button onClick={handleSaveEdit} style={{
                                         flex: 1, padding: '10px', borderRadius: '12px',
-                                        border: 'none', background: '#059669', color: 'white',
+                                        border: 'none', background: '#0FA97A', color: 'white',
                                         fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
                                         fontFamily: "'Plus Jakarta Sans', sans-serif",
                                     }}>Guardar</button>
@@ -810,7 +810,7 @@ export const ChecklistDiario = ({
                             }}
                             onClick={e => e.stopPropagation()}
                         >
-                            <h4 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: 800, color: '#0F172A' }}>Editar tarea</h4>
+                            <h4 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: 800, color: '#0C2A20' }}>Editar tarea</h4>
                             <input
                                 value={editText}
                                 onChange={e => setEditText(e.target.value)}
@@ -826,12 +826,12 @@ export const ChecklistDiario = ({
                                 <button onClick={() => setEditingTask(null)} style={{
                                     flex: 1, padding: '10px', borderRadius: '12px',
                                     border: '2px solid #E5E7EB', background: 'white',
-                                    color: '#475569', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
+                                    color: '#4A5F58', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
                                     fontFamily: "'Plus Jakarta Sans', sans-serif",
                                 }}>Cancelar</button>
                                 <button onClick={handleSaveEdit} style={{
                                     flex: 1, padding: '10px', borderRadius: '12px',
-                                    border: 'none', background: '#059669', color: 'white',
+                                    border: 'none', background: '#0FA97A', color: 'white',
                                     fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
                                     fontFamily: "'Plus Jakarta Sans', sans-serif",
 }}>Guardar</button>
@@ -892,7 +892,7 @@ export const ChecklistDiario = ({
                 {/* Progreso Diario — banda superior */}
                 <section style={{
                     ...bentoTarea, border: 'none',
-                    background: 'rgba(5, 150, 105,0.06)',
+                    background: 'rgba(15, 169, 122,0.06)',
                     padding: '1.25rem 1.5rem', position: 'relative', overflow: 'hidden',
                     display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap',
                 }}>
@@ -951,7 +951,7 @@ export const ChecklistDiario = ({
                                     title="Restaurar orden automático"
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: '4px',
-                                        background: 'rgba(5, 150, 105,0.08)', border: 'none',
+                                        background: 'rgba(15, 169, 122,0.08)', border: 'none',
                                         borderRadius: '8px', padding: '5px 10px',
                                         fontSize: '0.72rem', color: C.primary, fontWeight: 600,
                                         cursor: 'pointer', fontFamily: 'inherit',
@@ -968,7 +968,7 @@ export const ChecklistDiario = ({
                                 title={pendientesFirst ? 'Pendientes primero: ON' : 'Pendientes primero: OFF'}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '7px',
-                                    background: pendientesFirst ? 'rgba(5, 150, 105,0.10)' : C.surfaceContainerHigh,
+                                    background: pendientesFirst ? 'rgba(15, 169, 122,0.10)' : C.surfaceContainerHigh,
                                     border: `1.5px solid ${pendientesFirst ? C.primary : C.outlineVariant}`,
                                     borderRadius: '999px', padding: '4px 12px 4px 8px',
                                     fontSize: '0.72rem',
@@ -1002,7 +1002,7 @@ export const ChecklistDiario = ({
                                 title={groupByProject ? 'Agrupado por proyecto' : 'Agrupar por proyecto'}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '5px',
-                                    background: groupByProject ? 'rgba(5, 150, 105,0.10)' : C.surfaceContainerHigh,
+                                    background: groupByProject ? 'rgba(15, 169, 122,0.10)' : C.surfaceContainerHigh,
                                     border: `1px solid ${groupByProject ? C.primary : 'transparent'}`,
                                     borderRadius: '8px', padding: '5px 10px',
                                     fontSize: '0.72rem', color: groupByProject ? C.primary : C.onSurfaceVariant, fontWeight: 600,
@@ -1134,8 +1134,8 @@ export const ChecklistDiario = ({
                         boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
                         width: '100%', maxWidth: '380px', boxSizing: 'border-box',
                     }}>
-                        <h4 style={{ margin: '0 0 16px', fontSize: '1rem', fontWeight: 800, color: '#0F172A' }}>Repetir tarea</h4>
-                        <p style={{ margin: '0 0 12px', fontSize: '0.82rem', color: '#94A3B8' }}>
+                        <h4 style={{ margin: '0 0 16px', fontSize: '1rem', fontWeight: 800, color: '#0C2A20' }}>Repetir tarea</h4>
+                        <p style={{ margin: '0 0 12px', fontSize: '0.82rem', color: '#6C8079' }}>
                             ¿Qué días de la semana se repite "{editingRepeat.label}"?
                         </p>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '20px' }}>
@@ -1153,8 +1153,8 @@ export const ChecklistDiario = ({
                                         style={{
                                             width: '40px', height: '40px', borderRadius: '12px',
                                             border: selected ? 'none' : '2px solid #E5E7EB',
-                                            background: selected ? '#059669' : 'transparent',
-                                            color: selected ? '#fff' : '#475569',
+                                            background: selected ? '#0FA97A' : 'transparent',
+                                            color: selected ? '#fff' : '#4A5F58',
                                             fontWeight: 700, fontSize: '0.85rem',
                                             cursor: 'pointer', fontFamily: 'inherit',
                                         }}
@@ -1166,12 +1166,12 @@ export const ChecklistDiario = ({
                             <button onClick={() => setEditingRepeat(null)} style={{
                                 flex: 1, padding: '10px', borderRadius: '12px',
                                 border: '2px solid #E5E7EB', background: 'white',
-                                color: '#475569', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
+                                color: '#4A5F58', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
                                 fontFamily: "'Plus Jakarta Sans', sans-serif",
                             }}>Cancelar</button>
                             <button onClick={() => handleSaveRepeat(editingRepeat.repeatDays)} style={{
                                 flex: 1, padding: '10px', borderRadius: '12px',
-                                border: 'none', background: '#059669', color: 'white',
+                                border: 'none', background: '#0FA97A', color: 'white',
                                 fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
                                 fontFamily: "'Plus Jakarta Sans', sans-serif",
                             }}>Guardar</button>
@@ -1218,7 +1218,7 @@ const RegistroRapido = ({
                     style={{
                         display: 'flex', alignItems: 'center', gap: '6px', flex: compacto ? 1 : undefined,
                         justifyContent: 'center',
-                        background: 'rgba(239,68,68,0.1)', color: '#EF4444',
+                        background: 'rgba(239,68,68,0.1)', color: '#C63C3C',
                         border: 'none', borderRadius: '999px', padding: '8px 16px',
                         fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
                         fontFamily: 'inherit', transition: 'all 0.15s',
@@ -1232,7 +1232,7 @@ const RegistroRapido = ({
                     style={{
                         display: 'flex', alignItems: 'center', gap: '6px', flex: compacto ? 1 : undefined,
                         justifyContent: 'center',
-                        background: 'rgba(16,185,129,0.1)', color: '#10B981',
+                        background: 'rgba(16,185,129,0.1)', color: '#0E9F6E',
                         border: 'none', borderRadius: '999px', padding: '8px 16px',
                         fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
                         fontFamily: 'inherit', transition: 'all 0.15s',
@@ -1312,9 +1312,9 @@ const DropdownMenu = ({
                 display: 'flex', alignItems: 'center', gap: '10px',
                 width: '100%', padding: '10px 14px', border: 'none', background: 'transparent',
                 borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-                fontSize: '0.85rem', color: '#475569', fontWeight: 600,
+                fontSize: '0.85rem', color: '#4A5F58', fontWeight: 600,
             }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F1F5F9'}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F7FAF8'}
                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
             >
                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>today</span>
@@ -1324,9 +1324,9 @@ const DropdownMenu = ({
                 display: 'flex', alignItems: 'center', gap: '10px',
                 width: '100%', padding: '10px 14px', border: 'none', background: 'transparent',
                 borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-                fontSize: '0.85rem', color: '#475569', fontWeight: 600,
+                fontSize: '0.85rem', color: '#4A5F58', fontWeight: 600,
             }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F1F5F9'}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F7FAF8'}
                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
             >
                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
@@ -1336,9 +1336,9 @@ const DropdownMenu = ({
                 display: 'flex', alignItems: 'center', gap: '10px',
                 width: '100%', padding: '10px 14px', border: 'none', background: 'transparent',
                 borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-                fontSize: '0.85rem', color: '#475569', fontWeight: 600,
+                fontSize: '0.85rem', color: '#4A5F58', fontWeight: 600,
             }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F1F5F9'}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F7FAF8'}
                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
             >
                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>repeat</span>
@@ -1349,7 +1349,7 @@ const DropdownMenu = ({
                 display: 'flex', alignItems: 'center', gap: '10px',
                 width: '100%', padding: '10px 14px', border: 'none', background: 'transparent',
                 borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-                fontSize: '0.85rem', color: '#DC2626', fontWeight: 600,
+                fontSize: '0.85rem', color: '#C63C3C', fontWeight: 600,
             }}
                 onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#FEF2F2'}
                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}

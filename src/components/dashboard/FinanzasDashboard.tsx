@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ProjectDetailView } from "./ProjectDetailView";
 import type { Transaction, FixedExpense, Project, Routine, UserPreferences, Account } from "../../hooks/useAlDiaState";
 import { getPeriodKey } from "../../hooks/useAlDiaState";
-import { C, bento, etiqueta, useIsMobile, paddingPagina, tituloPagina, subtituloPagina, botonPrimario, TOQUE_MINIMO } from "../../theme";
+import { C, bento, etiqueta, useIsMobile, paddingPagina, tituloPagina, subtituloPagina, botonPrimario, TOQUE_MINIMO, MONO } from "../../theme";
 import { RegistroMovimiento } from "../features/RegistroMovimiento";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { PLANTILLAS, PLANTILLA_IDS, type PlantillaId } from "../../lib/plantillasFinanzas";
@@ -125,9 +125,9 @@ const CircleCheckbox = ({ checked, onChange }: { checked: boolean; onChange: () 
 const HeroStat = ({ label, val, color, sub, bg }: { label: string; val: number; color: string; sub?: string; bg: string }) => (
     <div style={{ flex: "1 1 0", minWidth: 0, background: bg, borderRadius: "14px", padding: "10px 12px" }}>
         <div style={{ ...etiqueta, color, marginBottom: "3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: "2px", color }}>
-            <span style={{ fontSize: "clamp(0.65rem, 3vw, 0.8rem)", fontWeight: 800 }}>S/ </span>
-            <span style={{ fontSize: "clamp(1.05rem, 5.5vw, 1.45rem)", fontWeight: 900, lineHeight: 1 }}>{val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+        <div style={{ display: "flex", alignItems: "baseline", gap: "2px", color, fontFamily: MONO }}>
+            <span style={{ fontSize: "clamp(0.65rem, 3vw, 0.8rem)", fontWeight: 700 }}>S/ </span>
+            <span style={{ fontSize: "clamp(1.05rem, 5.5vw, 1.45rem)", fontWeight: 600, lineHeight: 1 }}>{val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
         </div>
         {sub && <span style={{ fontSize: "0.6rem", color: C.outline, marginTop: "2px", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</span>}
     </div>
@@ -145,9 +145,9 @@ const StatCell = ({ label, val, dotColor, sub, checked, onToggle, opacity, borde
             {dotColor && <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: dotColor, display: "inline-block", flexShrink: 0 }} />}
             <span style={etiqueta}>{label}</span>
         </div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: "1px", color: C.onSurface }}>
-            <span style={{ fontSize: "0.72rem", fontWeight: 700, color: C.onSurfaceVariant }}>S/ </span>
-            <span style={{ fontSize: "1.05rem", fontWeight: 800, lineHeight: 1 }}>{val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+        <div style={{ display: "flex", alignItems: "baseline", gap: "1px", color: C.onSurface, fontFamily: MONO }}>
+            <span style={{ fontSize: "0.72rem", fontWeight: 600, color: C.onSurfaceVariant }}>S/ </span>
+            <span style={{ fontSize: "1.05rem", fontWeight: 600, lineHeight: 1 }}>{val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
         </div>
         {sub && <span style={{ fontSize: "0.56rem", color: C.outline, marginTop: "1px" }}>{sub}</span>}
     </div>
@@ -159,7 +159,7 @@ const StatCell = ({ label, val, dotColor, sub, checked, onToggle, opacity, borde
 const MoneyMini = ({ label, val, color, prefix = "S/ ", title: tip }: { label: string; val: number; color: string; prefix?: string; title?: string }) => (
     <div title={tip} style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
         <span style={{ fontSize: "0.56rem", fontWeight: 700, color: C.outline, textTransform: "uppercase", letterSpacing: "0.03em" }}>{label}</span>
-        <span style={{ fontSize: "0.75rem", fontWeight: 900, color, whiteSpace: "nowrap" }}>
+        <span style={{ fontSize: "0.78rem", fontWeight: 600, color, whiteSpace: "nowrap", fontFamily: MONO }}>
             {prefix}{val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
     </div>

@@ -1,10 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
 
 :root {
-  /* 🎨 Paleta de Colores de AlDía */
-  --bg-cream: #F8FAFC;
-  --text-carbon: #1E293B;
+  /* 🎨 Paleta de AlDía — Línea gráfica v1.0 (verde sobre menta) */
+  --bg-cream: #F7FAF8;
+  --text-carbon: #0C2A20;
 
   /* Agrupamos la lista de misiones y upcoming a la derecha */
   .dashboard-right-col {
@@ -13,14 +13,14 @@
     gap: 0.8rem;
   }
   /* 🏛️ Dominios de Vida */
-  --domain-orange: #059669;
-  /* Color primario (verde esmeralda) */
-  --domain-green: #A8DADC;
-  /* Vida / Hábitos / Personal */
-  --domain-blue: #6366F1;
-  /* Acento índigo / Stats / Finanzas */
-  --domain-purple: #C7D2FE;
-  /* Relajación / Extra */
+  --domain-orange: #0FA97A;
+  /* Verde primario (acciones, estados activos) */
+  --domain-green: #DFF3E9;
+  /* Menta — superficies destacadas */
+  --domain-blue: #3ED9A0;
+  /* Verde claro — acento */
+  --domain-purple: #DFF3E9;
+  /* Menta — extra */
 
   --white: #FFFFFF;
   --header-height: 65px;
@@ -47,6 +47,12 @@ body {
   font-family: 'Material Symbols Outlined' !important;
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
   display: inline-block;
+}
+
+/* Cifras, códigos y fechas van en mono (línea gráfica v1.0). Nunca párrafos. */
+.num, input[type="time"], input[type="date"], input[type="number"] {
+  font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  font-feature-settings: 'tnum' 1, 'cv01' 1;
 }
 
 @keyframes spin-slow {

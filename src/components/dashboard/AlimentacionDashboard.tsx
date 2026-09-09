@@ -19,9 +19,9 @@ interface Item {
 }
 
 const CATEGORIAS = [
-    { value: 'alimento', label: '🛒 Alimento', color: '#10B981' },
+    { value: 'alimento', label: '🛒 Alimento', color: '#0E9F6E' },
     { value: 'plato', label: '🍽️ Plato', color: '#F59E0B' },
-    { value: 'cuerpo', label: '💪 Cuerpo', color: '#EF4444' },
+    { value: 'cuerpo', label: '💪 Cuerpo', color: '#C63C3C' },
     { value: 'mente', label: '📚 Mente', color: '#8B5CF6' },
 ] as const;
 
@@ -107,7 +107,7 @@ export const AlimentacionDashboard = () => {
                 <GlassCard 
                     variant="strong"
                     style={{
-                        background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                        background: 'linear-gradient(135deg, #0E9F6E 0%, #0FA97A 100%)',
                         color: 'white',
                         padding: '1.2rem',
                     }}
@@ -219,7 +219,7 @@ export const AlimentacionDashboard = () => {
             {/* TABLA DE ITEMS */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {itemsFiltrados.length === 0 ? (
-                    <GlassCard style={{ padding: '3rem', textAlign: 'center', background: '#F8FAFC' }}>
+                    <GlassCard style={{ padding: '3rem', textAlign: 'center', background: '#F7FAF8' }}>
                         <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#888' }}>
                             {filtro === 'todas' 
                                 ? 'No hay items aún. ¡Agrega tu primer alimento, plato o actividad!' 
@@ -388,7 +388,7 @@ export const AlimentacionDashboard = () => {
                                             justifyContent: 'center',
                                         }}
                                     >
-                                        <Trash2 size={14} color="#f87171" opacity={0.5} />
+                                        <Trash2 size={14} color="#C63C3C" opacity={0.5} />
                                     </button>
                                 </GlassCard>
                             </motion.div>

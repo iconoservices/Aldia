@@ -168,8 +168,8 @@ export const ProfileOverlay = ({ isOpen, onClose, clearAllData, clearFinanzasSel
 
                                         <div style={{ marginTop: '1rem', borderTop: '1px solid #EEE', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                             {clearFinanzasSelectivo && (
-                                                <button onClick={() => setShowReiniciarFinanzas(true)} style={{ ...settingButtonStyle, color: '#f87171' }}>
-                                                    <div style={{ ...settingIconWrapper(), background: '#FEF2F2', color: '#f87171' }}><RefreshCw size={18} /></div>
+                                                <button onClick={() => setShowReiniciarFinanzas(true)} style={{ ...settingButtonStyle, color: '#C63C3C' }}>
+                                                    <div style={{ ...settingIconWrapper(), background: '#FEF2F2', color: '#C63C3C' }}><RefreshCw size={18} /></div>
                                                     <span style={{ flex: 1, textAlign: 'left' }}>Reiniciar Finanzas</span>
                                                 </button>
                                             )}
@@ -183,8 +183,8 @@ export const ProfileOverlay = ({ isOpen, onClose, clearAllData, clearFinanzasSel
                                                             window.location.reload();
                                                         }
                                                     }
-                                                }} style={{ ...settingButtonStyle, color: '#f87171' }}>
-                                                    <div style={{ ...settingIconWrapper(), background: '#FEF2F2', color: '#f87171' }}><RefreshCw size={18} /></div>
+                                                }} style={{ ...settingButtonStyle, color: '#C63C3C' }}>
+                                                    <div style={{ ...settingIconWrapper(), background: '#FEF2F2', color: '#C63C3C' }}><RefreshCw size={18} /></div>
                                                     <span style={{ flex: 1, textAlign: 'left' }}>Reiniciar Cuenta (Full Clear)</span>
                                                 </button>
                                             )}
@@ -194,8 +194,8 @@ export const ProfileOverlay = ({ isOpen, onClose, clearAllData, clearFinanzasSel
                                                     localStorage.clear();
                                                     window.location.reload();
                                                 }
-                                            }} style={{ ...settingButtonStyle, color: '#f87171', opacity: user ? 0.6 : 1 }}>
-                                                <div style={{ ...settingIconWrapper(), background: '#FEF2F2', color: '#f87171' }}><LogOut size={18} /></div>
+                                            }} style={{ ...settingButtonStyle, color: '#C63C3C', opacity: user ? 0.6 : 1 }}>
+                                                <div style={{ ...settingIconWrapper(), background: '#FEF2F2', color: '#C63C3C' }}><LogOut size={18} /></div>
                                                 <span style={{ flex: 1, textAlign: 'left' }}>{user ? 'Cerrar Sesión' : 'Limpiar Datos Locales'}</span>
                                             </button>
                                         </div>
@@ -276,28 +276,28 @@ export const ProfileOverlay = ({ isOpen, onClose, clearAllData, clearFinanzasSel
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                                         <div style={{ padding: '1.2rem', background: '#F9F9F9', borderRadius: '24px', border: '1px solid #EEE' }}>
                                             <h4 style={{ margin: 0, color: 'var(--domain-orange)', fontSize: '0.9rem', fontWeight: 900 }}>MISIÓN</h4>
-                                            <p style={{ margin: '6px 0 0', fontSize: '0.8rem', color: '#64748B', fontWeight: 600, lineHeight: 1.5 }}>
+                                            <p style={{ margin: '6px 0 0', fontSize: '0.8rem', color: '#6C8079', fontWeight: 600, lineHeight: 1.5 }}>
                                                 Es una acción específica con una fecha y hora determinada. Son las "tareas" que debes cumplir para avanzar en tus objetivos.
                                             </p>
                                         </div>
 
                                         <div style={{ padding: '1.2rem', background: '#F9F9F9', borderRadius: '24px', border: '1px solid #EEE' }}>
                                             <h4 style={{ margin: 0, color: 'var(--domain-green)', fontSize: '0.9rem', fontWeight: 900 }}>HÁBITO</h4>
-                                            <p style={{ margin: '6px 0 0', fontSize: '0.8rem', color: '#64748B', fontWeight: 600, lineHeight: 1.5 }}>
+                                            <p style={{ margin: '6px 0 0', fontSize: '0.8rem', color: '#6C8079', fontWeight: 600, lineHeight: 1.5 }}>
                                                 Acciones recurrentes que forman tu estilo de vida. No tienen una hora fija, pero se marcan cuando se cumplen durante el día.
                                             </p>
                                         </div>
 
                                         <div style={{ padding: '1.2rem', background: '#F9F9F9', borderRadius: '24px', border: '1px solid #EEE' }}>
                                             <h4 style={{ margin: 0, color: 'var(--domain-purple)', fontSize: '0.9rem', fontWeight: 900 }}>RUTINA</h4>
-                                            <p style={{ margin: '6px 0 0', fontSize: '0.8rem', color: '#64748B', fontWeight: 600, lineHeight: 1.5 }}>
+                                            <p style={{ margin: '6px 0 0', fontSize: '0.8rem', color: '#6C8079', fontWeight: 600, lineHeight: 1.5 }}>
                                                 Un conjunto de misiones que se repiten en un bloque de tiempo específico (ej: Rutina de Mañana, Rutina de Gym).
                                             </p>
                                         </div>
 
                                         <div style={{ padding: '1.2rem', background: '#F9F9F9', borderRadius: '24px', border: '1px solid #EEE' }}>
                                             <h4 style={{ margin: 0, color: 'var(--text-carbon)', fontSize: '0.9rem', fontWeight: 900 }}>OBJETIVO</h4>
-                                            <p style={{ margin: '6px 0 0', fontSize: '0.8rem', color: '#64748B', fontWeight: 600, lineHeight: 1.5 }}>
+                                            <p style={{ margin: '6px 0 0', fontSize: '0.8rem', color: '#6C8079', fontWeight: 600, lineHeight: 1.5 }}>
                                                 La meta final de un proyecto. Los objetivos se dividen en misiones para que sean alcanzables.
                                             </p>
                                         </div>
@@ -356,12 +356,12 @@ const cameraButtonStyle: React.CSSProperties = { position: 'absolute', bottom: '
 const nameStyle: React.CSSProperties = { fontSize: '1.6rem', fontWeight: 900, color: 'var(--text-carbon)', margin: 0, cursor: 'pointer' };
 const versionStyle: React.CSSProperties = { fontSize: '0.75rem', fontWeight: 750, color: '#AAA', marginTop: '4px' };
 const actionGridStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' };
-const actionCardStyle: React.CSSProperties = { background: '#F8FAFC', padding: '1.2rem', borderRadius: '24px', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'pointer', fontWeight: 800, fontSize: '0.85rem' };
+const actionCardStyle: React.CSSProperties = { background: '#F7FAF8', padding: '1.2rem', borderRadius: '24px', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'pointer', fontWeight: 800, fontSize: '0.85rem' };
 const settingsListStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.5rem' };
 const settingButtonStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'transparent', border: 'none', width: '100%', cursor: 'pointer', fontSize: '1rem', fontWeight: 750, color: 'var(--text-carbon)', borderRadius: '16px', transition: 'background 0.2s' };
 const settingIconWrapper = (orange = false, green = false): React.CSSProperties => ({ width: '40px', height: '40px', borderRadius: '12px', background: orange ? '#FFF7ED' : (green ? '#F0FDF4' : '#F5F5F5'), color: orange ? 'var(--domain-orange)' : (green ? 'var(--domain-green)' : '#666'), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 });
 const badgeStyle: React.CSSProperties = { background: 'var(--domain-orange)', color: 'white', fontSize: '0.6rem', padding: '2px 8px', borderRadius: '6px', fontWeight: 900 };
-const activeSessionStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: '#F8FAFC', borderRadius: '16px', border: '1px solid #E2E8F0' };
+const activeSessionStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: '#F7FAF8', borderRadius: '16px', border: '1px solid #DCE7E1' };
 const sessionTitleStyle: React.CSSProperties = { fontSize: '0.9rem', fontWeight: 800, margin: 0, color: 'var(--domain-green)' };
 const sessionEmailStyle: React.CSSProperties = { fontSize: '0.75rem', color: '#666', margin: 0, fontWeight: 600 };
 const iosOverlayStyle: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', background: 'rgba(0,0,0,0.4)' };

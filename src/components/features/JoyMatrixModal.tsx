@@ -11,7 +11,7 @@ interface JoyMatrixModalProps {
 
 export const JoyMatrixModal = ({ isOpen, onClose, missions, toggleMission }: JoyMatrixModalProps) => {
     const quadrants = [
-        { id: 'Q1', title: 'HACER/URGENTE', subtitle: 'Hazlo Ahora', color: '#059669', icon: <Zap size={20} /> },
+        { id: 'Q1', title: 'HACER/URGENTE', subtitle: 'Hazlo Ahora', color: '#0FA97A', icon: <Zap size={20} /> },
         { id: 'Q2', title: 'ENFOCAR/NO URGENTE', subtitle: 'Planifica', color: '#3b82f6', icon: <Target size={20} /> },
         { id: 'Q3', title: 'DELEGAR', subtitle: 'Si puedes, delega', color: '#a855f7', icon: <Clock size={20} /> },
         { id: 'Q4', title: 'ELIMINAR', subtitle: 'Fuego lento / Elimina', color: '#94a3b8', icon: <Trash2 size={20} /> },

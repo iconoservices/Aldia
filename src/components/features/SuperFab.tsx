@@ -168,7 +168,7 @@ export const SuperFab = ({ addMission, addTransaction, addHabit, addRoutineItem,
                                     whileTap={{ scale: 0.9 }}
                                     style={{
                                         width: '52px', height: '52px', borderRadius: '50%',
-                                        background: '#f87171', border: 'none', color: 'white',
+                                        background: '#C63C3C', border: 'none', color: 'white',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         boxShadow: '0 6px 20px rgba(248, 113, 113, 0.4)', cursor: 'pointer'
                                     }}
@@ -195,7 +195,7 @@ export const SuperFab = ({ addMission, addTransaction, addHabit, addRoutineItem,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        boxShadow: '0 8px 25px rgba(5, 150, 105, 0.4)',
+                        boxShadow: '0 8px 25px rgba(15, 169, 122, 0.4)',
                         cursor: 'pointer',
                         zIndex: 10
                     }}
