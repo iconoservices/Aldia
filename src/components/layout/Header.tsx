@@ -35,7 +35,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
 
     // ── Primary sidebar items ─────────────────────────────────────────
     const PRIMARY_ITEMS = [
-        { label: 'Checklist', tab: 'Checklist', icon: 'task_alt' },
+        { label: 'Checklist', tab: 'Checklist', icon: 'task_alt' },
         { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
         { label: 'Agenda', tab: 'Agenda', icon: 'event' },
         { label: 'Entregas', tab: 'Entregas', icon: 'local_fire_department' },
@@ -132,7 +132,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     // Map active tab to a friendly title for mobile header
     const getViewTitle = (tab: string) => {
         switch (tab) {
-            case 'Checklist': return 'Checklist Diario';
+            case 'Checklist': return 'Checklist Diario';
             case 'Pendientes': return 'Pendientes';
             case 'Plan': return 'Ingresos y Gastos Fijos';
             case 'Compras': return 'Lista de Compras & Deseos';
