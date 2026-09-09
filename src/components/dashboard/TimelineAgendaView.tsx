@@ -1284,7 +1284,7 @@ export const TimelineAgendaView = ({
                                        <div style={{ display: 'grid', gridTemplateColumns: gridCols }}>
                                            <div />
                                            {visibleDays.map(wd => (
-                                               <div key={wd.dateStr} onClick={() => setSelectedDate(wd.date)} style={{ textAlign: 'center', padding: '6px 0', borderLeft: '1px solid #E2E8F0', cursor: 'pointer', background: wd.isToday ? 'rgba(255,140,66,0.08)' : 'transparent', boxShadow: wd.isSelected && !wd.isToday ? 'inset 0 -3px 0 var(--domain-orange)' : 'none' }}>
+                                               <div key={wd.dateStr} onClick={() => setSelectedDate(wd.date)} style={{ textAlign: 'center', padding: '6px 0', borderLeft: '1px solid #E2E8F0', cursor: 'pointer', background: wd.isToday ? 'rgba(79, 70, 229,0.08)' : 'transparent', boxShadow: wd.isSelected && !wd.isToday ? 'inset 0 -3px 0 var(--domain-orange)' : 'none' }}>
                                                    <div style={{ fontSize: '0.6rem', fontWeight: 900, color: wd.isToday ? 'var(--domain-orange)' : '#94A3B8' }}>{dayNames[wd.dayIdx]}</div>
                                                    <div style={{ fontSize: '1.05rem', fontWeight: 900, color: wd.isSelected && !wd.isToday ? 'var(--domain-orange)' : undefined }}>{wd.date.getDate()}</div>
                                                </div>
@@ -1294,7 +1294,7 @@ export const TimelineAgendaView = ({
                                            <div style={{ display: 'grid', gridTemplateColumns: gridCols, borderTop: '1px solid #F1F5F9' }}>
                                                <div />
                                                {visibleDays.map(wd => (
-                                                   <div key={wd.dateStr} style={{ minWidth: 0, borderLeft: '1px solid #E2E8F0', padding: '3px', background: wd.isToday ? 'rgba(255,140,66,0.08)' : 'transparent' }}>
+                                                   <div key={wd.dateStr} style={{ minWidth: 0, borderLeft: '1px solid #E2E8F0', padding: '3px', background: wd.isToday ? 'rgba(79, 70, 229,0.08)' : 'transparent' }}>
                                                        {renderDels(wd)}
                                                    </div>
                                                ))}
@@ -1324,13 +1324,13 @@ export const TimelineAgendaView = ({
                                    })}
                                </div>
                                {visibleDays.map((wd, i) => wd && (
-                                   <div key={i} style={{ position: 'relative', borderRight: '1px solid #F1F5F9', ...(wd.isToday ? { boxShadow: 'inset 0 0 0 1px rgba(255,140,66,0.25)' } : wd.isSelected ? { boxShadow: 'inset 0 0 0 1px rgba(255,140,66,0.18)' } : {}) }}>
+                                   <div key={i} style={{ position: 'relative', borderRight: '1px solid #F1F5F9', ...(wd.isToday ? { boxShadow: 'inset 0 0 0 1px rgba(79, 70, 229,0.25)' } : wd.isSelected ? { boxShadow: 'inset 0 0 0 1px rgba(79, 70, 229,0.18)' } : {}) }}>
                                        {hours.map(h => {
                                             const isQuiet = h < 6 || h >= 22;
                                             const bg = wd.isToday
-                                                ? (isQuiet ? '#FFF3E9' : '#FFF9F4')
+                                                ? (isQuiet ? '#EEF2FF' : '#F5F7FF')
                                                 : wd.isSelected
-                                                    ? (isQuiet ? '#FBFAF9' : '#FFFDFB')
+                                                    ? (isQuiet ? '#F4F6FC' : '#FAFBFF')
                                                     : (isQuiet ? '#F8FAFC' : '#FFFFFF');
                                             return <div key={h} style={{ height: '60px', borderBottom: h % 3 === 2 ? '1px solid #E2E8F0' : '1px solid #F1F5F9', background: bg }} />;
                                        })}

@@ -169,7 +169,7 @@ function App() {
     return (
       <div style={{
         height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', background: '#FDF8F5', gap: '1.5rem'
+        alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', gap: '1.5rem'
       }}>
         <motion.div
           animate={{ scale: [1, 1.1, 1], rotate: [0, 10, -10, 0] }}

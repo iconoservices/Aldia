@@ -65,7 +65,7 @@ export const QuickActionPanel = ({
     // Quick Project Creation
     const [isCreatingProject, setIsCreatingProject] = useState(false);
     const [quickProjectName, setQuickProjectName] = useState('');
-    const [quickProjectColor, setQuickProjectColor] = useState('#ff8c42');
+    const [quickProjectColor, setQuickProjectColor] = useState('#4F46E5');
     
     // Estados para Agenda/Tiempo
     const [date, setDate] = useState(new Date().toLocaleDateString('en-CA'));
@@ -95,7 +95,7 @@ export const QuickActionPanel = ({
         'nota': { title: 'Nuevo Bloque (Cerebro)', color: '#facc15', isFinancial: false },
         'agenda': { title: 'Nueva Agenda', color: '#f59e0b', isFinancial: false },
         'bloque': { title: 'Nuevo Bloque de Poder', color: '#8b5cf6', isFinancial: false },
-        'proyecto': { title: 'Nuevo Proyecto', color: '#ff8c42', isFinancial: false }
+        'proyecto': { title: 'Nuevo Proyecto', color: '#4F46E5', isFinancial: false }
     };
 
     const currentConfig = actionType ? uiConfigs[actionType] : null;
@@ -201,12 +201,12 @@ export const QuickActionPanel = ({
                 colors: ['#8b5cf6', '#ffffff']
             });
         } else if (actionType === 'proyecto' && addProject) {
-            addProject(concept || 'Proyecto', noteColor === '#FFFFFF' ? '#ff8c42' : noteColor, parseFloat(amount || '0'));
+            addProject(concept || 'Proyecto', noteColor === '#FFFFFF' ? '#4F46E5' : noteColor, parseFloat(amount || '0'));
             confetti({
                 particleCount: 80,
                 spread: 70,
                 origin: { y: 0.6 },
-                colors: ['#ff8c42', '#ffffff']
+                colors: ['#4F46E5', '#ffffff']
             });
         }
 
@@ -413,7 +413,7 @@ export const QuickActionPanel = ({
                                                     />
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                         <div style={{ display: 'flex', gap: '4px' }}>
-                                                            {['#ff8c42', '#3b82f6', '#10B911', '#8b5cf6', '#EC4899'].map(c => (
+                                                            {['#4F46E5', '#3b82f6', '#10B911', '#8b5cf6', '#EC4899'].map(c => (
                                                                 <button key={c} type="button" onClick={() => setQuickProjectColor(c)}
                                                                     style={{ width: '16px', height: '16px', borderRadius: '50%', background: c, border: quickProjectColor === c ? '2px solid #333' : 'none', cursor: 'pointer' }}
                                                                 />
@@ -561,7 +561,7 @@ export const QuickActionPanel = ({
                                                             fontWeight: 900, fontSize: '0.75rem', cursor: 'pointer',
                                                             background: selectedQ === q ? 'var(--domain-orange)' : 'white',
                                                             color: selectedQ === q ? 'white' : '#CCC',
-                                                            boxShadow: selectedQ === q ? '0 4px 10px rgba(255,140,66,0.3)' : 'none'
+                                                            boxShadow: selectedQ === q ? '0 4px 10px rgba(79, 70, 229,0.3)' : 'none'
                                                         }}
                                                     >{q}</button>
                                                 ))}
@@ -722,7 +722,7 @@ export const QuickActionPanel = ({
                                         <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '16px', border: '1px solid #EEE' }} />
                                     </div>
                                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', background: '#F9F9F9', padding: '10px', borderRadius: '16px' }}>
-                                        {['#8b5cf6', '#3b82f6', '#FF8C42', '#10B981', '#EC4899', '#6366F1'].map(color => (
+                                        {['#8b5cf6', '#3b82f6', '#4F46E5', '#10B981', '#EC4899', '#6366F1'].map(color => (
                                             <button key={color} type="button" onClick={() => setNoteColor(color)} style={{ minWidth: '28px', height: '28px', borderRadius: '50%', border: noteColor === color ? '2px solid #333' : '1px solid #DDD', background: color, cursor: 'pointer' }} />
                                         ))}
                                     </div>
@@ -740,7 +740,7 @@ export const QuickActionPanel = ({
                                          />
                                      </div>
                                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', background: '#F9F9F9', padding: '10px', borderRadius: '16px' }}>
-                                        {['#ff8c42', '#3b82f6', '#10B911', '#8b5cf6', '#EC4899', '#6366F1'].map(color => (
+                                        {['#4F46E5', '#3b82f6', '#10B911', '#8b5cf6', '#EC4899', '#6366F1'].map(color => (
                                             <button key={color} type="button" onClick={() => setNoteColor(color)} style={{ minWidth: '28px', height: '28px', borderRadius: '50%', border: noteColor === color ? '2px solid #333' : '1px solid #DDD', background: color, cursor: 'pointer' }} />
                                         ))}
                                      </div>

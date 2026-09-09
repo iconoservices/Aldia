@@ -19,7 +19,7 @@ interface Props {
     removeExpense: (projectId: number, expenseId: number) => void;
 }
 
-const COLORS = ['#FF8C42', '#4D96FF', '#06D6A0', '#F72585', '#7209B7', '#3A0CA3', '#4CC9F0', '#F94144', '#90BE6D', '#F9C74F'];
+const COLORS = ['#4F46E5', '#4D96FF', '#06D6A0', '#F72585', '#7209B7', '#3A0CA3', '#4CC9F0', '#F94144', '#90BE6D', '#F9C74F'];
 
 const fmt = (n: number) => n.toLocaleString('es-PE', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
@@ -137,7 +137,7 @@ export const NegocioDashboard = ({
                 >
                     <div style={{
                         position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                        background: 'radial-gradient(circle at 50% 50%, rgba(255,140,66,0.12) 0%, transparent 70%)',
+                        background: 'radial-gradient(circle at 50% 50%, rgba(79, 70, 229,0.12) 0%, transparent 70%)',
                         pointerEvents: 'none'
                     }} />
 
@@ -323,7 +323,7 @@ export const NegocioDashboard = ({
                                                                 <div key={client.id} style={{
                                                                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                                                                     padding: '0.5rem 0.75rem', borderRadius: '10px',
-                                                                    background: 'var(--bg-cream, #FDF8F5)', fontSize: '0.8rem'
+                                                                    background: 'var(--bg-cream, #F8FAFC)', fontSize: '0.8rem'
                                                                 }}>
                                                                     <span style={{ fontWeight: 600 }}>{client.name}</span>
                                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -507,13 +507,13 @@ export const NegocioDashboard = ({
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setAddingProject(true)}
                     style={{
-                        background: 'var(--bg-cream, #FDF8F5)',
-                        border: '2px dashed #dac2b6',
+                        background: 'var(--bg-cream, #F8FAFC)',
+                        border: '2px dashed #CBD5E1',
                         borderRadius: '20px',
                         padding: '1.5rem',
                         cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                        color: '#944a18', fontWeight: 700, fontSize: '0.9rem',
+                        color: '#4F46E5', fontWeight: 700, fontSize: '0.9rem',
                         fontFamily: 'inherit'
                     }}
                 >
@@ -558,7 +558,7 @@ export const NegocioDashboard = ({
                         <button
                             onClick={handleAddProject}
                             style={{
-                                background: '#944a18', color: '#fff', border: 'none', borderRadius: '12px',
+                                background: '#4F46E5', color: '#fff', border: 'none', borderRadius: '12px',
                                 padding: '10px 20px', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem', fontFamily: 'inherit'
                             }}
                         >
@@ -636,7 +636,7 @@ interface ItemRowProps {
 const ItemRow = ({ label, sublabel, amount, amountColor, onEdit, onRemove }: ItemRowProps) => (
     <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '8px 12px', borderRadius: '10px', background: 'var(--bg-cream, #FDF8F5)',
+        padding: '8px 12px', borderRadius: '10px', background: 'var(--bg-cream, #F8FAFC)',
         transition: 'background 0.15s'
     }}>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -688,7 +688,7 @@ const AddForm = ({ fields, onAdd, onCancel }: AddFormProps) => (
             ))}
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
-            <button onClick={onAdd} style={{ background: '#944a18', color: '#fff', border: 'none', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer', fontWeight: 700, fontSize: '0.75rem', fontFamily: 'inherit' }}>
+            <button onClick={onAdd} style={{ background: '#4F46E5', color: '#fff', border: 'none', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer', fontWeight: 700, fontSize: '0.75rem', fontFamily: 'inherit' }}>
                 Agregar
             </button>
             <button onClick={onCancel} style={{ background: 'transparent', color: '#888', border: '1px solid #e7e8e9', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer', fontWeight: 600, fontSize: '0.75rem', fontFamily: 'inherit' }}>

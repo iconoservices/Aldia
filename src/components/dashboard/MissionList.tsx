@@ -52,7 +52,7 @@ export const MissionList = ({
             particleCount: q === 'Q1' ? 100 : 40,
             spread: 70,
             origin: { y: 0.6 },
-            colors: ['#FF8C42', '#FFA500', '#FFD700'],
+            colors: ['#4F46E5', '#FFA500', '#FFD700'],
             shapes: [triangle, 'circle'],
             scalar
         });
@@ -93,7 +93,7 @@ export const MissionList = ({
 
             <div
                 className={showTimeBlock ? "time-block-container" : ""}
-                style={showTimeBlock ? { background: '#F0EBE6', padding: '0.5rem', borderRadius: '20px', position: 'relative' } : {}}
+                style={showTimeBlock ? { background: '#EEF2FF', padding: '0.5rem', borderRadius: '20px', position: 'relative' } : {}}
             >
                 {missions.length === 0 ? (
                     <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', background: 'rgba(255,255,255,0.5)', border: '2px dashed #DDD' }}>

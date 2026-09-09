@@ -17,7 +17,7 @@ export const TimeBlockModal = ({ isOpen, onClose, onAdd }: TimeBlockModalProps) 
     const colors = [
         { name: 'Purple', value: '#8A5CF6' },
         { name: 'Blue', value: '#3B82F6' },
-        { name: 'Orange', value: '#FF8C42' },
+        { name: 'Orange', value: '#4F46E5' },
         { name: 'Green', value: '#10B981' },
         { name: 'Pink', value: '#EC4899' },
         { name: 'Indigo', value: '#6366F1' }

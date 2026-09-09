@@ -304,7 +304,7 @@ export const BuscadorDashboard = () => {
                                 key={i} 
                                 style={{ 
                                     background: 'rgba(242, 133, 0, 0.15)', 
-                                    color: '#773401', 
+                                    color: '#3730A3', 
                                     padding: '1px 3px', 
                                     borderRadius: '4px',
                                     fontWeight: 700,
@@ -721,22 +721,22 @@ export const BuscadorDashboard = () => {
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', marginTop: '1rem' }}>
                 <div>
-                    <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: '#944a18', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: '#4F46E5', display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <span className="material-symbols-outlined" style={{ fontSize: '28px' }}>travel_explore</span>
                         Super Buscador Web
                     </h2>
-                    <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: '#877369', fontWeight: 600 }}>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: '#94A3B8', fontWeight: 600 }}>
                         Busca en la web de forma inteligente, libre de spam de marketing y burbujas de filtro.
                     </p>
                 </div>
                 <button 
                     onClick={handleClear}
                     style={{
-                        background: 'rgba(148, 74, 24, 0.08)',
+                        background: 'rgba(79, 70, 229, 0.08)',
                         border: 'none',
                         borderRadius: '12px',
                         padding: '8px 14px',
-                        color: '#944a18',
+                        color: '#4F46E5',
                         fontSize: '0.8rem',
                         fontWeight: 700,
                         cursor: 'pointer',
@@ -745,8 +745,8 @@ export const BuscadorDashboard = () => {
                         gap: '6px',
                         transition: 'all 0.2s'
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(148, 74, 24, 0.15)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'rgba(148, 74, 24, 0.08)')}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(79, 70, 229, 0.15)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'rgba(79, 70, 229, 0.08)')}
                 >
                     <X size={14} />
                     Limpiar Filtros
@@ -757,12 +757,12 @@ export const BuscadorDashboard = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 
                 {/* ROW 1: Query Preview & Main Input */}
-                <div className="glass-card" style={{ padding: '1.5rem', border: '1px solid rgba(148,74,24,0.1)', position: 'relative', overflow: 'hidden' }}>
+                <div className="glass-card" style={{ padding: '1.5rem', border: '1px solid rgba(79, 70, 229,0.1)', position: 'relative', overflow: 'hidden' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         
                         {/* Main Search Input */}
                         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
-                            <span style={{ position: 'absolute', left: '16px', color: '#877369' }}>
+                            <span style={{ position: 'absolute', left: '16px', color: '#94A3B8' }}>
                                 <Search size={22} />
                             </span>
                             <input 
@@ -780,7 +780,7 @@ export const BuscadorDashboard = () => {
                                     width: '100%',
                                     padding: '16px 110px 16px 52px',
                                     borderRadius: '16px',
-                                    border: '2px solid rgba(148, 74, 24, 0.15)',
+                                    border: '2px solid rgba(79, 70, 229, 0.15)',
                                     background: '#FDFDFD',
                                     fontSize: '1.1rem',
                                     fontWeight: 600,
@@ -788,8 +788,8 @@ export const BuscadorDashboard = () => {
                                     outline: 'none',
                                     transition: 'all 0.2s'
                                 }}
-                                onFocus={e => (e.currentTarget.style.borderColor = '#944a18')}
-                                onBlur={e => (e.currentTarget.style.borderColor = 'rgba(148, 74, 24, 0.15)')}
+                                onFocus={e => (e.currentTarget.style.borderColor = '#4F46E5')}
+                                onBlur={e => (e.currentTarget.style.borderColor = 'rgba(79, 70, 229, 0.15)')}
                             />
                             <button
                                 onClick={() => {
@@ -799,7 +799,7 @@ export const BuscadorDashboard = () => {
                                 style={{
                                     position: 'absolute',
                                     right: '8px',
-                                    background: '#944a18',
+                                    background: '#4F46E5',
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '12px',
@@ -807,11 +807,11 @@ export const BuscadorDashboard = () => {
                                     fontWeight: 700,
                                     fontSize: '0.9rem',
                                     cursor: 'pointer',
-                                    boxShadow: '0 2px 4px rgba(148,74,24,0.15)',
+                                    boxShadow: '0 2px 4px rgba(79, 70, 229,0.15)',
                                     transition: 'all 0.2s'
                                 }}
-                                onMouseEnter={e => e.currentTarget.style.background = '#773401'}
-                                onMouseLeave={e => e.currentTarget.style.background = '#944a18'}
+                                onMouseEnter={e => e.currentTarget.style.background = '#3730A3'}
+                                onMouseLeave={e => e.currentTarget.style.background = '#4F46E5'}
                             >
                                 Buscar
                             </button>
@@ -825,17 +825,17 @@ export const BuscadorDashboard = () => {
                             display: 'flex', 
                             alignItems: 'center', 
                             justifyContent: 'space-between',
-                            border: '1px dashed rgba(148,74,24,0.2)',
+                            border: '1px dashed rgba(79, 70, 229,0.2)',
                             minHeight: '50px'
                         }}>
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', flex: 1, overflow: 'hidden' }}>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#944a18', background: 'rgba(148,74,24,0.08)', padding: '2px 6px', borderRadius: '6px', marginTop: '2px' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#4F46E5', background: 'rgba(79, 70, 229,0.08)', padding: '2px 6px', borderRadius: '6px', marginTop: '2px' }}>
                                     QUERY
                                 </span>
                                 <span style={{ 
                                     fontFamily: 'monospace', 
                                     fontSize: '0.9rem', 
-                                    color: '#54433a', 
+                                    color: '#475569', 
                                     whiteSpace: 'nowrap', 
                                     overflow: 'hidden', 
                                     textOverflow: 'ellipsis',
@@ -852,7 +852,7 @@ export const BuscadorDashboard = () => {
                                     }}
                                     disabled={!generatedQuery.trim() && !query.trim() && !exactPhrase.trim()}
                                     style={{
-                                        background: 'linear-gradient(135deg, #944a18 0%, #773401 100%)',
+                                        background: 'linear-gradient(135deg, #4F46E5 0%, #3730A3 100%)',
                                         color: 'white',
                                         border: 'none',
                                         borderRadius: '8px',
@@ -867,7 +867,7 @@ export const BuscadorDashboard = () => {
                                         fontSize: '0.8rem',
                                         transition: 'all 0.2s',
                                         opacity: (generatedQuery.trim() || query.trim() || exactPhrase.trim()) ? 1 : 0.6,
-                                        boxShadow: '0 2px 6px rgba(148, 74, 24, 0.15)'
+                                        boxShadow: '0 2px 6px rgba(79, 70, 229, 0.15)'
                                     }}
                                     title="Buscar y extraer resultados directamente dentro de AlDía (Sin anuncios ni filtros)"
                                 >
@@ -880,7 +880,7 @@ export const BuscadorDashboard = () => {
                                     disabled={!generatedQuery.trim()}
                                     style={{
                                         background: generatedQuery.trim() ? 'white' : 'transparent',
-                                        border: '1px solid rgba(148, 74, 24, 0.15)',
+                                        border: '1px solid rgba(79, 70, 229, 0.15)',
                                         borderRadius: '8px',
                                         width: '36px',
                                         height: '36px',
@@ -888,7 +888,7 @@ export const BuscadorDashboard = () => {
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         cursor: generatedQuery.trim() ? 'pointer' : 'default',
-                                        color: '#944a18',
+                                        color: '#4F46E5',
                                         opacity: generatedQuery.trim() ? 1 : 0.4,
                                         transition: 'all 0.2s'
                                     }}
@@ -912,7 +912,7 @@ export const BuscadorDashboard = () => {
                     {/* Card A: Advanced Operators Builder */}
                     <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                         <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-carbon)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Settings size={18} color="#944a18" />
+                            <Settings size={18} color="#4F46E5" />
                             Operadores Avanzados
                         </h3>
 
@@ -920,7 +920,7 @@ export const BuscadorDashboard = () => {
                             
                             {/* Exact Phrase */}
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#877369', marginBottom: '4px' }}>
+                                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#94A3B8', marginBottom: '4px' }}>
                                     Frase Exacta (`"frase"`)
                                 </label>
                                 <input 
@@ -932,7 +932,7 @@ export const BuscadorDashboard = () => {
                                         width: '100%',
                                         padding: '8px 12px',
                                         borderRadius: '10px',
-                                        border: '1px solid rgba(148,74,24,0.15)',
+                                        border: '1px solid rgba(79, 70, 229,0.15)',
                                         fontSize: '0.85rem',
                                         outline: 'none',
                                         fontWeight: 600,
@@ -943,7 +943,7 @@ export const BuscadorDashboard = () => {
 
                             {/* Exclude Words */}
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#877369', marginBottom: '4px' }}>
+                                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#94A3B8', marginBottom: '4px' }}>
                                     Excluir Palabras (separadas por comas)
                                 </label>
                                 <input 
@@ -955,7 +955,7 @@ export const BuscadorDashboard = () => {
                                         width: '100%',
                                         padding: '8px 12px',
                                         borderRadius: '10px',
-                                        border: '1px solid rgba(148,74,24,0.15)',
+                                        border: '1px solid rgba(79, 70, 229,0.15)',
                                         fontSize: '0.85rem',
                                         outline: 'none',
                                         fontWeight: 600,
@@ -966,7 +966,7 @@ export const BuscadorDashboard = () => {
 
                             {/* Site limitation */}
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#877369', marginBottom: '4px' }}>
+                                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#94A3B8', marginBottom: '4px' }}>
                                     Buscar en Sitio / Dominio Específico (`site:`)
                                 </label>
                                 <input 
@@ -978,7 +978,7 @@ export const BuscadorDashboard = () => {
                                         width: '100%',
                                         padding: '8px 12px',
                                         borderRadius: '10px',
-                                        border: '1px solid rgba(148,74,24,0.15)',
+                                        border: '1px solid rgba(79, 70, 229,0.15)',
                                         fontSize: '0.85rem',
                                         outline: 'none',
                                         fontWeight: 600,
@@ -989,7 +989,7 @@ export const BuscadorDashboard = () => {
 
                             {/* Location / Country */}
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#877369', marginBottom: '4px' }}>
+                                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#94A3B8', marginBottom: '4px' }}>
                                     📍 Ubicación / País (añade como contexto)
                                 </label>
                                 <input 
@@ -1001,7 +1001,7 @@ export const BuscadorDashboard = () => {
                                         width: '100%',
                                         padding: '8px 12px',
                                         borderRadius: '10px',
-                                        border: '1px solid rgba(148,74,24,0.15)',
+                                        border: '1px solid rgba(79, 70, 229,0.15)',
                                         fontSize: '0.85rem',
                                         outline: 'none',
                                         fontWeight: 600,
@@ -1014,7 +1014,7 @@ export const BuscadorDashboard = () => {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                                 {/* File Type */}
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#877369', marginBottom: '4px' }}>
+                                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#94A3B8', marginBottom: '4px' }}>
                                         Tipo de Archivo (`filetype:`)
                                     </label>
                                     <select 
@@ -1024,7 +1024,7 @@ export const BuscadorDashboard = () => {
                                             width: '100%',
                                             padding: '8px 10px',
                                             borderRadius: '10px',
-                                            border: '1px solid rgba(148,74,24,0.15)',
+                                            border: '1px solid rgba(79, 70, 229,0.15)',
                                             background: 'white',
                                             fontSize: '0.85rem',
                                             fontWeight: 600,
@@ -1043,7 +1043,7 @@ export const BuscadorDashboard = () => {
 
                                 {/* Antigüedad */}
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#877369', marginBottom: '4px' }}>
+                                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#94A3B8', marginBottom: '4px' }}>
                                         Antigüedad (`after:`)
                                     </label>
                                     <select 
@@ -1053,7 +1053,7 @@ export const BuscadorDashboard = () => {
                                             width: '100%',
                                             padding: '8px 10px',
                                             borderRadius: '10px',
-                                            border: '1px solid rgba(148,74,24,0.15)',
+                                            border: '1px solid rgba(79, 70, 229,0.15)',
                                             background: 'white',
                                             fontSize: '0.85rem',
                                             fontWeight: 600,
@@ -1071,7 +1071,7 @@ export const BuscadorDashboard = () => {
 
                             {/* Position filter */}
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#877369', marginBottom: '4px' }}>
+                                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#94A3B8', marginBottom: '4px' }}>
                                     Buscar palabras en:
                                 </label>
                                 <div style={{ display: 'flex', gap: '15px', padding: '2px 0' }}>
@@ -1081,7 +1081,7 @@ export const BuscadorDashboard = () => {
                                             name="position" 
                                             checked={inTitleOrUrl === 'any'}
                                             onChange={() => setInTitleOrUrl('any')}
-                                            style={{ accentColor: '#944a18' }}
+                                            style={{ accentColor: '#4F46E5' }}
                                         />
                                         Cualquier lado
                                     </label>
@@ -1091,7 +1091,7 @@ export const BuscadorDashboard = () => {
                                             name="position" 
                                             checked={inTitleOrUrl === 'title'}
                                             onChange={() => setInTitleOrUrl('title')}
-                                            style={{ accentColor: '#944a18' }}
+                                            style={{ accentColor: '#4F46E5' }}
                                         />
                                         Título (`intitle:`)
                                     </label>
@@ -1101,7 +1101,7 @@ export const BuscadorDashboard = () => {
                                             name="position" 
                                             checked={inTitleOrUrl === 'url'}
                                             onChange={() => setInTitleOrUrl('url')}
-                                            style={{ accentColor: '#944a18' }}
+                                            style={{ accentColor: '#4F46E5' }}
                                         />
                                         URL (`inurl:`)
                                     </label>
@@ -1117,7 +1117,7 @@ export const BuscadorDashboard = () => {
                         {/* Subcard 1: Intelligent Presets */}
                         <div className="glass-card" style={{ padding: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                             <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-carbon)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Sparkles size={16} color="#944a18" />
+                                <Sparkles size={16} color="#4F46E5" />
                                 Modos Inteligentes / Filtros Rápidos
                             </h3>
                             
@@ -1127,8 +1127,8 @@ export const BuscadorDashboard = () => {
                                 <button 
                                     onClick={() => setRealOpinions(!realOpinions)}
                                     style={{
-                                        background: realOpinions ? 'rgba(148, 74, 24, 0.12)' : 'white',
-                                        border: `1px solid ${realOpinions ? '#944a18' : 'rgba(148,74,24,0.15)'}`,
+                                        background: realOpinions ? 'rgba(79, 70, 229, 0.12)' : 'white',
+                                        border: `1px solid ${realOpinions ? '#4F46E5' : 'rgba(79, 70, 229,0.15)'}`,
                                         borderRadius: '10px',
                                         padding: '8px 10px',
                                         cursor: 'pointer',
@@ -1140,8 +1140,8 @@ export const BuscadorDashboard = () => {
                                     }}
                                 >
                                     <span style={{ 
-                                        color: realOpinions ? '#944a18' : '#877369', 
-                                        background: realOpinions ? 'rgba(148,74,24,0.15)' : '#F7F4F2',
+                                        color: realOpinions ? '#4F46E5' : '#94A3B8', 
+                                        background: realOpinions ? 'rgba(79, 70, 229,0.15)' : '#F7F4F2',
                                         borderRadius: '6px',
                                         width: '24px', height: '24px',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -1149,7 +1149,7 @@ export const BuscadorDashboard = () => {
                                         <MessageSquare size={14} />
                                     </span>
                                     <div>
-                                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#54433a' }}>Opiniones Reales</div>
+                                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>Opiniones Reales</div>
                                         <div style={{ fontSize: '0.62rem', color: '#888' }}>Reddit + Quora</div>
                                     </div>
                                 </button>
@@ -1158,8 +1158,8 @@ export const BuscadorDashboard = () => {
                                 <button 
                                     onClick={() => setDevMode(!devMode)}
                                     style={{
-                                        background: devMode ? 'rgba(148, 74, 24, 0.12)' : 'white',
-                                        border: `1px solid ${devMode ? '#944a18' : 'rgba(148,74,24,0.15)'}`,
+                                        background: devMode ? 'rgba(79, 70, 229, 0.12)' : 'white',
+                                        border: `1px solid ${devMode ? '#4F46E5' : 'rgba(79, 70, 229,0.15)'}`,
                                         borderRadius: '10px',
                                         padding: '8px 10px',
                                         cursor: 'pointer',
@@ -1171,8 +1171,8 @@ export const BuscadorDashboard = () => {
                                     }}
                                 >
                                     <span style={{ 
-                                        color: devMode ? '#944a18' : '#877369', 
-                                        background: devMode ? 'rgba(148, 74, 24, 0.15)' : '#F7F4F2',
+                                        color: devMode ? '#4F46E5' : '#94A3B8', 
+                                        background: devMode ? 'rgba(79, 70, 229, 0.15)' : '#F7F4F2',
                                         borderRadius: '6px',
                                         width: '24px', height: '24px',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -1180,7 +1180,7 @@ export const BuscadorDashboard = () => {
                                         <Code size={14} />
                                     </span>
                                     <div>
-                                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#54433a' }}>Modo Developer</div>
+                                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>Modo Developer</div>
                                         <div style={{ fontSize: '0.62rem', color: '#888' }}>StackOverflow+GitHub</div>
                                     </div>
                                 </button>
@@ -1189,8 +1189,8 @@ export const BuscadorDashboard = () => {
                                 <button 
                                     onClick={() => setAcademic(!academic)}
                                     style={{
-                                        background: academic ? 'rgba(148, 74, 24, 0.12)' : 'white',
-                                        border: `1px solid ${academic ? '#944a18' : 'rgba(148,74,24,0.15)'}`,
+                                        background: academic ? 'rgba(79, 70, 229, 0.12)' : 'white',
+                                        border: `1px solid ${academic ? '#4F46E5' : 'rgba(79, 70, 229,0.15)'}`,
                                         borderRadius: '10px',
                                         padding: '8px 10px',
                                         cursor: 'pointer',
@@ -1202,8 +1202,8 @@ export const BuscadorDashboard = () => {
                                     }}
                                 >
                                     <span style={{ 
-                                        color: academic ? '#944a18' : '#877369', 
-                                        background: academic ? 'rgba(148,74,24,0.15)' : '#F7F4F2',
+                                        color: academic ? '#4F46E5' : '#94A3B8', 
+                                        background: academic ? 'rgba(79, 70, 229,0.15)' : '#F7F4F2',
                                         borderRadius: '6px',
                                         width: '24px', height: '24px',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -1211,7 +1211,7 @@ export const BuscadorDashboard = () => {
                                         <BookOpen size={14} />
                                     </span>
                                     <div>
-                                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#54433a' }}>Académico</div>
+                                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>Académico</div>
                                         <div style={{ fontSize: '0.62rem', color: '#888' }}>sitios .edu + Papers</div>
                                     </div>
                                 </button>
@@ -1220,8 +1220,8 @@ export const BuscadorDashboard = () => {
                                 <button 
                                     onClick={() => setNoSpam(!noSpam)}
                                     style={{
-                                        background: noSpam ? 'rgba(148, 74, 24, 0.12)' : 'white',
-                                        border: `1px solid ${noSpam ? '#944a18' : 'rgba(148,74,24,0.15)'}`,
+                                        background: noSpam ? 'rgba(79, 70, 229, 0.12)' : 'white',
+                                        border: `1px solid ${noSpam ? '#4F46E5' : 'rgba(79, 70, 229,0.15)'}`,
                                         borderRadius: '10px',
                                         padding: '8px 10px',
                                         cursor: 'pointer',
@@ -1233,8 +1233,8 @@ export const BuscadorDashboard = () => {
                                     }}
                                 >
                                     <span style={{ 
-                                        color: noSpam ? '#944a18' : '#877369', 
-                                        background: noSpam ? 'rgba(148, 74, 24, 0.15)' : '#F7F4F2',
+                                        color: noSpam ? '#4F46E5' : '#94A3B8', 
+                                        background: noSpam ? 'rgba(79, 70, 229, 0.15)' : '#F7F4F2',
                                         borderRadius: '6px',
                                         width: '24px', height: '24px',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -1242,7 +1242,7 @@ export const BuscadorDashboard = () => {
                                         <Shield size={14} />
                                     </span>
                                     <div>
-                                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#54433a' }}>Sin Spam / Tiendas</div>
+                                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>Sin Spam / Tiendas</div>
                                         <div style={{ fontSize: '0.62rem', color: '#888' }}>Elimina e-commerce</div>
                                     </div>
                                 </button>
@@ -1252,7 +1252,7 @@ export const BuscadorDashboard = () => {
                                     onClick={() => setSocialSearch(!socialSearch)}
                                     style={{
                                         background: socialSearch ? 'rgba(29,78,216,0.1)' : 'white',
-                                        border: `1px solid ${socialSearch ? '#1D4ED8' : 'rgba(148,74,24,0.15)'}`,
+                                        border: `1px solid ${socialSearch ? '#1D4ED8' : 'rgba(79, 70, 229,0.15)'}`,
                                         borderRadius: '10px',
                                         padding: '8px 10px',
                                         cursor: 'pointer',
@@ -1273,7 +1273,7 @@ export const BuscadorDashboard = () => {
                                         👤
                                     </span>
                                     <div>
-                                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: socialSearch ? '#1D4ED8' : '#54433a' }}>Buscar Persona</div>
+                                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: socialSearch ? '#1D4ED8' : '#475569' }}>Buscar Persona</div>
                                         <div style={{ fontSize: '0.62rem', color: '#888' }}>FB+IG+LinkedIn</div>
                                     </div>
                                 </button>
@@ -1283,7 +1283,7 @@ export const BuscadorDashboard = () => {
                                     onClick={() => setMentionMode(!mentionMode)}
                                     style={{
                                         background: mentionMode ? 'rgba(220,38,38,0.1)' : 'white',
-                                        border: `1px solid ${mentionMode ? '#DC2626' : 'rgba(148,74,24,0.15)'}`,
+                                        border: `1px solid ${mentionMode ? '#DC2626' : 'rgba(79, 70, 229,0.15)'}`,
                                         borderRadius: '10px',
                                         padding: '8px 10px',
                                         cursor: 'pointer',
@@ -1304,7 +1304,7 @@ export const BuscadorDashboard = () => {
                                         📣
                                     </span>
                                     <div>
-                                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: mentionMode ? '#DC2626' : '#54433a' }}>Buscar Menciones</div>
+                                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: mentionMode ? '#DC2626' : '#475569' }}>Buscar Menciones</div>
                                         <div style={{ fontSize: '0.62rem', color: '#888' }}>Posts donde lo nombran</div>
                                     </div>
                                 </button>
@@ -1314,7 +1314,7 @@ export const BuscadorDashboard = () => {
                                     onClick={() => setTelegramSearch(!telegramSearch)}
                                     style={{
                                         background: telegramSearch ? 'rgba(0,136,204,0.1)' : 'white',
-                                        border: `1px solid ${telegramSearch ? '#0088CC' : 'rgba(148,74,24,0.15)'}`,
+                                        border: `1px solid ${telegramSearch ? '#0088CC' : 'rgba(79, 70, 229,0.15)'}`,
                                         borderRadius: '10px',
                                         padding: '8px 10px',
                                         cursor: 'pointer',
@@ -1335,7 +1335,7 @@ export const BuscadorDashboard = () => {
                                         ✈️
                                     </span>
                                     <div>
-                                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: telegramSearch ? '#0088CC' : '#54433a' }}>Grupos Telegram</div>
+                                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: telegramSearch ? '#0088CC' : '#475569' }}>Grupos Telegram</div>
                                         <div style={{ fontSize: '0.62rem', color: '#888' }}>Canales y grupos t.me</div>
                                     </div>
                                 </button>
@@ -1347,7 +1347,7 @@ export const BuscadorDashboard = () => {
                         <div className="glass-card" style={{ padding: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-carbon)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Globe size={16} color="#944a18" />
+                                    <Globe size={16} color="#4F46E5" />
                                     Lanzar Búsqueda en Motores
                                 </h3>
                                 {/* View Mode Toggle */}
@@ -1356,8 +1356,8 @@ export const BuscadorDashboard = () => {
                                         onClick={() => setViewMode('panel')}
                                         title="Ver resultados aquí (panel embebido)"
                                         style={{
-                                            background: viewMode === 'panel' ? '#944a18' : 'transparent',
-                                            color: viewMode === 'panel' ? 'white' : '#877369',
+                                            background: viewMode === 'panel' ? '#4F46E5' : 'transparent',
+                                            color: viewMode === 'panel' ? 'white' : '#94A3B8',
                                             border: 'none',
                                             borderRadius: '7px',
                                             padding: '5px 10px',
@@ -1376,8 +1376,8 @@ export const BuscadorDashboard = () => {
                                         onClick={() => setViewMode('tab')}
                                         title="Abrir en nueva pestaña"
                                         style={{
-                                            background: viewMode === 'tab' ? '#944a18' : 'transparent',
-                                            color: viewMode === 'tab' ? 'white' : '#877369',
+                                            background: viewMode === 'tab' ? '#4F46E5' : 'transparent',
+                                            color: viewMode === 'tab' ? 'white' : '#94A3B8',
                                             border: 'none',
                                             borderRadius: '7px',
                                             padding: '5px 10px',
@@ -1395,7 +1395,7 @@ export const BuscadorDashboard = () => {
                                 </div>
                             </div>
                             {viewMode === 'panel' && (
-                                <div style={{ fontSize: '0.72rem', color: '#877369', background: 'rgba(148,74,24,0.05)', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div style={{ fontSize: '0.72rem', color: '#94A3B8', background: 'rgba(79, 70, 229,0.05)', borderRadius: '8px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <Monitor size={11} />
                                     <span>Modo Panel: Bing, Brave y SearXNG cargan aquí. Facebook/Google/Instagram abren en nueva pestaña (lo bloquean).</span>
                                 </div>
@@ -1785,10 +1785,10 @@ export const BuscadorDashboard = () => {
                     {/* Panel C: Local NLP Keyword Assistant */}
                     <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-carbon)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Sparkles size={18} color="#944a18" />
+                            <Sparkles size={18} color="#4F46E5" />
                             Asistente de Palabras Clave
                         </h3>
-                        <p style={{ margin: 0, fontSize: '0.78rem', color: '#877369', lineHeight: 1.4 }}>
+                        <p style={{ margin: 0, fontSize: '0.78rem', color: '#94A3B8', lineHeight: 1.4 }}>
                             ¿No sabes cómo buscar? Escribe tu duda o problema tal como lo piensas, y extraeremos los términos de búsqueda ideales.
                         </p>
 
@@ -1803,7 +1803,7 @@ export const BuscadorDashboard = () => {
                                     flex: 1,
                                     padding: '10px 12px',
                                     borderRadius: '10px',
-                                    border: '1px solid rgba(148,74,24,0.15)',
+                                    border: '1px solid rgba(79, 70, 229,0.15)',
                                     fontSize: '0.82rem',
                                     fontWeight: 600,
                                     outline: 'none'
@@ -1812,7 +1812,7 @@ export const BuscadorDashboard = () => {
                             <button
                                 onClick={runKeywordAssistant}
                                 style={{
-                                    background: '#944a18',
+                                    background: '#4F46E5',
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '10px',
@@ -1834,7 +1834,7 @@ export const BuscadorDashboard = () => {
                                     exit={{ opacity: 0, y: -10 }}
                                     style={{ 
                                         background: '#FFF8F5', 
-                                        border: '1px solid rgba(148,74,24,0.15)', 
+                                        border: '1px solid rgba(79, 70, 229,0.15)', 
                                         borderRadius: '12px', 
                                         padding: '12px',
                                         display: 'flex',
@@ -1842,7 +1842,7 @@ export const BuscadorDashboard = () => {
                                         gap: '10px'
                                     }}
                                 >
-                                    <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#944a18', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#4F46E5', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <Sparkles size={14} />
                                         Filtro Sugerido Generado:
                                     </div>
@@ -1853,7 +1853,7 @@ export const BuscadorDashboard = () => {
                                             <span key={idx} style={{ 
                                                 fontSize: '0.65rem', 
                                                 fontWeight: 800, 
-                                                color: '#773401', 
+                                                color: '#3730A3', 
                                                 background: '#FFEBDC', 
                                                 padding: '2px 8px', 
                                                 borderRadius: '6px',
@@ -1867,18 +1867,18 @@ export const BuscadorDashboard = () => {
                                     {/* Extracted Details */}
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <CornerDownRight size={12} color="#877369" />
+                                            <CornerDownRight size={12} color="#94A3B8" />
                                             <span><strong>Palabras clave:</strong> {assistantSuggestions.query}</span>
                                         </div>
                                         {assistantSuggestions.exact && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                <CornerDownRight size={12} color="#877369" />
+                                                <CornerDownRight size={12} color="#94A3B8" />
                                                 <span><strong>Frase exacta:</strong> "{assistantSuggestions.exact}"</span>
                                             </div>
                                         )}
                                         {assistantSuggestions.site && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                <CornerDownRight size={12} color="#877369" />
+                                                <CornerDownRight size={12} color="#94A3B8" />
                                                 <span><strong>Sitio sugerido:</strong> {assistantSuggestions.site}</span>
                                             </div>
                                         )}
@@ -1889,7 +1889,7 @@ export const BuscadorDashboard = () => {
                                         onClick={applyAssistantSuggestions}
                                         style={{
                                             width: '100%',
-                                            background: '#773401',
+                                            background: '#3730A3',
                                             color: 'white',
                                             border: 'none',
                                             borderRadius: '8px',
@@ -1915,42 +1915,42 @@ export const BuscadorDashboard = () => {
                     {/* Panel D: Search Engine Tips Cheatsheet */}
                     <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-carbon)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <HelpCircle size={18} color="#944a18" />
+                            <HelpCircle size={18} color="#4F46E5" />
                             Trucos Rápidos de Búsqueda
                         </h3>
                         
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.78rem', color: '#54433a' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.78rem', color: '#475569' }}>
                             
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', cursor: 'pointer' }} onClick={() => setExactPhrase('error 404')}>
-                                <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#944a18', background: 'rgba(148,74,24,0.06)', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                                <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#4F46E5', background: 'rgba(79, 70, 229,0.06)', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
                                     "palabra"
                                 </span>
                                 <span>Busca la frase exacta. Útil para mensajes de error específicos.</span>
                             </div>
 
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', cursor: 'pointer' }} onClick={() => setExcludeWords('comprar, precio')}>
-                                <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#944a18', background: 'rgba(148,74,24,0.06)', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                                <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#4F46E5', background: 'rgba(79, 70, 229,0.06)', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
                                     -palabra
                                 </span>
                                 <span>Excluye páginas que contengan esa palabra. Quita tiendas o blogs irrelevantes.</span>
                             </div>
 
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', cursor: 'pointer' }} onClick={() => setSite('github.com')}>
-                                <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#944a18', background: 'rgba(148,74,24,0.06)', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                                <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#4F46E5', background: 'rgba(79, 70, 229,0.06)', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
                                     site:web.com
                                 </span>
                                 <span>Busca únicamente dentro de la web indicada.</span>
                             </div>
 
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', cursor: 'pointer' }} onClick={() => setFileType('pdf')}>
-                                <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#944a18', background: 'rgba(148,74,24,0.06)', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                                <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#4F46E5', background: 'rgba(79, 70, 229,0.06)', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
                                     filetype:pdf
                                 </span>
                                 <span>Filtra solo por tipos de archivo (libros, manuales, planillas).</span>
                             </div>
 
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', cursor: 'pointer' }} onClick={() => { setInTitleOrUrl('title'); setQuery('react router'); }}>
-                                <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#944a18', background: 'rgba(148,74,24,0.06)', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                                <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#4F46E5', background: 'rgba(79, 70, 229,0.06)', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
                                     intitle:término
                                 </span>
                                 <span>Fuerza a que el título de la página contenga la palabra.</span>
@@ -1979,7 +1979,7 @@ export const BuscadorDashboard = () => {
                         marginTop: '1.5rem',
                         padding: 0,
                         overflow: 'hidden',
-                        border: '1px solid rgba(148,74,24,0.15)',
+                        border: '1px solid rgba(79, 70, 229,0.15)',
                         borderRadius: '18px'
                     }}
                 >
@@ -1989,16 +1989,16 @@ export const BuscadorDashboard = () => {
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         padding: '10px 16px',
-                        background: 'rgba(148,74,24,0.05)',
-                        borderBottom: '1px solid rgba(148,74,24,0.1)'
+                        background: 'rgba(79, 70, 229,0.05)',
+                        borderBottom: '1px solid rgba(79, 70, 229,0.1)'
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Monitor size={15} color="#944a18" />
-                            <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#54433a' }}>
+                            <Monitor size={15} color="#4F46E5" />
+                            <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#475569' }}>
                                 Panel de Resultados
                             </span>
                             {embeddedUrl && (
-                                <span style={{ fontSize: '0.68rem', color: '#877369', fontFamily: 'monospace', background: '#F7F4F2', padding: '2px 8px', borderRadius: '6px', maxWidth: '350px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                <span style={{ fontSize: '0.68rem', color: '#94A3B8', fontFamily: 'monospace', background: '#F7F4F2', padding: '2px 8px', borderRadius: '6px', maxWidth: '350px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                     {embeddedUrl}
                                 </span>
                             )}
@@ -2009,21 +2009,21 @@ export const BuscadorDashboard = () => {
                                     <button
                                         onClick={() => { if (iframeRef.current) iframeRef.current.src = iframeRef.current.src; }}
                                         title="Recargar"
-                                        style={{ background: 'white', border: '1px solid rgba(148,74,24,0.15)', borderRadius: '8px', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#877369' }}
+                                        style={{ background: 'white', border: '1px solid rgba(79, 70, 229,0.15)', borderRadius: '8px', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94A3B8' }}
                                     >
                                         <RefreshCw size={13} />
                                     </button>
                                     <button
                                         onClick={() => window.open(embeddedUrl, '_blank', 'noopener,noreferrer')}
                                         title="Abrir en nueva pestaña"
-                                        style={{ background: 'white', border: '1px solid rgba(148,74,24,0.15)', borderRadius: '8px', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#877369' }}
+                                        style={{ background: 'white', border: '1px solid rgba(79, 70, 229,0.15)', borderRadius: '8px', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94A3B8' }}
                                     >
                                         <ExternalLink size={13} />
                                     </button>
                                     <button
                                         onClick={() => setPanelExpanded(!panelExpanded)}
                                         title={panelExpanded ? 'Reducir' : 'Expandir'}
-                                        style={{ background: 'white', border: '1px solid rgba(148,74,24,0.15)', borderRadius: '8px', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#877369' }}
+                                        style={{ background: 'white', border: '1px solid rgba(79, 70, 229,0.15)', borderRadius: '8px', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94A3B8' }}
                                     >
                                         <Maximize2 size={13} />
                                     </button>
@@ -2032,7 +2032,7 @@ export const BuscadorDashboard = () => {
                             <button
                                 onClick={() => { setShowPanel(false); setEmbeddedUrl(''); setEmbedBlockedMsg(''); }}
                                 title="Cerrar panel"
-                                style={{ background: 'rgba(148,74,24,0.08)', border: 'none', borderRadius: '8px', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#944a18' }}
+                                style={{ background: 'rgba(79, 70, 229,0.08)', border: 'none', borderRadius: '8px', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#4F46E5' }}
                             >
                                 <X size={14} />
                             </button>
@@ -2045,7 +2045,7 @@ export const BuscadorDashboard = () => {
                             <AlertTriangle size={18} color="#D97706" />
                             <div>
                                 <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#92400E' }}>No se puede previsualizar aquí</div>
-                                <div style={{ fontSize: '0.78rem', color: '#877369', marginTop: '2px' }}>{embedBlockedMsg} El resultado ya se abrió en una nueva pestaña.</div>
+                                <div style={{ fontSize: '0.78rem', color: '#94A3B8', marginTop: '2px' }}>{embedBlockedMsg} El resultado ya se abrió en una nueva pestaña.</div>
                             </div>
                         </div>
                     )}
@@ -2075,8 +2075,8 @@ export const BuscadorDashboard = () => {
                                 width: '40px',
                                 height: '40px',
                                 borderRadius: '50%',
-                                border: '3px solid rgba(148,74,24,0.1)',
-                                borderTopColor: '#944a18',
+                                border: '3px solid rgba(79, 70, 229,0.1)',
+                                borderTopColor: '#4F46E5',
                                 animation: 'spin 1s linear infinite'
                             }} />
                             <style>{`
@@ -2086,8 +2086,8 @@ export const BuscadorDashboard = () => {
                                 }
                             `}</style>
                             <div>
-                                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#944a18' }}>🚀 Cosechando resultados desde la Selva Digital...</div>
-                                <div style={{ fontSize: '0.78rem', color: '#877369', marginTop: '4px' }}>Extrayendo información limpia, sin anuncios ni rastreadores para: "{scrapingQuery}"</div>
+                                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#4F46E5' }}>🚀 Cosechando resultados desde la Selva Digital...</div>
+                                <div style={{ fontSize: '0.78rem', color: '#94A3B8', marginTop: '4px' }}>Extrayendo información limpia, sin anuncios ni rastreadores para: "{scrapingQuery}"</div>
                             </div>
                         </div>
                     )}
@@ -2103,9 +2103,9 @@ export const BuscadorDashboard = () => {
                     {/* Scraped Results Render List */}
                     {scrapedResults.length > 0 && (
                         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', background: '#FAF9F8', maxHeight: '600px', overflowY: 'auto' }}>
-                            <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#877369', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#94A3B8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                                 <span>SE ENCONTRARON {scrapedResults.length} COSECHAS LIMPIAS:</span>
-                                <span style={{ background: 'rgba(148,74,24,0.08)', color: '#944a18', padding: '2px 8px', borderRadius: '6px', fontSize: '0.7rem' }}>Sin Anuncios / Sin Filtro</span>
+                                <span style={{ background: 'rgba(79, 70, 229,0.08)', color: '#4F46E5', padding: '2px 8px', borderRadius: '6px', fontSize: '0.7rem' }}>Sin Anuncios / Sin Filtro</span>
                             </div>
                             
                             {scrapedResults.map((item, index) => {
@@ -2116,8 +2116,8 @@ export const BuscadorDashboard = () => {
                                 const isTwitter = item.url.includes('twitter.com') || item.url.includes('x.com');
 
                                 // Social brand icons / colors
-                                let badgeColor = 'rgba(148,74,24,0.06)';
-                                let badgeTextColor = '#877369';
+                                let badgeColor = 'rgba(79, 70, 229,0.06)';
+                                let badgeTextColor = '#94A3B8';
                                 let badgeLabel = 'Sitio Web';
                                 let badgeIcon = '🌐';
 
@@ -2149,8 +2149,8 @@ export const BuscadorDashboard = () => {
                                 }
 
                                 // Match level badges
-                                let matchBadgeColor = 'rgba(148,74,24,0.05)';
-                                let matchBadgeTextColor = '#877369';
+                                let matchBadgeColor = 'rgba(79, 70, 229,0.05)';
+                                let matchBadgeTextColor = '#94A3B8';
                                 let matchBadgeText = 'Coincidencia baja';
 
                                 if (item.matchType === 'exact') {
@@ -2172,7 +2172,7 @@ export const BuscadorDashboard = () => {
                                         key={index} 
                                         style={{ 
                                             background: 'white', 
-                                            border: '1px solid rgba(148,74,24,0.12)', 
+                                            border: '1px solid rgba(79, 70, 229,0.12)', 
                                             borderRadius: '12px', 
                                             padding: '14px',
                                             display: 'flex',
@@ -2224,7 +2224,7 @@ export const BuscadorDashboard = () => {
                                             style={{ 
                                                 fontSize: '0.92rem', 
                                                 fontWeight: 700, 
-                                                color: '#773401', 
+                                                color: '#3730A3', 
                                                 textDecoration: 'none',
                                                 lineHeight: 1.3
                                             }}
@@ -2234,7 +2234,7 @@ export const BuscadorDashboard = () => {
                                             {highlightText(item.title, scrapingQuery)}
                                         </a>
 
-                                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#54433a', lineHeight: 1.4 }}>
+                                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#475569', lineHeight: 1.4 }}>
                                             {highlightText(item.snippet, scrapingQuery)}
                                         </p>
 
@@ -2246,8 +2246,8 @@ export const BuscadorDashboard = () => {
                                                 style={{
                                                     fontSize: '0.72rem',
                                                     fontWeight: 800,
-                                                    color: '#944a18',
-                                                    background: 'rgba(148,74,24,0.06)',
+                                                    color: '#4F46E5',
+                                                    background: 'rgba(79, 70, 229,0.06)',
                                                     border: 'none',
                                                     borderRadius: '6px',
                                                     padding: '4px 10px',
@@ -2271,7 +2271,7 @@ export const BuscadorDashboard = () => {
                                     onClick={() => runWebScraper(scrapingQuery, true, scrapingOffset + 30)}
                                     disabled={scrapingLoading}
                                     style={{
-                                        background: 'linear-gradient(135deg, #944a18 0%, #773401 100%)',
+                                        background: 'linear-gradient(135deg, #4F46E5 0%, #3730A3 100%)',
                                         color: 'white',
                                         border: 'none',
                                         borderRadius: '10px',
@@ -2280,7 +2280,7 @@ export const BuscadorDashboard = () => {
                                         fontSize: '0.85rem',
                                         cursor: scrapingLoading ? 'not-allowed' : 'pointer',
                                         transition: 'all 0.2s',
-                                        boxShadow: '0 2px 8px rgba(148, 74, 24, 0.15)',
+                                        boxShadow: '0 2px 8px rgba(79, 70, 229, 0.15)',
                                         opacity: scrapingLoading ? 0.7 : 1
                                     }}
                                 >
@@ -2291,11 +2291,11 @@ export const BuscadorDashboard = () => {
                     )}
 
                     {/* URL Analyzer Panel */}
-                    <div style={{ margin: '16px', borderRadius: '14px', border: '1.5px solid rgba(148,74,24,0.13)', background: '#FDFDFD', overflow: 'hidden' }}>
-                        <div style={{ padding: '14px 18px', background: 'linear-gradient(135deg, rgba(148,74,24,0.07) 0%, rgba(148,74,24,0.03) 100%)', borderBottom: '1px solid rgba(148,74,24,0.1)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ margin: '16px', borderRadius: '14px', border: '1.5px solid rgba(79, 70, 229,0.13)', background: '#FDFDFD', overflow: 'hidden' }}>
+                        <div style={{ padding: '14px 18px', background: 'linear-gradient(135deg, rgba(79, 70, 229,0.07) 0%, rgba(79, 70, 229,0.03) 100%)', borderBottom: '1px solid rgba(79, 70, 229,0.1)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontSize: '1rem' }}>🔎</span>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#944a18' }}>LEER PÁGINA</span>
-                            <span style={{ fontSize: '0.75rem', color: '#877369', marginLeft: '4px' }}>Pega una URL y extrae su contenido</span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#4F46E5' }}>LEER PÁGINA</span>
+                            <span style={{ fontSize: '0.75rem', color: '#94A3B8', marginLeft: '4px' }}>Pega una URL y extrae su contenido</span>
                         </div>
                         <div style={{ padding: '14px 18px', display: 'flex', gap: '8px', alignItems: 'center' }}>
                             <input
@@ -2306,17 +2306,17 @@ export const BuscadorDashboard = () => {
                                 onKeyDown={e => { if (e.key === 'Enter') analyzeUrl(); }}
                                 style={{
                                     flex: 1, padding: '10px 14px', borderRadius: '10px',
-                                    border: '1.5px solid rgba(148,74,24,0.2)', background: '#FFF',
-                                    fontSize: '0.85rem', fontWeight: 600, color: '#54433a', outline: 'none'
+                                    border: '1.5px solid rgba(79, 70, 229,0.2)', background: '#FFF',
+                                    fontSize: '0.85rem', fontWeight: 600, color: '#475569', outline: 'none'
                                 }}
-                                onFocus={e => (e.currentTarget.style.borderColor = '#944a18')}
-                                onBlur={e => (e.currentTarget.style.borderColor = 'rgba(148,74,24,0.2)')}
+                                onFocus={e => (e.currentTarget.style.borderColor = '#4F46E5')}
+                                onBlur={e => (e.currentTarget.style.borderColor = 'rgba(79, 70, 229,0.2)')}
                             />
                             <button
                                 onClick={() => analyzeUrl()}
                                 disabled={urlAnalyzing || !urlInput.trim()}
                                 style={{
-                                    background: urlInput.trim() ? 'linear-gradient(135deg, #944a18 0%, #773401 100%)' : '#e2d5cc',
+                                    background: urlInput.trim() ? 'linear-gradient(135deg, #4F46E5 0%, #3730A3 100%)' : '#e2d5cc',
                                     color: 'white', border: 'none', borderRadius: '10px',
                                     padding: '10px 18px', fontWeight: 700, fontSize: '0.82rem',
                                     cursor: urlInput.trim() ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap',
@@ -2336,7 +2336,7 @@ export const BuscadorDashboard = () => {
 
                         {/* URL Result Card */}
                         {urlResult && (
-                            <div style={{ margin: '0 18px 18px', borderRadius: '12px', border: '1px solid rgba(148,74,24,0.12)', background: '#FFF', overflow: 'hidden' }}>
+                            <div style={{ margin: '0 18px 18px', borderRadius: '12px', border: '1px solid rgba(79, 70, 229,0.12)', background: '#FFF', overflow: 'hidden' }}>
                                 {urlResult.image && (
                                     <img
                                         src={urlResult.image}
@@ -2353,7 +2353,7 @@ export const BuscadorDashboard = () => {
                                             style={{ width: '16px', height: '16px', borderRadius: '3px' }}
                                             onError={e => (e.currentTarget.style.display = 'none')}
                                         />
-                                        <span style={{ fontSize: '0.72rem', color: '#877369', fontWeight: 700, background: 'rgba(148,74,24,0.08)', padding: '2px 8px', borderRadius: '20px' }}>
+                                        <span style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 700, background: 'rgba(79, 70, 229,0.08)', padding: '2px 8px', borderRadius: '20px' }}>
                                             {urlResult.siteName || urlResult.domain}
                                         </span>
                                     </div>
@@ -2363,16 +2363,16 @@ export const BuscadorDashboard = () => {
                                         </div>
                                     )}
                                     {urlResult.description && (
-                                        <div style={{ fontSize: '0.83rem', color: '#54433a', lineHeight: 1.5, marginBottom: '10px' }}>
+                                        <div style={{ fontSize: '0.83rem', color: '#475569', lineHeight: 1.5, marginBottom: '10px' }}>
                                             {urlResult.description}
                                         </div>
                                     )}
                                     {urlResult.bodyText && (
                                         <details style={{ marginBottom: '10px' }}>
-                                            <summary style={{ fontSize: '0.76rem', fontWeight: 700, color: '#944a18', cursor: 'pointer', marginBottom: '6px' }}>
+                                            <summary style={{ fontSize: '0.76rem', fontWeight: 700, color: '#4F46E5', cursor: 'pointer', marginBottom: '6px' }}>
                                                 Ver texto de la página ({urlResult.bodyText.length} chars)
                                             </summary>
-                                            <div style={{ fontSize: '0.78rem', color: '#877369', lineHeight: 1.6, maxHeight: '200px', overflowY: 'auto', padding: '8px', background: '#FAF9F8', borderRadius: '8px', border: '1px solid rgba(148,74,24,0.08)' }}>
+                                            <div style={{ fontSize: '0.78rem', color: '#94A3B8', lineHeight: 1.6, maxHeight: '200px', overflowY: 'auto', padding: '8px', background: '#FAF9F8', borderRadius: '8px', border: '1px solid rgba(79, 70, 229,0.08)' }}>
                                                 {urlResult.bodyText}
                                             </div>
                                         </details>
@@ -2381,7 +2381,7 @@ export const BuscadorDashboard = () => {
                                         href={urlResult.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem', color: '#944a18', fontWeight: 700, textDecoration: 'none', padding: '6px 12px', background: 'rgba(148,74,24,0.08)', borderRadius: '8px', transition: 'all 0.2s' }}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem', color: '#4F46E5', fontWeight: 700, textDecoration: 'none', padding: '6px 12px', background: 'rgba(79, 70, 229,0.08)', borderRadius: '8px', transition: 'all 0.2s' }}
                                     >
                                         🔗 Abrir página en pestaña
                                     </a>
@@ -2392,7 +2392,7 @@ export const BuscadorDashboard = () => {
 
                     {/* Empty state if only blocked msg shown */}
                     {!embeddedUrl && !embedBlockedMsg && scrapedResults.length === 0 && !scrapingLoading && !urlResult && (
-                        <div style={{ padding: '40px', textAlign: 'center', color: '#877369', fontSize: '0.85rem' }}>
+                        <div style={{ padding: '40px', textAlign: 'center', color: '#94A3B8', fontSize: '0.85rem' }}>
                             Haz clic en un motor en modo “Panel” para ver los resultados aquí, o haz clic en <strong>Cosechar en AlDía</strong> para extraer resultados directamente sin anuncios.
                         </div>
                     )}

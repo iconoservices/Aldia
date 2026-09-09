@@ -147,7 +147,7 @@ const TaskCard = ({
                     className="menu-btn"
                     style={{
                         background: 'none', border: 'none', cursor: 'pointer',
-                        color: '#877369', opacity: 0, transition: 'opacity 0.15s',
+                        color: '#94A3B8', opacity: 0, transition: 'opacity 0.15s',
                         padding: '4px', display: 'flex', alignItems: 'center',
                         borderRadius: '8px', flexShrink: 0,
                     }}
@@ -320,7 +320,7 @@ export const ChecklistDiario = ({
         // Se cuenta contra las tareas de HOY, no contra los bloques ya materializados:
         // las tareas que nunca se han tocado aún no tienen bloque creado.
         if (totalToday > 0 && completedToday + 1 === totalToday) {
-            confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 }, colors: ['#ff9f66', '#FFD700', '#A8DADC'] });
+            confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 }, colors: ['#818CF8', '#FFD700', '#A8DADC'] });
         }
     }, [completedToday, totalToday]);
 
@@ -478,7 +478,7 @@ export const ChecklistDiario = ({
                         title={pendientesFirst ? 'Pendientes primero: ON' : 'Pendientes primero: OFF'}
                         style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: pendientesFirst ? 'rgba(148,74,24,0.10)' : C.surfaceContainerHigh,
+                            background: pendientesFirst ? 'rgba(79, 70, 229,0.10)' : C.surfaceContainerHigh,
                             border: `1.5px solid ${pendientesFirst ? C.primary : C.outlineVariant}`,
                             borderRadius: '999px', padding: '0 12px',
                             minWidth: `${TOQUE_MINIMO}px`, minHeight: `${TOQUE_MINIMO}px`,
@@ -496,7 +496,7 @@ export const ChecklistDiario = ({
                         title={groupByProject ? 'Agrupado por proyecto' : 'Agrupar por proyecto'}
                         style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: groupByProject ? 'rgba(148,74,24,0.10)' : C.surfaceContainerHigh,
+                            background: groupByProject ? 'rgba(79, 70, 229,0.10)' : C.surfaceContainerHigh,
                             border: `1.5px solid ${groupByProject ? C.primary : 'transparent'}`,
                             borderRadius: '999px', padding: '0 12px',
                             minWidth: `${TOQUE_MINIMO}px`, minHeight: `${TOQUE_MINIMO}px`,
@@ -513,7 +513,7 @@ export const ChecklistDiario = ({
                             title="Restaurar orden automático"
                             style={{
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                background: 'rgba(148,74,24,0.08)', border: 'none',
+                                background: 'rgba(79, 70, 229,0.08)', border: 'none',
                                 borderRadius: '999px', padding: '0 12px',
                                 minWidth: `${TOQUE_MINIMO}px`, minHeight: `${TOQUE_MINIMO}px`,
                                 cursor: 'pointer', flexShrink: 0,
@@ -556,14 +556,14 @@ export const ChecklistDiario = ({
                         <motion.div
                             animate={{ width: `${progressPct}%` }}
                             transition={{ duration: 0.7, ease: 'easeOut' }}
-                            style={{ height: '100%', background: '#ff9f66', borderRadius: '999px' }}
+                            style={{ height: '100%', background: '#818CF8', borderRadius: '999px' }}
                         />
                     </div>
 
                     <div style={{ display: 'flex', gap: '8px' }}>
                         <div style={{
                             display: 'flex', alignItems: 'center', gap: '6px',
-                            background: 'rgba(148,74,24,0.08)', color: C.primary,
+                            background: 'rgba(79, 70, 229,0.08)', color: C.primary,
                             padding: '6px 12px', borderRadius: '999px',
                             fontSize: '0.75rem', fontWeight: 700,
                         }}>
@@ -739,7 +739,7 @@ export const ChecklistDiario = ({
                                 }}
                                 onClick={e => e.stopPropagation()}
                             >
-                                <h4 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: 800, color: '#191c1d' }}>Editar tarea</h4>
+                                <h4 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: 800, color: '#0F172A' }}>Editar tarea</h4>
                                 <input
                                     value={editText}
                                     onChange={e => setEditText(e.target.value)}
@@ -755,12 +755,12 @@ export const ChecklistDiario = ({
                                     <button onClick={() => setEditingTask(null)} style={{
                                         flex: 1, padding: '10px', borderRadius: '12px',
                                         border: '2px solid #E5E7EB', background: 'white',
-                                        color: '#54433a', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
+                                        color: '#475569', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
                                         fontFamily: "'Plus Jakarta Sans', sans-serif",
                                     }}>Cancelar</button>
                                     <button onClick={handleSaveEdit} style={{
                                         flex: 1, padding: '10px', borderRadius: '12px',
-                                        border: 'none', background: '#944a18', color: 'white',
+                                        border: 'none', background: '#4F46E5', color: 'white',
                                         fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
                                         fontFamily: "'Plus Jakarta Sans', sans-serif",
                                     }}>Guardar</button>
@@ -810,7 +810,7 @@ export const ChecklistDiario = ({
                             }}
                             onClick={e => e.stopPropagation()}
                         >
-                            <h4 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: 800, color: '#191c1d' }}>Editar tarea</h4>
+                            <h4 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: 800, color: '#0F172A' }}>Editar tarea</h4>
                             <input
                                 value={editText}
                                 onChange={e => setEditText(e.target.value)}
@@ -826,12 +826,12 @@ export const ChecklistDiario = ({
                                 <button onClick={() => setEditingTask(null)} style={{
                                     flex: 1, padding: '10px', borderRadius: '12px',
                                     border: '2px solid #E5E7EB', background: 'white',
-                                    color: '#54433a', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
+                                    color: '#475569', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
                                     fontFamily: "'Plus Jakarta Sans', sans-serif",
                                 }}>Cancelar</button>
                                 <button onClick={handleSaveEdit} style={{
                                     flex: 1, padding: '10px', borderRadius: '12px',
-                                    border: 'none', background: '#944a18', color: 'white',
+                                    border: 'none', background: '#4F46E5', color: 'white',
                                     fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
                                     fontFamily: "'Plus Jakarta Sans', sans-serif",
 }}>Guardar</button>
@@ -892,7 +892,7 @@ export const ChecklistDiario = ({
                 {/* Progreso Diario — banda superior */}
                 <section style={{
                     ...bentoTarea, border: 'none',
-                    background: 'rgba(148,74,24,0.06)',
+                    background: 'rgba(79, 70, 229,0.06)',
                     padding: '1.25rem 1.5rem', position: 'relative', overflow: 'hidden',
                     display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap',
                 }}>
@@ -951,7 +951,7 @@ export const ChecklistDiario = ({
                                     title="Restaurar orden automático"
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: '4px',
-                                        background: 'rgba(148,74,24,0.08)', border: 'none',
+                                        background: 'rgba(79, 70, 229,0.08)', border: 'none',
                                         borderRadius: '8px', padding: '5px 10px',
                                         fontSize: '0.72rem', color: C.primary, fontWeight: 600,
                                         cursor: 'pointer', fontFamily: 'inherit',
@@ -968,7 +968,7 @@ export const ChecklistDiario = ({
                                 title={pendientesFirst ? 'Pendientes primero: ON' : 'Pendientes primero: OFF'}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '7px',
-                                    background: pendientesFirst ? 'rgba(148,74,24,0.10)' : C.surfaceContainerHigh,
+                                    background: pendientesFirst ? 'rgba(79, 70, 229,0.10)' : C.surfaceContainerHigh,
                                     border: `1.5px solid ${pendientesFirst ? C.primary : C.outlineVariant}`,
                                     borderRadius: '999px', padding: '4px 12px 4px 8px',
                                     fontSize: '0.72rem',
@@ -1002,7 +1002,7 @@ export const ChecklistDiario = ({
                                 title={groupByProject ? 'Agrupado por proyecto' : 'Agrupar por proyecto'}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '5px',
-                                    background: groupByProject ? 'rgba(148,74,24,0.10)' : C.surfaceContainerHigh,
+                                    background: groupByProject ? 'rgba(79, 70, 229,0.10)' : C.surfaceContainerHigh,
                                     border: `1px solid ${groupByProject ? C.primary : 'transparent'}`,
                                     borderRadius: '8px', padding: '5px 10px',
                                     fontSize: '0.72rem', color: groupByProject ? C.primary : C.onSurfaceVariant, fontWeight: 600,
@@ -1134,8 +1134,8 @@ export const ChecklistDiario = ({
                         boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
                         width: '100%', maxWidth: '380px', boxSizing: 'border-box',
                     }}>
-                        <h4 style={{ margin: '0 0 16px', fontSize: '1rem', fontWeight: 800, color: '#191c1d' }}>Repetir tarea</h4>
-                        <p style={{ margin: '0 0 12px', fontSize: '0.82rem', color: '#877369' }}>
+                        <h4 style={{ margin: '0 0 16px', fontSize: '1rem', fontWeight: 800, color: '#0F172A' }}>Repetir tarea</h4>
+                        <p style={{ margin: '0 0 12px', fontSize: '0.82rem', color: '#94A3B8' }}>
                             ¿Qué días de la semana se repite "{editingRepeat.label}"?
                         </p>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '20px' }}>
@@ -1153,8 +1153,8 @@ export const ChecklistDiario = ({
                                         style={{
                                             width: '40px', height: '40px', borderRadius: '12px',
                                             border: selected ? 'none' : '2px solid #E5E7EB',
-                                            background: selected ? '#944a18' : 'transparent',
-                                            color: selected ? '#fff' : '#54433a',
+                                            background: selected ? '#4F46E5' : 'transparent',
+                                            color: selected ? '#fff' : '#475569',
                                             fontWeight: 700, fontSize: '0.85rem',
                                             cursor: 'pointer', fontFamily: 'inherit',
                                         }}
@@ -1166,12 +1166,12 @@ export const ChecklistDiario = ({
                             <button onClick={() => setEditingRepeat(null)} style={{
                                 flex: 1, padding: '10px', borderRadius: '12px',
                                 border: '2px solid #E5E7EB', background: 'white',
-                                color: '#54433a', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
+                                color: '#475569', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
                                 fontFamily: "'Plus Jakarta Sans', sans-serif",
                             }}>Cancelar</button>
                             <button onClick={() => handleSaveRepeat(editingRepeat.repeatDays)} style={{
                                 flex: 1, padding: '10px', borderRadius: '12px',
-                                border: 'none', background: '#944a18', color: 'white',
+                                border: 'none', background: '#4F46E5', color: 'white',
                                 fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer',
                                 fontFamily: "'Plus Jakarta Sans', sans-serif",
                             }}>Guardar</button>
@@ -1312,7 +1312,7 @@ const DropdownMenu = ({
                 display: 'flex', alignItems: 'center', gap: '10px',
                 width: '100%', padding: '10px 14px', border: 'none', background: 'transparent',
                 borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-                fontSize: '0.85rem', color: '#54433a', fontWeight: 600,
+                fontSize: '0.85rem', color: '#475569', fontWeight: 600,
             }}
                 onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F3F4F5'}
                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
@@ -1324,7 +1324,7 @@ const DropdownMenu = ({
                 display: 'flex', alignItems: 'center', gap: '10px',
                 width: '100%', padding: '10px 14px', border: 'none', background: 'transparent',
                 borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-                fontSize: '0.85rem', color: '#54433a', fontWeight: 600,
+                fontSize: '0.85rem', color: '#475569', fontWeight: 600,
             }}
                 onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F3F4F5'}
                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
@@ -1336,7 +1336,7 @@ const DropdownMenu = ({
                 display: 'flex', alignItems: 'center', gap: '10px',
                 width: '100%', padding: '10px 14px', border: 'none', background: 'transparent',
                 borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-                fontSize: '0.85rem', color: '#54433a', fontWeight: 600,
+                fontSize: '0.85rem', color: '#475569', fontWeight: 600,
             }}
                 onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F3F4F5'}
                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}

@@ -33,7 +33,7 @@ export const StatsDashboard = ({ performanceScore, missionFocusScore, completedM
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: '6px' }}>
                     {[...Array(30)].map((_, i) => {
                         const intensity = 0; // Estado inicial limpio
-                        const bgColors = ['#F0EBE6', '#FFECCF', '#FFB76B', 'var(--domain-orange)'];
+                        const bgColors = ['#EEF2FF', '#FFECCF', '#FFB76B', 'var(--domain-orange)'];
                         return (
                             <div key={i} style={{
                                 width: '100%',
@@ -48,7 +48,7 @@ export const StatsDashboard = ({ performanceScore, missionFocusScore, completedM
                     <span>Menos Productivo</span>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                         {[0, 1, 2, 3].map(i => (
-                            <div key={i} style={{ width: '10px', height: '10px', background: ['#F0EBE6', '#FFECCF', '#FFB76B', 'var(--domain-orange)'][i], borderRadius: '2px' }}></div>
+                            <div key={i} style={{ width: '10px', height: '10px', background: ['#EEF2FF', '#FFECCF', '#FFB76B', 'var(--domain-orange)'][i], borderRadius: '2px' }}></div>
                         ))}
                     </div>
                     <span>Modo Bestia</span>

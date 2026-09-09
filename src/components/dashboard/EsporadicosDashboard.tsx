@@ -1481,7 +1481,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                                     title="Días antes de la entrega para mandar el adelanto — tocar para cambiar"
                                     style={{
                                         display: "flex", alignItems: "center", gap: "4px",
-                                        background: adelantoDaysLeft !== undefined && adelantoDaysLeft < 0 ? "rgba(239,68,68,0.1)" : adelantoDaysLeft !== undefined && adelantoDaysLeft <= 1 ? "rgba(230,168,23,0.14)" : "rgba(148,74,24,0.08)",
+                                        background: adelantoDaysLeft !== undefined && adelantoDaysLeft < 0 ? "rgba(239,68,68,0.1)" : adelantoDaysLeft !== undefined && adelantoDaysLeft <= 1 ? "rgba(230,168,23,0.14)" : "rgba(79, 70, 229,0.08)",
                                         color: adelantoDaysLeft !== undefined && adelantoDaysLeft < 0 ? C.rojo : adelantoDaysLeft !== undefined && adelantoDaysLeft <= 1 ? C.ambar : C.secondary,
                                         border: "none", borderRadius: "999px", padding: "2px 8px", fontSize: "0.62rem", fontWeight: 800, cursor: "pointer",
                                     }}

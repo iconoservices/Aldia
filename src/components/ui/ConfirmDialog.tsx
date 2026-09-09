@@ -44,10 +44,10 @@ export const ConfirmDialog = ({ open, title, message, confirmLabel = 'Eliminar',
                         }}>
                             <span className="material-symbols-outlined" style={{ fontSize: '24px', color: '#DC2626' }}>delete</span>
                         </div>
-                        <h3 style={{ margin: '0 0 8px', fontSize: '1.1rem', fontWeight: 800, color: '#191c1d' }}>
+                        <h3 style={{ margin: '0 0 8px', fontSize: '1.1rem', fontWeight: 800, color: '#0F172A' }}>
                             {title}
                         </h3>
-                        <p style={{ margin: '0 0 24px', fontSize: '0.9rem', fontWeight: 500, color: '#877369', lineHeight: 1.5 }}>
+                        <p style={{ margin: '0 0 24px', fontSize: '0.9rem', fontWeight: 500, color: '#94A3B8', lineHeight: 1.5 }}>
                             {message}
                         </p>
                         <div style={{ display: 'flex', gap: '10px' }}>
@@ -55,7 +55,7 @@ export const ConfirmDialog = ({ open, title, message, confirmLabel = 'Eliminar',
                                 onClick={onCancel}
                                 style={{
                                     flex: 1, padding: '12px', borderRadius: '14px', border: '2px solid #E5E7EB',
-                                    background: 'white', color: '#54433a', fontWeight: 800, fontSize: '0.85rem',
+                                    background: 'white', color: '#475569', fontWeight: 800, fontSize: '0.85rem',
                                     cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif",
                                 }}
                             >

@@ -63,7 +63,7 @@ export const ActionBanner = (_props: ActionBannerProps) => {
                 flexDirection: 'column', 
                 alignItems: 'center', 
                 justifyContent: 'center', 
-                background: 'linear-gradient(135deg, #FF8C42 0%, #FF5F2E 100%)', 
+                background: 'linear-gradient(135deg, #4F46E5 0%, #FF5F2E 100%)', 
                 color: 'white', 
                 border: 'none',
                 minHeight: '75px',

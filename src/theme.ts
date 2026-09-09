@@ -11,22 +11,22 @@ import { useState, useEffect } from 'react';
 
 /* ─── Color ──────────────────────────────────────────────────────── */
 export const C = {
-    primary:                 '#944a18',
-    primaryContainer:        '#ff9f66',
-    onPrimaryContainer:      '#773401',
-    secondary:               '#4858ab',
+    primary:                 '#4F46E5',
+    primaryContainer:        '#818CF8',
+    onPrimaryContainer:      '#3730A3',
+    secondary:               '#0EA5E9',
 
-    surface:                 '#f8f9fa',
+    surface:                 '#F1F5F9',
     surfaceLowest:           '#ffffff',
-    surfaceContainerLow:     '#f3f4f5',
-    surfaceContainer:        '#edeeef',
-    surfaceContainerHigh:    '#e7e8e9',
-    surfaceContainerHighest: '#e1e3e4',
+    surfaceContainerLow:     '#F1F5F9',
+    surfaceContainer:        '#E9EEF3',
+    surfaceContainerHigh:    '#E2E8F0',
+    surfaceContainerHighest: '#DDE3EA',
 
-    onSurface:               '#191c1d',
-    onSurfaceVariant:        '#54433a',
-    outline:                 '#877369',
-    outlineVariant:          '#dac2b6',
+    onSurface:               '#0F172A',
+    onSurfaceVariant:        '#475569',
+    outline:                 '#94A3B8',
+    outlineVariant:          '#CBD5E1',
 
     // Semánticos: dinero que entra, dinero que sale, avisos
     verde:                   '#10B981',
@@ -39,7 +39,7 @@ export const PERIODOS = {
     'Mañana': { icon: 'wb_sunny',   label: 'MAÑANA', color: '#E6A817', bg: 'rgba(230,168,23,0.12)' },
     'Tarde':  { icon: 'light_mode', label: 'TARDE',  color: '#E07040', bg: 'rgba(224,112,64,0.12)' },
     'Noche':  { icon: 'dark_mode',  label: 'NOCHE',  color: '#5C6BC0', bg: 'rgba(92,107,192,0.12)' },
-    'Otro':   { icon: 'more_time',  label: 'OTRO',   color: '#877369', bg: 'rgba(135,115,105,0.1)' },
+    'Otro':   { icon: 'more_time',  label: 'OTRO',   color: '#94A3B8', bg: 'rgba(135,115,105,0.1)' },
 } as const;
 
 /* ─── Medidas ────────────────────────────────────────────────────── */
@@ -99,7 +99,7 @@ export const botonPrimario = (movil: boolean): React.CSSProperties => ({
     fontWeight: 700,
     fontSize: movil ? '0.9rem' : '0.85rem',
     fontFamily: 'inherit',
-    boxShadow: '0 4px 14px rgba(148,74,24,0.25)',
+    boxShadow: '0 4px 14px rgba(79, 70, 229,0.25)',
 });
 
 /** Cabecera de página: título, subtítulo y acciones. */

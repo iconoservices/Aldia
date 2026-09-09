@@ -92,7 +92,7 @@ export const BaseDatosDashboard = () => {
         background: '#f8f9fa',
         fontWeight: 900,
         fontSize: '0.65rem',
-        color: '#877369',
+        color: '#94A3B8',
         textTransform: 'uppercase',
         letterSpacing: '0.05em',
         position: 'sticky',

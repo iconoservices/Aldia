@@ -3,8 +3,8 @@
 
 :root {
   /* 🎨 Paleta de Colores de AlDía */
-  --bg-cream: #FDF8F5;
-  --text-carbon: #3D312E;
+  --bg-cream: #F8FAFC;
+  --text-carbon: #1E293B;
 
   /* Agrupamos la lista de misiones y upcoming a la derecha */
   .dashboard-right-col {
@@ -13,13 +13,13 @@
     gap: 0.8rem;
   }
   /* 🏛️ Dominios de Vida */
-  --domain-orange: #FF8C42;
-  /* Acción / Escenario / Icono */
+  --domain-orange: #4F46E5;
+  /* Color primario (antes naranja, ahora índigo) */
   --domain-green: #A8DADC;
   /* Vida / Hábitos / Personal */
-  --domain-blue: #0055FF;
+  --domain-blue: #0EA5E9;
   /* Stats / Auditoría / Finanzas */
-  --domain-purple: #D4C4FB;
+  --domain-purple: #C7D2FE;
   /* Relajación / Extra */
 
   --white: #FFFFFF;

@@ -356,7 +356,7 @@ const cameraButtonStyle: React.CSSProperties = { position: 'absolute', bottom: '
 const nameStyle: React.CSSProperties = { fontSize: '1.6rem', fontWeight: 900, color: 'var(--text-carbon)', margin: 0, cursor: 'pointer' };
 const versionStyle: React.CSSProperties = { fontSize: '0.75rem', fontWeight: 750, color: '#AAA', marginTop: '4px' };
 const actionGridStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' };
-const actionCardStyle: React.CSSProperties = { background: '#FDF8F5', padding: '1.2rem', borderRadius: '24px', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'pointer', fontWeight: 800, fontSize: '0.85rem' };
+const actionCardStyle: React.CSSProperties = { background: '#F8FAFC', padding: '1.2rem', borderRadius: '24px', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'pointer', fontWeight: 800, fontSize: '0.85rem' };
 const settingsListStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.5rem' };
 const settingButtonStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'transparent', border: 'none', width: '100%', cursor: 'pointer', fontSize: '1rem', fontWeight: 750, color: 'var(--text-carbon)', borderRadius: '16px', transition: 'background 0.2s' };
 const settingIconWrapper = (orange = false, green = false): React.CSSProperties => ({ width: '40px', height: '40px', borderRadius: '12px', background: orange ? '#FFF7ED' : (green ? '#F0FDF4' : '#F5F5F5'), color: orange ? 'var(--domain-orange)' : (green ? 'var(--domain-green)' : '#666'), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 });

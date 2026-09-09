@@ -81,9 +81,9 @@ const AccountSelectModal = ({ open, accounts, initialSelection, onSave, onCancel
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto', marginBottom: '1rem' }}>
                             <button
                                 onClick={() => toggle(NONE_ACCOUNT_KEY)}
-                                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '12px', border: `1px solid ${isSelected(NONE_ACCOUNT_KEY) ? '#191c1d' : '#E2E8F0'}`, background: 'white', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '12px', border: `1px solid ${isSelected(NONE_ACCOUNT_KEY) ? '#0F172A' : '#E2E8F0'}`, background: 'white', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
                             >
-                                <span style={{ width: '18px', height: '18px', borderRadius: '5px', border: '2px solid #191c1d', background: isSelected(NONE_ACCOUNT_KEY) ? '#191c1d' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <span style={{ width: '18px', height: '18px', borderRadius: '5px', border: '2px solid #0F172A', background: isSelected(NONE_ACCOUNT_KEY) ? '#0F172A' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                     {isSelected(NONE_ACCOUNT_KEY) && <Check size={12} color="white" />}
                                 </span>
                                 <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#94A3B8', flexShrink: 0 }} />
@@ -93,9 +93,9 @@ const AccountSelectModal = ({ open, accounts, initialSelection, onSave, onCancel
                                 <button
                                     key={a.id}
                                     onClick={() => toggle(a.id)}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '12px', border: `1px solid ${isSelected(a.id) ? '#191c1d' : '#E2E8F0'}`, background: 'white', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '12px', border: `1px solid ${isSelected(a.id) ? '#0F172A' : '#E2E8F0'}`, background: 'white', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
                                 >
-                                    <span style={{ width: '18px', height: '18px', borderRadius: '5px', border: '2px solid #191c1d', background: isSelected(a.id) ? '#191c1d' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    <span style={{ width: '18px', height: '18px', borderRadius: '5px', border: '2px solid #0F172A', background: isSelected(a.id) ? '#0F172A' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                         {isSelected(a.id) && <Check size={12} color="white" />}
                                     </span>
                                     <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: a.color, flexShrink: 0 }} />
@@ -109,7 +109,7 @@ const AccountSelectModal = ({ open, accounts, initialSelection, onSave, onCancel
                                 <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: '10px', border: '1px solid #E2E8F0', background: 'white', color: '#475569', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit' }}>
                                     Cancelar
                                 </button>
-                                <button onClick={() => onSave(draft)} style={{ padding: '9px 16px', borderRadius: '10px', border: 'none', background: '#191c1d', color: 'white', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                <button onClick={() => onSave(draft)} style={{ padding: '9px 16px', borderRadius: '10px', border: 'none', background: '#0F172A', color: 'white', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit' }}>
                                     Guardar selección
                                 </button>
                             </div>

@@ -97,19 +97,19 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     width: '100%',
                     transition: 'all 0.15s ease',
                     background: isActive ? '#edeeef' : 'transparent',
-                    color: isActive ? '#944a18' : '#54433a',
-                    boxShadow: isActive ? 'inset -3px 0 0 #944a18' : 'none',
+                    color: isActive ? '#4F46E5' : '#475569',
+                    boxShadow: isActive ? 'inset -3px 0 0 #4F46E5' : 'none',
                 }}
                 onMouseEnter={e => {
                     if (!isActive) {
                         (e.currentTarget as HTMLElement).style.background = '#f3f4f5';
-                        (e.currentTarget as HTMLElement).style.color = '#944a18';
+                        (e.currentTarget as HTMLElement).style.color = '#4F46E5';
                     }
                 }}
                 onMouseLeave={e => {
                     if (!isActive) {
                         (e.currentTarget as HTMLElement).style.background = 'transparent';
-                        (e.currentTarget as HTMLElement).style.color = '#54433a';
+                        (e.currentTarget as HTMLElement).style.color = '#475569';
                     }
                 }}
             >
@@ -168,8 +168,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                 <div className="sidebar-logo desktop-only" style={{ padding: '0 4px', flexShrink: 0 }}>
                     <img src="/favicon.svg" alt="AlDía" className="logo-placeholder" style={{ padding: 0 }} />
                     <div>
-                        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: '#944a18', letterSpacing: '-0.01em', lineHeight: 1 }}>AlDía</h1>
-                        <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#54433a', opacity: 0.7, fontWeight: 600, letterSpacing: '0.04em' }}>Productivity Focus</p>
+                        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: '#4F46E5', letterSpacing: '-0.01em', lineHeight: 1 }}>AlDía</h1>
+                        <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#475569', opacity: 0.7, fontWeight: 600, letterSpacing: '0.04em' }}>Productivity Focus</p>
                     </div>
                 </div>
 
@@ -181,7 +181,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     {/* Divider */}
                     <div style={{ margin: '10px 0 6px', display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px' }}>
                         <span style={{ flex: 1, height: '1px', background: '#e7e8e9' }} />
-                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#877369', letterSpacing: '0.08em', whiteSpace: 'nowrap', opacity: 0.7 }}>
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#94A3B8', letterSpacing: '0.08em', whiteSpace: 'nowrap', opacity: 0.7 }}>
                             HERRAMIENTAS
                         </span>
                         <span style={{ flex: 1, height: '1px', background: '#e7e8e9' }} />
@@ -192,18 +192,18 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                 </nav>
 
                 {/* Bottom: iconos */}
-                <div style={{ borderTop: '1px solid #dac2b6', paddingTop: '12px', flexShrink: 0, display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                <div style={{ borderTop: '1px solid #CBD5E1', paddingTop: '12px', flexShrink: 0, display: 'flex', gap: '8px', justifyContent: 'center' }}>
                     <button onClick={onTrashClick} title="Papelera de reciclaje" style={{
-                        background: 'rgba(148,74,24,0.08)', border: 'none', borderRadius: '12px',
-                        padding: '10px 14px', cursor: 'pointer', color: '#944a18', flexShrink: 0,
+                        background: 'rgba(79, 70, 229,0.08)', border: 'none', borderRadius: '12px',
+                        padding: '10px 14px', cursor: 'pointer', color: '#4F46E5', flexShrink: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                         <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>delete</span>
                     </button>
                     {!isInstalled && (
                         <button onClick={install} title="Instalar app" style={{
-                            background: 'rgba(148,74,24,0.08)', border: 'none', borderRadius: '12px',
-                            padding: '10px 14px', cursor: 'pointer', color: '#944a18', flexShrink: 0,
+                            background: 'rgba(79, 70, 229,0.08)', border: 'none', borderRadius: '12px',
+                            padding: '10px 14px', cursor: 'pointer', color: '#4F46E5', flexShrink: 0,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
                             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>download</span>
@@ -213,8 +213,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         onClick={onProfileClick}
                         title="Perfil y ajustes"
                         style={{
-                            background: '#ff9f66', border: 'none', borderRadius: '12px',
-                            padding: '10px 14px', cursor: 'pointer', color: '#773401',
+                            background: '#818CF8', border: 'none', borderRadius: '12px',
+                            padding: '10px 14px', cursor: 'pointer', color: '#3730A3',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             transition: 'opacity 0.15s',
                         }}
@@ -255,7 +255,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     <div style={{
                         position: 'absolute', bottom: '-2px', right: '-2px',
                         width: '16px', height: '16px', borderRadius: '50%',
-                        background: '#944a18', border: '2px solid white',
+                        background: '#4F46E5', border: '2px solid white',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                         <span className="material-symbols-outlined" style={{ fontSize: '10px', color: 'white' }}>edit</span>
@@ -272,7 +272,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                 <div className="mobile-drawer-header">
                     <div>
                         <span className="mobile-logo-text" style={{ fontSize: '1.4rem' }}>AlDía</span>
-                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#877369', fontWeight: 600 }}>Productivity Focus</p>
+                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600 }}>Productivity Focus</p>
                     </div>
                     <button className="mobile-drawer-close" onClick={() => setIsDrawerOpen(false)}>
                         <span className="material-symbols-outlined">close</span>
@@ -282,7 +282,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     {PRIMARY_ITEMS.map(item => renderSidebarBtn(item))}
                     <div style={{ margin: '10px 0 6px', display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px' }}>
                         <span style={{ flex: 1, height: '1px', background: '#e7e8e9' }} />
-                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#877369', letterSpacing: '0.08em', whiteSpace: 'nowrap', opacity: 0.7 }}>
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#94A3B8', letterSpacing: '0.08em', whiteSpace: 'nowrap', opacity: 0.7 }}>
                             HERRAMIENTAS
                         </span>
                         <span style={{ flex: 1, height: '1px', background: '#e7e8e9' }} />
@@ -344,7 +344,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         background: none;
                         border: none;
                         cursor: pointer;
-                        color: #191c1d;
+                        color: #0F172A;
                         display: flex;
                         align-items: center;
                         justify-content: center;
@@ -362,15 +362,15 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         font-family: 'Plus Jakarta Sans', sans-serif;
                         font-weight: 800;
                         font-size: 1.25rem;
-                        color: #944a18;
+                        color: #4F46E5;
                     }
 
                     .mobile-view-title {
                         font-family: 'Plus Jakarta Sans', sans-serif;
                         font-weight: 700;
                         font-size: 1.05rem;
-                        color: #191c1d;
-                        border-left: 1px solid #dac2b6;
+                        color: #0F172A;
+                        border-left: 1px solid #CBD5E1;
                         padding-left: 10px;
                     }
 
@@ -381,7 +381,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         background-color: #edeeef;
                         background-size: cover;
                         background-position: center;
-                        border: 2px solid #ff9f66;
+                        border: 2px solid #818CF8;
                         cursor: pointer;
                         display: flex;
                         align-items: center;
@@ -426,7 +426,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         align-items: center;
                         justify-content: center;
                         gap: 2px;
-                        color: #54433a;
+                        color: #475569;
                         font-family: 'Plus Jakarta Sans', sans-serif;
                         /* 6 pestañas ahora (antes 5, ancho pensado para esas) */
                         font-size: 0.62rem;
@@ -445,8 +445,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     }
 
                     .mobile-nav-btn.active {
-                        background: rgba(148, 74, 24, 0.1);
-                        color: #944a18;
+                        background: rgba(79, 70, 229, 0.1);
+                        color: #4F46E5;
                     }
 
                     .mobile-nav-btn.active span.material-symbols-outlined {
@@ -507,7 +507,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     .mobile-drawer-close {
                         background: none;
                         border: none;
-                        color: #54433a;
+                        color: #475569;
                         cursor: pointer;
                         padding: 4px;
                         display: flex;
@@ -534,14 +534,14 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         display: flex !important;
                         flex-direction: row !important;
                         gap: 12px !important;
-                        color: #54433a !important;
+                        color: #475569 !important;
                         background: transparent !important;
                         transition: all 0.2s;
                     }
 
                     .mobile-drawer-tab-btn.active-tab {
-                        background: rgba(148, 74, 24, 0.08) !important;
-                        color: #944a18 !important;
+                        background: rgba(79, 70, 229, 0.08) !important;
+                        color: #4F46E5 !important;
                     }
                 }
             `}</style>

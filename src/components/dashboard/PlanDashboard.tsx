@@ -223,7 +223,7 @@ export const PlanDashboard = ({
             {/* ── 1. Cuánto me queda: todo en una sola fila ── */}
             <section style={{
                 ...bento, border: 'none',
-                background: n.queda < 0 ? 'rgba(239,68,68,0.07)' : 'rgba(148,74,24,0.06)',
+                background: n.queda < 0 ? 'rgba(239,68,68,0.07)' : 'rgba(79, 70, 229,0.06)',
                 padding: '0.7rem 1.1rem', marginBottom: '1.25rem',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 flexWrap: movil ? 'wrap' : 'nowrap', gap: movil ? '8px' : '1.5rem',
