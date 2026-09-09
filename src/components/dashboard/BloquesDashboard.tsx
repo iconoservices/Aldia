@@ -1205,8 +1205,8 @@ export const BloquesDashboard = ({
 
             
             {/* Cabecera del Dashboard */}
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
-                <h2 style={{ margin: 0, fontSize: '32px', fontWeight: '700', color: '#191c1d', letterSpacing: '-0.02em' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#191c1d', letterSpacing: '-0.01em' }}>
                     Rutina
                 </h2>
 
@@ -1232,35 +1232,29 @@ export const BloquesDashboard = ({
                     ))}
                 </div>
             </div>
-            <p style={{ margin: '0 0 2rem', fontSize: '13px', color: '#54433a', opacity: 0.75, maxWidth: '640px' }}>
+            <p style={{ margin: '0 0 1.5rem', fontSize: '0.8rem', color: '#54433a', fontWeight: 500, opacity: 0.8, maxWidth: '640px', lineHeight: 1.4 }}>
                 Las tareas que se repiten cada semana. Aparecen en tu Checklist ("Mi Jornada") los días que marques.
             </p>
 
             {/* ─── SUB-VISTA: SEMANA (planilla existente) ─── */}
             {semanalSubView === 'semana' && (<>
-                {/* Formulario de Nuevo Bloque - Stitch style */}
-                <form onSubmit={handleAddRow} className="glass-card" style={{
-                    padding: '24px', 
-                    borderRadius: '24px', 
-                    background: 'rgba(255, 255, 255, 0.7)', 
-                    backdropFilter: 'blur(8px)',
-                    border: '1px solid rgba(255, 255, 255, 0.5)',
-                    marginBottom: '2.5rem', 
-                    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.03)',
+                {/* Formulario de nueva tarea */}
+                <form onSubmit={handleAddRow} style={{
+                    padding: '20px',
+                    borderRadius: '16px',
+                    background: '#ffffff',
+                    border: '1px solid #dac2b6',
+                    marginBottom: '2rem',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '16px'
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                        <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: '#191c1d', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: '24px', color: '#944a18' }}>
-                                add_circle
-                            </span>
-                            Añadir Nuevo Bloque de Enfoque
+                        <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#191c1d', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#944a18' }}>add_circle</span>
+                            Añadir tarea
                         </h3>
-                        <span style={{ fontSize: '14px', color: '#54433a', opacity: 0.6, fontStyle: 'italic' }}>
-                            Crea rutinas repetibles fácilmente
-                        </span>
                     </div>
 
                     <div style={{ 
@@ -1570,12 +1564,12 @@ export const BloquesDashboard = ({
                     <AnimatePresence initial={false}>
                         {groupedRows.length > 0 ? (
                             groupedRows.map((group) => (
-                                <div 
-                                    key={group.id} 
-                                    style={{ 
-                                        background: 'rgba(255, 255, 255, 0.6)', 
-                                        borderRadius: '16px', 
-                                        overflow: 'hidden', 
+                                <div
+                                    key={group.id}
+                                    style={groupBy === 'none' ? { background: 'transparent' } : {
+                                        background: 'rgba(255, 255, 255, 0.6)',
+                                        borderRadius: '16px',
+                                        overflow: 'hidden',
                                         border: '1px solid rgba(218, 194, 182, 0.3)'
                                     }}
                                 >
@@ -1611,7 +1605,7 @@ export const BloquesDashboard = ({
                                         axis="y"
                                         values={group.rows}
                                         onReorder={(newRows) => { if (groupBy === 'period') reorderPeriod(group.rows[0]?.period || '', newRows); }}
-                                        style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px' }}
+                                        style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: groupBy === 'none' ? 0 : '10px' }}
                                     >
                                         {group.rows.map((row) => {
                                             const project = projects.find(p => p.id === row.projectId);
@@ -1628,12 +1622,13 @@ export const BloquesDashboard = ({
                                                     whileDrag={{ scale: 1.02, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 10 }}
                                                     transition={{ duration: 0.15 }}
                                                     style={{
-                                                        padding: '10px 16px',
+                                                        padding: '11px 14px',
                                                         borderRadius: '14px',
-                                                        background: hoveredRowId === row.key ? 'white' : 'rgba(255,255,255,0.7)',
-                                                        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                                                        background: '#ffffff',
+                                                        border: '1px solid #dac2b6',
+                                                        boxShadow: hoveredRowId === row.key ? '0 4px 14px rgba(0,0,0,0.06)' : '0 2px 10px rgba(0,0,0,0.04)',
                                                         cursor: groupBy === 'period' ? 'grab' : 'default',
-                                                        transition: 'background-color 0.2s'
+                                                        transition: 'box-shadow 0.2s'
                                                     }}
                                                     onMouseEnter={() => setHoveredRowId(row.key)}
                                                     onMouseLeave={() => setHoveredRowId(null)}

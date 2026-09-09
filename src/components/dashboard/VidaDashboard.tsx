@@ -6,6 +6,64 @@ import { RoutineEditOverlay } from '../features/RoutineEditOverlay';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { C } from '../../theme';
 
+/* ── Estilos compartidos por las 3 sub-pestañas de Vida ─────────────
+   Rutina, Hábitos y Horario usan el mismo lenguaje: encabezado con
+   título + ayuda + botón pastilla, tarjetas bento y alta en línea. */
+const vidaTitulo: React.CSSProperties = { margin: 0, fontSize: '1.15rem', fontWeight: 800, color: C.onSurface, letterSpacing: '-0.01em' };
+const vidaAyuda: React.CSSProperties = { margin: '0 0 1rem', fontSize: '0.8rem', color: C.onSurfaceVariant, fontWeight: 500, lineHeight: 1.4 };
+const vidaBotonAlta = (color: string): React.CSSProperties => ({
+    background: color, color: '#fff', border: 'none', borderRadius: '999px',
+    padding: '9px 16px', display: 'flex', alignItems: 'center', gap: '6px',
+    cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem', fontFamily: 'inherit',
+    boxShadow: `0 4px 14px ${color}40`, flexShrink: 0,
+});
+const vidaCard = (accent: string): React.CSSProperties => ({
+    background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`,
+    borderLeft: `4px solid ${accent}`, borderRadius: '14px',
+    padding: '0.95rem 1.05rem', marginBottom: '10px',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+});
+const vidaInput: React.CSSProperties = {
+    flex: 1, background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`,
+    borderRadius: '12px', padding: '10px 14px', fontSize: '0.9rem',
+    fontWeight: 600, color: C.onSurface, outline: 'none', fontFamily: 'inherit',
+};
+const vidaInputBtn = (primary: boolean): React.CSSProperties => ({
+    background: primary ? C.primary : C.surfaceContainerHigh,
+    color: primary ? '#fff' : C.onSurfaceVariant, border: 'none', borderRadius: '12px',
+    padding: primary ? '10px 16px' : '10px 14px', fontWeight: 700, fontSize: '0.82rem',
+    cursor: 'pointer', fontFamily: 'inherit',
+});
+const vidaVacio = (icon: string, text: string): React.ReactElement => (
+    <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: C.onSurfaceVariant }}>
+        <span className="material-symbols-outlined" style={{ fontSize: '40px', color: C.outlineVariant, display: 'block', marginBottom: '10px' }}>{icon}</span>
+        <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>{text}</p>
+    </div>
+);
+
+/* Formulario de alta en línea, idéntico en las 3 pestañas. */
+const InlineAdd = ({ placeholder, value, onChange, onSubmit, onCancel }: {
+    placeholder: string; value: string;
+    onChange: (v: string) => void; onSubmit: () => void; onCancel: () => void;
+}) => (
+    <form
+        onSubmit={(e) => { e.preventDefault(); onSubmit(); }}
+        style={{ marginBottom: '1rem' }}
+    >
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <input
+                autoFocus value={value}
+                onChange={(e) => onChange(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); }}
+                placeholder={placeholder}
+                style={vidaInput}
+            />
+            <button type="submit" style={vidaInputBtn(true)}>Añadir</button>
+            <button type="button" onClick={onCancel} style={vidaInputBtn(false)}>Cancelar</button>
+        </div>
+    </form>
+);
+
 interface VidaProps {
     habits: Habit[];
     toggleHabit: (id: number, dayIndex: number) => void;
@@ -41,6 +99,9 @@ export const VidaDashboard = ({
     const [addingBlock, setAddingBlock] = useState(false);
     const [newBlockName, setNewBlockName] = useState('');
     const [deletingBlock, setDeletingBlock] = useState<Routine | null>(null);
+    const [addingHabit, setAddingHabit] = useState(false);
+    const [newHabitName, setNewHabitName] = useState('');
+    const [deletingHabit, setDeletingHabit] = useState<Habit | null>(null);
     const days = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
     const todayStr = new Date().toLocaleDateString('en-CA');
     const normalizedDay = (new Date().getDay() + 6) % 7;
@@ -94,63 +155,48 @@ export const VidaDashboard = ({
             {/* MOTOR DE HÁBITOS (SECCIÓN PRINCIPAL) */}
             {only !== 'horario' && (
             <div className="habitos-col" style={only ? { position: 'static' } : undefined}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>🌿 Hábitos</h3>
-                    <button
-                        onClick={() => {
-                            const name = prompt('Nombre del nuevo hábito:');
-                            if (name) addHabit(name);
-                        }}
-                        style={{ background: '#F0EBE6', color: 'var(--domain-purple)', border: 'none', borderRadius: '10px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontWeight: 900, fontSize: '0.7rem' }}
-                    >
-                        <Plus size={14} /> NUEVO
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+                    <h3 style={vidaTitulo}>🌿 Hábitos</h3>
+                    <button onClick={() => { setAddingHabit(true); setNewHabitName(''); }} style={vidaBotonAlta(C.secondary)}>
+                        <Plus size={15} strokeWidth={3} /> Nuevo hábito
                     </button>
                 </div>
-                <p style={{ margin: '0 0 1rem', fontSize: '0.78rem', color: '#94A3B8', fontWeight: 600, lineHeight: 1.4 }}>
+                <p style={vidaAyuda}>
                     Cosas que quieres hacer con constancia. Se miden por racha, no por hora.
                 </p>
-                <div className="glass-card" style={{ padding: '1.2rem', background: 'white', borderRadius: '24px', border: '1px solid rgba(138, 92, 246, 0.1)' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        {habits.map((habit, hIdx) => (
-                            <div 
-                                key={habit.id} 
-                                style={{ 
-                                    display: 'flex', 
-                                    justifyContent: 'space-between', 
-                                    alignItems: 'center', 
-                                    padding: '12px 0', 
-                                    borderBottom: hIdx === habits.length - 1 ? 'none' : '1px solid #F5F5F5' 
-                                }}
-                            >
+
+                {addingHabit && (
+                    <InlineAdd
+                        placeholder="Nombre del hábito (ej. Leer 15 min)"
+                        value={newHabitName}
+                        onChange={setNewHabitName}
+                        onSubmit={() => { const n = newHabitName.trim(); if (n) addHabit(n); setNewHabitName(''); setAddingHabit(false); }}
+                        onCancel={() => setAddingHabit(false)}
+                    />
+                )}
+
+                {habits.length === 0 && !addingHabit
+                    ? vidaVacio('spa', 'Aún no tienes hábitos. Crea el primero.')
+                    : habits.map((habit) => (
+                        <div key={habit.id} style={vidaCard(C.secondary)}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <div 
-                                        onClick={() => {
-                                            if (confirm(`¿Borrar hábito "${habit.name}"?`)) {
-                                                if (habit.linkedRoutineId && habit.linkedRoutineItemId) {
-                                                    const alsoRemoveItem = confirm('¿También eliminar la tarea vinculada del horario?');
-                                                    removeHabit(habit.id);
-                                                    if (alsoRemoveItem) {
-                                                        removeRoutineItem(habit.linkedRoutineId, habit.linkedRoutineItemId);
-                                                    }
-                                                } else {
-                                                    removeHabit(habit.id);
-                                                }
-                                            }
-                                        }}
-                                        style={{ cursor: 'pointer', opacity: 0.2, transition: 'opacity 0.2s' }}
+                                    <div
+                                        onClick={() => setDeletingHabit(habit)}
+                                        title="Eliminar hábito"
+                                        style={{ cursor: 'pointer', opacity: 0.35, transition: 'opacity 0.2s' }}
                                         onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                                        onMouseLeave={(e) => e.currentTarget.style.opacity = '0.2'}
+                                        onMouseLeave={(e) => e.currentTarget.style.opacity = '0.35'}
                                     >
-                                        <Trash2 size={12} color="#f87171" />
+                                        <Trash2 size={13} color={C.rojo} />
                                     </div>
-                                    <div style={{ width: '4px', height: '14px', borderRadius: '4px', background: 'var(--domain-purple)' }}></div>
                                     <div>
-                                        <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{habit.name}</h4>
-                                        <p style={{ margin: 0, fontSize: '0.6rem', color: '#BBB', fontWeight: 800, textTransform: 'uppercase' }}>Programado: {habit.schedule?.length || 0} días</p>
+                                        <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800, color: C.onSurface }}>{habit.name}</h4>
+                                        <p style={{ margin: '2px 0 0', fontSize: '0.68rem', color: C.onSurfaceVariant, fontWeight: 600 }}>{habit.schedule?.length || 0} días · racha</p>
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '4px', background: '#F9F9F9', padding: '4px', borderRadius: '8px' }}>
+                                <div style={{ display: 'flex', gap: '4px', background: C.surfaceContainerLow, padding: '4px', borderRadius: '10px' }}>
                                     {days.map((day, idx) => {
                                         const isScheduled = (habit.schedule || []).includes(idx);
                                         const isCompletedToday = (habit.completedDates || []).includes(todayStr);
@@ -159,40 +205,25 @@ export const VidaDashboard = ({
                                                 key={idx}
                                                 onClick={() => toggleHabit(habit.id, idx)}
                                                 style={{
-                                                    width: '18px',
-                                                    height: '18px',
-                                                    borderRadius: '6px',
-                                                    background: isScheduled ? 'var(--domain-purple)' : 'white',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
+                                                    width: '18px', height: '18px', borderRadius: '6px',
+                                                    background: isScheduled ? C.secondary : C.surfaceLowest,
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     cursor: 'pointer',
-                                                    boxShadow: isScheduled ? '0 2px 8px rgba(138, 92, 246, 0.25)' : 'none',
-                                                    border: isScheduled ? 'none' : '1px solid #EEE',
+                                                    border: isScheduled ? 'none' : `1px solid ${C.outlineVariant}`,
                                                     position: 'relative'
                                                 }}
                                             >
-                                                <span style={{ 
-                                                    fontSize: '0.65rem', 
-                                                    fontWeight: 900, 
-                                                    color: isScheduled ? 'white' : '#CCC' 
-                                                }}>
-                                                    {day}
-                                                </span>
+                                                <span style={{ fontSize: '0.62rem', fontWeight: 800, color: isScheduled ? '#fff' : C.outline }}>{day}</span>
                                                 {idx === normalizedDay && isCompletedToday && (
-                                                    <div style={{ position: 'absolute', top: -2, right: -2, width: '6px', height: '6px', borderRadius: '50%', background: 'var(--domain-green)', border: '1px solid white' }} />
+                                                    <div style={{ position: 'absolute', top: -2, right: -2, width: '6px', height: '6px', borderRadius: '50%', background: C.verde, border: '1px solid white' }} />
                                                 )}
                                             </div>
                                         );
                                     })}
                                 </div>
                             </div>
-                        ))}
-                        {habits.length === 0 && (
-                            <p style={{ textAlign: 'center', color: '#CCC', fontSize: '0.8rem', padding: '2rem 0' }}>No hay hábitos registrados todavía.</p>
-                        )}
-                    </div>
-                </div>
+                        </div>
+                    ))}
             </div>
             )}
 
@@ -208,103 +239,52 @@ export const VidaDashboard = ({
                     gap: '12px'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>⏰ Horario</h3>
-                        <div style={{ display: 'flex', background: '#F0EBE6', padding: '4px', borderRadius: '12px', gap: '4px' }}>
-                            <button 
-                                onClick={() => setViewMode('hoy')}
-                                style={{ 
-                                    background: viewMode === 'hoy' ? 'white' : 'transparent',
-                                    border: 'none', padding: '4px 8px', borderRadius: '8px', cursor: 'pointer',
-                                    fontSize: '0.65rem', fontWeight: 900, color: viewMode === 'hoy' ? 'var(--domain-purple)' : '#888',
-                                    display: 'flex', alignItems: 'center', gap: '4px'
-                                }}
-                            >
-                                <LayoutGrid size={12} /> HOY
-                            </button>
-                            <button 
-                                onClick={() => setViewMode('semana')}
-                                style={{ 
-                                    background: viewMode === 'semana' ? 'white' : 'transparent',
-                                    border: 'none', padding: '4px 8px', borderRadius: '8px', cursor: 'pointer',
-                                    fontSize: '0.65rem', fontWeight: 900, color: viewMode === 'semana' ? 'var(--domain-purple)' : '#888',
-                                    display: 'flex', alignItems: 'center', gap: '4px'
-                                }}
-                            >
-                                <Calendar size={12} /> SEMANA
-                            </button>
+                        <h3 style={vidaTitulo}>⏰ Horario</h3>
+                        <div style={{ display: 'flex', background: C.surfaceContainerLow, padding: '4px', borderRadius: '10px', gap: '4px' }}>
+                            {([['hoy', 'Lista', LayoutGrid], ['semana', 'Semana', Calendar]] as const).map(([m, lbl, Icon]) => (
+                                <button
+                                    key={m}
+                                    onClick={() => setViewMode(m)}
+                                    style={{
+                                        background: viewMode === m ? C.surfaceLowest : 'transparent',
+                                        border: 'none', padding: '5px 10px', borderRadius: '7px', cursor: 'pointer',
+                                        fontSize: '0.68rem', fontWeight: 700, fontFamily: 'inherit',
+                                        color: viewMode === m ? C.primary : C.onSurfaceVariant,
+                                        display: 'flex', alignItems: 'center', gap: '4px',
+                                        boxShadow: viewMode === m ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                    }}
+                                >
+                                    <Icon size={12} /> {lbl}
+                                </button>
+                            ))}
                         </div>
                     </div>
-                    <button
-                        onClick={() => { setAddingBlock(true); setNewBlockName(''); }}
-                        style={{
-                            background: C.primary,
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '999px',
-                            padding: '9px 16px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            cursor: 'pointer',
-                            fontWeight: 700,
-                            fontSize: '0.78rem',
-                            fontFamily: 'inherit',
-                            boxShadow: '0 4px 14px rgba(148,74,24,0.25)',
-                            flexShrink: 0
-                        }}
-                    >
+                    <button onClick={() => { setAddingBlock(true); setNewBlockName(''); }} style={vidaBotonAlta(C.primary)}>
                         <Plus size={15} strokeWidth={3} /> Nuevo bloque
                     </button>
                 </div>
-                <p style={{ margin: '0 0 1rem', fontSize: '0.78rem', color: C.onSurfaceVariant, fontWeight: 500, lineHeight: 1.4 }}>
+                <p style={vidaAyuda}>
                     Tu horario tipo: bloques con hora fija. Se ven en el Calendario.
                 </p>
 
                 {addingBlock && (
-                        <form
-                            onSubmit={(e) => {
-                                e.preventDefault();
-                                const n = newBlockName.trim();
-                                if (n) addRoutine(n);
-                                setNewBlockName('');
-                                setAddingBlock(false);
-                            }}
-                            style={{ marginBottom: '1rem' }}
-                        >
-                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                <input
-                                    autoFocus
-                                    value={newBlockName}
-                                    onChange={(e) => setNewBlockName(e.target.value)}
-                                    onKeyDown={(e) => { if (e.key === 'Escape') setAddingBlock(false); }}
-                                    placeholder="Nombre del bloque (ej. Bloque productivo)"
-                                    style={{
-                                        flex: 1, background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`,
-                                        borderRadius: '12px', padding: '10px 14px', fontSize: '0.9rem',
-                                        fontWeight: 600, color: C.onSurface, outline: 'none', fontFamily: 'inherit',
-                                    }}
-                                />
-                                <button type="submit" style={{
-                                    background: C.primary, color: 'white', border: 'none', borderRadius: '12px',
-                                    padding: '10px 16px', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'inherit',
-                                }}>Añadir</button>
-                                <button type="button" onClick={() => setAddingBlock(false)} style={{
-                                    background: C.surfaceContainerHigh, color: C.onSurfaceVariant, border: 'none', borderRadius: '12px',
-                                    padding: '10px 14px', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'inherit',
-                                }}>Cancelar</button>
-                            </div>
-                        </form>
+                    <InlineAdd
+                        placeholder="Nombre del bloque (ej. Bloque productivo)"
+                        value={newBlockName}
+                        onChange={setNewBlockName}
+                        onSubmit={() => { const n = newBlockName.trim(); if (n) addRoutine(n); setNewBlockName(''); setAddingBlock(false); }}
+                        onCancel={() => setAddingBlock(false)}
+                    />
                 )}
 
                 <AnimatePresence mode="wait">
                     {viewMode === 'hoy' ? (
-                        <motion.div 
+                        <motion.div
                             key="hoy"
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
-                            className="vida-main-container"
-                            style={{ 
+                            style={{
                                 display: 'flex',
                                 flexDirection: 'column'
                             }}
@@ -316,21 +296,13 @@ export const VidaDashboard = ({
                                     const timeB = b.startTime || '99:99';
                                     return timeA.localeCompare(timeB);
                                 });
+                                if (displayRutinas.length === 0 && !addingBlock) {
+                                    return vidaVacio('schedule', 'Aún no tienes bloques. Crea el primero.');
+                                }
                                 return displayRutinas.map((rutina) => (
                                     <div
                                         key={rutina.id}
-                                        style={{
-                                            background: C.surfaceLowest,
-                                            border: `1px solid ${C.outlineVariant}`,
-                                            borderLeft: `4px solid ${rutina.color}`,
-                                            borderRadius: '14px',
-                                            padding: '1rem 1.1rem',
-                                            marginBottom: '10px',
-                                            boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
-                                            opacity: rutina.isActive ? 1 : 0.55,
-                                            transition: 'all 0.2s ease',
-                                            position: 'relative'
-                                        }}
+                                        style={{ ...vidaCard(rutina.color), opacity: rutina.isActive ? 1 : 0.55, transition: 'all 0.2s ease', position: 'relative' }}
                                     >
                                     <div style={{
                                         display: 'flex',
@@ -714,6 +686,20 @@ export const VidaDashboard = ({
                 cancelLabel="Cancelar"
                 onConfirm={() => { if (deletingBlock) removeRoutine(deletingBlock.id); setDeletingBlock(null); }}
                 onCancel={() => setDeletingBlock(null)}
+            />
+
+            <ConfirmDialog
+                open={!!deletingHabit}
+                title="Eliminar hábito"
+                message={
+                    deletingHabit?.linkedRoutineId
+                        ? `¿Eliminar el hábito "${deletingHabit?.name}"? La tarea vinculada en el horario se conserva.`
+                        : `¿Eliminar el hábito "${deletingHabit?.name}"?`
+                }
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                onConfirm={() => { if (deletingHabit) removeHabit(deletingHabit.id); setDeletingHabit(null); }}
+                onCancel={() => setDeletingHabit(null)}
             />
         </div>
     );
