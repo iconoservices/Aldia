@@ -83,13 +83,13 @@ export const BaseDatosDashboard = () => {
         padding: '8px 12px',
         fontSize: '0.75rem',
         fontWeight: 600,
-        borderBottom: '1px solid #edeeef',
+        borderBottom: '1px solid #E9EEF3',
         whiteSpace: 'nowrap',
     };
 
     const headerCellStyle: React.CSSProperties = {
         ...cellStyle,
-        background: '#f8f9fa',
+        background: '#F1F5F9',
         fontWeight: 900,
         fontSize: '0.65rem',
         color: '#94A3B8',
@@ -98,7 +98,7 @@ export const BaseDatosDashboard = () => {
         position: 'sticky',
         top: 0,
         zIndex: 10,
-        borderBottom: '2px solid #e7e8e9',
+        borderBottom: '2px solid #E2E8F0',
     };
 
     return (
@@ -159,7 +159,7 @@ export const BaseDatosDashboard = () => {
             <div style={{
                 overflowX: 'auto',
                 borderRadius: '12px',
-                border: '1px solid #e7e8e9',
+                border: '1px solid #E2E8F0',
                 background: 'white',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
             }}>

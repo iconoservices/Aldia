@@ -79,7 +79,7 @@ const TaskCard = ({
                     ...bentoTarea,
                     padding: '14px 16px',
                     display: 'flex', alignItems: 'center', gap: '10px',
-                    background: isDone ? '#f3f4f5' : C.surfaceLowest,
+                    background: isDone ? '#F1F5F9' : C.surfaceLowest,
                     opacity: isDone ? 0.72 : 1,
                     cursor: isDragging ? 'grabbing' : 'default',
                 }}
@@ -1314,7 +1314,7 @@ const DropdownMenu = ({
                 borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
                 fontSize: '0.85rem', color: '#475569', fontWeight: 600,
             }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F3F4F5'}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F1F5F9'}
                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
             >
                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>today</span>
@@ -1326,7 +1326,7 @@ const DropdownMenu = ({
                 borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
                 fontSize: '0.85rem', color: '#475569', fontWeight: 600,
             }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F3F4F5'}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F1F5F9'}
                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
             >
                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
@@ -1338,7 +1338,7 @@ const DropdownMenu = ({
                 borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
                 fontSize: '0.85rem', color: '#475569', fontWeight: 600,
             }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F3F4F5'}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F1F5F9'}
                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
             >
                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>repeat</span>

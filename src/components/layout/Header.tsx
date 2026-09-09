@@ -96,13 +96,13 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     textAlign: 'left',
                     width: '100%',
                     transition: 'all 0.15s ease',
-                    background: isActive ? '#edeeef' : 'transparent',
+                    background: isActive ? '#E9EEF3' : 'transparent',
                     color: isActive ? '#4F46E5' : '#475569',
                     boxShadow: isActive ? 'inset -3px 0 0 #4F46E5' : 'none',
                 }}
                 onMouseEnter={e => {
                     if (!isActive) {
-                        (e.currentTarget as HTMLElement).style.background = '#f3f4f5';
+                        (e.currentTarget as HTMLElement).style.background = '#F1F5F9';
                         (e.currentTarget as HTMLElement).style.color = '#4F46E5';
                     }
                 }}
@@ -180,11 +180,11 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
 
                     {/* Divider */}
                     <div style={{ margin: '10px 0 6px', display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px' }}>
-                        <span style={{ flex: 1, height: '1px', background: '#e7e8e9' }} />
+                        <span style={{ flex: 1, height: '1px', background: '#E2E8F0' }} />
                         <span style={{ fontSize: '10px', fontWeight: 700, color: '#94A3B8', letterSpacing: '0.08em', whiteSpace: 'nowrap', opacity: 0.7 }}>
                             HERRAMIENTAS
                         </span>
-                        <span style={{ flex: 1, height: '1px', background: '#e7e8e9' }} />
+                        <span style={{ flex: 1, height: '1px', background: '#E2E8F0' }} />
                     </div>
 
                     {/* Secondary group */}
@@ -281,11 +281,11 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                 <div className="mobile-drawer-tabs">
                     {PRIMARY_ITEMS.map(item => renderSidebarBtn(item))}
                     <div style={{ margin: '10px 0 6px', display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px' }}>
-                        <span style={{ flex: 1, height: '1px', background: '#e7e8e9' }} />
+                        <span style={{ flex: 1, height: '1px', background: '#E2E8F0' }} />
                         <span style={{ fontSize: '10px', fontWeight: 700, color: '#94A3B8', letterSpacing: '0.08em', whiteSpace: 'nowrap', opacity: 0.7 }}>
                             HERRAMIENTAS
                         </span>
-                        <span style={{ flex: 1, height: '1px', background: '#e7e8e9' }} />
+                        <span style={{ flex: 1, height: '1px', background: '#E2E8F0' }} />
                     </div>
                     {SECONDARY_ITEMS.map(item => renderSidebarBtn(item))}
                 </div>
@@ -333,8 +333,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         justify-content: space-between;
                         padding: 0 16px;
                         height: 60px;
-                        background: #f8f9fa;
-                        border-bottom: 1px solid #edeeef;
+                        background: #F1F5F9;
+                        border-bottom: 1px solid #E9EEF3;
                         position: sticky;
                         top: 0;
                         z-index: 100;
@@ -378,7 +378,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         width: 36px;
                         height: 36px;
                         border-radius: 50%;
-                        background-color: #edeeef;
+                        background-color: #E9EEF3;
                         background-size: cover;
                         background-position: center;
                         border: 2px solid #818CF8;
@@ -400,7 +400,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         right: 0;
                         height: calc(68px + env(safe-area-inset-bottom, 0px));
                         background: #ffffff;
-                        border-top: 1px solid #edeeef;
+                        border-top: 1px solid #E9EEF3;
                         z-index: 999;
                         box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
                         padding: 0 8px calc(env(safe-area-inset-bottom, 0px));
@@ -501,7 +501,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         align-items: center;
                         margin-bottom: 24px;
                         padding-bottom: 12px;
-                        border-bottom: 1px solid #edeeef;
+                        border-bottom: 1px solid #E9EEF3;
                     }
 
                     .mobile-drawer-close {

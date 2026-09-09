@@ -623,13 +623,13 @@ export const BloquesDashboard = ({
         };
 
         return (
-            <div style={{ background: '#f8f9fa', minHeight: '100%', paddingBottom: '7rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            <div style={{ background: '#F1F5F9', minHeight: '100%', paddingBottom: '7rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
 
                 {/* ── Sticky Header ── */}
                 <div style={{
                     position: 'sticky', top: 0, zIndex: 10,
                     background: '#ffffff',
-                    borderBottom: '1px solid #e7e8e9',
+                    borderBottom: '1px solid #E2E8F0',
                     padding: '14px 20px 14px',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
                 }}>
@@ -638,7 +638,7 @@ export const BloquesDashboard = ({
                             Rutina{semanalSubView === 'mes' ? ' · Mes' : semanalSubView === 'anual' ? ' · Año' : ''}
                         </h2>
                         {/* Semana/Mes/Año switcher */}
-                        <div style={{ display: 'flex', background: '#f3f4f5', padding: '3px', borderRadius: '10px', gap: '2px' }}>
+                        <div style={{ display: 'flex', background: '#F1F5F9', padding: '3px', borderRadius: '10px', gap: '2px' }}>
                             {([['semana', 'Sem'], ['mes', 'Mes'], ['anual', 'Año']] as const).map(([v, lbl]) => (
                                 <button
                                     key={v}
@@ -668,7 +668,7 @@ export const BloquesDashboard = ({
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <button
                                     onClick={() => adjustWeek(-1)}
-                                    style={{ background: '#f3f4f5', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569' }}
+                                    style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569' }}
                                 >
                                     <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chevron_left</span>
                                 </button>
@@ -680,7 +680,7 @@ export const BloquesDashboard = ({
                                 </button>
                                 <button
                                     onClick={() => adjustWeek(1)}
-                                    style={{ background: '#f3f4f5', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569' }}
+                                    style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569' }}
                                 >
                                     <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chevron_right</span>
                                 </button>
@@ -695,7 +695,7 @@ export const BloquesDashboard = ({
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <button
                                     onClick={() => { const d = new Date(refMonthDate); d.setMonth(d.getMonth() - 1); setRefMonthDate(d); setReferenceDate(new Date(d.getFullYear(), d.getMonth(), 1)); }}
-                                    style={{ background: '#f3f4f5', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569' }}
+                                    style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569' }}
                                 >
                                     <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chevron_left</span>
                                 </button>
@@ -707,7 +707,7 @@ export const BloquesDashboard = ({
                                 </button>
                                 <button
                                     onClick={() => { const d = new Date(refMonthDate); d.setMonth(d.getMonth() + 1); setRefMonthDate(d); setReferenceDate(new Date(d.getFullYear(), d.getMonth(), 1)); }}
-                                    style={{ background: '#f3f4f5', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569' }}
+                                    style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569' }}
                                 >
                                     <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chevron_right</span>
                                 </button>
@@ -720,7 +720,7 @@ export const BloquesDashboard = ({
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <button
                                     onClick={() => setViewYear(y => y - 1)}
-                                    style={{ background: '#f3f4f5', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569' }}
+                                    style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569' }}
                                 >
                                     <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chevron_left</span>
                                 </button>
@@ -732,7 +732,7 @@ export const BloquesDashboard = ({
                                 </button>
                                 <button
                                     onClick={() => setViewYear(y => y + 1)}
-                                    style={{ background: '#f3f4f5', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569' }}
+                                    style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569' }}
                                 >
                                     <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>chevron_right</span>
                                 </button>
@@ -1050,7 +1050,7 @@ export const BloquesDashboard = ({
                                     maxHeight: '90vh', overflowY: 'auto'
                                 }}
                             >
-                                <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: '#e1e3e4', margin: '0 auto 20px' }} />
+                                <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: '#DDE3EA', margin: '0 auto 20px' }} />
                                 <h3 style={{ margin: '0 0 20px', fontSize: '18px', fontWeight: '700', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <span className="material-symbols-outlined" style={{ fontSize: '22px', color: '#4F46E5' }}>
                                         {mobileEditingRow ? 'edit_note' : 'add_circle'}
@@ -1069,7 +1069,7 @@ export const BloquesDashboard = ({
                                             placeholder="Ej: Programar, Gimnasio..."
                                             autoFocus
                                             style={{
-                                                width: '100%', background: '#f3f4f5', border: 'none',
+                                                width: '100%', background: '#F1F5F9', border: 'none',
                                                 borderRadius: '12px', padding: '12px 16px',
                                                 fontSize: '16px', fontWeight: '500', outline: 'none',
                                                 color: '#0F172A', boxSizing: 'border-box',
@@ -1085,7 +1085,7 @@ export const BloquesDashboard = ({
                                                 value={selectedProjectIdForNewBlock || ''}
                                                 onChange={e => setSelectedProjectIdForNewBlock(e.target.value ? Number(e.target.value) : undefined)}
                                                 style={{
-                                                    width: '100%', background: '#f3f4f5', border: 'none',
+                                                    width: '100%', background: '#F1F5F9', border: 'none',
                                                     borderRadius: '12px', padding: '12px 16px',
                                                     fontSize: '15px', fontWeight: '600', outline: 'none',
                                                     color: '#0F172A', cursor: 'pointer', boxSizing: 'border-box',
@@ -1111,7 +1111,7 @@ export const BloquesDashboard = ({
                                                         onClick={() => setNewBlockDays(prev => prev.includes(i) ? prev.filter(day => day !== i) : [...prev, i].sort())}
                                                         style={{
                                                             width: '38px', height: '38px', borderRadius: '50%', border: 'none',
-                                                            background: isAct ? '#818CF8' : '#f3f4f5',
+                                                            background: isAct ? '#818CF8' : '#F1F5F9',
                                                             color: isAct ? '#3730A3' : '#475569',
                                                             fontSize: '13px', fontWeight: '700', cursor: 'pointer',
                                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1151,7 +1151,7 @@ export const BloquesDashboard = ({
                                             disabled={!newBlockText.trim()}
                                             style={{
                                                 width: '100%', height: '50px',
-                                                background: newBlockText.trim() ? '#4F46E5' : '#e1e3e4',
+                                                background: newBlockText.trim() ? '#4F46E5' : '#DDE3EA',
                                                 color: newBlockText.trim() ? '#ffffff' : '#94A3B8',
                                                 border: 'none', borderRadius: '14px',
                                                 fontSize: '16px', fontWeight: '700', cursor: newBlockText.trim() ? 'pointer' : 'default',
@@ -1201,7 +1201,7 @@ export const BloquesDashboard = ({
     }
 
     return (
-        <div style={{ padding: '0.5rem 0 2rem 0', width: '100%', maxWidth: '1200px', margin: '0 auto', fontFamily: "'Plus Jakarta Sans', sans-serif", background: '#f8f9fa' }}>
+        <div style={{ padding: '0.5rem 0 2rem 0', width: '100%', maxWidth: '1200px', margin: '0 auto', fontFamily: "'Plus Jakarta Sans', sans-serif", background: '#F1F5F9' }}>
 
             
             {/* Cabecera del Dashboard */}
@@ -1211,7 +1211,7 @@ export const BloquesDashboard = ({
                 </h2>
 
                 {/* Selector de Semana en Header */}
-                <div style={{ display: 'flex', background: '#edeeef', padding: '4px', borderRadius: '12px', gap: '2px', border: '1px solid #e1e3e4' }}>
+                <div style={{ display: 'flex', background: '#E9EEF3', padding: '4px', borderRadius: '12px', gap: '2px', border: '1px solid #DDE3EA' }}>
                     {([['semana', 'Semana'], ['mes', 'Mes'], ['anual', 'Año']] as const).map(([v, lbl]) => (
                         <button
                             key={v}
@@ -1275,7 +1275,7 @@ export const BloquesDashboard = ({
                                 placeholder="Ej: Programar Delva, Gimnasio..."
                                 style={{
                                     width: '100%',
-                                    background: '#f3f4f5', 
+                                    background: '#F1F5F9', 
                                     border: 'none',
                                     borderRadius: '12px',
                                     padding: '12px 16px',
@@ -1300,7 +1300,7 @@ export const BloquesDashboard = ({
                                     onChange={(e) => setSelectedProjectIdForNewBlock(e.target.value ? Number(e.target.value) : undefined)}
                                     style={{
                                         width: '100%',
-                                        background: '#f3f4f5',
+                                        background: '#F1F5F9',
                                         border: 'none',
                                         borderRadius: '12px',
                                         padding: '12px 32px 12px 16px',
@@ -1375,7 +1375,7 @@ export const BloquesDashboard = ({
                                             }}
                                             style={{
                                                 border: 'none',
-                                                background: isAct ? '#818CF8' : '#e1e3e4',
+                                                background: isAct ? '#818CF8' : '#DDE3EA',
                                                 color: isAct ? '#3730A3' : '#475569',
                                                 width: '32px',
                                                 height: '32px',
@@ -1491,7 +1491,7 @@ export const BloquesDashboard = ({
                             <AnimatePresence>
                                 {showGroupMenu && (
                                     <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
-                                        style={{ position: 'absolute', top: '110%', right: 0, background: 'white', borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: '220px', overflow: 'hidden', border: '1px solid #e1e3e4' }}
+                                        style={{ position: 'absolute', top: '110%', right: 0, background: 'white', borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: '220px', overflow: 'hidden', border: '1px solid #DDE3EA' }}
                                     >
                                         {(['none', 'project'] as const).map(opt => (
                                             <button key={opt}
@@ -1531,7 +1531,7 @@ export const BloquesDashboard = ({
                             <AnimatePresence>
                                 {showSortMenu && (
                                     <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
-                                        style={{ position: 'absolute', top: '110%', right: 0, background: 'white', borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: '200px', overflow: 'hidden', border: '1px solid #e1e3e4' }}
+                                        style={{ position: 'absolute', top: '110%', right: 0, background: 'white', borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: '200px', overflow: 'hidden', border: '1px solid #DDE3EA' }}
                                     >
                                         {([['name', '🔤 Nombre A→Z'], ['progress', '📊 Progreso']] as const).map(([opt, label]) => (
                                             <button key={opt}
@@ -1722,7 +1722,7 @@ export const BloquesDashboard = ({
                                                                                 }}
                                                                                 style={{
                                                                                     border: 'none',
-                                                                                    background: isAct ? '#4F46E5' : '#e7e8e9',
+                                                                                    background: isAct ? '#4F46E5' : '#E2E8F0',
                                                                                     color: isAct ? 'white' : '#94A3B8',
                                                                                     width: '24px',
                                                                                     height: '24px',
