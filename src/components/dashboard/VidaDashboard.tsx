@@ -23,13 +23,15 @@ interface VidaProps {
     removeRoutine: (id: number) => void;
     reorderRoutineItems: (routineId: number, newItems: any[]) => void;
     promoteRoutineItemToProject: (routineId: number, itemId: number, projectId: number) => void;
+    /** Limita el panel: 'habitos' solo la columna de Hábitos, 'horario' solo la de Horario. */
+    only?: 'habitos' | 'horario';
 }
 
-export const VidaDashboard = ({ 
+export const VidaDashboard = ({
     habits, toggleHabit, addHabit, removeHabit,
     rutinas, addRoutineItem, toggleRoutineItem, removeRoutineItem, updateRoutine,
     updateRoutineItem, addRoutine, removeRoutine, reorderRoutineItems,
-    projects, promoteRoutineItemToProject
+    projects, promoteRoutineItemToProject, only
 }: VidaProps) => {
     const [viewMode, setViewMode] = useState<'hoy' | 'semana'>('hoy');
     const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
@@ -83,14 +85,15 @@ export const VidaDashboard = ({
                 }
             `}</style>
             
-            <div className="vida-layout">
+            <div className="vida-layout" style={only ? { gridTemplateColumns: '1fr', maxWidth: 760 } : undefined}>
             {/* MOTOR DE HÁBITOS (SECCIÓN PRINCIPAL) */}
-            <div className="habitos-col">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>🌿 Fábrica de Hábitos</h3>
-                    <button 
+            {only !== 'horario' && (
+            <div className="habitos-col" style={only ? { position: 'static' } : undefined}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>🌿 Hábitos</h3>
+                    <button
                         onClick={() => {
-                            const name = prompt('Nombre del nuevo Hábito:');
+                            const name = prompt('Nombre del nuevo hábito:');
                             if (name) addHabit(name);
                         }}
                         style={{ background: '#F0EBE6', color: 'var(--domain-purple)', border: 'none', borderRadius: '10px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontWeight: 900, fontSize: '0.7rem' }}
@@ -98,6 +101,9 @@ export const VidaDashboard = ({
                         <Plus size={14} /> NUEVO
                     </button>
                 </div>
+                <p style={{ margin: '0 0 1rem', fontSize: '0.78rem', color: '#94A3B8', fontWeight: 600, lineHeight: 1.4 }}>
+                    Cosas que quieres hacer con constancia. Se miden por racha, no por hora.
+                </p>
                 <div className="glass-card" style={{ padding: '1.2rem', background: 'white', borderRadius: '24px', border: '1px solid rgba(138, 92, 246, 0.1)' }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         {habits.map((habit, hIdx) => (
@@ -116,7 +122,7 @@ export const VidaDashboard = ({
                                         onClick={() => {
                                             if (confirm(`¿Borrar hábito "${habit.name}"?`)) {
                                                 if (habit.linkedRoutineId && habit.linkedRoutineItemId) {
-                                                    const alsoRemoveItem = confirm('¿También eliminar la tarea vinculada de la rutina?');
+                                                    const alsoRemoveItem = confirm('¿También eliminar la tarea vinculada del horario?');
                                                     removeHabit(habit.id);
                                                     if (alsoRemoveItem) {
                                                         removeRoutineItem(habit.linkedRoutineId, habit.linkedRoutineItemId);
@@ -183,19 +189,21 @@ export const VidaDashboard = ({
                     </div>
                 </div>
             </div>
+            )}
 
-            {/* SECCIÓN DE RUTINAS */}
+            {/* SECCIÓN DE HORARIO */}
+            {only !== 'habitos' && (
             <div>
-                <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    marginBottom: '1rem',
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '0.4rem',
                     flexWrap: 'wrap',
                     gap: '12px'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>⚡ Rutinas</h3>
+                        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>⏰ Horario</h3>
                         <div style={{ display: 'flex', background: '#F0EBE6', padding: '4px', borderRadius: '12px', gap: '4px' }}>
                             <button 
                                 onClick={() => setViewMode('hoy')}
@@ -221,13 +229,13 @@ export const VidaDashboard = ({
                             </button>
                         </div>
                     </div>
-                    <button 
+                    <button
                         onClick={() => {
-                            const name = prompt('Nombre de la nueva Rutina:');
+                            const name = prompt('Nombre del bloque de horario:');
                             if (name) addRoutine(name);
                         }}
-                        style={{ 
-                            background: 'var(--domain-orange)', 
+                        style={{
+                            background: 'var(--domain-orange)',
                             color: 'white', 
                             border: 'none', 
                             borderRadius: '12px', 
@@ -245,9 +253,12 @@ export const VidaDashboard = ({
                         onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
                         onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                     >
-                        <Plus size={16} strokeWidth={3} /> NUEVA RUTINA
+                        <Plus size={16} strokeWidth={3} /> NUEVO BLOQUE
                     </button>
                 </div>
+                <p style={{ margin: '0 0 1rem', fontSize: '0.78rem', color: '#94A3B8', fontWeight: 600, lineHeight: 1.4 }}>
+                    Tu horario tipo: bloques con hora fija. Se ven en el Calendario.
+                </p>
 
                 <AnimatePresence mode="wait">
                     {viewMode === 'hoy' ? (
@@ -452,7 +463,7 @@ export const VidaDashboard = ({
                                                                             if (isLinked) {
                                                                                 // Desvincular: preguntar qué eliminar
                                                                                 if (confirm(`¿Quitar "${linkedHabit.name}" de los hábitos?`)) {
-                                                                                    const alsoRemoveItem = confirm('¿También eliminar esta tarea de la rutina?');
+                                                                                    const alsoRemoveItem = confirm('¿También eliminar esta tarea del bloque de horario?');
                                                                                     removeHabit(linkedHabit.id);
                                                                                     if (alsoRemoveItem) {
                                                                                         removeRoutineItem(rutina.id, item.id);
@@ -634,7 +645,8 @@ export const VidaDashboard = ({
                         </motion.div>
                     )}
                 </AnimatePresence>
-            </div> {/* FIN DE LA COLUMNA DE RUTINAS */}
+            </div>
+            )}
             </div> {/* FIN DEL LAYOUT GRID */}
 
             {/* CHECKLISTS (MAESTROS / ASÍNCRONOS) */}

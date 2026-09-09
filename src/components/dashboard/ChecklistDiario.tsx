@@ -22,23 +22,14 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import type { DailyBlock } from '../../hooks/useAlDiaState';
 
-import { C, bento as bentoCard, PERIODOS as PERIOD_CFG, useIsMobile, TOQUE_MINIMO } from '../../theme';
+import { C, bento as bentoCard, useIsMobile, TOQUE_MINIMO } from '../../theme';
 import { RegistroMovimiento } from '../features/RegistroMovimiento';
 
-/* ─── Period config ─────────────────────────────────────────── */
+/* ─── Period ────────────────────────────────────────────────────
+   El Checklist ya no muestra franjas (Mañana/Tarde/Noche). El campo
+   `period` sigue en los datos como parte de la clave de cada tarea;
+   las nuevas se crean siempre como 'Otro'. */
 type Period = 'Mañana' | 'Tarde' | 'Noche' | 'Otro';
-const PERIOD_ORDER: Period[] = ['Mañana', 'Tarde', 'Noche', 'Otro'];
-
-type CategoryKey = 'Todas' | Period;
-const CATEGORIES: { key: CategoryKey; label: string; icon: string; color: string }[] = [
-    { key: 'Todas',  label: 'Todas',  icon: 'checklist',  color: C.primary   },
-    { key: 'Mañana', label: 'Mañana', icon: 'wb_sunny',   color: '#E6A817'   },
-    { key: 'Tarde',  label: 'Tarde',  icon: 'light_mode', color: '#E07040'   },
-    { key: 'Noche',  label: 'Noche',  icon: 'dark_mode',  color: '#5C6BC0'   },
-    { key: 'Otro',   label: 'Otro',   icon: 'more_time',  color: '#877369'   },
-];
-
-type SortMode = 'cronologico' | 'proyecto';
 
 /* Igual que el bento compartido, con la transición que usan las tarjetas de tarea */
 const bentoTarea: React.CSSProperties = { ...bentoCard, transition: 'box-shadow 0.2s' };
@@ -69,8 +60,6 @@ const TaskCard = ({
         attributes, listeners, setNodeRef,
         transform, transition, isDragging: isSortDragging,
     } = useSortable({ id });
-
-    const periodCfg = PERIOD_CFG[period] || PERIOD_CFG['Otro'];
 
     const style: React.CSSProperties = {
         transform: CSS.Transform.toString(transform),
@@ -144,11 +133,6 @@ const TaskCard = ({
                         {label}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
-                        <span style={{
-                            background: periodCfg.bg, color: periodCfg.color,
-                            fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.05em',
-                            padding: '2px 8px', borderRadius: '999px',
-                        }}>{periodCfg.label}</span>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', color: C.onSurfaceVariant }}>
                             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: projColor, display: 'inline-block' }} />
                             {projName}
@@ -222,9 +206,8 @@ export const ChecklistDiario = ({
     const todayLabel = useMemo(() =>
         new Date(`${todayStr}T00:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }), [todayStr]);
 
-    const [activeCategory,  setActiveCategory]  = useState<CategoryKey>('Todas');
     const [searchQuery,     setSearchQuery]      = useState('');
-    const [sortMode,        setSortMode]         = useState<SortMode>('cronologico');
+    const [groupByProject,  setGroupByProject]   = useState(false);
     const [pendientesFirst, setPendientesFirst]  = useState(true);
     const [customOrder,     setCustomOrder]      = useState<string[]>([]);
     const [activeId,       setActiveId]        = useState<string | null>(null);
@@ -298,9 +281,11 @@ export const ChecklistDiario = ({
                 if (ib === -1) return -1;
                 return ia - ib;
             });
-        } else if (sortMode === 'cronologico') {
-            list.sort((a, b) => PERIOD_ORDER.indexOf(a.period) - PERIOD_ORDER.indexOf(b.period));
-        } else if (sortMode === 'proyecto') {
+        }
+
+        // Opcional: agrupar por proyecto (orden estable, respeta el orden base dentro
+        // de cada proyecto).
+        if (groupByProject) {
             list.sort((a, b) => {
                 const nameA = projects.find(p => p.id === a.projectId)?.name || 'ZZ';
                 const nameB = projects.find(p => p.id === b.projectId)?.name || 'ZZ';
@@ -319,24 +304,16 @@ export const ChecklistDiario = ({
         }
 
         return list;
-    }, [todayTemplates, sortMode, customOrder, dailyBlocks, todayStr, projects]);
+    }, [todayTemplates, groupByProject, customOrder, dailyBlocks, todayStr, projects, pendientesFirst]);
 
     /* ── Visible (filtered) tasks ── */
     const visibleTasks = useMemo(() => {
         let list = sortedTasks;
-        if (activeCategory !== 'Todas') list = list.filter(t => t.period === activeCategory);
         if (searchQuery.trim()) list = list.filter(t => t.label.toLowerCase().includes(searchQuery.toLowerCase()));
         return list;
-    }, [sortedTasks, activeCategory, searchQuery]);
+    }, [sortedTasks, searchQuery]);
 
     const visibleIds = useMemo(() => visibleTasks.map(t => taskKey(t.label, t.period)), [visibleTasks]);
-
-    /* ── Category counts ── */
-    const catCount = useMemo(() => {
-        const counts: Record<CategoryKey, number> = { Todas: todayTemplates.length, Mañana: 0, Tarde: 0, Noche: 0, Otro: 0 };
-        todayTemplates.forEach(t => { counts[t.period as CategoryKey] = (counts[t.period as CategoryKey] || 0) + 1; });
-        return counts;
-    }, [todayTemplates]);
 
     /* ── Toggle / create ── */
     const celebrateIfLast = useCallback(() => {
@@ -466,16 +443,6 @@ export const ChecklistDiario = ({
     /* ── Active drag item info ── */
     const activeDragTask = activeId ? sortedTasks.find(t => taskKey(t.label, t.period) === activeId) : null;
 
-    /* ── Sort label ── */
-    const sortLabel: Record<SortMode, string> = {
-        cronologico: 'Cronológico',
-        proyecto:    'Por Proyecto',
-    };
-    const nextSort: Record<SortMode, SortMode> = {
-        cronologico: 'proyecto',
-        proyecto:    'cronologico',
-    };
-
     /* ── Reset custom order ── */
     const resetOrder = () => {
         saveOrder([]);
@@ -523,19 +490,20 @@ export const ChecklistDiario = ({
                         </span>
                     </button>
 
-                    {/* Sort mode */}
+                    {/* Agrupar por proyecto */}
                     <button
-                        onClick={() => { setSortMode(nextSort[sortMode]); saveOrder([]); }}
-                        title="Cambiar orden base"
+                        onClick={() => setGroupByProject(v => !v)}
+                        title={groupByProject ? 'Agrupado por proyecto' : 'Agrupar por proyecto'}
                         style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: C.surfaceContainerHigh, border: 'none',
+                            background: groupByProject ? 'rgba(148,74,24,0.10)' : C.surfaceContainerHigh,
+                            border: `1.5px solid ${groupByProject ? C.primary : 'transparent'}`,
                             borderRadius: '999px', padding: '0 12px',
                             minWidth: `${TOQUE_MINIMO}px`, minHeight: `${TOQUE_MINIMO}px`,
                             cursor: 'pointer', flexShrink: 0,
                         }}
                     >
-                        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.onSurfaceVariant }}>sort</span>
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: groupByProject ? C.primary : C.onSurfaceVariant }}>folder</span>
                     </button>
 
                     {/* Reset custom order */}
@@ -614,48 +582,10 @@ export const ChecklistDiario = ({
                     </div>
                 </div>
 
-                {/* Horizontal Category scroll */}
-                <div style={{
-                    display: 'flex',
-                    gap: '8px',
-                    overflowX: 'auto',
-                    padding: '4px 0 12px',
-                    width: '100%',
-                    scrollbarWidth: 'none',
-                    msOverflowStyle: 'none',
-                }} className="mobile-categories-scroll">
-                    {CATEGORIES.map(cat => {
-                        const isActive = activeCategory === cat.key;
-                        return (
-                            <button
-                                key={cat.key}
-                                onClick={() => setActiveCategory(cat.key)}
-                                style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    padding: '8px 16px',
-                                    borderRadius: '999px',
-                                    border: `1px solid ${isActive ? C.primary : C.outlineVariant}`,
-                                    background: isActive ? C.primary : '#ffffff',
-                                    color: isActive ? '#ffffff' : C.onSurfaceVariant,
-                                    fontSize: '0.82rem',
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    whiteSpace: 'nowrap',
-                                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-                                    transition: 'all 0.15s',
-                                    flexShrink: 0,
-                                }}
-                            >
-                                <span className="material-symbols-outlined" style={{ fontSize: '16px', color: isActive ? '#ffffff' : cat.color }}>
-                                    {cat.icon}
-                                </span>
-                                {cat.label}
-                            </button>
-                        );
-                    })}
-                </div>
+                {/* Ayuda: qué es esta lista */}
+                <p style={{ margin: '0 0 12px', fontSize: '0.78rem', color: C.onSurfaceVariant, lineHeight: 1.4 }}>
+                    Tu lista de hoy. Mantén pulsado y arrastra para ponerla en el orden en que la vas a hacer.
+                </p>
 
                 {/* DnD Tasks List */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -707,7 +637,7 @@ export const ChecklistDiario = ({
                                             {searchQuery ? 'Sin resultados' : 'Sin tareas programadas'}
                                         </p>
                                         <p style={{ margin: 0, fontSize: '0.8rem' }}>
-                                            {searchQuery ? 'Intenta con otro término.' : 'Crea bloques en el Registro Semanal.'}
+                                            {searchQuery ? 'Intenta con otro término.' : 'Añade tareas en Vida › Rutina.'}
                                         </p>
                                     </motion.div>
                                 )}
@@ -726,15 +656,7 @@ export const ChecklistDiario = ({
                                     opacity: 0.95,
                                 }}>
                                     <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.primary }}>drag_indicator</span>
-                                    <div>
-                                        <div style={{ fontSize: '0.92rem', fontWeight: 600, color: C.onSurface }}>{activeDragTask.label}</div>
-                                        <span style={{
-                                            background: PERIOD_CFG[activeDragTask.period].bg,
-                                            color: PERIOD_CFG[activeDragTask.period].color,
-                                            fontSize: '0.65rem', fontWeight: 700,
-                                            padding: '2px 8px', borderRadius: '999px', marginTop: '4px', display: 'inline-block',
-                                        }}>{PERIOD_CFG[activeDragTask.period].label}</span>
-                                    </div>
+                                    <div style={{ fontSize: '0.92rem', fontWeight: 600, color: C.onSurface }}>{activeDragTask.label}</div>
                                 </div>
                             ) : null}
                         </DragOverlay>
@@ -787,11 +709,7 @@ export const ChecklistDiario = ({
                     </div>
                 )}
 
-                {/* CSS styles for mobile category scroll hide */}
                 <style>{`
-                    .mobile-categories-scroll::-webkit-scrollbar {
-                        display: none;
-                    }
                     .drag-handle, .menu-btn {
                         opacity: 1 !important;
                     }
@@ -968,131 +886,51 @@ export const ChecklistDiario = ({
                 </div>
             </div>
 
-            {/* ── Main Grid ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1.5rem', alignItems: 'start' }}>
+            {/* ── Contenido ── */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-                {/* ── LEFT: Progress + Categories ── */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-
-                    {/* Progress Bento */}
-                    <section style={{
-                        ...bentoTarea, border: 'none',
-                        background: 'rgba(148,74,24,0.06)',
-                        padding: '1.5rem', position: 'relative', overflow: 'hidden',
-                    }}>
-                        <div style={{ position: 'relative', zIndex: 1 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: C.primary }}>Progreso Diario</h3>
-                                <span style={{
-                                    background: C.primaryContainer, color: C.onPrimaryContainer,
-                                    padding: '3px 10px', borderRadius: '999px',
-                                    fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.05em',
-                                }}>HOY</span>
-                            </div>
-
-                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
-                                <motion.span
-                                    key={progressPct}
-                                    initial={{ scale: 0.8 }}
-                                    animate={{ scale: 1 }}
-                                    style={{ fontSize: '4rem', fontWeight: 800, lineHeight: 1, color: C.primary }}
-                                >{progressPct}</motion.span>
-                                <span style={{ fontSize: '1.5rem', fontWeight: 700, color: C.primary }}>%</span>
-                            </div>
-
-                            <p style={{ margin: '0 0 1rem', fontSize: '0.82rem', color: C.onSurfaceVariant }}>
-                                {completedToday} de {totalToday} tareas completadas.
-                            </p>
-
-                            <div style={{ width: '100%', height: '10px', background: C.surfaceContainerHighest, borderRadius: '999px', overflow: 'hidden' }}>
-                                <motion.div
-                                    animate={{ width: `${progressPct}%` }}
-                                    transition={{ duration: 0.7, ease: 'easeOut' }}
-                                    style={{ height: '100%', background: C.primary, borderRadius: '999px' }}
-                                />
-                            </div>
+                {/* Progreso Diario — banda superior */}
+                <section style={{
+                    ...bentoTarea, border: 'none',
+                    background: 'rgba(148,74,24,0.06)',
+                    padding: '1.25rem 1.5rem', position: 'relative', overflow: 'hidden',
+                    display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap',
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', position: 'relative', zIndex: 1 }}>
+                        <motion.span
+                            key={progressPct}
+                            initial={{ scale: 0.8 }}
+                            animate={{ scale: 1 }}
+                            style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1, color: C.primary }}
+                        >{progressPct}</motion.span>
+                        <span style={{ fontSize: '1.25rem', fontWeight: 700, color: C.primary }}>%</span>
+                    </div>
+                    <div style={{ flex: 1, minWidth: '180px', position: 'relative', zIndex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: C.primary }}>Progreso Diario</h3>
+                            <span style={{ fontSize: '0.78rem', color: C.onSurfaceVariant }}>
+                                {completedToday} de {totalToday} completadas
+                            </span>
                         </div>
-
-                        {/* BG icon */}
-                        <div style={{ position: 'absolute', right: '-16px', bottom: '-16px', opacity: 0.08, pointerEvents: 'none' }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: '140px', color: C.primary }}>analytics</span>
+                        <div style={{ width: '100%', height: '10px', background: C.surfaceContainerHighest, borderRadius: '999px', overflow: 'hidden' }}>
+                            <motion.div
+                                animate={{ width: `${progressPct}%` }}
+                                transition={{ duration: 0.7, ease: 'easeOut' }}
+                                style={{ height: '100%', background: C.primary, borderRadius: '999px' }}
+                            />
                         </div>
-                    </section>
+                    </div>
+                    <div style={{ position: 'absolute', right: '-16px', bottom: '-16px', opacity: 0.08, pointerEvents: 'none' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '120px', color: C.primary }}>analytics</span>
+                    </div>
+                </section>
 
-                    {/* Categories */}
-                    <section style={{ padding: '0.25rem 0' }}>
-                        <h3 style={{ margin: '0 0 10px 4px', fontSize: '0.65rem', fontWeight: 700, color: C.onSurfaceVariant, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                            Jornada
-                        </h3>
-                        <nav style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                            {CATEGORIES.map(cat => {
-                                const isActive = activeCategory === cat.key;
-                                return (
-                                    <button
-                                        key={cat.key}
-                                        onClick={() => setActiveCategory(cat.key)}
-                                        data-icon-color={cat.color}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                            padding: '10px 12px',
-                                            borderRadius: '8px',
-                                            border: 'none',
-                                            borderRight: `4px solid ${isActive ? C.primary : 'transparent'}`,
-                                            cursor: 'pointer', width: '100%', textAlign: 'left',
-                                            background: isActive ? C.surfaceContainerHigh : 'transparent',
-                                            color: isActive ? C.primary : C.onSurfaceVariant,
-                                            fontFamily: 'inherit', fontWeight: isActive ? 700 : 500,
-                                            fontSize: '0.88rem', transition: 'all 0.15s',
-                                        }}
-                                        onMouseEnter={e => {
-                                            if (!isActive) {
-                                                const btn = e.currentTarget as HTMLButtonElement;
-                                                btn.style.background = C.surfaceContainerHigh;
-                                                btn.style.color = C.primary;
-                                                const icon = btn.querySelector('.cat-icon') as HTMLElement;
-                                                if (icon) icon.style.color = C.primary;
-                                            }
-                                        }}
-                                        onMouseLeave={e => {
-                                            if (!isActive) {
-                                                const btn = e.currentTarget as HTMLButtonElement;
-                                                btn.style.background = 'transparent';
-                                                btn.style.color = C.onSurfaceVariant;
-                                                const icon = btn.querySelector('.cat-icon') as HTMLElement;
-                                                if (icon) icon.style.color = btn.getAttribute('data-icon-color') || '';
-                                            }
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <span 
-                                                className="material-symbols-outlined cat-icon" 
-                                                style={{ 
-                                                    fontSize: '18px', 
-                                                    color: isActive ? C.primary : cat.color,
-                                                    transition: 'color 0.15s',
-                                                }}
-                                            >
-                                                {cat.icon}
-                                            </span>
-                                            <span>{cat.label}</span>
-                                        </div>
-                                        <span style={{
-                                            fontSize: '0.72rem', fontWeight: 700,
-                                            background: isActive ? C.primary : C.surfaceContainerHigh,
-                                            color: isActive ? '#fff' : C.onSurfaceVariant,
-                                            padding: '2px 8px', borderRadius: '8px',
-                                            transition: 'all 0.15s',
-                                        }}>
-                                            {catCount[cat.key] ?? 0}
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </nav>
-                    </section>
-                </div>
+                {/* Ayuda: qué es esta lista */}
+                <p style={{ margin: '-0.25rem 0 0', fontSize: '0.82rem', color: C.onSurfaceVariant }}>
+                    Tu lista de hoy. Arrástrala para ponerla en el orden en que la vas a hacer.
+                </p>
 
-                {/* ── RIGHT: Task list ── */}
+                {/* ── Task list ── */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
                     {/* List header */}
@@ -1158,22 +996,21 @@ export const ChecklistDiario = ({
                                 Pendientes primero
                             </button>
 
-                            {/* Sort mode */}
+                            {/* Agrupar por proyecto */}
                             <button
-                                onClick={() => { setSortMode(nextSort[sortMode]); saveOrder([]); }}
-                                title="Cambiar orden base"
+                                onClick={() => setGroupByProject(v => !v)}
+                                title={groupByProject ? 'Agrupado por proyecto' : 'Agrupar por proyecto'}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '5px',
-                                    background: C.surfaceContainerHigh, border: 'none',
+                                    background: groupByProject ? 'rgba(148,74,24,0.10)' : C.surfaceContainerHigh,
+                                    border: `1px solid ${groupByProject ? C.primary : 'transparent'}`,
                                     borderRadius: '8px', padding: '5px 10px',
-                                    fontSize: '0.72rem', color: C.onSurfaceVariant, fontWeight: 600,
+                                    fontSize: '0.72rem', color: groupByProject ? C.primary : C.onSurfaceVariant, fontWeight: 600,
                                     cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.15s',
                                 }}
-                                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = C.surfaceContainerHighest}
-                                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = C.surfaceContainerHigh}
                             >
-                                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>sort</span>
-                                {customOrder.length > 0 ? 'Manual' : sortLabel[sortMode]}
+                                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>folder</span>
+                                Por proyecto
                             </button>
                         </div>
                     </div>
@@ -1227,7 +1064,7 @@ export const ChecklistDiario = ({
                                             {searchQuery ? 'Sin resultados' : 'Sin tareas programadas'}
                                         </p>
                                         <p style={{ margin: 0, fontSize: '0.8rem' }}>
-                                            {searchQuery ? 'Intenta con otro término.' : 'Crea bloques en el Registro Semanal.'}
+                                            {searchQuery ? 'Intenta con otro término.' : 'Añade tareas en Vida › Rutina.'}
                                         </p>
                                     </motion.div>
                                 )}
@@ -1247,15 +1084,7 @@ export const ChecklistDiario = ({
                                     opacity: 0.95,
                                 }}>
                                     <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.primary }}>drag_indicator</span>
-                                    <div>
-                                        <div style={{ fontSize: '0.92rem', fontWeight: 600, color: C.onSurface }}>{activeDragTask.label}</div>
-                                        <span style={{
-                                            background: PERIOD_CFG[activeDragTask.period].bg,
-                                            color: PERIOD_CFG[activeDragTask.period].color,
-                                            fontSize: '0.65rem', fontWeight: 700,
-                                            padding: '2px 8px', borderRadius: '999px', marginTop: '4px', display: 'inline-block',
-                                        }}>{PERIOD_CFG[activeDragTask.period].label}</span>
-                                    </div>
+                                    <div style={{ fontSize: '0.92rem', fontWeight: 600, color: C.onSurface }}>{activeDragTask.label}</div>
                                 </div>
                             ) : null}
                         </DragOverlay>

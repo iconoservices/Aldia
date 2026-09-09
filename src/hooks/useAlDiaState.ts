@@ -983,6 +983,41 @@ export const useAlDiaState = () => {
         console.info(`[AlDía] Migración de IDs: ${reasignados} de ${dailyBlocks.length} bloques reasignados.`);
     }, [isInitialLoad, hasLoadedFromCloud, dailyBlocks]);
 
+    // Migración de una sola vez: el Checklist ya no usa las franjas Mañana/Tarde/Noche.
+    // Todo pasa a 'Otro' para que una tarea vieja ("Leer" en Tarde) y una nueva
+    // ("Leer" en Otro) no aparezcan duplicadas. También se reindexan las claves del
+    // orden manual guardado en localStorage (formato `label||period`).
+    useEffect(() => {
+        if (isInitialLoad || !hasLoadedFromCloud || dailyBlocks.length === 0) return;
+        try {
+            if (localStorage.getItem('aldia_migrated_periods_v1') === '1') return;
+        } catch { /* sin localStorage: se intenta igual, es idempotente */ }
+
+        const necesita = dailyBlocks.some(b => b.period !== 'Otro');
+        if (necesita) {
+            localWriteTimestampRef.current = Date.now();
+            setDailyBlocks(prev => prev.map(b => b.period === 'Otro' ? b : { ...b, period: 'Otro' }));
+        }
+
+        // Reindexar el orden manual: `nombre||Mañana` → `nombre||Otro`, sin duplicar.
+        try {
+            for (const key of ['aldia-checklist-custom-order']) {
+                const raw = localStorage.getItem(key);
+                if (!raw) continue;
+                const arr: string[] = JSON.parse(raw);
+                if (!Array.isArray(arr)) continue;
+                const vistos = new Set<string>();
+                const remapeado = arr
+                    .map(k => k.replace(/\|\|(Mañana|Tarde|Noche)$/u, '||Otro'))
+                    .filter(k => (vistos.has(k) ? false : (vistos.add(k), true)));
+                localStorage.setItem(key, JSON.stringify(remapeado));
+            }
+            localStorage.setItem('aldia_migrated_periods_v1', '1');
+        } catch { /* nada */ }
+
+        if (necesita) console.info('[AlDía] Migración de franjas: todos los bloques del Checklist pasan a "Otro".');
+    }, [isInitialLoad, hasLoadedFromCloud, dailyBlocks]);
+
     // Limpieza de una sola vez: proyectos sembrados por defecto que nunca se usaron.
     // El sembrado antiguo los recreaba en cada render, así que se acumularon duplicados
     // (p. ej. "📸 ICONO Agency" junto al "Icono Growth" real del usuario).

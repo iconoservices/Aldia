@@ -10,9 +10,12 @@ import { BloquesDashboard } from './BloquesDashboard';
    por dentro sigue siendo cada dashboard tal cual, sin fusionar su código.
 ══════════════════════════════════════════════════════════════════ */
 
+type VidaSub = 'rutina' | 'habitos' | 'horario';
+
 interface VidaBloquesProps {
-    // sub-pestaña inicial (según por qué ruta/URL llegó el usuario)
-    initial?: 'bloques' | 'vida';
+    // sub-pestaña inicial (según por qué ruta/URL llegó el usuario).
+    // Se aceptan los alias antiguos 'bloques' (→ rutina) y 'vida' (→ habitos).
+    initial?: VidaSub | 'bloques' | 'vida';
 
     // ── Bloques ──
     dailyBlocks: DailyBlock[];
@@ -43,10 +46,13 @@ interface VidaBloquesProps {
     projects: any[];
 }
 
-export const VidaBloquesDashboard = (props: VidaBloquesProps) => {
-    const [sub, setSub] = useState<'bloques' | 'vida'>(props.initial ?? 'bloques');
+const normalizeSub = (v: VidaBloquesProps['initial']): VidaSub =>
+    v === 'bloques' ? 'rutina' : v === 'vida' ? 'habitos' : (v ?? 'rutina');
 
-    const tabBtn = (key: 'bloques' | 'vida'): React.CSSProperties => ({
+export const VidaBloquesDashboard = (props: VidaBloquesProps) => {
+    const [sub, setSub] = useState<VidaSub>(normalizeSub(props.initial));
+
+    const tabBtn = (key: VidaSub): React.CSSProperties => ({
         flex: 1,
         padding: '9px 12px',
         border: 'none',
@@ -63,18 +69,22 @@ export const VidaBloquesDashboard = (props: VidaBloquesProps) => {
 
     return (
         <div>
-            <div style={{ display: 'flex', gap: '4px', background: '#F1F5F9', padding: '4px', borderRadius: '14px', maxWidth: '460px', margin: '0 auto 1.2rem', position: 'sticky', top: '8px', zIndex: 30 }}>
-                <button onClick={() => setSub('bloques')} style={tabBtn('bloques')}>
-                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>history_edu</span>
-                    Rutina semanal
+            <div style={{ display: 'flex', gap: '4px', background: '#F1F5F9', padding: '4px', borderRadius: '14px', maxWidth: '520px', margin: '0 auto 1.2rem', position: 'sticky', top: '8px', zIndex: 30 }}>
+                <button onClick={() => setSub('rutina')} style={tabBtn('rutina')}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>checklist</span>
+                    Rutina
                 </button>
-                <button onClick={() => setSub('vida')} style={tabBtn('vida')}>
+                <button onClick={() => setSub('habitos')} style={tabBtn('habitos')}>
                     <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>spa</span>
-                    Hábitos y rutinas
+                    Hábitos
+                </button>
+                <button onClick={() => setSub('horario')} style={tabBtn('horario')}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>schedule</span>
+                    Horario
                 </button>
             </div>
 
-            {sub === 'bloques' ? (
+            {sub === 'rutina' ? (
                 <BloquesDashboard
                     dailyBlocks={props.dailyBlocks}
                     addDailyBlock={props.addDailyBlock}
@@ -87,6 +97,7 @@ export const VidaBloquesDashboard = (props: VidaBloquesProps) => {
                 />
             ) : (
                 <VidaDashboard
+                    only={sub === 'horario' ? 'horario' : 'habitos'}
                     habits={props.habits}
                     toggleHabit={props.toggleHabit}
                     addHabit={props.addHabit}

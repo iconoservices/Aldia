@@ -137,7 +137,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             case 'Plan': return 'Ingresos y Gastos Fijos';
             case 'Compras': return 'Lista de Compras & Deseos';
             case 'Comidas': return 'Calendario de Comidas';
-            case 'Bloques': return 'Registro Semanal';
+            case 'Bloques': return 'Rutina';
             case 'Finanzas': return 'Finanzas';
             case 'Deudas': return 'Deudas y Cobros';
             case 'Acción': return 'Mi Acción';

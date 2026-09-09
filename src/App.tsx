@@ -271,7 +271,7 @@ function App() {
               />
             ) : (activeTab === 'Vida' || activeTab === 'Bloques') ? (
               <VidaBloquesDashboard
-                initial={activeTab === 'Vida' ? 'vida' : 'bloques'}
+                initial={activeTab === 'Vida' ? 'habitos' : 'rutina'}
                 dailyBlocks={state.dailyBlocks}
                 addDailyBlock={state.addDailyBlock}
                 toggleDailyBlock={state.toggleDailyBlock}

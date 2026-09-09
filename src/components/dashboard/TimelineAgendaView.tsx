@@ -112,7 +112,7 @@ export const TimelineAgendaView = ({
     // pueden estar abiertos A LA VEZ, lado a lado (el usuario lo pidió así); el
     // resto (mision/citas/rutinas/tareas/habitos) es de a uno y reemplaza.
     type RightPanel = 'citas' | 'rutinas' | 'tareas' | 'habitos' | 'mision' | 'foco' | 'cola';
-    const [rightPanels, setRightPanels] = useState<RightPanel[]>(['cola', 'foco']);
+    const [rightPanels, setRightPanels] = useState<RightPanel[]>(['cola']);
     const rightOpen = rightPanels.length > 0;
     const panelAbierto = (m: RightPanel) => rightPanels.includes(m);
     const esPar = (m: RightPanel) => m === 'foco' || m === 'cola';
@@ -1028,7 +1028,7 @@ export const TimelineAgendaView = ({
                         { key: 'mision', label: 'Misión Diaria (Timeline)', color: 'var(--domain-orange)', icon: <Star size={14} />, type: 'UNIFICADO' },
                         { key: 'tareas', label: 'Tareas', color: '#F59E0B', icon: <Filter size={14} />, type: 'MICRO' },
                         { key: 'citas', label: 'Citas y Eventos', color: '#6366F1', icon: <Clock size={14} />, type: 'MACRO' },
-                        { key: 'rutinas', label: 'Rutinas / Bloques', color: '#10B981', icon: <CalendarDays size={14} />, type: 'MACRO' },
+                        { key: 'rutinas', label: 'Horario', color: '#10B981', icon: <CalendarDays size={14} />, type: 'MACRO' },
                         { key: 'habitos', label: 'Hábitos (Habits)', color: '#EC4899', icon: <CalendarDays size={14} />, type: 'MICRO' },
                     ].map(f => (
                         <div
@@ -1144,7 +1144,7 @@ export const TimelineAgendaView = ({
                         <div className="timeline-nav-buttons" style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end', alignItems: 'center' }}>
                             <button
                                 onClick={() => { setNewItemType('routine'); setEditingItem({ type: 'new', data: {} }); }}
-                                title="Agregar rutina o cita manualmente"
+                                title="Agregar bloque de horario o cita"
                                 style={{ ...hdrBtn, background: 'var(--domain-orange)', color: 'white' }}
                             >
                                 <Plus size={HDR_ICON} />
@@ -1467,7 +1467,7 @@ export const TimelineAgendaView = ({
                         mision: { title: 'Misión Diaria', icon: <Star size={15} />, color: 'var(--domain-orange)' },
                         tareas: { title: 'Tareas', icon: <Filter size={15} />, color: '#F59E0B' },
                         citas: { title: 'Citas y Eventos', icon: <Clock size={15} />, color: '#6366F1' },
-                        rutinas: { title: 'Rutinas y Bloques', icon: <CalendarDays size={15} />, color: '#10B981' },
+                        rutinas: { title: 'Horario', icon: <CalendarDays size={15} />, color: '#10B981' },
                         habitos: { title: 'Hábitos', icon: <CalendarDays size={15} />, color: '#EC4899' },
                         cola: { title: 'En orden', icon: <ListOrdered size={15} />, color: '#6366F1' }
                     };
@@ -1738,7 +1738,7 @@ export const TimelineAgendaView = ({
                                         </div>
                                     ))}
                                     {rightPanelMode === 'rutinas' && dayRoutines.length === 0 && (
-                                        <div style={{ fontSize: '0.75rem', color: '#94A3B8', textAlign: 'center', padding: '20px' }}>No hay rutinas activas</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#94A3B8', textAlign: 'center', padding: '20px' }}>No hay bloques de horario activos</div>
                                     )}
 
                                     {/* HÁBITOS */}
@@ -1790,7 +1790,7 @@ export const TimelineAgendaView = ({
                             style={{ background: 'white', padding: '1.5rem', borderRadius: '24px', width: '320px', maxWidth: '100%' }}
                         >
                             <h3 style={{ marginTop: 0, marginBottom: '1rem', fontSize: '1rem', fontWeight: 900 }}>
-                                {editingItem.type === 'routine' ? 'Editar rutina' : editingItem.type === 'calendar' ? (editingItem.data?.notionId ? 'Detalle de sesión' : 'Editar evento') : editingItem.type === 'new' ? 'Agregar manualmente' : 'Editar bloque'}
+                                {editingItem.type === 'routine' ? 'Editar bloque de horario' : editingItem.type === 'calendar' ? (editingItem.data?.notionId ? 'Detalle de sesión' : 'Editar evento') : editingItem.type === 'new' ? 'Agregar manualmente' : 'Editar bloque'}
                             </h3>
 
                             {editingItem.type === 'new' && (
@@ -1799,7 +1799,7 @@ export const TimelineAgendaView = ({
                                         onClick={() => setNewItemType('routine')}
                                         style={{ flex: 1, padding: '8px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 900, background: newItemType === 'routine' ? 'white' : 'transparent', color: newItemType === 'routine' ? 'var(--domain-orange)' : '#64748B' }}
                                     >
-                                        Rutina (se repite)
+                                        Horario (se repite)
                                     </button>
                                     <button
                                         onClick={() => setNewItemType('calendar')}

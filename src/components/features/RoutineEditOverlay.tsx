@@ -50,7 +50,7 @@ export const RoutineEditOverlay = ({ isOpen, onClose, routine, onSave }: Routine
                     >
                         <button onClick={onClose} style={closeButtonStyle}><X size={20} /></button>
                         
-                        <h2 style={titleStyle}>Editar Rutina</h2>
+                        <h2 style={titleStyle}>Editar bloque de horario</h2>
                         
                         <div style={formGroupStyle}>
                             <label style={labelStyle}>NOMBRE</label>

@@ -51,7 +51,10 @@ export const BloquesDashboard = ({
     const hydratedMonthRef = useRef<string>('');
 
     const [newBlockText, setNewBlockText] = useState('');
-    const [newBlockPeriod, setNewBlockPeriod] = useState<'Mañana' | 'Tarde' | 'Noche' | 'Otro'>('Mañana');
+    // El Checklist ya no usa franjas (Mañana/Tarde/Noche). Los bloques nuevos se
+    // crean como 'Otro'; el estado se conserva solo para arrastrar la franja de un
+    // bloque antiguo al editarlo sin perderla.
+    const [newBlockPeriod, setNewBlockPeriod] = useState<'Mañana' | 'Tarde' | 'Noche' | 'Otro'>('Otro');
     const [selectedProjectIdForNewBlock, setSelectedProjectIdForNewBlock] = useState<number | undefined>(undefined);
     const [newBlockDays, setNewBlockDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]); // Lunes a Domingo por defecto
     
@@ -71,8 +74,8 @@ export const BloquesDashboard = ({
     const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
     const [confirmDeleteRow, setConfirmDeleteRow] = useState<{ label: string; period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro' } | null>(null);
 
-    const [groupBy, setGroupBy] = useState<'period' | 'project' | 'none'>('period');
-    const [sortBy, setSortBy] = useState<'period' | 'name' | 'progress'>('period');
+    const [groupBy, setGroupBy] = useState<'period' | 'project' | 'none'>('none');
+    const [sortBy, setSortBy] = useState<'period' | 'name' | 'progress'>('name');
     const [showGroupMenu, setShowGroupMenu] = useState(false);
     const [showSortMenu, setShowSortMenu] = useState(false);
 
@@ -556,11 +559,10 @@ export const BloquesDashboard = ({
 
     // ── Mobile View ──────────────────────────────────────────────
     if (isMobile) {
-        // Blocks grouped by period
-        const dayBlocksByPeriod = (['Mañana', 'Tarde', 'Noche', 'Otro'] as const).map(period => {
-            const rows = applySavedOrder(period, blockRows.filter(r => r.period === period));
-            return { period, rows };
-        }).filter(g => g.rows.length > 0);
+        // Una sola lista, sin franjas. Se conserva la forma { period, rows } para
+        // no tocar el render de abajo; `period` solo se usa como clave de orden.
+        const allRows = applySavedOrder('Otro', blockRows);
+        const dayBlocksByPeriod = allRows.length > 0 ? [{ period: 'Otro' as const, rows: allRows }] : [];
 
         const handleFormSubmit = (e: React.FormEvent) => {
             e.preventDefault();
@@ -633,7 +635,7 @@ export const BloquesDashboard = ({
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', gap: '8px' }}>
                         <h2 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: '#191c1d', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>
-                            Registro {semanalSubView === 'semana' ? 'Semanal' : semanalSubView === 'mes' ? 'Mensual' : 'Anual'}
+                            Rutina{semanalSubView === 'mes' ? ' · Mes' : semanalSubView === 'anual' ? ' · Año' : ''}
                         </h2>
                         {/* Semana/Mes/Año switcher */}
                         <div style={{ display: 'flex', background: '#f3f4f5', padding: '3px', borderRadius: '10px', gap: '2px' }}>
@@ -1007,7 +1009,7 @@ export const BloquesDashboard = ({
                     onClick={() => {
                         setMobileEditingRow(null);
                         setNewBlockText('');
-                        setNewBlockPeriod('Mañana');
+                        setNewBlockPeriod('Otro');
                         setSelectedProjectIdForNewBlock(undefined);
                         setNewBlockDays([0, 1, 2, 3, 4, 5, 6]);
                         setShowMobileAddModal(true);
@@ -1073,33 +1075,6 @@ export const BloquesDashboard = ({
                                                 color: '#191c1d', boxSizing: 'border-box',
                                             }}
                                         />
-                                    </div>
-
-                                    {/* Franja horaria */}
-                                    <div>
-                                        <label style={{ fontSize: '12px', fontWeight: '600', color: '#54433a', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>FRANJA</label>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            {(['Mañana', 'Tarde', 'Noche'] as const).map(p => {
-                                                const ps = getPeriodStyles(p);
-                                                const isSel = newBlockPeriod === p;
-                                                return (
-                                                    <button key={p} type="button" onClick={() => setNewBlockPeriod(p)}
-                                                        style={{
-                                                            flex: 1, padding: '10px 4px', borderRadius: '12px', border: 'none',
-                                                            background: isSel ? ps.color : '#f3f4f5',
-                                                            color: isSel ? '#ffffff' : '#54433a',
-                                                            fontSize: '13px', fontWeight: '700', cursor: 'pointer',
-                                                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
-                                                            transition: 'all 0.15s',
-                                                            boxShadow: isSel ? `0 4px 12px ${ps.color}40` : 'none',
-                                                        }}
-                                                    >
-                                                        <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{ps.iconName}</span>
-                                                        {p}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
                                     </div>
 
                                     {/* Proyecto */}
@@ -1230,11 +1205,11 @@ export const BloquesDashboard = ({
 
             
             {/* Cabecera del Dashboard */}
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
                 <h2 style={{ margin: 0, fontSize: '32px', fontWeight: '700', color: '#191c1d', letterSpacing: '-0.02em' }}>
-                    Registro Semanal
+                    Rutina
                 </h2>
-                
+
                 {/* Selector de Semana en Header */}
                 <div style={{ display: 'flex', background: '#edeeef', padding: '4px', borderRadius: '12px', gap: '2px', border: '1px solid #e1e3e4' }}>
                     {([['semana', 'Semana'], ['mes', 'Mes'], ['anual', 'Año']] as const).map(([v, lbl]) => (
@@ -1257,6 +1232,9 @@ export const BloquesDashboard = ({
                     ))}
                 </div>
             </div>
+            <p style={{ margin: '0 0 2rem', fontSize: '13px', color: '#54433a', opacity: 0.75, maxWidth: '640px' }}>
+                Las tareas que se repiten cada semana. Aparecen en tu Checklist ("Mi Jornada") los días que marques.
+            </p>
 
             {/* ─── SUB-VISTA: SEMANA (planilla existente) ─── */}
             {semanalSubView === 'semana' && (<>
@@ -1292,7 +1270,7 @@ export const BloquesDashboard = ({
                         alignItems: 'end' 
                     }}>
                         {/* Nombre de la tarea */}
-                        <div style={{ gridColumn: 'span 3', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             <label style={{ fontSize: '12px', fontWeight: '600', color: '#54433a', paddingLeft: '4px', letterSpacing: '0.05em' }}>
                                 Nombre de la tarea
                             </label>
@@ -1318,7 +1296,7 @@ export const BloquesDashboard = ({
                         </div>
 
                         {/* Proyecto / Categoría */}
-                        <div style={{ gridColumn: 'span 3', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             <label style={{ fontSize: '12px', fontWeight: '600', color: '#54433a', paddingLeft: '4px', letterSpacing: '0.05em' }}>
                                 Proyecto / Categoría
                             </label>
@@ -1359,50 +1337,8 @@ export const BloquesDashboard = ({
                             </div>
                         </div>
 
-                        {/* Franja Horaria */}
-                        <div style={{ gridColumn: 'span 3', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#54433a', paddingLeft: '4px', letterSpacing: '0.05em' }}>
-                                Franja Horaria
-                            </label>
-                            <div style={{ display: 'flex', background: '#f3f4f5', padding: '4px', borderRadius: '12px', gap: '4px', height: '46px', alignItems: 'center' }}>
-                                {(['Mañana', 'Tarde', 'Noche'] as const).map((p) => {
-                                    const styles = getPeriodStyles(p);
-                                    const isSelected = newBlockPeriod === p;
-                                    return (
-                                        <button
-                                            key={p}
-                                            type="button"
-                                            onClick={() => setNewBlockPeriod(p)}
-                                            style={{
-                                                flex: 1,
-                                                border: 'none',
-                                                height: '100%',
-                                                background: isSelected ? 'white' : 'transparent',
-                                                color: isSelected ? '#944a18' : '#54433a',
-                                                borderRadius: '8px',
-                                                fontSize: '14px',
-                                                fontWeight: isSelected ? '700' : '500',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                gap: '4px',
-                                                boxShadow: isSelected ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
-                                                transition: 'all 0.15s'
-                                            }}
-                                        >
-                                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-                                                {styles.iconName}
-                                            </span>
-                                            <span>{p}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
                         {/* Botón de añadir */}
-                        <div style={{ gridColumn: 'span 3' }}>
+                        <div style={{ gridColumn: 'span 4' }}>
                             <button
                                 type="submit"
                                 style={{
@@ -1563,7 +1499,7 @@ export const BloquesDashboard = ({
                                     <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
                                         style={{ position: 'absolute', top: '110%', right: 0, background: 'white', borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: '220px', overflow: 'hidden', border: '1px solid #e1e3e4' }}
                                     >
-                                        {(['none', 'period', 'project'] as const).map(opt => (
+                                        {(['none', 'project'] as const).map(opt => (
                                             <button key={opt}
                                                 onClick={() => { setGroupBy(opt); setShowGroupMenu(false); }}
                                                 style={{
@@ -1574,7 +1510,7 @@ export const BloquesDashboard = ({
                                                 }}
                                             >
                                                 {groupBy === opt && <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>check</span>}
-                                                {opt === 'none' ? '❌ Ninguno' : opt === 'period' ? '🌅 Jornada (Mañana...)' : '📁 Proyecto / Tema'}
+                                                {opt === 'none' ? '❌ Ninguno' : '📁 Proyecto / Tema'}
                                             </button>
                                         ))}
                                     </motion.div>
@@ -1603,7 +1539,7 @@ export const BloquesDashboard = ({
                                     <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
                                         style={{ position: 'absolute', top: '110%', right: 0, background: 'white', borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, minWidth: '200px', overflow: 'hidden', border: '1px solid #e1e3e4' }}
                                     >
-                                        {([['period', '🌅 Jornada'], ['name', '🔤 Nombre A→Z'], ['progress', '📊 Progreso']] as const).map(([opt, label]) => (
+                                        {([['name', '🔤 Nombre A→Z'], ['progress', '📊 Progreso']] as const).map(([opt, label]) => (
                                             <button key={opt}
                                                 onClick={() => { setSortBy(opt); setShowSortMenu(false); }}
                                                 style={{
@@ -1735,40 +1671,6 @@ export const BloquesDashboard = ({
                                                                         if (e.key === 'Escape') setEditingRowId(null);
                                                                     }}
                                                                 />
-
-                                                                <div style={{ display: 'flex', background: '#edeeef', padding: '2px', borderRadius: '8px', gap: '2px' }}>
-                                                                    {(['Mañana', 'Tarde', 'Noche', 'Otro'] as const).map(p => {
-                                                                        const ps = getPeriodStyles(p);
-                                                                        const isSel = editingPeriod === p;
-                                                                        return (
-                                                                            <button
-                                                                                key={p}
-                                                                                type="button"
-                                                                                onClick={() => setEditingPeriod(p)}
-                                                                                style={{
-                                                                                    border: 'none',
-                                                                                    background: isSel ? 'white' : 'transparent',
-                                                                                    color: isSel ? ps.color : '#877369',
-                                                                                    padding: '4px 8px',
-                                                                                    borderRadius: '6px',
-                                                                                    fontSize: '12px',
-                                                                                    fontWeight: '700',
-                                                                                    cursor: 'pointer',
-                                                                                    display: 'flex',
-                                                                                    alignItems: 'center',
-                                                                                    gap: '3px',
-                                                                                    transition: 'all 0.1s',
-                                                                                    boxShadow: isSel ? '0 1px 3px rgba(0,0,0,0.06)' : 'none'
-                                                                                }}
-                                                                            >
-                                                                                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>
-                                                                                    {ps.iconName}
-                                                                                </span>
-                                                                                <span>{ps.label}</span>
-                                                                            </button>
-                                                                        );
-                                                                    })}
-                                                                </div>
 
                                                                 <select
                                                                     value={editingProjectId || ''}
