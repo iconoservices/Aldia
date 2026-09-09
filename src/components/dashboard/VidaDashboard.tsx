@@ -3,6 +3,8 @@ import type { Habit, Routine, Project } from '../../hooks/useAlDiaState';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { useState } from 'react';
 import { RoutineEditOverlay } from '../features/RoutineEditOverlay';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { C } from '../../theme';
 
 interface VidaProps {
     habits: Habit[];
@@ -36,6 +38,9 @@ export const VidaDashboard = ({
     const [viewMode, setViewMode] = useState<'hoy' | 'semana'>('hoy');
     const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
     const [linkingItem, setLinkingItem] = useState<{ rId: number, iId: number } | null>(null);
+    const [addingBlock, setAddingBlock] = useState(false);
+    const [newBlockName, setNewBlockName] = useState('');
+    const [deletingBlock, setDeletingBlock] = useState<Routine | null>(null);
     const days = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
     const todayStr = new Date().toLocaleDateString('en-CA');
     const normalizedDay = (new Date().getDay() + 6) % 7;
@@ -230,35 +235,66 @@ export const VidaDashboard = ({
                         </div>
                     </div>
                     <button
-                        onClick={() => {
-                            const name = prompt('Nombre del bloque de horario:');
-                            if (name) addRoutine(name);
-                        }}
+                        onClick={() => { setAddingBlock(true); setNewBlockName(''); }}
                         style={{
-                            background: 'var(--domain-orange)',
-                            color: 'white', 
-                            border: 'none', 
-                            borderRadius: '12px', 
-                            padding: '8px 14px', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '6px', 
-                            cursor: 'pointer', 
-                            fontWeight: 900, 
-                            fontSize: '0.75rem',
-                            boxShadow: '0 4px 12px rgba(255, 140, 66, 0.2)',
-                            transition: 'all 0.2s ease',
+                            background: C.primary,
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '999px',
+                            padding: '9px 16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            cursor: 'pointer',
+                            fontWeight: 700,
+                            fontSize: '0.78rem',
+                            fontFamily: 'inherit',
+                            boxShadow: '0 4px 14px rgba(148,74,24,0.25)',
                             flexShrink: 0
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                     >
-                        <Plus size={16} strokeWidth={3} /> NUEVO BLOQUE
+                        <Plus size={15} strokeWidth={3} /> Nuevo bloque
                     </button>
                 </div>
-                <p style={{ margin: '0 0 1rem', fontSize: '0.78rem', color: '#94A3B8', fontWeight: 600, lineHeight: 1.4 }}>
+                <p style={{ margin: '0 0 1rem', fontSize: '0.78rem', color: C.onSurfaceVariant, fontWeight: 500, lineHeight: 1.4 }}>
                     Tu horario tipo: bloques con hora fija. Se ven en el Calendario.
                 </p>
+
+                {addingBlock && (
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                const n = newBlockName.trim();
+                                if (n) addRoutine(n);
+                                setNewBlockName('');
+                                setAddingBlock(false);
+                            }}
+                            style={{ marginBottom: '1rem' }}
+                        >
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <input
+                                    autoFocus
+                                    value={newBlockName}
+                                    onChange={(e) => setNewBlockName(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === 'Escape') setAddingBlock(false); }}
+                                    placeholder="Nombre del bloque (ej. Bloque productivo)"
+                                    style={{
+                                        flex: 1, background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`,
+                                        borderRadius: '12px', padding: '10px 14px', fontSize: '0.9rem',
+                                        fontWeight: 600, color: C.onSurface, outline: 'none', fontFamily: 'inherit',
+                                    }}
+                                />
+                                <button type="submit" style={{
+                                    background: C.primary, color: 'white', border: 'none', borderRadius: '12px',
+                                    padding: '10px 16px', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'inherit',
+                                }}>Añadir</button>
+                                <button type="button" onClick={() => setAddingBlock(false)} style={{
+                                    background: C.surfaceContainerHigh, color: C.onSurfaceVariant, border: 'none', borderRadius: '12px',
+                                    padding: '10px 14px', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'inherit',
+                                }}>Cancelar</button>
+                            </div>
+                        </form>
+                )}
 
                 <AnimatePresence mode="wait">
                     {viewMode === 'hoy' ? (
@@ -280,40 +316,43 @@ export const VidaDashboard = ({
                                     const timeB = b.startTime || '99:99';
                                     return timeA.localeCompare(timeB);
                                 });
-                                return displayRutinas.map((rutina, rIdx, arr) => (
-                                    <div 
-                                        key={rutina.id} 
-                                        style={{ 
-                                            padding: '1.2rem 0',
-                                            borderBottom: rIdx === arr.length - 1 ? 'none' : '1px solid #F5F5F5',
-                                            opacity: rutina.isActive ? 1 : 0.4,
-                                            transition: 'all 0.3s ease',
+                                return displayRutinas.map((rutina) => (
+                                    <div
+                                        key={rutina.id}
+                                        style={{
+                                            background: C.surfaceLowest,
+                                            border: `1px solid ${C.outlineVariant}`,
+                                            borderLeft: `4px solid ${rutina.color}`,
+                                            borderRadius: '14px',
+                                            padding: '1rem 1.1rem',
+                                            marginBottom: '10px',
+                                            boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+                                            opacity: rutina.isActive ? 1 : 0.55,
+                                            transition: 'all 0.2s ease',
                                             position: 'relative'
                                         }}
                                     >
-                                    {/* Color Indicator Accent */}
-                                    <div style={{ position: 'absolute', left: '-1.2rem', top: '1.2rem', bottom: '1.2rem', width: '4px', borderRadius: '0 4px 4px 0', background: rutina.color }}></div>
-
-                                    <div style={{ 
-                                        display: 'flex', 
-                                        justifyContent: 'space-between', 
-                                        alignItems: 'center', 
+                                    <div style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
                                         marginBottom: '12px',
                                         flexWrap: 'wrap',
                                         gap: '12px'
                                     }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 'min-content' }}>
-                                            <div 
-                                                onClick={() => removeRoutine(rutina.id)}
-                                                style={{ cursor: 'pointer', opacity: 0.2, transition: 'opacity 0.2s' }}
+                                            <div
+                                                onClick={() => setDeletingBlock(rutina)}
+                                                title="Eliminar bloque"
+                                                style={{ cursor: 'pointer', opacity: 0.35, transition: 'opacity 0.2s' }}
                                                 onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                                                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.2'}
+                                                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.35'}
                                             >
-                                                <Trash2 size={12} color="#f87171" style={{ marginRight: '4px' }} />
+                                                <Trash2 size={13} color={C.rojo} style={{ marginRight: '4px' }} />
                                             </div>
                                             <div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-carbon)' }}>{rutina.title}</h4>
+                                                    <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800, color: C.onSurface }}>{rutina.title}</h4>
                                                     <button 
                                                         onClick={() => setEditingRoutine(rutina)}
                                                         style={{ background: 'transparent', border: 'none', color: '#CCC', cursor: 'pointer', padding: '4px', display: 'flex' }}
@@ -659,13 +698,23 @@ export const VidaDashboard = ({
             </div> */}
 
             {editingRoutine && (
-                <RoutineEditOverlay 
+                <RoutineEditOverlay
                     isOpen={!!editingRoutine}
                     onClose={() => setEditingRoutine(null)}
                     routine={editingRoutine}
                     onSave={updateRoutine}
                 />
             )}
+
+            <ConfirmDialog
+                open={!!deletingBlock}
+                title="Eliminar bloque"
+                message={`¿Eliminar "${deletingBlock?.title}" del horario? También se borran sus tareas.`}
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                onConfirm={() => { if (deletingBlock) removeRoutine(deletingBlock.id); setDeletingBlock(null); }}
+                onCancel={() => setDeletingBlock(null)}
+            />
         </div>
     );
 };
