@@ -20,7 +20,7 @@ interface DomainIconProps {
 
 const domainConfig: Record<DomainType, { icon: LucideIcon, color: string, bg: string }> = {
   finanzas: { icon: Wallet, color: 'var(--domain-blue)', bg: 'rgba(0, 85, 255, 0.1)' },
-  misiones: { icon: Target, color: 'var(--domain-orange)', bg: 'rgba(79, 70, 229, 0.1)' },
+  misiones: { icon: Target, color: 'var(--domain-orange)', bg: 'rgba(5, 150, 105, 0.1)' },
   proyectos: { icon: Briefcase, color: 'var(--domain-purple)', bg: 'rgba(212, 196, 251, 0.1)' },
   vida: { icon: Zap, color: 'var(--domain-green)', bg: 'rgba(168, 218, 220, 0.1)' },
   cerebro: { icon: BookOpen, color: '#1E293B', bg: 'rgba(61, 49, 46, 0.1)' },

@@ -19,7 +19,7 @@ interface Props {
     removeExpense: (projectId: number, expenseId: number) => void;
 }
 
-const COLORS = ['#4F46E5', '#4D96FF', '#06D6A0', '#F72585', '#7209B7', '#3A0CA3', '#4CC9F0', '#F94144', '#90BE6D', '#F9C74F'];
+const COLORS = ['#059669', '#4D96FF', '#06D6A0', '#F72585', '#7209B7', '#3A0CA3', '#4CC9F0', '#F94144', '#90BE6D', '#F9C74F'];
 
 const fmt = (n: number) => n.toLocaleString('es-PE', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
@@ -137,7 +137,7 @@ export const NegocioDashboard = ({
                 >
                     <div style={{
                         position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                        background: 'radial-gradient(circle at 50% 50%, rgba(79, 70, 229,0.12) 0%, transparent 70%)',
+                        background: 'radial-gradient(circle at 50% 50%, rgba(5, 150, 105,0.12) 0%, transparent 70%)',
                         pointerEvents: 'none'
                     }} />
 
@@ -513,7 +513,7 @@ export const NegocioDashboard = ({
                         padding: '1.5rem',
                         cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                        color: '#4F46E5', fontWeight: 700, fontSize: '0.9rem',
+                        color: '#059669', fontWeight: 700, fontSize: '0.9rem',
                         fontFamily: 'inherit'
                     }}
                 >
@@ -558,7 +558,7 @@ export const NegocioDashboard = ({
                         <button
                             onClick={handleAddProject}
                             style={{
-                                background: '#4F46E5', color: '#fff', border: 'none', borderRadius: '12px',
+                                background: '#059669', color: '#fff', border: 'none', borderRadius: '12px',
                                 padding: '10px 20px', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem', fontFamily: 'inherit'
                             }}
                         >
@@ -688,7 +688,7 @@ const AddForm = ({ fields, onAdd, onCancel }: AddFormProps) => (
             ))}
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
-            <button onClick={onAdd} style={{ background: '#4F46E5', color: '#fff', border: 'none', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer', fontWeight: 700, fontSize: '0.75rem', fontFamily: 'inherit' }}>
+            <button onClick={onAdd} style={{ background: '#059669', color: '#fff', border: 'none', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer', fontWeight: 700, fontSize: '0.75rem', fontFamily: 'inherit' }}>
                 Agregar
             </button>
             <button onClick={onCancel} style={{ background: 'transparent', color: '#888', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer', fontWeight: 600, fontSize: '0.75rem', fontFamily: 'inherit' }}>

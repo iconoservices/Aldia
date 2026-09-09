@@ -35,7 +35,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
 
     // ── Primary sidebar items ─────────────────────────────────────────
     const PRIMARY_ITEMS = [
-        { label: 'Checklist', tab: 'Checklist', icon: 'task_alt' },
+        { label: 'Checklist', tab: 'Checklist', icon: 'task_alt' },
         { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
         { label: 'Agenda', tab: 'Agenda', icon: 'event' },
         { label: 'Entregas', tab: 'Entregas', icon: 'local_fire_department' },
@@ -97,13 +97,13 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     width: '100%',
                     transition: 'all 0.15s ease',
                     background: isActive ? '#E9EEF3' : 'transparent',
-                    color: isActive ? '#4F46E5' : '#475569',
-                    boxShadow: isActive ? 'inset -3px 0 0 #4F46E5' : 'none',
+                    color: isActive ? '#059669' : '#475569',
+                    boxShadow: isActive ? 'inset -3px 0 0 #059669' : 'none',
                 }}
                 onMouseEnter={e => {
                     if (!isActive) {
                         (e.currentTarget as HTMLElement).style.background = '#F1F5F9';
-                        (e.currentTarget as HTMLElement).style.color = '#4F46E5';
+                        (e.currentTarget as HTMLElement).style.color = '#059669';
                     }
                 }}
                 onMouseLeave={e => {
@@ -132,7 +132,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     // Map active tab to a friendly title for mobile header
     const getViewTitle = (tab: string) => {
         switch (tab) {
-            case 'Checklist': return 'Checklist Diario';
+            case 'Checklist': return 'Checklist Diario';
             case 'Pendientes': return 'Pendientes';
             case 'Plan': return 'Ingresos y Gastos Fijos';
             case 'Compras': return 'Lista de Compras & Deseos';
@@ -168,7 +168,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                 <div className="sidebar-logo desktop-only" style={{ padding: '0 4px', flexShrink: 0 }}>
                     <img src="/favicon.svg" alt="AlDía" className="logo-placeholder" style={{ padding: 0 }} />
                     <div>
-                        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: '#4F46E5', letterSpacing: '-0.01em', lineHeight: 1 }}>AlDía</h1>
+                        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: '#059669', letterSpacing: '-0.01em', lineHeight: 1 }}>AlDía</h1>
                         <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#475569', opacity: 0.7, fontWeight: 600, letterSpacing: '0.04em' }}>Productivity Focus</p>
                     </div>
                 </div>
@@ -194,16 +194,16 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                 {/* Bottom: iconos */}
                 <div style={{ borderTop: '1px solid #CBD5E1', paddingTop: '12px', flexShrink: 0, display: 'flex', gap: '8px', justifyContent: 'center' }}>
                     <button onClick={onTrashClick} title="Papelera de reciclaje" style={{
-                        background: 'rgba(79, 70, 229,0.08)', border: 'none', borderRadius: '12px',
-                        padding: '10px 14px', cursor: 'pointer', color: '#4F46E5', flexShrink: 0,
+                        background: 'rgba(5, 150, 105,0.08)', border: 'none', borderRadius: '12px',
+                        padding: '10px 14px', cursor: 'pointer', color: '#059669', flexShrink: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                         <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>delete</span>
                     </button>
                     {!isInstalled && (
                         <button onClick={install} title="Instalar app" style={{
-                            background: 'rgba(79, 70, 229,0.08)', border: 'none', borderRadius: '12px',
-                            padding: '10px 14px', cursor: 'pointer', color: '#4F46E5', flexShrink: 0,
+                            background: 'rgba(5, 150, 105,0.08)', border: 'none', borderRadius: '12px',
+                            padding: '10px 14px', cursor: 'pointer', color: '#059669', flexShrink: 0,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
                             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>download</span>
@@ -213,8 +213,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         onClick={onProfileClick}
                         title="Perfil y ajustes"
                         style={{
-                            background: '#818CF8', border: 'none', borderRadius: '12px',
-                            padding: '10px 14px', cursor: 'pointer', color: '#3730A3',
+                            background: '#34D399', border: 'none', borderRadius: '12px',
+                            padding: '10px 14px', cursor: 'pointer', color: '#065F46',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             transition: 'opacity 0.15s',
                         }}
@@ -255,7 +255,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     <div style={{
                         position: 'absolute', bottom: '-2px', right: '-2px',
                         width: '16px', height: '16px', borderRadius: '50%',
-                        background: '#4F46E5', border: '2px solid white',
+                        background: '#059669', border: '2px solid white',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                         <span className="material-symbols-outlined" style={{ fontSize: '10px', color: 'white' }}>edit</span>
@@ -362,7 +362,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         font-family: 'Plus Jakarta Sans', sans-serif;
                         font-weight: 800;
                         font-size: 1.25rem;
-                        color: #4F46E5;
+                        color: #059669;
                     }
 
                     .mobile-view-title {
@@ -381,7 +381,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         background-color: #E9EEF3;
                         background-size: cover;
                         background-position: center;
-                        border: 2px solid #818CF8;
+                        border: 2px solid #34D399;
                         cursor: pointer;
                         display: flex;
                         align-items: center;
@@ -445,8 +445,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     }
 
                     .mobile-nav-btn.active {
-                        background: rgba(79, 70, 229, 0.1);
-                        color: #4F46E5;
+                        background: rgba(5, 150, 105, 0.1);
+                        color: #059669;
                     }
 
                     .mobile-nav-btn.active span.material-symbols-outlined {
@@ -540,8 +540,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     }
 
                     .mobile-drawer-tab-btn.active-tab {
-                        background: rgba(79, 70, 229, 0.08) !important;
-                        color: #4F46E5 !important;
+                        background: rgba(5, 150, 105, 0.08) !important;
+                        color: #059669 !important;
                     }
                 }
             `}</style>

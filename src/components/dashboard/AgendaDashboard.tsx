@@ -37,7 +37,7 @@ const botonCompactoPrimario = (movil: boolean): React.CSSProperties => ({
     ...botonCompacto(movil),
     background: C.primary,
     color: '#fff',
-    boxShadow: '0 3px 10px rgba(79, 70, 229,0.22)',
+    boxShadow: '0 3px 10px rgba(5, 150, 105,0.22)',
 });
 
 const botonCompactoSecundario = (movil: boolean): React.CSSProperties => ({

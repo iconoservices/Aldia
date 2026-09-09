@@ -18,7 +18,7 @@ interface BloquesDashboardProps {
 const getPeriodStyles = (period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro') => {
     switch (period) {
         case 'Mañana':
-            return { iconName: 'light_mode', color: '#4F46E5', bg: 'rgba(79, 70, 229, 0.05)', border: 'rgba(79, 70, 229, 0.1)', label: 'Mañana' };
+            return { iconName: 'light_mode', color: '#059669', bg: 'rgba(5, 150, 105, 0.05)', border: 'rgba(5, 150, 105, 0.1)', label: 'Mañana' };
         case 'Tarde':
             return { iconName: 'wb_sunny', color: '#785900', bg: 'rgba(120, 89, 0, 0.05)', border: 'rgba(120, 89, 0, 0.1)', label: 'Tarde' };
         case 'Noche':
@@ -328,9 +328,9 @@ export const BloquesDashboard = ({
                     id: 'all',
                     title: 'Bloques de Enfoque',
                     iconName: 'view_week',
-                    color: '#4F46E5',
-                    bg: 'rgba(79, 70, 229, 0.05)',
-                    border: 'rgba(79, 70, 229, 0.1)',
+                    color: '#059669',
+                    bg: 'rgba(5, 150, 105, 0.05)',
+                    border: 'rgba(5, 150, 105, 0.1)',
                     rows: blockRows
                 });
             }
@@ -360,7 +360,7 @@ export const BloquesDashboard = ({
                         particleCount: 80,
                         spread: 60,
                         origin: { y: 0.7 },
-                        colors: ['#4F46E5', '#FFD700', '#A8DADC', '#0055FF']
+                        colors: ['#059669', '#FFD700', '#A8DADC', '#0055FF']
                     });
                 }
             }
@@ -380,7 +380,7 @@ export const BloquesDashboard = ({
                     particleCount: 80,
                     spread: 60,
                     origin: { y: 0.7 },
-                    colors: ['#4F46E5', '#FFD700', '#A8DADC', '#0055FF']
+                    colors: ['#059669', '#FFD700', '#A8DADC', '#0055FF']
                 });
             }
         }
@@ -646,7 +646,7 @@ export const BloquesDashboard = ({
                                     style={{
                                         border: 'none',
                                         background: semanalSubView === v ? 'white' : 'transparent',
-                                        color: semanalSubView === v ? '#4F46E5' : '#475569',
+                                        color: semanalSubView === v ? '#059669' : '#475569',
                                         padding: '5px 10px',
                                         borderRadius: '7px',
                                         fontSize: '11px',
@@ -674,7 +674,7 @@ export const BloquesDashboard = ({
                                 </button>
                                 <button
                                     onClick={() => setReferenceDate(new Date())}
-                                    style={{ background: '#818CF8', border: 'none', borderRadius: '10px', padding: '6px 12px', cursor: 'pointer', color: '#3730A3', fontSize: '12px', fontWeight: '700' }}
+                                    style={{ background: '#34D399', border: 'none', borderRadius: '10px', padding: '6px 12px', cursor: 'pointer', color: '#065F46', fontSize: '12px', fontWeight: '700' }}
                                 >
                                     Hoy
                                 </button>
@@ -701,7 +701,7 @@ export const BloquesDashboard = ({
                                 </button>
                                 <button
                                     onClick={() => { setRefMonthDate(new Date()); setReferenceDate(new Date()); }}
-                                    style={{ background: '#818CF8', border: 'none', borderRadius: '10px', padding: '6px 12px', cursor: 'pointer', color: '#3730A3', fontSize: '12px', fontWeight: '700' }}
+                                    style={{ background: '#34D399', border: 'none', borderRadius: '10px', padding: '6px 12px', cursor: 'pointer', color: '#065F46', fontSize: '12px', fontWeight: '700' }}
                                 >
                                     Hoy
                                 </button>
@@ -726,7 +726,7 @@ export const BloquesDashboard = ({
                                 </button>
                                 <button
                                     onClick={() => setViewYear(new Date().getFullYear())}
-                                    style={{ background: '#818CF8', border: 'none', borderRadius: '10px', padding: '6px 12px', cursor: 'pointer', color: '#3730A3', fontSize: '12px', fontWeight: '700' }}
+                                    style={{ background: '#34D399', border: 'none', borderRadius: '10px', padding: '6px 12px', cursor: 'pointer', color: '#065F46', fontSize: '12px', fontWeight: '700' }}
                                 >
                                     Hoy
                                 </button>
@@ -748,8 +748,8 @@ export const BloquesDashboard = ({
                     {dayBlocksByPeriod.length === 0 ? (
                         /* Empty state */
                         <div style={{ textAlign: 'center', padding: '48px 20px', color: '#94A3B8' }}>
-                            <div style={{ width: '64px', height: '64px', borderRadius: '20px', background: '#E0E7FF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                                <span className="material-symbols-outlined" style={{ fontSize: '32px', color: '#4F46E5' }}>calendar_view_week</span>
+                            <div style={{ width: '64px', height: '64px', borderRadius: '20px', background: '#D1FAE5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: '32px', color: '#059669' }}>calendar_view_week</span>
                             </div>
                             <p style={{ margin: '0 0 4px', fontWeight: '700', fontSize: '16px', color: '#0F172A' }}>Sin bloques esta semana</p>
                             <p style={{ margin: 0, fontSize: '13px', opacity: 0.7 }}>Añade un block con el botón +</p>
@@ -855,11 +855,11 @@ export const BloquesDashboard = ({
                                         return (
                                             <div key={dayNum} style={{
                                                 background: bg, borderRadius: '8px', padding: '5px 2px',
-                                                textAlign: 'center', border: isToday ? '2px solid #4F46E5' : '2px solid transparent',
+                                                textAlign: 'center', border: isToday ? '2px solid #059669' : '2px solid transparent',
                                                 minHeight: '42px', display: 'flex', flexDirection: 'column',
                                                 alignItems: 'center', justifyContent: 'center', gap: '1px',
                                             }}>
-                                                <span style={{ fontSize: '11px', fontWeight: 900, color: isToday ? '#4F46E5' : textColor }}>{dayNum}</span>
+                                                <span style={{ fontSize: '11px', fontWeight: 900, color: isToday ? '#059669' : textColor }}>{dayNum}</span>
                                                 {stats && stats.total > 0 && (
                                                     <span style={{ fontSize: '8px', fontWeight: 800, color: textColor, opacity: 0.9 }}>{stats.done}/{stats.total}</span>
                                                 )}
@@ -945,7 +945,7 @@ export const BloquesDashboard = ({
                                     <div style={{ fontSize: '9px', fontWeight: 800, color: '#90A4AE' }}>completadas</div>
                                 </div>
                                 <div style={{ flex: 1, background: 'white', borderRadius: '12px', padding: '8px 6px', border: '1px solid #ECEFF1', textAlign: 'center' }}>
-                                    <div style={{ fontSize: '1rem', fontWeight: 900, color: '#4F46E5' }}>{yearTotal > 0 ? Math.round((yearDone / yearTotal) * 100) : 0}%</div>
+                                    <div style={{ fontSize: '1rem', fontWeight: 900, color: '#059669' }}>{yearTotal > 0 ? Math.round((yearDone / yearTotal) * 100) : 0}%</div>
                                     <div style={{ fontSize: '9px', fontWeight: 800, color: '#90A4AE' }}>efectividad</div>
                                 </div>
                                 <div style={{ flex: 1, background: 'white', borderRadius: '12px', padding: '8px 6px', border: '1px solid #ECEFF1', textAlign: 'center' }}>
@@ -983,7 +983,7 @@ export const BloquesDashboard = ({
                                                             key={`${wi}-${di}`}
                                                             style={{
                                                                 width: '100%', aspectRatio: '1', background: color, borderRadius: '2px',
-                                                                border: isToday ? '1px solid #4F46E5' : '1px solid transparent',
+                                                                border: isToday ? '1px solid #059669' : '1px solid transparent',
                                                             }}
                                                         />
                                                     );
@@ -1017,8 +1017,8 @@ export const BloquesDashboard = ({
                     style={{
                         position: 'fixed', bottom: 'calc(84px + env(safe-area-inset-bottom, 0px))', right: '20px',
                         width: '56px', height: '56px', borderRadius: '50%',
-                        background: '#4F46E5', color: '#ffffff', border: 'none',
-                        boxShadow: '0 4px 16px rgba(79, 70, 229,0.35)',
+                        background: '#059669', color: '#ffffff', border: 'none',
+                        boxShadow: '0 4px 16px rgba(5, 150, 105,0.35)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         cursor: 'pointer', zIndex: 999,
                     }}
@@ -1052,7 +1052,7 @@ export const BloquesDashboard = ({
                             >
                                 <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: '#DDE3EA', margin: '0 auto 20px' }} />
                                 <h3 style={{ margin: '0 0 20px', fontSize: '18px', fontWeight: '700', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span className="material-symbols-outlined" style={{ fontSize: '22px', color: '#4F46E5' }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: '22px', color: '#059669' }}>
                                         {mobileEditingRow ? 'edit_note' : 'add_circle'}
                                     </span>
                                     {mobileEditingRow ? 'Editar Bloque de Enfoque' : 'Nuevo Bloque de Enfoque'}
@@ -1111,12 +1111,12 @@ export const BloquesDashboard = ({
                                                         onClick={() => setNewBlockDays(prev => prev.includes(i) ? prev.filter(day => day !== i) : [...prev, i].sort())}
                                                         style={{
                                                             width: '38px', height: '38px', borderRadius: '50%', border: 'none',
-                                                            background: isAct ? '#818CF8' : '#F1F5F9',
-                                                            color: isAct ? '#3730A3' : '#475569',
+                                                            background: isAct ? '#34D399' : '#F1F5F9',
+                                                            color: isAct ? '#065F46' : '#475569',
                                                             fontSize: '13px', fontWeight: '700', cursor: 'pointer',
                                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                             transition: 'all 0.1s',
-                                                            boxShadow: isAct ? '0 2px 8px rgba(79, 70, 229,0.2)' : 'none',
+                                                            boxShadow: isAct ? '0 2px 8px rgba(5, 150, 105,0.2)' : 'none',
                                                         }}
                                                     >{d}</button>
                                                 );
@@ -1134,7 +1134,7 @@ export const BloquesDashboard = ({
                                                         onClick={() => setNewBlockDays(opt.days)}
                                                         style={{
                                                             background: 'none', border: 'none',
-                                                            color: isActive ? '#4F46E5' : '#4858ab',
+                                                            color: isActive ? '#059669' : '#4858ab',
                                                             fontSize: '13px', fontWeight: '700',
                                                             cursor: 'pointer', padding: 0
                                                         }}
@@ -1151,12 +1151,12 @@ export const BloquesDashboard = ({
                                             disabled={!newBlockText.trim()}
                                             style={{
                                                 width: '100%', height: '50px',
-                                                background: newBlockText.trim() ? '#4F46E5' : '#DDE3EA',
+                                                background: newBlockText.trim() ? '#059669' : '#DDE3EA',
                                                 color: newBlockText.trim() ? '#ffffff' : '#94A3B8',
                                                 border: 'none', borderRadius: '14px',
                                                 fontSize: '16px', fontWeight: '700', cursor: newBlockText.trim() ? 'pointer' : 'default',
                                                 transition: 'all 0.15s',
-                                                boxShadow: newBlockText.trim() ? '0 4px 16px rgba(79, 70, 229,0.25)' : 'none',
+                                                boxShadow: newBlockText.trim() ? '0 4px 16px rgba(5, 150, 105,0.25)' : 'none',
                                             }}
                                         >
                                             {mobileEditingRow ? 'Guardar Cambios' : 'Añadir Bloque'}
@@ -1219,7 +1219,7 @@ export const BloquesDashboard = ({
                             style={{
                                 border: 'none',
                                 background: semanalSubView === v ? 'white' : 'transparent',
-                                color: semanalSubView === v ? '#4F46E5' : '#475569',
+                                color: semanalSubView === v ? '#059669' : '#475569',
                                 padding: '6px 16px',
                                 borderRadius: '8px',
                                 fontSize: '12px',
@@ -1252,7 +1252,7 @@ export const BloquesDashboard = ({
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                         <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#4F46E5' }}>add_circle</span>
+                            <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#059669' }}>add_circle</span>
                             Añadir tarea
                         </h3>
                     </div>
@@ -1338,7 +1338,7 @@ export const BloquesDashboard = ({
                                 style={{
                                     width: '100%',
                                     height: '46px',
-                                    background: '#4F46E5', 
+                                    background: '#059669', 
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '12px',
@@ -1349,7 +1349,7 @@ export const BloquesDashboard = ({
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     gap: '8px',
-                                    boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)',
+                                    boxShadow: '0 4px 12px rgba(5, 150, 105, 0.2)',
                                     transition: 'all 0.15s'
                                 }}
                             >
@@ -1375,8 +1375,8 @@ export const BloquesDashboard = ({
                                             }}
                                             style={{
                                                 border: 'none',
-                                                background: isAct ? '#818CF8' : '#DDE3EA',
-                                                color: isAct ? '#3730A3' : '#475569',
+                                                background: isAct ? '#34D399' : '#DDE3EA',
+                                                color: isAct ? '#065F46' : '#475569',
                                                 width: '32px',
                                                 height: '32px',
                                                 borderRadius: '50%',
@@ -1387,7 +1387,7 @@ export const BloquesDashboard = ({
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
                                                 transition: 'all 0.1s',
-                                                boxShadow: isAct ? '0 2px 4px rgba(79, 70, 229, 0.15)' : 'none'
+                                                boxShadow: isAct ? '0 2px 4px rgba(5, 150, 105, 0.15)' : 'none'
                                             }}
                                         >
                                             {d}
@@ -1410,7 +1410,7 @@ export const BloquesDashboard = ({
                                             style={{
                                                 border: 'none',
                                                 background: 'transparent',
-                                                color: isActive ? '#4F46E5' : '#475569',
+                                                color: isActive ? '#059669' : '#475569',
                                                 opacity: isActive ? 1 : 0.6,
                                                 fontSize: '14px',
                                                 fontWeight: '700',
@@ -1432,8 +1432,8 @@ export const BloquesDashboard = ({
                 {/* Panel de Registro Header Info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{ background: 'rgba(79, 70, 229, 0.1)', padding: '12px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: '24px', color: '#4F46E5' }}>view_week</span>
+                        <div style={{ background: 'rgba(5, 150, 105, 0.1)', padding: '12px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '24px', color: '#059669' }}>view_week</span>
                         </div>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: '#0F172A' }}>Panel de Registro</h3>
@@ -1458,8 +1458,8 @@ export const BloquesDashboard = ({
                                 <button
                                     onClick={() => setReferenceDate(new Date())}
                                     style={{
-                                        background: '#818CF8', border: 'none', borderRadius: '8px',
-                                        padding: '4px 10px', cursor: 'pointer', color: '#3730A3',
+                                        background: '#34D399', border: 'none', borderRadius: '8px',
+                                        padding: '4px 10px', cursor: 'pointer', color: '#065F46',
                                         fontSize: '12px', fontWeight: '700', marginLeft: '8px'
                                     }}
                                     type="button"
@@ -1497,8 +1497,8 @@ export const BloquesDashboard = ({
                                             <button key={opt}
                                                 onClick={() => { setGroupBy(opt); setShowGroupMenu(false); }}
                                                 style={{
-                                                    width: '100%', padding: '12px 16px', background: groupBy === opt ? '#EEF2FF' : 'transparent',
-                                                    color: groupBy === opt ? '#4F46E5' : '#0F172A', border: 'none',
+                                                    width: '100%', padding: '12px 16px', background: groupBy === opt ? '#ECFDF5' : 'transparent',
+                                                    color: groupBy === opt ? '#059669' : '#0F172A', border: 'none',
                                                     textAlign: 'left', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
                                                     display: 'flex', alignItems: 'center', gap: '8px'
                                                 }}
@@ -1537,8 +1537,8 @@ export const BloquesDashboard = ({
                                             <button key={opt}
                                                 onClick={() => { setSortBy(opt); setShowSortMenu(false); }}
                                                 style={{
-                                                    width: '100%', padding: '12px 16px', background: sortBy === opt ? '#EEF2FF' : 'transparent',
-                                                    color: sortBy === opt ? '#4F46E5' : '#0F172A', border: 'none',
+                                                    width: '100%', padding: '12px 16px', background: sortBy === opt ? '#ECFDF5' : 'transparent',
+                                                    color: sortBy === opt ? '#059669' : '#0F172A', border: 'none',
                                                     textAlign: 'left', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
                                                     display: 'flex', alignItems: 'center', gap: '8px'
                                                 }}
@@ -1722,7 +1722,7 @@ export const BloquesDashboard = ({
                                                                                 }}
                                                                                 style={{
                                                                                     border: 'none',
-                                                                                    background: isAct ? '#4F46E5' : '#E2E8F0',
+                                                                                    background: isAct ? '#059669' : '#E2E8F0',
                                                                                     color: isAct ? 'white' : '#94A3B8',
                                                                                     width: '24px',
                                                                                     height: '24px',
@@ -1734,7 +1734,7 @@ export const BloquesDashboard = ({
                                                                                     alignItems: 'center',
                                                                                     justifyContent: 'center',
                                                                                     transition: 'all 0.1s',
-                                                                                    boxShadow: isAct ? '0 2px 5px rgba(79, 70, 229,0.3)' : 'none'
+                                                                                    boxShadow: isAct ? '0 2px 5px rgba(5, 150, 105,0.3)' : 'none'
                                                                                 }}
                                                                             >
                                                                                 {d}
@@ -1855,7 +1855,7 @@ export const BloquesDashboard = ({
                                             borderRadius: '10px',
                                             padding: '8px 4px 6px',
                                             textAlign: 'center',
-                                            border: isToday ? '2px solid #4F46E5' : '2px solid transparent',
+                                            border: isToday ? '2px solid #059669' : '2px solid transparent',
                                             transition: 'all 0.15s',
                                             minHeight: '56px',
                                             display: 'flex',
@@ -1864,12 +1864,12 @@ export const BloquesDashboard = ({
                                             justifyContent: 'center',
                                             gap: '2px'
                                         }}>
-                                            <span style={{ fontSize: '0.78rem', fontWeight: 900, color: isToday ? '#4F46E5' : textColor }}>{dayNum}</span>
+                                            <span style={{ fontSize: '0.78rem', fontWeight: 900, color: isToday ? '#059669' : textColor }}>{dayNum}</span>
                                             {stats && stats.total > 0 && (
                                                 <>
                                                     <span style={{ fontSize: '0.58rem', fontWeight: 800, color: textColor, opacity: 0.9 }}>{stats.done}/{stats.total}</span>
                                                     <div style={{ width: '70%', height: '3px', background: 'rgba(0,0,0,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
-                                                        <div style={{ width: `${(pct! * 100)}%`, height: '100%', background: pct === 1 ? 'rgba(255,255,255,0.7)' : '#4F46E5', borderRadius: '2px' }} />
+                                                        <div style={{ width: `${(pct! * 100)}%`, height: '100%', background: pct === 1 ? 'rgba(255,255,255,0.7)' : '#059669', borderRadius: '2px' }} />
                                                     </div>
                                                 </>
                                             )}
@@ -1974,7 +1974,7 @@ export const BloquesDashboard = ({
                                     <div style={{ fontSize: '0.62rem', fontWeight: 800, color: '#90A4AE' }}>completadas</div>
                                 </div>
                                 <div style={{ background: 'white', borderRadius: '12px', padding: '6px 14px', border: '1px solid #ECEFF1', textAlign: 'center' }}>
-                                    <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#4F46E5' }}>{yearTotal > 0 ? Math.round((yearDone/yearTotal)*100) : 0}%</div>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#059669' }}>{yearTotal > 0 ? Math.round((yearDone/yearTotal)*100) : 0}%</div>
                                     <div style={{ fontSize: '0.62rem', fontWeight: 800, color: '#90A4AE' }}>efectividad</div>
                                 </div>
                                 <div style={{ background: 'white', borderRadius: '12px', padding: '6px 14px', border: '1px solid #ECEFF1', textAlign: 'center' }}>
@@ -2021,7 +2021,7 @@ export const BloquesDashboard = ({
                                                             aspectRatio: '1',
                                                             background: color,
                                                             borderRadius: '2px',
-                                                            border: isToday ? '1px solid #4F46E5' : '1px solid transparent',
+                                                            border: isToday ? '1px solid #059669' : '1px solid transparent',
                                                             transition: 'opacity 0.1s',
                                                             cursor: s ? 'pointer' : 'default'
                                                         }}
@@ -2054,8 +2054,8 @@ export const BloquesDashboard = ({
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
                         {SUGGESTIONS.map((sug, idx) => {
-                            let color = '#4F46E5'; // primary
-                            let bg = 'rgba(79, 70, 229, 0.1)';
+                            let color = '#059669'; // primary
+                            let bg = 'rgba(5, 150, 105, 0.1)';
                             if (sug.icon === 'menu_book') {
                                 color = '#4858ab'; // secondary
                                 bg = 'rgba(72, 88, 171, 0.1)';
@@ -2112,7 +2112,7 @@ export const BloquesDashboard = ({
                                             alignItems: 'center',
                                             transition: 'color 0.15s'
                                         }}
-                                        onMouseEnter={(e) => { e.currentTarget.style.color = '#4F46E5'; }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.color = '#059669'; }}
                                         onMouseLeave={(e) => { e.currentTarget.style.color = '#94A3B8'; }}
                                         onClick={(e) => {
                                             e.stopPropagation();

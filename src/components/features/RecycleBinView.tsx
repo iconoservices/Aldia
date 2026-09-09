@@ -39,7 +39,7 @@ export const RecycleBinView = ({ open, trash, onRestore, onClear, onClose }: Pro
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                             <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span className="material-symbols-outlined" style={{ fontSize: '22px', color: '#4F46E5' }}>delete</span>
+                                <span className="material-symbols-outlined" style={{ fontSize: '22px', color: '#059669' }}>delete</span>
                                 Papelera
                             </h3>
                             <button onClick={onClose} style={{
@@ -76,7 +76,7 @@ export const RecycleBinView = ({ open, trash, onRestore, onClear, onClose }: Pro
                                         <button onClick={() => onRestore(item.block.id)} style={{
                                             background: '#F3F4F6', border: 'none', borderRadius: '10px',
                                             padding: '6px 12px', fontWeight: 700, fontSize: '0.7rem',
-                                            color: '#4F46E5', cursor: 'pointer', whiteSpace: 'nowrap',
+                                            color: '#059669', cursor: 'pointer', whiteSpace: 'nowrap',
                                             fontFamily: "'Plus Jakarta Sans', sans-serif",
                                         }}>
                                             <span className="material-symbols-outlined" style={{ fontSize: '14px', verticalAlign: 'middle' }}>undo</span> Restaurar

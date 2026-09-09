@@ -14,7 +14,7 @@ interface ProyectosProps {
     reorderProjects: (newOrder: Project[]) => void;
 }
 
-const PROJECT_COLORS = ['#0055FF', '#4F46E5', '#10B981', '#EF4444', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4'];
+const PROJECT_COLORS = ['#0055FF', '#059669', '#10B981', '#EF4444', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4'];
 
 export const ProyectosDashboard = ({
     projects, addProject, deleteProject, updateProject, onOpenDetail, reorderProjects
@@ -75,7 +75,7 @@ export const ProyectosDashboard = ({
                     <button 
                         onClick={() => setIsDetailedView(!isDetailedView)}
                         style={{ 
-                            background: isDetailedView ? '#EEF2FF' : 'white', 
+                            background: isDetailedView ? '#ECFDF5' : 'white', 
                             color: isDetailedView ? 'var(--domain-purple)' : '#888', border: '1px solid #EEE', borderRadius: '12px', padding: '6px 10px', 
                             display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', 
                             fontWeight: 900, fontSize: '0.65rem', transition: 'all 0.2s',
@@ -89,7 +89,7 @@ export const ProyectosDashboard = ({
                     <button 
                         onClick={() => setShowArchived(!showArchived)}
                         style={{ 
-                            background: showArchived ? '#EEF2FF' : 'white', 
+                            background: showArchived ? '#ECFDF5' : 'white', 
                             color: showArchived ? 'var(--text-carbon)' : '#888', border: '1px solid #EEE', borderRadius: '12px', padding: '6px 10px', 
                             display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', 
                             fontWeight: 900, fontSize: '0.65rem', transition: 'all 0.2s',

@@ -17,7 +17,7 @@ interface MetasDashboardProps {
 }
 
 const ICONOS = ['🎯', '💰', '🏠', '💻', '🌱', '❤️', '📚', '✈️', '🏆', '🛠️'];
-const COLORES = ['#4F46E5', '#4858ab', '#10B981', '#E6A817', '#C77DFF', '#EF4444', '#4D96FF', '#06D6A0'];
+const COLORES = ['#059669', '#4858ab', '#10B981', '#E6A817', '#C77DFF', '#EF4444', '#4D96FF', '#06D6A0'];
 const AREAS_SUGERIDAS = ['Negocio', 'Finanzas', 'Salud', 'Personal', 'Aprendizaje', 'Familia'];
 
 const STATUS_INFO: Record<GoalStatus, { label: string; color: string; bg: string }> = {

@@ -11,10 +11,10 @@ import { useState, useEffect } from 'react';
 
 /* ─── Color ──────────────────────────────────────────────────────── */
 export const C = {
-    primary:                 '#4F46E5',
-    primaryContainer:        '#818CF8',
-    onPrimaryContainer:      '#3730A3',
-    secondary:               '#0EA5E9',
+    primary:                 '#059669',
+    primaryContainer:        '#34D399',
+    onPrimaryContainer:      '#065F46',
+    secondary:               '#6366F1',
 
     surface:                 '#F1F5F9',
     surfaceLowest:           '#ffffff',
@@ -99,7 +99,7 @@ export const botonPrimario = (movil: boolean): React.CSSProperties => ({
     fontWeight: 700,
     fontSize: movil ? '0.9rem' : '0.85rem',
     fontFamily: 'inherit',
-    boxShadow: '0 4px 14px rgba(79, 70, 229,0.25)',
+    boxShadow: '0 4px 14px rgba(5, 150, 105,0.25)',
 });
 
 /** Cabecera de página: título, subtítulo y acciones. */

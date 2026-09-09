@@ -191,8 +191,8 @@ export const BentoGrid = ({ performanceScore, missions }: BentoGridProps) => {
                             className="pomo-mode-select"
                             style={{ 
                                 fontSize: '0.65rem', 
-                                background: 'rgba(79, 70, 229, 0.15)', 
-                                border: '1px solid rgba(79, 70, 229, 0.3)', 
+                                background: 'rgba(5, 150, 105, 0.15)', 
+                                border: '1px solid rgba(5, 150, 105, 0.3)', 
                                 borderRadius: '8px',
                                 color: 'var(--domain-orange)',
                                 fontWeight: 900,
@@ -312,7 +312,7 @@ export const BentoGrid = ({ performanceScore, missions }: BentoGridProps) => {
                                 flex: 1, 
                                 height: '6px', 
                                 borderRadius: '3px', 
-                                background: s < currentSession ? 'var(--domain-orange)' : (s === currentSession ? '#EEF2FF' : '#F9F9F9'),
+                                background: s < currentSession ? 'var(--domain-orange)' : (s === currentSession ? '#ECFDF5' : '#F9F9F9'),
                                 overflow: 'hidden',
                                 position: 'relative',
                                 border: s === currentSession ? '1.5px solid #EEE' : 'none'

@@ -16,7 +16,7 @@ export default defineConfig({
         name: 'AlDía - Tu Cerebro Digital',
         short_name: 'AlDía',
         description: 'Gestión inteligente de misiones, vida y finanzas en un solo lugar.',
-        theme_color: '#4F46E5',
+        theme_color: '#059669',
         background_color: '#F8FAFC',
         display: 'standalone',
         orientation: 'portrait',

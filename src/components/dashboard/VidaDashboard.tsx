@@ -157,7 +157,7 @@ export const VidaDashboard = ({
             <div className="habitos-col" style={only ? { position: 'static' } : undefined}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
                     <h3 style={vidaTitulo}>🌿 Hábitos</h3>
-                    <button onClick={() => { setAddingHabit(true); setNewHabitName(''); }} style={vidaBotonAlta(C.secondary)}>
+                    <button onClick={() => { setAddingHabit(true); setNewHabitName(''); }} style={vidaBotonAlta(C.primary)}>
                         <Plus size={15} strokeWidth={3} /> Nuevo hábito
                     </button>
                 </div>

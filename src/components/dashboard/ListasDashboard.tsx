@@ -27,7 +27,7 @@ export const ListasDashboard = ({ notes, addNote, removeNote, toggleNoteItem, up
     const movil = useIsMobile();
     // Los grupos de "Pendientes" (q: 'pendiente' o la lista histórica "Pendientes")
     // viven en su propia pestaña — acá solo van los kits reutilizables.
-    const listas = notes.filter(n => n.type === "checklist" && n.q !== "pendiente" && n.title.trim().toLowerCase() !== "pendientes");
+    const listas = notes.filter(n => n.type === "checklist" && n.q !== "pendiente" && n.q !== "bandeja" && n.title.trim().toLowerCase() !== "pendientes");
 
     const [newListName, setNewListName] = useState("");
     const [addingList, setAddingList] = useState(false);

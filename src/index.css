@@ -13,12 +13,12 @@
     gap: 0.8rem;
   }
   /* 🏛️ Dominios de Vida */
-  --domain-orange: #4F46E5;
-  /* Color primario (antes naranja, ahora índigo) */
+  --domain-orange: #059669;
+  /* Color primario (verde esmeralda) */
   --domain-green: #A8DADC;
   /* Vida / Hábitos / Personal */
-  --domain-blue: #0EA5E9;
-  /* Stats / Auditoría / Finanzas */
+  --domain-blue: #6366F1;
+  /* Acento índigo / Stats / Finanzas */
   --domain-purple: #C7D2FE;
   /* Relajación / Extra */
 

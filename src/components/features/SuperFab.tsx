@@ -195,7 +195,7 @@ export const SuperFab = ({ addMission, addTransaction, addHabit, addRoutineItem,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        boxShadow: '0 8px 25px rgba(79, 70, 229, 0.4)',
+                        boxShadow: '0 8px 25px rgba(5, 150, 105, 0.4)',
                         cursor: 'pointer',
                         zIndex: 10
                     }}
