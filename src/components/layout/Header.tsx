@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { User } from 'lucide-react';
 import { usePWA } from '../../hooks/usePWA';
 import { useAuth } from '../../hooks/useAuth';
@@ -16,6 +16,19 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     const [profilePic, setProfilePic] = useState<string | null>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [isMoreOpen, setIsMoreOpen] = useState(false);
+    const bottomScrollRef = useRef<HTMLDivElement>(null);
+
+    // Centra la pestaña activa en el carrusel de abajo.
+    useEffect(() => {
+        const id = requestAnimationFrame(() => {
+            const cont = bottomScrollRef.current;
+            const btn = cont?.querySelector<HTMLElement>(`[data-tab="${activeTab}"]`);
+            if (!cont || !btn) return;
+            const target = btn.offsetLeft - cont.clientWidth / 2 + btn.clientWidth / 2;
+            cont.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+        });
+        return () => cancelAnimationFrame(id);
+    }, [activeTab]);
 
     useEffect(() => {
         if (user?.photoURL) {
@@ -55,9 +68,6 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
         { label: 'Notion', tab: 'Notion', icon: 'sync_alt' },
     ];
-
-    // ── Barra inferior (móvil): 5 accesos rápidos + "Más" ──────────────
-    const BOTTOM_TABS = ['Checklist', 'Bandeja', 'Pendientes', 'Calendario', 'Finanzas'];
 
     // ── Secondary / all other tools ────────────────────────────────────
     const SECONDARY_ITEMS = [
@@ -298,28 +308,29 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             </div>
 
             {/* ── Mobile Bottom Navigation Bar ──
-                 5 accesos rápidos (BOTTOM_TABS) + botón "Más" que abre una hoja
-                 con TODAS las pestañas. Antes se metían las 18 de PRIMARY_ITEMS
-                 acá y las últimas quedaban fuera de pantalla. */}
+                 Carrusel deslizable con TODAS las pestañas (mismo orden que el
+                 sidebar de escritorio); la activa se centra sola. El botón "Más"
+                 va fijo a la derecha y abre la cuadrícula completa. */}
             <div className="mobile-bottom-nav">
-                {BOTTOM_TABS.map(tab => {
-                    const item = [...PRIMARY_ITEMS, ...SECONDARY_ITEMS].find(i => i.tab === tab);
-                    if (!item) return null;
-                    const isActive = activeTab === item.tab;
-                    return (
-                        <button
-                            key={item.tab}
-                            onClick={() => setActiveTab(item.tab)}
-                            className={`mobile-nav-btn ${isActive ? 'active' : ''}`}
-                        >
-                            <span className="material-symbols-outlined">{item.icon}</span>
-                            <span>{item.label}</span>
-                        </button>
-                    );
-                })}
+                <div className="mbn-scroll" ref={bottomScrollRef}>
+                    {PRIMARY_ITEMS.map(item => {
+                        const isActive = activeTab === item.tab;
+                        return (
+                            <button
+                                key={item.tab}
+                                data-tab={item.tab}
+                                onClick={() => setActiveTab(item.tab)}
+                                className={`mobile-nav-btn ${isActive ? 'active' : ''}`}
+                            >
+                                <span className="material-symbols-outlined">{item.icon}</span>
+                                <span>{item.label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
                 <button
                     onClick={() => setIsMoreOpen(true)}
-                    className={`mobile-nav-btn ${!BOTTOM_TABS.includes(activeTab) ? 'active' : ''}`}
+                    className={`mobile-nav-btn mbn-more ${isMoreOpen ? 'active' : ''}`}
                 >
                     <span className="material-symbols-outlined">apps</span>
                     <span>Más</span>
@@ -433,8 +444,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     /* Mobile Bottom Nav */
                     .mobile-bottom-nav {
                         display: flex;
-                        justify-content: space-around;
-                        align-items: center;
+                        align-items: stretch;
                         position: fixed;
                         bottom: 0;
                         left: 0;
@@ -444,9 +454,31 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         border-top: 1px solid #EDF3F0;
                         z-index: 999;
                         box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
-                        padding: 0 8px calc(env(safe-area-inset-bottom, 0px));
+                        padding-bottom: env(safe-area-inset-bottom, 0px);
                         box-sizing: border-box;
-                        /* 6 slots (5 pestañas + "Más"): entran justas, sin scroll. */
+                    }
+
+                    /* Carrusel: todas las pestañas, deslizable, la activa se centra */
+                    .mbn-scroll {
+                        position: relative;
+                        flex: 1;
+                        min-width: 0;
+                        display: flex;
+                        align-items: center;
+                        gap: 2px;
+                        padding: 0 8px;
+                        overflow-x: auto;
+                        -webkit-overflow-scrolling: touch;
+                        scrollbar-width: none;
+                    }
+                    .mbn-scroll::-webkit-scrollbar { display: none; }
+
+                    /* "Más" fijo a la derecha */
+                    .mbn-more {
+                        flex-shrink: 0;
+                        border-left: 1px solid #EDF3F0 !important;
+                        border-radius: 0 !important;
+                        width: 60px;
                     }
 
                     .mobile-nav-btn {
@@ -460,14 +492,13 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         gap: 2px;
                         color: #4A5F58;
                         font-family: 'Plus Jakarta Sans', sans-serif;
-                        /* 6 pestañas ahora (antes 5, ancho pensado para esas) */
                         font-size: 0.62rem;
                         font-weight: 600;
-                        padding: 6px 4px;
+                        padding: 6px 8px;
                         border-radius: 16px;
-                        min-width: 52px;
-                        flex: 1;
-                        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                        flex-shrink: 0;
+                        white-space: nowrap;
+                        transition: color 0.2s, background 0.2s;
                     }
 
                     .mobile-nav-btn span.material-symbols-outlined {
