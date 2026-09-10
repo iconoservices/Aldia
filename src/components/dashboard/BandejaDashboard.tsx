@@ -179,26 +179,9 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
                 </div>
             </div>
 
-            {/* Un solo bloque: captura + filtro + lista */}
+            {/* Un solo bloque: filtro + captura + lista */}
             <div style={{ ...bento, padding: 0, overflow: "hidden" }}>
-                {/* Captura — dentro del mismo bloque, pegada arriba */}
-                <form
-                    onSubmit={e => { e.preventDefault(); tirar(); }}
-                    style={{ padding: "12px", background: C.surfaceLowest, borderBottom: `1px solid ${C.surfaceContainerHigh}` }}
-                >
-                    <input
-                        ref={inputRef}
-                        autoFocus
-                        enterKeyHint="done"
-                        placeholder="¿Qué tienes en la cabeza? + Enter"
-                        value={captura}
-                        onChange={e => setCaptura(e.target.value)}
-                        style={inputStyle}
-                    />
-                    <button type="submit" style={{ display: "none" }} aria-hidden tabIndex={-1} />
-                </form>
-
-                {/* Filtro por etiqueta */}
+                {/* Filtro por etiqueta — arriba del todo */}
                 {todasEtiquetas.length > 0 && (
                     <div style={{ display: "flex", gap: "8px", flexWrap: movil ? "nowrap" : "wrap", overflowX: movil ? "auto" : "visible", alignItems: "center", padding: "10px 12px", borderBottom: `1px solid ${C.surfaceContainerHigh}` }}>
                         <TagIcon size={15} strokeWidth={2.5} style={{ color: C.outline, flexShrink: 0 }} />
@@ -214,6 +197,23 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
                         )}
                     </div>
                 )}
+
+                {/* Captura */}
+                <form
+                    onSubmit={e => { e.preventDefault(); tirar(); }}
+                    style={{ padding: "12px", background: C.surfaceLowest, borderBottom: `1px solid ${C.surfaceContainerHigh}` }}
+                >
+                    <input
+                        ref={inputRef}
+                        autoFocus
+                        enterKeyHint="done"
+                        placeholder="¿Qué tienes en la cabeza? + Enter"
+                        value={captura}
+                        onChange={e => setCaptura(e.target.value)}
+                        style={inputStyle}
+                    />
+                    <button type="submit" style={{ display: "none" }} aria-hidden tabIndex={-1} />
+                </form>
 
                 {/* Lista agrupada */}
                 <div style={{ padding: movil ? "8px 12px 12px" : "12px 16px 16px" }}>
