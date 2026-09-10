@@ -15,6 +15,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     const { user } = useAuth();
     const [profilePic, setProfilePic] = useState<string | null>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [isMoreOpen, setIsMoreOpen] = useState(false);
 
     useEffect(() => {
         if (user?.photoURL) {
@@ -54,6 +55,9 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
         { label: 'Notion', tab: 'Notion', icon: 'sync_alt' },
     ];
+
+    // ── Barra inferior (móvil): 5 accesos rápidos + "Más" ──────────────
+    const BOTTOM_TABS = ['Checklist', 'Bandeja', 'Pendientes', 'Calendario', 'Finanzas'];
 
     // ── Secondary / all other tools ────────────────────────────────────
     const SECONDARY_ITEMS = [
@@ -294,16 +298,18 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             </div>
 
             {/* ── Mobile Bottom Navigation Bar ──
-                 Generada desde PRIMARY_ITEMS (la misma lista que arma el sidebar
-                 de escritorio), para que el orden y los iconos nunca se
-                 desincronicen entre las dos versiones. */}
+                 5 accesos rápidos (BOTTOM_TABS) + botón "Más" que abre una hoja
+                 con TODAS las pestañas. Antes se metían las 18 de PRIMARY_ITEMS
+                 acá y las últimas quedaban fuera de pantalla. */}
             <div className="mobile-bottom-nav">
-                {PRIMARY_ITEMS.map(item => {
-                    const isActive = item.tab === '__profile' ? false : activeTab === item.tab;
+                {BOTTOM_TABS.map(tab => {
+                    const item = [...PRIMARY_ITEMS, ...SECONDARY_ITEMS].find(i => i.tab === tab);
+                    if (!item) return null;
+                    const isActive = activeTab === item.tab;
                     return (
                         <button
                             key={item.tab}
-                            onClick={() => item.tab === '__profile' ? onProfileClick() : setActiveTab(item.tab)}
+                            onClick={() => setActiveTab(item.tab)}
                             className={`mobile-nav-btn ${isActive ? 'active' : ''}`}
                         >
                             <span className="material-symbols-outlined">{item.icon}</span>
@@ -311,6 +317,37 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         </button>
                     );
                 })}
+                <button
+                    onClick={() => setIsMoreOpen(true)}
+                    className={`mobile-nav-btn ${!BOTTOM_TABS.includes(activeTab) ? 'active' : ''}`}
+                >
+                    <span className="material-symbols-outlined">apps</span>
+                    <span>Más</span>
+                </button>
+            </div>
+
+            {/* ── Hoja "Más": todas las pestañas en cuadrícula ── */}
+            <div
+                className={`mobile-more-backdrop ${isMoreOpen ? 'open' : ''}`}
+                onClick={() => setIsMoreOpen(false)}
+            />
+            <div className={`mobile-more-sheet ${isMoreOpen ? 'open' : ''}`}>
+                <div className="mobile-more-handle" />
+                <div className="mobile-more-grid">
+                    {[...PRIMARY_ITEMS, ...SECONDARY_ITEMS].map(item => {
+                        const isActive = activeTab === item.tab;
+                        return (
+                            <button
+                                key={item.tab}
+                                onClick={() => { setActiveTab(item.tab); setIsMoreOpen(false); }}
+                                className={`mobile-more-item ${isActive ? 'active' : ''}`}
+                            >
+                                <span className="material-symbols-outlined">{item.icon}</span>
+                                <span>{item.label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
 
             {/* ── Responsive Mobile Navigation CSS ── */}
@@ -319,7 +356,9 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                 .mobile-header-bar,
                 .mobile-bottom-nav,
                 .mobile-drawer,
-                .mobile-drawer-backdrop {
+                .mobile-drawer-backdrop,
+                .mobile-more-backdrop,
+                .mobile-more-sheet {
                     display: none;
                 }
 
@@ -407,16 +446,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
                         padding: 0 8px calc(env(safe-area-inset-bottom, 0px));
                         box-sizing: border-box;
-                        /* Con más de 7 tabs ya no entran todas en 375px de ancho.
-                           Antes se cortaban en silencio (overflow visible, sin
-                           forma de llegar a las últimas) — con scroll al menos
-                           quedan alcanzables deslizando. */
-                        overflow-x: auto;
-                        -webkit-overflow-scrolling: touch;
-                        scrollbar-width: none;
-                    }
-                    .mobile-bottom-nav::-webkit-scrollbar {
-                        display: none;
+                        /* 6 slots (5 pestañas + "Más"): entran justas, sin scroll. */
                     }
 
                     .mobile-nav-btn {
@@ -454,6 +484,87 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     .mobile-nav-btn.active span.material-symbols-outlined {
                         font-variation-settings: 'FILL' 1, 'wght' 600;
                         transform: scale(1.08);
+                    }
+
+                    /* Hoja "Más" */
+                    .mobile-more-backdrop {
+                        display: block;
+                        position: fixed;
+                        inset: 0;
+                        background: rgba(25, 28, 29, 0.4);
+                        backdrop-filter: blur(2px);
+                        z-index: 1000;
+                        opacity: 0;
+                        pointer-events: none;
+                        transition: opacity 0.25s ease;
+                    }
+                    .mobile-more-backdrop.open {
+                        opacity: 1;
+                        pointer-events: auto;
+                    }
+
+                    .mobile-more-sheet {
+                        display: block;
+                        position: fixed;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        z-index: 1001;
+                        background: #ffffff;
+                        border-radius: 22px 22px 0 0;
+                        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.14);
+                        padding: 10px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+                        max-height: 72vh;
+                        overflow-y: auto;
+                        transform: translateY(100%);
+                        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    }
+                    .mobile-more-sheet.open {
+                        transform: translateY(0);
+                    }
+
+                    .mobile-more-handle {
+                        width: 40px;
+                        height: 4px;
+                        border-radius: 999px;
+                        background: #DCE7E1;
+                        margin: 4px auto 14px;
+                    }
+
+                    .mobile-more-grid {
+                        display: grid;
+                        grid-template-columns: repeat(4, 1fr);
+                        gap: 6px;
+                    }
+
+                    .mobile-more-item {
+                        background: none;
+                        border: none;
+                        cursor: pointer;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 5px;
+                        padding: 12px 4px;
+                        border-radius: 14px;
+                        color: #4A5F58;
+                        font-family: 'Plus Jakarta Sans', sans-serif;
+                        font-size: 0.66rem;
+                        font-weight: 600;
+                        text-align: center;
+                        line-height: 1.2;
+                    }
+                    .mobile-more-item span.material-symbols-outlined {
+                        font-size: 24px;
+                        font-variation-settings: 'FILL' 0, 'wght' 500;
+                    }
+                    .mobile-more-item.active {
+                        background: rgba(15, 169, 122, 0.1);
+                        color: #0FA97A;
+                    }
+                    .mobile-more-item.active span.material-symbols-outlined {
+                        font-variation-settings: 'FILL' 1, 'wght' 600;
                     }
 
                     /* Mobile Drawer */
