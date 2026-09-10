@@ -1,30 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Inbox, Check, Trash2, CornerUpRight, Edit2, ChevronDown, X, GripVertical, Type, Tag as TagIcon, Plus } from "lucide-react";
-import {
-    DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
-} from "@dnd-kit/core";
-import type { DragEndEvent } from "@dnd-kit/core";
-import {
-    arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { Inbox, Check, Trash2, CornerUpRight, Edit2, ChevronDown, X, Plus, Tag as TagIcon } from "lucide-react";
 import type { Note } from "../../hooks/useAlDiaState";
-import { C, bento, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina, RADIO, TOQUE_MINIMO, etiqueta } from "../../theme";
+import { C, bento, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina, RADIO, etiqueta } from "../../theme";
 
 /* ══════════════════════════════════════════════════════════════════
-   BandejaDashboard — el volcado sin orden.
+   BandejaDashboard — el volcado, ordenado por etiquetas.
 
-   Un solo sitio para tirar lo que tengas en la cabeza. Enter y sigue.
-   Cuando tengas calma, "reparte": marcar hecha / mandar a Pendientes /
-   descartar. Se arrastra para ordenar y se agrupa bajo subtítulos (`#`).
+   Tiras la idea y sigue. Cada línea puede llevar ETIQUETAS de contexto
+   (centro, casa, finanzas, laptop…) y la lista se agrupa por etiqueta:
+   la etiqueta ES el título del bloque. Así juntas todo lo de un mismo
+   lugar y lo haces de una pasada.
 
-   ETIQUETAS de contexto: cada línea puede llevar etiquetas (centro, casa,
-   finanzas, laptop…). Se escriben con `@etiqueta` al capturar o se tocan
-   en la fila. Los chips de arriba filtran la lista por etiqueta, para
-   hacer todo lo de un mismo lugar de una sola pasada.
+   Para etiquetar: el botón "+" de la fila abre la lista de etiquetas
+   que ya tienes — las seleccionas, no las escribes. Solo se escribe al
+   crear una etiqueta nueva.
 
-   Es UNA Note (type 'checklist') con q: 'bandeja', se auto-crea. Los tags
-   viven en `item.tags` (campo opcional, no afecta otras vistas).
+   Es UNA Note (type 'checklist') con q: 'bandeja', se auto-crea. Las
+   etiquetas viven en `item.tags` (campo opcional, no afecta otras vistas).
 ══════════════════════════════════════════════════════════════════ */
 
 interface BandejaProps {
@@ -36,22 +28,8 @@ interface BandejaProps {
 type Item = Note['items'][number];
 
 const nuevoId = () => Date.now() + Math.floor(Math.random() * 100000);
-const esSubtitulo = (t: string) => t.trimStart().startsWith('#');
-const textoSubtitulo = (t: string) => t.trimStart().replace(/^#+\s*/, '');
-
-const SIN_ETIQUETA = "::sin::";
-
-// Saca los tokens "@etiqueta" del texto y los devuelve aparte.
-const TAG_RE = /(^|\s)@([\p{L}\p{N}][\p{L}\p{N}_-]*)/gu;
-const parseTags = (raw: string): { text: string; tags: string[] } => {
-    const tags: string[] = [];
-    const text = raw.replace(TAG_RE, (_m, pre, tag) => {
-        const t = tag.toLowerCase();
-        if (!tags.includes(t)) tags.push(t);
-        return pre ? pre : "";
-    }).replace(/\s{2,}/g, " ").trim();
-    return { text, tags };
-};
+const SIN = "::sin::";
+const slug = (s: string) => s.trim().toLowerCase().replace(/^@+/, "").replace(/\s+/g, "-").slice(0, 24);
 
 const inputStyle: React.CSSProperties = {
     padding: "12px", borderRadius: RADIO.campo, border: `1px solid ${C.outlineVariant}`,
@@ -67,6 +45,20 @@ const chip = (activo: boolean): React.CSSProperties => ({
     fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
 });
 
+const miniChip = (activo: boolean): React.CSSProperties => ({
+    display: "inline-flex", alignItems: "center", gap: "4px",
+    background: activo ? C.primaryContainer : C.surfaceContainer,
+    color: activo ? C.onPrimaryContainer : C.onSurfaceVariant,
+    border: "none", borderRadius: RADIO.chip, padding: "5px 10px",
+    fontSize: "0.7rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+});
+
+const iconBtn: React.CSSProperties = {
+    background: "none", border: "none", cursor: "pointer", color: C.outline,
+    width: "32px", height: "32px", borderRadius: "8px",
+    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+};
+
 export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) => {
     const movil = useIsMobile();
 
@@ -75,7 +67,6 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
         [notes]
     );
 
-    // Auto-crear la Bandeja la primera vez (una sola vez).
     const creandoRef = useRef(false);
     useEffect(() => {
         if (!bandeja && !creandoRef.current) {
@@ -85,56 +76,53 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
     }, [bandeja, addNote]);
 
     const [captura, setCaptura] = useState("");
-    const [modoSeccion, setModoSeccion] = useState(false);
     const [verHechos, setVerHechos] = useState(false);
     const [editId, setEditId] = useState<number | null>(null);
     const [editText, setEditText] = useState("");
-    const [tagEditId, setTagEditId] = useState<number | null>(null);
+    const [pickId, setPickId] = useState<number | null>(null);
     const [filtro, setFiltro] = useState<string[]>([]);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const items = bandeja?.items ?? [];
-    const tareas = items.filter(it => !esSubtitulo(it.text));
-    const visibles = items.filter(it => !it.completed || esSubtitulo(it.text));
-    const hechos = items.filter(it => it.completed && !esSubtitulo(it.text));
-    const cuentaTareas = tareas.filter(it => !it.completed).length;
-
-    // Etiquetas conocidas + cuántas líneas sin cerrar tiene cada una.
-    const etiquetas = useMemo(() => {
-        const m = new Map<string, number>();
-        let sinEtiqueta = 0;
-        for (const it of tareas) {
-            if (it.completed) continue;
-            const ts = it.tags ?? [];
-            if (ts.length === 0) sinEtiqueta++;
-            for (const t of ts) m.set(t, (m.get(t) ?? 0) + 1);
-        }
-        const lista = [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-        return { lista, sinEtiqueta };
-    }, [tareas]);
+    const abiertas = items.filter(it => !it.completed);
+    const hechos = items.filter(it => it.completed);
 
     const setItems = (next: Item[]) => bandeja && updateNote(bandeja.id, { items: next });
     const patchItem = (id: number, patch: Partial<Item>) =>
         bandeja && setItems(bandeja.items.map(it => it.id === id ? { ...it, ...patch } : it));
 
+    // Todas las etiquetas usadas, en orden de primera aparición.
+    const todasEtiquetas = useMemo(() => {
+        const vistas: string[] = [];
+        for (const it of items) for (const t of it.tags ?? []) if (!vistas.includes(t)) vistas.push(t);
+        return vistas;
+    }, [items]);
+
+    // Grupos: "sin etiqueta" primero (la bandeja cruda), luego una por etiqueta.
+    const grupos = useMemo(() => {
+        const sin = abiertas.filter(it => (it.tags ?? []).length === 0);
+        const porTag = todasEtiquetas
+            .map(tag => ({ tag, items: abiertas.filter(it => (it.tags ?? []).includes(tag)) }))
+            .filter(g => g.items.length > 0);
+        const out: { tag: string; items: Item[] }[] = [];
+        if (sin.length) out.push({ tag: SIN, items: sin });
+        out.push(...porTag);
+        return out;
+    }, [abiertas, todasEtiquetas]);
+
+    const gruposMostrados = filtro.length ? grupos.filter(g => filtro.includes(g.tag)) : grupos;
+
     const tirar = () => {
-        const raw = captura.trim();
-        if (!raw || !bandeja) return;
-        if (modoSeccion && !esSubtitulo(raw)) {
-            setItems([{ id: nuevoId(), text: `# ${raw}`, completed: false }, ...bandeja.items]);
-        } else {
-            const { text, tags } = parseTags(raw);
-            if (!text) return;
-            setItems([{ id: nuevoId(), text, completed: false, ...(tags.length ? { tags } : {}) }, ...bandeja.items]);
-        }
+        const t = captura.trim();
+        if (!t || !bandeja) return;
+        setItems([{ id: nuevoId(), text: t, completed: false }, ...bandeja.items]);
         setCaptura("");
-        setModoSeccion(false);
         inputRef.current?.focus();
     };
 
     const toggle = (id: number) => patchItem(id, { completed: !bandeja!.items.find(i => i.id === id)?.completed });
     const descartar = (id: number) => bandeja && setItems(bandeja.items.filter(it => it.id !== id));
-    const limpiarHechos = () => bandeja && setItems(bandeja.items.filter(it => !it.completed || esSubtitulo(it.text)));
+    const limpiarHechos = () => bandeja && setItems(bandeja.items.filter(it => !it.completed));
 
     const guardarEdit = () => {
         if (editId == null || !bandeja) { setEditId(null); return; }
@@ -164,41 +152,20 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
         setItems(bandeja.items.filter(it => it.id !== id));
     };
 
-    // ── Reordenar (solo sin filtro activo) ──
-    const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-    );
-    const onDragEnd = (e: DragEndEvent) => {
-        const { active, over } = e;
-        if (!over || active.id === over.id || !bandeja) return;
-        const orden = visibles.map(it => it.id);
-        const from = orden.indexOf(Number(active.id));
-        const to = orden.indexOf(Number(over.id));
-        if (from < 0 || to < 0) return;
-        setItems([...arrayMove(visibles, from, to), ...hechos]);
-    };
+    const toggleFiltro = (t: string) => setFiltro(f => f.includes(t) ? f.filter(x => x !== t) : [...f, t]);
 
-    const filtrando = filtro.length > 0;
-    const coincide = (it: Item) => {
-        const ts = it.tags ?? [];
-        return filtro.some(f => f === SIN_ETIQUETA ? ts.length === 0 : ts.includes(f));
-    };
-    // Con filtro: lista plana de tareas que coinciden (sin subtítulos).
-    const listaFiltrada = filtrando ? visibles.filter(it => !esSubtitulo(it.text) && coincide(it)) : [];
-
-    const filaProps = (item: Item) => ({
-        item,
-        movil,
+    const filaProps = (item: Item, grupoTag?: string) => ({
+        item, movil, grupoTag,
+        abierto: pickId === item.id,
+        abrirPick: () => setPickId(pickId === item.id ? null : item.id),
+        cerrarPick: () => setPickId(null),
         editId, editText, setEditId, setEditText, guardarEdit,
-        toggle, descartar, aPendientes,
+        toggle, descartar, aPendientes, toggleTag,
+        todasEtiquetas,
         onEditar: () => { setEditId(item.id); setEditText(item.text); },
-        tagEditId, setTagEditId,
-        etiquetasConocidas: etiquetas.lista.map(([t]) => t),
-        toggleTag,
     });
 
-    const toggleFiltro = (t: string) => setFiltro(f => f.includes(t) ? f.filter(x => x !== t) : [...f, t]);
+    const totalAbiertas = abiertas.length;
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: movil ? "16px" : "24px", ...paddingPagina(movil), color: C.onSurface }}>
@@ -206,94 +173,67 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
                 <div>
                     <h2 style={tituloPagina}>Bandeja</h2>
                     <p style={subtituloPagina}>
-                        Vuélcalo acá sin ordenar; después repartes.
-                        {cuentaTareas > 0 ? ` ${cuentaTareas} sin repartir.` : ' Está vacía.'}
+                        Tíralo acá y etiquétalo por contexto.
+                        {totalAbiertas > 0 ? ` ${totalAbiertas} sin repartir.` : ' Está vacía.'}
                     </p>
                 </div>
             </div>
 
-            {/* Captura rápida */}
+            {/* Captura */}
             <form
                 onSubmit={e => { e.preventDefault(); tirar(); }}
-                style={{ ...bento, padding: "12px", display: "flex", flexDirection: "column", gap: "8px", position: "sticky", top: movil ? "68px" : "0", zIndex: 3 }}
+                style={{ ...bento, padding: "12px", position: "sticky", top: movil ? "68px" : "0", zIndex: 3 }}
             >
-                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                    <button
-                        type="button"
-                        onClick={() => { setModoSeccion(v => !v); inputRef.current?.focus(); }}
-                        title="Subtítulo"
-                        style={{
-                            flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-                            background: modoSeccion ? C.primary : C.surfaceContainer,
-                            color: modoSeccion ? "#fff" : C.onSurfaceVariant,
-                            border: "none", borderRadius: RADIO.campo,
-                            minWidth: `${TOQUE_MINIMO}px`, minHeight: `${TOQUE_MINIMO}px`, padding: "0 12px",
-                            fontWeight: 700, fontSize: "0.8rem", cursor: "pointer",
-                        }}
-                    >
-                        <Type size={16} strokeWidth={2.5} /> {!movil && (modoSeccion ? "Subtítulo" : "Subtít.")}
-                    </button>
-                    <input
-                        ref={inputRef}
-                        autoFocus
-                        enterKeyHint="done"
-                        placeholder={modoSeccion ? "Nombre del bloque (ej. Entregas) + Enter" : "¿Qué tienes en la cabeza?  @centro @casa…"}
-                        value={captura}
-                        onChange={e => setCaptura(e.target.value)}
-                        style={inputStyle}
-                    />
-                    <button type="submit" style={{ display: "none" }} aria-hidden tabIndex={-1} />
-                </div>
-                {modoSeccion
-                    ? <span style={{ fontSize: "0.72rem", color: C.outline, paddingLeft: "4px" }}>Un subtítulo separa bloques. Arrastra las líneas debajo.</span>
-                    : <span style={{ fontSize: "0.72rem", color: C.outline, paddingLeft: "4px" }}>Escribe <b>@etiqueta</b> para marcar el contexto (centro, casa, finanzas…).</span>}
+                <input
+                    ref={inputRef}
+                    autoFocus
+                    enterKeyHint="done"
+                    placeholder="¿Qué tienes en la cabeza? + Enter"
+                    value={captura}
+                    onChange={e => setCaptura(e.target.value)}
+                    style={inputStyle}
+                />
+                <button type="submit" style={{ display: "none" }} aria-hidden tabIndex={-1} />
             </form>
 
             {/* Filtro por etiqueta */}
-            {(etiquetas.lista.length > 0 || etiquetas.sinEtiqueta > 0) && (
+            {todasEtiquetas.length > 0 && (
                 <div style={{ display: "flex", gap: "8px", flexWrap: movil ? "nowrap" : "wrap", overflowX: movil ? "auto" : "visible", paddingBottom: movil ? "4px" : 0, alignItems: "center" }}>
                     <TagIcon size={15} strokeWidth={2.5} style={{ color: C.outline, flexShrink: 0 }} />
-                    {etiquetas.lista.map(([t, n]) => (
-                        <button key={t} onClick={() => toggleFiltro(t)} style={chip(filtro.includes(t))}>
-                            {t} <span style={{ opacity: 0.7 }}>{n}</span>
+                    {grupos.map(g => (
+                        <button key={g.tag} onClick={() => toggleFiltro(g.tag)} style={chip(filtro.includes(g.tag))}>
+                            {g.tag === SIN ? "sin etiqueta" : g.tag} <span style={{ opacity: 0.7 }}>{g.items.length}</span>
                         </button>
                     ))}
-                    {etiquetas.sinEtiqueta > 0 && (
-                        <button onClick={() => toggleFiltro(SIN_ETIQUETA)} style={chip(filtro.includes(SIN_ETIQUETA))}>
-                            sin etiqueta <span style={{ opacity: 0.7 }}>{etiquetas.sinEtiqueta}</span>
-                        </button>
-                    )}
-                    {filtrando && (
+                    {filtro.length > 0 && (
                         <button onClick={() => setFiltro([])} style={{ ...chip(false), background: "transparent", color: C.rojo }}>
-                            <X size={13} strokeWidth={2.5} /> limpiar
+                            <X size={13} strokeWidth={2.5} /> ver todo
                         </button>
                     )}
                 </div>
             )}
 
-            {/* Lista */}
-            <div style={{ ...bento, padding: movil ? "4px 12px 12px" : "8px 16px 16px" }}>
-                {visibles.length === 0 && hechos.length === 0 ? (
+            {/* Lista agrupada */}
+            <div style={{ ...bento, padding: movil ? "8px 12px 12px" : "12px 16px 16px" }}>
+                {abiertas.length === 0 && hechos.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "48px 16px", color: C.outline }}>
                         <Inbox size={32} strokeWidth={2} style={{ opacity: 0.4, marginBottom: "8px" }} />
                         <p style={{ margin: 0, fontSize: "0.88rem" }}>Vacía. Escribe arriba lo primero que se te cruce.</p>
                     </div>
-                ) : filtrando ? (
-                    <>
-                        {listaFiltrada.length === 0
-                            ? <p style={{ margin: 0, padding: "24px 4px", fontSize: "0.85rem", color: C.outline }}>Nada con {filtro.filter(f => f !== SIN_ETIQUETA).map(t => `“${t}”`).join(" / ") || "esa etiqueta"}.</p>
-                            : listaFiltrada.map(item => <FilaSimple key={item.id} {...filaProps(item)} />)}
-                    </>
                 ) : (
                     <>
-                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-                            <SortableContext items={visibles.map(it => it.id)} strategy={verticalListSortingStrategy}>
-                                {visibles.map(item => <FilaOrdenable key={item.id} {...filaProps(item)} />)}
-                            </SortableContext>
-                        </DndContext>
+                        {gruposMostrados.map((g, gi) => (
+                            <div key={g.tag} style={{ marginTop: gi === 0 ? 0 : "20px" }}>
+                                <div style={{ ...etiqueta, fontSize: "0.72rem", color: g.tag === SIN ? C.outline : C.onSurfaceVariant, padding: "4px 0 8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                                    {g.tag === SIN ? "SIN ETIQUETA" : g.tag}
+                                    <span style={{ opacity: 0.5 }}>· {g.items.length}</span>
+                                </div>
+                                {g.items.map(item => <Fila key={item.id} {...filaProps(item, g.tag)} />)}
+                            </div>
+                        ))}
 
                         {hechos.length > 0 && (
-                            <div style={{ marginTop: "12px" }}>
+                            <div style={{ marginTop: "20px" }}>
                                 <button
                                     onClick={() => setVerHechos(v => !v)}
                                     style={{ ...etiqueta, display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", cursor: "pointer", padding: "8px 0" }}
@@ -303,7 +243,7 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
                                 </button>
                                 {verHechos && (
                                     <div style={{ marginTop: "4px" }}>
-                                        {hechos.map(item => <FilaSimple key={item.id} {...filaProps(item)} />)}
+                                        {hechos.map(item => <Fila key={item.id} {...filaProps(item)} />)}
                                         <button
                                             onClick={limpiarHechos}
                                             style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "8px", background: "none", border: "none", cursor: "pointer", padding: "4px 0", color: C.rojo, fontSize: "0.72rem", fontWeight: 700 }}
@@ -325,6 +265,10 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
 interface FilaProps {
     item: Item;
     movil: boolean;
+    grupoTag?: string;
+    abierto: boolean;
+    abrirPick: () => void;
+    cerrarPick: () => void;
     editId: number | null;
     editText: string;
     setEditId: (v: number | null) => void;
@@ -333,186 +277,130 @@ interface FilaProps {
     toggle: (id: number) => void;
     descartar: (id: number) => void;
     aPendientes: (id: number) => void;
-    onEditar: () => void;
-    tagEditId: number | null;
-    setTagEditId: (v: number | null) => void;
-    etiquetasConocidas: string[];
     toggleTag: (id: number, tag: string) => void;
-    dragHandle?: React.ReactNode;
+    todasEtiquetas: string[];
+    onEditar: () => void;
 }
 
-const miniChip = (activo: boolean): React.CSSProperties => ({
-    display: "inline-flex", alignItems: "center", gap: "4px",
-    background: activo ? C.primaryContainer : C.surfaceContainer,
-    color: activo ? C.onPrimaryContainer : C.onSurfaceVariant,
-    border: "none", borderRadius: RADIO.chip, padding: "4px 9px",
-    fontSize: "0.68rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
-});
-
-const Contenido = (p: FilaProps) => {
-    const { item, editId, editText, setEditId, setEditText, guardarEdit, toggle, descartar, aPendientes, onEditar, dragHandle, tagEditId, setTagEditId, etiquetasConocidas, toggleTag } = p;
-    const header = esSubtitulo(item.text);
-
-    if (editId === item.id) {
-        return (
-            <input
-                autoFocus value={editText}
-                onChange={e => setEditText(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") guardarEdit(); if (e.key === "Escape") setEditId(null); }}
-                onBlur={guardarEdit}
-                style={{ ...inputStyle, fontSize: "16px", padding: "8px", flex: 1 }}
-            />
-        );
-    }
-
-    if (header) {
-        return (
-            <>
-                {dragHandle}
-                <span style={{ ...etiqueta, flex: 1, fontSize: "0.72rem", color: C.onSurfaceVariant, cursor: "text" }} onClick={onEditar}>
-                    {textoSubtitulo(item.text) || "Subtítulo"}
-                </span>
-                <button onClick={onEditar} title="Editar" style={iconBtn}><Edit2 size={16} strokeWidth={2.5} /></button>
-                <button onClick={() => descartar(item.id)} title="Quitar" style={{ ...iconBtn, color: C.rojo }}><Trash2 size={16} strokeWidth={2.5} /></button>
-            </>
-        );
-    }
-
+const Fila = (p: FilaProps) => {
+    const { item, grupoTag, editId, editText, setEditId, setEditText, guardarEdit, toggle, descartar, aPendientes, onEditar, abierto, abrirPick, cerrarPick, toggleTag, todasEtiquetas } = p;
     const tags = item.tags ?? [];
-    const editandoTags = tagEditId === item.id;
+    // En la vista agrupada no repetimos el chip de la etiqueta del propio grupo.
+    const chipsVisibles = tags.filter(t => t !== grupoTag);
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px", padding: "8px 0", borderBottom: `1px solid ${C.surfaceContainerHigh}` }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                {dragHandle}
-                <div
-                    onClick={() => toggle(item.id)}
-                    title="Marcar hecho"
-                    style={{
-                        width: "22px", height: "22px", borderRadius: "8px", flexShrink: 0, cursor: "pointer",
-                        border: `2px solid ${item.completed ? C.secondary : C.outlineVariant}`,
-                        background: item.completed ? C.secondary : "transparent",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                    }}
-                >
-                    {item.completed && <Check size={14} color="#fff" strokeWidth={3} />}
-                </div>
-                <span
-                    onClick={onEditar}
-                    style={{
-                        flex: 1, minWidth: 0, fontSize: "0.9rem", cursor: "text",
-                        color: item.completed ? C.outline : C.onSurface,
-                        textDecoration: item.completed ? "line-through" : "none",
-                    }}
-                >
-                    {item.text}
-                </span>
-                {!item.completed && (
+                {editId === item.id ? (
+                    <input
+                        autoFocus value={editText}
+                        onChange={e => setEditText(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") guardarEdit(); if (e.key === "Escape") setEditId(null); }}
+                        onBlur={guardarEdit}
+                        style={{ ...inputStyle, fontSize: "16px", padding: "8px", flex: 1 }}
+                    />
+                ) : (
                     <>
-                        <button onClick={() => setTagEditId(editandoTags ? null : item.id)} title="Etiquetas" style={{ ...iconBtn, color: editandoTags || tags.length ? C.primary : C.outline }}>
-                            <TagIcon size={16} strokeWidth={2.5} />
-                        </button>
-                        <button onClick={onEditar} title="Editar" style={iconBtn}><Edit2 size={16} strokeWidth={2.5} /></button>
-                        <button onClick={() => aPendientes(item.id)} title="Mandar a Pendientes" style={{ ...iconBtn, color: C.primary }}>
-                            <CornerUpRight size={16} strokeWidth={2.5} />
+                        <div
+                            onClick={() => toggle(item.id)}
+                            title="Marcar hecho"
+                            style={{
+                                width: "22px", height: "22px", borderRadius: "8px", flexShrink: 0, cursor: "pointer",
+                                border: `2px solid ${item.completed ? C.secondary : C.outlineVariant}`,
+                                background: item.completed ? C.secondary : "transparent",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                            }}
+                        >
+                            {item.completed && <Check size={14} color="#fff" strokeWidth={3} />}
+                        </div>
+                        <span
+                            onClick={onEditar}
+                            style={{
+                                flex: 1, minWidth: 0, fontSize: "0.9rem", cursor: "text",
+                                color: item.completed ? C.outline : C.onSurface,
+                                textDecoration: item.completed ? "line-through" : "none",
+                            }}
+                        >
+                            {item.text}
+                        </span>
+                        {!item.completed && (
+                            <>
+                                <button onClick={abrirPick} title="Etiquetas" style={{ ...iconBtn, background: abierto ? C.surfaceContainer : "none", color: abierto ? C.primary : C.outline }}>
+                                    <Plus size={17} strokeWidth={2.5} />
+                                </button>
+                                <button onClick={onEditar} title="Editar" style={iconBtn}><Edit2 size={16} strokeWidth={2.5} /></button>
+                                <button onClick={() => aPendientes(item.id)} title="Mandar a Pendientes" style={{ ...iconBtn, color: C.primary }}>
+                                    <CornerUpRight size={16} strokeWidth={2.5} />
+                                </button>
+                            </>
+                        )}
+                        <button onClick={() => descartar(item.id)} title="Descartar" style={{ ...iconBtn, color: C.rojo }}>
+                            <Trash2 size={16} strokeWidth={2.5} />
                         </button>
                     </>
                 )}
-                <button onClick={() => descartar(item.id)} title="Descartar" style={{ ...iconBtn, color: C.rojo }}>
-                    <Trash2 size={16} strokeWidth={2.5} />
-                </button>
             </div>
 
-            {/* Chips de la fila */}
-            {(tags.length > 0 || editandoTags) && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", paddingLeft: dragHandle ? "40px" : "30px" }}>
-                    {editandoTags
-                        ? <TagEditor item={item} etiquetasConocidas={etiquetasConocidas} toggleTag={toggleTag} onClose={() => setTagEditId(null)} />
-                        : tags.map(t => (
-                            <button key={t} onClick={() => setTagEditId(item.id)} style={miniChip(true)}>{t}</button>
-                        ))}
+            {/* Etiquetas de la fila / selector */}
+            {(chipsVisibles.length > 0 || abierto) && (
+                <div style={{ paddingLeft: "30px" }}>
+                    {abierto
+                        ? <TagPicker item={item} todasEtiquetas={todasEtiquetas} toggleTag={toggleTag} onClose={cerrarPick} />
+                        : (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                                {chipsVisibles.map(t => (
+                                    <button key={t} onClick={abrirPick} style={miniChip(true)}>{t}</button>
+                                ))}
+                            </div>
+                        )}
                 </div>
             )}
         </div>
     );
 };
 
-const TagEditor = ({ item, etiquetasConocidas, toggleTag, onClose }: {
-    item: Item; etiquetasConocidas: string[]; toggleTag: (id: number, t: string) => void; onClose: () => void;
+const TagPicker = ({ item, todasEtiquetas, toggleTag, onClose }: {
+    item: Item; todasEtiquetas: string[]; toggleTag: (id: number, t: string) => void; onClose: () => void;
 }) => {
+    const [creando, setCreando] = useState(false);
     const [nueva, setNueva] = useState("");
     const tags = item.tags ?? [];
-    const opciones = [...new Set([...etiquetasConocidas, ...tags])].sort((a, b) => a.localeCompare(b));
+    const opciones = [...new Set([...todasEtiquetas, ...tags])];
 
-    const agregar = () => {
-        const t = nueva.trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, "-");
+    const crear = () => {
+        const t = slug(nueva);
         if (t && !tags.includes(t)) toggleTag(item.id, t);
         setNueva("");
+        setCreando(false);
     };
 
     return (
-        <>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center", background: C.surfaceContainerLow, borderRadius: RADIO.campo, padding: "8px" }}>
+            {opciones.length === 0 && !creando && (
+                <span style={{ fontSize: "0.7rem", color: C.outline }}>Aún no tienes etiquetas.</span>
+            )}
             {opciones.map(t => (
                 <button key={t} onClick={() => toggleTag(item.id, t)} style={miniChip(tags.includes(t))}>
                     {tags.includes(t) && <Check size={11} strokeWidth={3} />}{t}
                 </button>
             ))}
-            <form onSubmit={e => { e.preventDefault(); agregar(); }} style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                <input
-                    value={nueva}
-                    onChange={e => setNueva(e.target.value)}
-                    placeholder="nueva…"
-                    style={{ width: "84px", padding: "4px 8px", fontSize: "0.7rem", borderRadius: RADIO.chip, border: `1px solid ${C.outlineVariant}`, outline: "none", background: C.surfaceLowest }}
-                />
-                <button type="submit" style={{ ...miniChip(false), padding: "4px 6px" }}><Plus size={12} strokeWidth={3} /></button>
-            </form>
-            <button onClick={onClose} style={{ ...miniChip(false), color: C.outline }}>listo</button>
-        </>
-    );
-};
-
-const filaBox = (movil: boolean, header: boolean): React.CSSProperties => ({
-    display: "flex", alignItems: "center", gap: "8px",
-    padding: movil ? "8px 0" : "8px 4px",
-    marginTop: header ? "16px" : 0,
-    borderBottom: `1px solid ${C.surfaceContainerHigh}`,
-});
-
-const FilaSimple = (p: FilaProps) => (
-    <div style={filaBox(p.movil, esSubtitulo(p.item.text))}>
-        <Contenido {...p} />
-    </div>
-);
-
-const FilaOrdenable = (p: FilaProps) => {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.item.id });
-    const style: React.CSSProperties = {
-        ...filaBox(p.movil, esSubtitulo(p.item.text)),
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.4 : 1,
-        background: isDragging ? C.surfaceContainerLow : undefined,
-    };
-    const handle = (
-        <button
-            {...attributes}
-            {...listeners}
-            title="Arrastrar para ordenar"
-            style={{ ...iconBtn, cursor: "grab", color: C.outlineVariant, touchAction: "none" }}
-        >
-            <GripVertical size={16} strokeWidth={2.5} />
-        </button>
-    );
-    return (
-        <div ref={setNodeRef} style={style}>
-            <Contenido {...p} dragHandle={handle} />
+            {creando ? (
+                <form onSubmit={e => { e.preventDefault(); crear(); }} style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                    <input
+                        autoFocus value={nueva}
+                        onChange={e => setNueva(e.target.value)}
+                        onBlur={() => { if (!nueva.trim()) setCreando(false); }}
+                        placeholder="nombre…"
+                        style={{ width: "110px", padding: "5px 9px", fontSize: "0.72rem", borderRadius: RADIO.chip, border: `1px solid ${C.outlineVariant}`, outline: "none", background: C.surfaceLowest }}
+                    />
+                    <button type="submit" style={{ ...miniChip(true), padding: "5px 8px" }}><Check size={12} strokeWidth={3} /></button>
+                </form>
+            ) : (
+                <button onClick={() => setCreando(true)} style={{ ...miniChip(false), border: `1px dashed ${C.outlineVariant}` }}>
+                    <Plus size={12} strokeWidth={3} /> nueva
+                </button>
+            )}
+            <button onClick={onClose} style={{ ...miniChip(false), color: C.outline, marginLeft: "auto" }}>listo</button>
         </div>
     );
-};
-
-// Botón de ícono: caja de toque de 32px, radio 8, trazo grueso (línea gráfica v1.0).
-const iconBtn: React.CSSProperties = {
-    background: "none", border: "none", cursor: "pointer", color: C.outline,
-    width: "32px", height: "32px", borderRadius: "8px",
-    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
 };
