@@ -36,6 +36,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     // ── Primary sidebar items ─────────────────────────────────────────
     const PRIMARY_ITEMS = [
         { label: 'Checklist', tab: 'Checklist', icon: 'task_alt' },
+        { label: 'Bandeja', tab: 'Bandeja', icon: 'inbox' },
         { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
         { label: 'Agenda', tab: 'Agenda', icon: 'event' },
         { label: 'Entregas', tab: 'Entregas', icon: 'local_fire_department' },
@@ -133,6 +134,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     const getViewTitle = (tab: string) => {
         switch (tab) {
             case 'Checklist': return 'Checklist Diario';
+            case 'Bandeja': return 'Bandeja';
             case 'Pendientes': return 'Pendientes';
             case 'Plan': return 'Ingresos y Gastos Fijos';
             case 'Compras': return 'Lista de Compras & Deseos';

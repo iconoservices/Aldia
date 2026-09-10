@@ -36,6 +36,7 @@ import { BuscadorDashboard } from './components/dashboard/BuscadorDashboard';
 import { MovimientosDashboard } from './components/dashboard/MovimientosDashboard';
 import { ListasDashboard } from './components/dashboard/ListasDashboard';
 import { PendientesDashboard } from './components/dashboard/PendientesDashboard';
+import { BandejaDashboard } from './components/dashboard/BandejaDashboard';
 import { ComprasDashboard } from './components/dashboard/ComprasDashboard';
 import { ComidasDashboard } from './components/dashboard/ComidasDashboard';
 import { EsporadicosDashboard } from './components/dashboard/EsporadicosDashboard';
@@ -62,6 +63,7 @@ function App() {
     if (path.includes('/movimientos')) return 'Movimientos';
     if (path.includes('/listas')) return 'Listas';
     if (path.includes('/pendientes')) return 'Pendientes';
+    if (path.includes('/bandeja')) return 'Bandeja';
     if (path.includes('/compras')) return 'Compras';
     if (path.includes('/comidas')) return 'Comidas';
     if (path.includes('/tablero')) return 'Tablero';
@@ -127,6 +129,7 @@ function App() {
       else if (path.includes('/movimientos')) setActiveTab('Movimientos');
       else if (path.includes('/listas')) setActiveTab('Listas');
       else if (path.includes('/pendientes')) setActiveTab('Pendientes');
+      else if (path.includes('/bandeja')) setActiveTab('Bandeja');
       else if (path.includes('/compras')) setActiveTab('Compras');
       else if (path.includes('/comidas')) setActiveTab('Comidas');
       else if (path.includes('/tablero')) setActiveTab('Tablero');
@@ -169,7 +172,7 @@ function App() {
     return (
       <div style={{
         height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', gap: '1.5rem'
+        alignItems: 'center', justifyContent: 'center', background: '#F7FAF8', gap: '1.5rem'
       }}>
         <motion.div
           animate={{ scale: [1, 1.1, 1], rotate: [0, 10, -10, 0] }}
@@ -477,6 +480,12 @@ function App() {
                 addNote={state.addNote}
                 removeNote={state.removeNote}
                 toggleNoteItem={state.toggleNoteItem}
+                updateNote={state.updateNote}
+              />
+            ) : activeTab === 'Bandeja' ? (
+              <BandejaDashboard
+                notes={state.notes}
+                addNote={state.addNote}
                 updateNote={state.updateNote}
               />
             ) : activeTab === 'Pendientes' ? (

@@ -10,12 +10,13 @@ interface CerebroProps {
 }
 
 export const CerebroDashboard = ({ notes, removeNote, toggleNoteItem, onOpenNote }: CerebroProps) => {
+    const visibles = notes.filter((n) => n.q !== 'bandeja');
     return (
         <div style={{ paddingBottom: '5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-carbon)' }}>🧠 Cerebro</h2>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#AAA', background: '#F5F5F5', padding: '4px 10px', borderRadius: '10px' }}>
-                    {notes.length} BLOQUES
+                    {visibles.length} BLOQUES
                 </span>
             </div>
 
@@ -25,7 +26,7 @@ export const CerebroDashboard = ({ notes, removeNote, toggleNoteItem, onOpenNote
                 gap: '10px',
                 alignItems: 'start'
             }}>
-                {notes.map((note) => (
+                {visibles.map((note) => (
                     <motion.div
                         key={note.id}
                         layout
