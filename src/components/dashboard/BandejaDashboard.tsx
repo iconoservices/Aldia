@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Inbox, Check, Trash2, CornerUpRight, Edit2, ChevronDown, X, Plus, Tag as TagIcon } from "lucide-react";
+import { Inbox, Check, Trash2, CornerUpRight, ChevronDown, X, Plus, Tag as TagIcon, GripVertical } from "lucide-react";
+import {
+    DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, useDroppable,
+} from "@dnd-kit/core";
+import type { DragEndEvent } from "@dnd-kit/core";
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { Note } from "../../hooks/useAlDiaState";
 import { C, bento, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina, RADIO, etiqueta } from "../../theme";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 
 /* ══════════════════════════════════════════════════════════════════
    BandejaDashboard — el volcado, ordenado por etiquetas.
@@ -81,6 +88,7 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
     const [editText, setEditText] = useState("");
     const [pickId, setPickId] = useState<number | null>(null);
     const [filtro, setFiltro] = useState<string[]>([]);
+    const [borrarId, setBorrarId] = useState<number | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const items = bandeja?.items ?? [];
@@ -154,16 +162,51 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
 
     const toggleFiltro = (t: string) => setFiltro(f => f.includes(t) ? f.filter(x => x !== t) : [...f, t]);
 
+    // ── Arrastrar: reordenar dentro del grupo y mover entre etiquetas ──
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    );
+    const onDragEnd = (e: DragEndEvent) => {
+        const { active, over } = e;
+        if (!over || !bandeja) return;
+        const fromTag: string | undefined = active.data.current?.tag;
+        const toTag: string | undefined = over.data.current?.tag;
+        if (fromTag == null || toTag == null) return;
+        const activeId = Number(active.id);
+        const overId = Number(over.id); // NaN si se soltó sobre el contenedor de un grupo
+
+        if (fromTag === toTag) {
+            if (Number.isNaN(overId) || activeId === overId) return;
+            const oi = bandeja.items.findIndex(i => i.id === activeId);
+            const ni = bandeja.items.findIndex(i => i.id === overId);
+            if (oi < 0 || ni < 0) return;
+            setItems(arrayMove(bandeja.items, oi, ni));
+            return;
+        }
+        // Mover a otra etiqueta: cambia la etiqueta de origen por la de destino.
+        const it = bandeja.items.find(i => i.id === activeId);
+        if (!it) return;
+        const cur = (it.tags ?? []).filter(t => t !== fromTag);
+        const nextTags = toTag === SIN ? cur : [...new Set([...cur, toTag])];
+        let next = bandeja.items.map(i => i.id === activeId ? { ...i, tags: nextTags.length ? nextTags : undefined } : i);
+        if (!Number.isNaN(overId)) {
+            const moved = next.splice(next.findIndex(i => i.id === activeId), 1)[0];
+            const ni = next.findIndex(i => i.id === overId);
+            next.splice(ni < 0 ? next.length : ni, 0, moved);
+        }
+        setItems(next);
+    };
+
     const filaProps = (item: Item, grupoTag?: string) => ({
         item, movil, grupoTag,
-        abierto: pickId === item.id,
-        abrirPick: () => setPickId(pickId === item.id ? null : item.id),
-        cerrarPick: () => setPickId(null),
+        abrirPick: () => setPickId(item.id),
         editId, editText, setEditId, setEditText, guardarEdit,
-        toggle, descartar, aPendientes, toggleTag,
-        todasEtiquetas,
+        toggle, descartar: (id: number) => setBorrarId(id), aPendientes,
         onEditar: () => { setEditId(item.id); setEditText(item.text); },
     });
+
+    const itemAEtiquetar = pickId != null ? items.find(i => i.id === pickId) ?? null : null;
 
     const totalAbiertas = abiertas.length;
 
@@ -224,15 +267,19 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
                     </div>
                 ) : (
                     <>
-                        {gruposMostrados.map((g, gi) => (
-                            <div key={g.tag} style={{ marginTop: gi === 0 ? 0 : "20px" }}>
-                                <div style={{ ...etiqueta, fontSize: "0.72rem", color: g.tag === SIN ? C.outline : C.onSurfaceVariant, padding: "4px 0 8px", display: "flex", alignItems: "center", gap: "6px" }}>
-                                    {g.tag === SIN ? "SIN ETIQUETA" : g.tag}
-                                    <span style={{ opacity: 0.5 }}>· {g.items.length}</span>
-                                </div>
-                                {g.items.map(item => <Fila key={item.id} {...filaProps(item, g.tag)} />)}
-                            </div>
-                        ))}
+                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                            {gruposMostrados.map((g, gi) => (
+                                <GrupoDrop key={g.tag} tag={g.tag} style={{ marginTop: gi === 0 ? 0 : "20px" }}>
+                                    <div style={{ ...etiqueta, fontSize: "0.72rem", color: g.tag === SIN ? C.outline : C.onSurfaceVariant, padding: "4px 0 8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                                        {g.tag === SIN ? "SIN ETIQUETA" : g.tag}
+                                        <span style={{ opacity: 0.5 }}>· {g.items.length}</span>
+                                    </div>
+                                    <SortableContext items={g.items.map(it => it.id)} strategy={verticalListSortingStrategy}>
+                                        {g.items.map(item => <SortableFila key={item.id} {...filaProps(item, g.tag)} />)}
+                                    </SortableContext>
+                                </GrupoDrop>
+                            ))}
+                        </DndContext>
 
                         {hechos.length > 0 && (
                             <div style={{ marginTop: "20px" }}>
@@ -260,6 +307,25 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
                 )}
                 </div>
             </div>
+
+            {itemAEtiquetar && (
+                <TagModal
+                    item={itemAEtiquetar}
+                    todasEtiquetas={todasEtiquetas}
+                    toggleTag={toggleTag}
+                    onClose={() => setPickId(null)}
+                />
+            )}
+
+            <ConfirmDialog
+                open={borrarId != null}
+                title="Borrar línea"
+                message={`¿Borrar "${items.find(i => i.id === borrarId)?.text ?? ''}"? No se puede deshacer.`}
+                confirmLabel="Borrar"
+                cancelLabel="Cancelar"
+                onConfirm={() => { if (borrarId != null) descartar(borrarId); setBorrarId(null); }}
+                onCancel={() => setBorrarId(null)}
+            />
         </div>
     );
 };
@@ -269,9 +335,7 @@ interface FilaProps {
     item: Item;
     movil: boolean;
     grupoTag?: string;
-    abierto: boolean;
     abrirPick: () => void;
-    cerrarPick: () => void;
     editId: number | null;
     editText: string;
     setEditId: (v: number | null) => void;
@@ -280,13 +344,12 @@ interface FilaProps {
     toggle: (id: number) => void;
     descartar: (id: number) => void;
     aPendientes: (id: number) => void;
-    toggleTag: (id: number, tag: string) => void;
-    todasEtiquetas: string[];
     onEditar: () => void;
+    dragHandle?: React.ReactNode;
 }
 
 const Fila = (p: FilaProps) => {
-    const { item, grupoTag, editId, editText, setEditId, setEditText, guardarEdit, toggle, descartar, aPendientes, onEditar, abierto, abrirPick, cerrarPick, toggleTag, todasEtiquetas } = p;
+    const { item, grupoTag, editId, editText, setEditId, setEditText, guardarEdit, toggle, descartar, aPendientes, onEditar, abrirPick, dragHandle } = p;
     const tags = item.tags ?? [];
     // En la vista agrupada no repetimos el chip de la etiqueta del propio grupo.
     const chipsVisibles = tags.filter(t => t !== grupoTag);
@@ -294,6 +357,7 @@ const Fila = (p: FilaProps) => {
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: "6px", padding: "8px 0", borderBottom: `1px solid ${C.surfaceContainerHigh}` }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                {dragHandle}
                 {editId === item.id ? (
                     <input
                         autoFocus value={editText}
@@ -328,41 +392,69 @@ const Fila = (p: FilaProps) => {
                         </span>
                         {!item.completed && (
                             <>
-                                <button onClick={abrirPick} title="Etiquetas" style={{ ...iconBtn, background: abierto ? C.surfaceContainer : "none", color: abierto ? C.primary : C.outline }}>
+                                <button onClick={abrirPick} title="Etiqueta" style={iconBtn}>
                                     <Plus size={17} strokeWidth={2.5} />
                                 </button>
-                                <button onClick={onEditar} title="Editar" style={iconBtn}><Edit2 size={16} strokeWidth={2.5} /></button>
-                                <button onClick={() => aPendientes(item.id)} title="Mandar a Pendientes" style={{ ...iconBtn, color: C.primary }}>
+                                <button onClick={() => aPendientes(item.id)} title="Pasar a la pestaña Pendientes" style={iconBtn}>
                                     <CornerUpRight size={16} strokeWidth={2.5} />
                                 </button>
                             </>
                         )}
-                        <button onClick={() => descartar(item.id)} title="Descartar" style={{ ...iconBtn, color: C.rojo }}>
+                        <button onClick={() => descartar(item.id)} title="Borrar" style={iconBtn}>
                             <Trash2 size={16} strokeWidth={2.5} />
                         </button>
                     </>
                 )}
             </div>
 
-            {/* Etiquetas de la fila / selector */}
-            {(chipsVisibles.length > 0 || abierto) && (
-                <div style={{ paddingLeft: "30px" }}>
-                    {abierto
-                        ? <TagPicker item={item} todasEtiquetas={todasEtiquetas} toggleTag={toggleTag} onClose={cerrarPick} />
-                        : (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                                {chipsVisibles.map(t => (
-                                    <button key={t} onClick={abrirPick} style={miniChip(true)}>{t}</button>
-                                ))}
-                            </div>
-                        )}
+            {/* Etiquetas de la fila (solo muestra; se editan en la ventanita) */}
+            {chipsVisibles.length > 0 && (
+                <div style={{ paddingLeft: dragHandle ? "62px" : "30px", display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                    {chipsVisibles.map(t => (
+                        <button key={t} onClick={abrirPick} style={miniChip(true)}>{t}</button>
+                    ))}
                 </div>
             )}
         </div>
     );
 };
 
-const TagPicker = ({ item, todasEtiquetas, toggleTag, onClose }: {
+/* Zona que recibe el item soltado sobre un grupo (aunque sea fuera de sus filas). */
+const GrupoDrop = ({ tag, style, children }: { tag: string; style?: React.CSSProperties; children: React.ReactNode }) => {
+    const { setNodeRef, isOver } = useDroppable({ id: `g:${tag}`, data: { tag } });
+    return (
+        <div ref={setNodeRef} style={{ ...style, borderRadius: RADIO.campo, background: isOver ? C.surfaceContainerLow : undefined, transition: "background 0.15s" }}>
+            {children}
+        </div>
+    );
+};
+
+const SortableFila = (p: FilaProps) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.item.id, data: { tag: p.grupoTag } });
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+    };
+    const handle = (
+        <button
+            {...attributes}
+            {...listeners}
+            title="Arrastrar para ordenar o mover de etiqueta"
+            style={{ ...iconBtn, cursor: "grab", color: C.outlineVariant, touchAction: "none" }}
+        >
+            <GripVertical size={16} strokeWidth={2.5} />
+        </button>
+    );
+    return (
+        <div ref={setNodeRef} style={style}>
+            <Fila {...p} dragHandle={handle} />
+        </div>
+    );
+};
+
+/* Ventanita centrada para elegir la etiqueta de una línea. */
+const TagModal = ({ item, todasEtiquetas, toggleTag, onClose }: {
     item: Item; todasEtiquetas: string[]; toggleTag: (id: number, t: string) => void; onClose: () => void;
 }) => {
     const [creando, setCreando] = useState(false);
@@ -378,32 +470,55 @@ const TagPicker = ({ item, todasEtiquetas, toggleTag, onClose }: {
     };
 
     return (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center", background: C.surfaceContainerLow, borderRadius: RADIO.campo, padding: "8px" }}>
-            {opciones.length === 0 && !creando && (
-                <span style={{ fontSize: "0.7rem", color: C.outline }}>Aún no tienes etiquetas.</span>
-            )}
-            {opciones.map(t => (
-                <button key={t} onClick={() => toggleTag(item.id, t)} style={miniChip(tags.includes(t))}>
-                    {tags.includes(t) && <Check size={11} strokeWidth={3} />}{t}
+        <div
+            onClick={onClose}
+            style={{
+                position: "fixed", inset: 0, zIndex: 9999, padding: "20px",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
+            }}
+        >
+            <div
+                onClick={e => e.stopPropagation()}
+                style={{ background: C.surfaceLowest, borderRadius: "24px", padding: "22px", width: "100%", maxWidth: "360px", boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}
+            >
+                <div style={{ ...etiqueta, fontSize: "0.62rem", color: C.outline }}>Etiqueta</div>
+                <p style={{ margin: "4px 0 16px", fontSize: "0.92rem", fontWeight: 700, color: C.onSurface, lineHeight: 1.35 }}>{item.text}</p>
+
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
+                    {opciones.length === 0 && !creando && (
+                        <span style={{ fontSize: "0.78rem", color: C.outline }}>Aún no tienes etiquetas. Crea la primera →</span>
+                    )}
+                    {opciones.map(t => (
+                        <button key={t} onClick={() => toggleTag(item.id, t)} style={miniChip(tags.includes(t))}>
+                            {tags.includes(t) && <Check size={11} strokeWidth={3} />}{t}
+                        </button>
+                    ))}
+                    {creando ? (
+                        <form onSubmit={e => { e.preventDefault(); crear(); }} style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                            <input
+                                autoFocus value={nueva}
+                                onChange={e => setNueva(e.target.value)}
+                                onBlur={() => { if (!nueva.trim()) setCreando(false); }}
+                                placeholder="nombre…"
+                                style={{ width: "120px", padding: "6px 10px", fontSize: "0.78rem", borderRadius: RADIO.chip, border: `1px solid ${C.outlineVariant}`, outline: "none", background: C.surfaceLowest }}
+                            />
+                            <button type="submit" style={{ ...miniChip(true), padding: "6px 9px" }}><Check size={13} strokeWidth={3} /></button>
+                        </form>
+                    ) : (
+                        <button onClick={() => setCreando(true)} style={{ ...miniChip(false), border: `1px dashed ${C.outlineVariant}` }}>
+                            <Plus size={13} strokeWidth={3} /> nueva
+                        </button>
+                    )}
+                </div>
+
+                <button
+                    onClick={onClose}
+                    style={{ marginTop: "20px", width: "100%", padding: "12px", borderRadius: "14px", border: "none", background: C.primary, color: "#fff", fontWeight: 800, fontSize: "0.85rem", cursor: "pointer", fontFamily: "inherit" }}
+                >
+                    Listo
                 </button>
-            ))}
-            {creando ? (
-                <form onSubmit={e => { e.preventDefault(); crear(); }} style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                    <input
-                        autoFocus value={nueva}
-                        onChange={e => setNueva(e.target.value)}
-                        onBlur={() => { if (!nueva.trim()) setCreando(false); }}
-                        placeholder="nombre…"
-                        style={{ width: "110px", padding: "5px 9px", fontSize: "0.72rem", borderRadius: RADIO.chip, border: `1px solid ${C.outlineVariant}`, outline: "none", background: C.surfaceLowest }}
-                    />
-                    <button type="submit" style={{ ...miniChip(true), padding: "5px 8px" }}><Check size={12} strokeWidth={3} /></button>
-                </form>
-            ) : (
-                <button onClick={() => setCreando(true)} style={{ ...miniChip(false), border: `1px dashed ${C.outlineVariant}` }}>
-                    <Plus size={12} strokeWidth={3} /> nueva
-                </button>
-            )}
-            <button onClick={onClose} style={{ ...miniChip(false), color: C.outline, marginLeft: "auto" }}>listo</button>
+            </div>
         </div>
     );
 };
