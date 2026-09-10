@@ -89,6 +89,7 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
     const [pickId, setPickId] = useState<number | null>(null);
     const [filtro, setFiltro] = useState<string[]>([]);
     const [borrarId, setBorrarId] = useState<number | null>(null);
+    const [grupoAEnviar, setGrupoAEnviar] = useState<string | null>(null);
     const [gestionAbierta, setGestionAbierta] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -181,17 +182,28 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
         patchItem(id, { tags: next.length ? next : undefined });
     };
 
+    // Manda líneas a la pestaña Pendientes. El nombre del grupo destino sale de
+    // la etiqueta (la etiqueta ES el grupo allá) — sin etiqueta va a "De la Bandeja".
+    const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+    const enviarAPendientes = (lineas: Item[], nombreGrupo: string) => {
+        if (!bandeja || lineas.length === 0) return;
+        const key = nombreGrupo.trim().toLowerCase();
+        const nuevos = lineas.map(l => ({ id: nuevoId(), text: l.text, completed: false }));
+        const grupo = notes.find(n => n.type === 'checklist' && n.q === 'pendiente' && n.title.trim().toLowerCase() === key);
+        if (grupo) updateNote(grupo.id, { items: [...grupo.items, ...nuevos] });
+        else addNote(nombreGrupo, "", "checklist", nuevos, "pendiente", "#FFFFFF");
+        const ids = new Set(lineas.map(l => l.id));
+        setItems(bandeja.items.filter(it => !ids.has(it.id)));
+    };
     const aPendientes = (id: number) => {
-        if (!bandeja) return;
-        const item = bandeja.items.find(it => it.id === id);
+        const item = bandeja?.items.find(it => it.id === id);
         if (!item) return;
-        const grupo = notes.find(n => n.type === 'checklist' && n.q === 'pendiente' && n.title.trim().toLowerCase() === 'de la bandeja');
-        if (grupo) {
-            updateNote(grupo.id, { items: [...grupo.items, { id: nuevoId(), text: item.text, completed: false }] });
-        } else {
-            addNote("De la Bandeja", "", "checklist", [{ id: nuevoId(), text: item.text, completed: false }], "pendiente", "#FFFFFF");
-        }
-        setItems(bandeja.items.filter(it => it.id !== id));
+        const tag = (item.tags ?? [])[0];
+        enviarAPendientes([item], tag ? cap(tag) : "De la Bandeja");
+    };
+    const grupoAPendientes = (tag: string) => {
+        const lineas = abiertas.filter(it => tag === SIN ? (it.tags ?? []).length === 0 : (it.tags ?? []).includes(tag));
+        enviarAPendientes(lineas, tag === SIN ? "De la Bandeja" : cap(tag));
     };
 
     const toggleFiltro = (t: string) => setFiltro(f => f.includes(t) ? f.filter(x => x !== t) : [...f, t]);
@@ -308,6 +320,13 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
                                     <div style={{ ...etiqueta, fontSize: "0.72rem", color: g.tag === SIN ? C.outline : C.onSurfaceVariant, padding: "4px 0 8px", display: "flex", alignItems: "center", gap: "6px" }}>
                                         {g.tag === SIN ? "SIN ETIQUETA" : g.tag}
                                         <span style={{ opacity: 0.5 }}>· {g.items.length}</span>
+                                        <button
+                                            onClick={() => setGrupoAEnviar(g.tag)}
+                                            title="Mandar todo el grupo a Pendientes"
+                                            style={{ ...iconBtn, width: "26px", height: "26px", marginLeft: "auto", color: C.outline }}
+                                        >
+                                            <CornerUpRight size={15} strokeWidth={2.5} />
+                                        </button>
                                     </div>
                                     <SortableContext items={g.items.map(it => it.id)} strategy={verticalListSortingStrategy}>
                                         {g.items.map(item => <SortableFila key={item.id} {...filaProps(item, g.tag)} />)}
@@ -362,6 +381,21 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
                     onClose={() => setGestionAbierta(false)}
                 />
             )}
+
+            <ConfirmDialog
+                open={grupoAEnviar != null}
+                title="Mandar grupo a Pendientes"
+                message={(() => {
+                    if (grupoAEnviar == null) return "";
+                    const n = abiertas.filter(it => grupoAEnviar === SIN ? (it.tags ?? []).length === 0 : (it.tags ?? []).includes(grupoAEnviar)).length;
+                    const destino = grupoAEnviar === SIN ? "De la Bandeja" : cap(grupoAEnviar);
+                    return `Se mueven ${n} línea${n === 1 ? "" : "s"} al grupo "${destino}" de Pendientes y salen de la Bandeja.`;
+                })()}
+                confirmLabel="Mandar"
+                cancelLabel="Cancelar"
+                onConfirm={() => { if (grupoAEnviar) grupoAPendientes(grupoAEnviar); setGrupoAEnviar(null); }}
+                onCancel={() => setGrupoAEnviar(null)}
+            />
 
             <ConfirmDialog
                 open={borrarId != null}
