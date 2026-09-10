@@ -81,7 +81,7 @@ export const NotionDashboard = ({ calendarEvents, updateCalendarEvent }: NotionP
                                 <div style={{ fontWeight: 800, fontSize: "0.92rem", color: C.onSurface }}>{item.title}</div>
                                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "3px", fontSize: "0.72rem", color: C.onSurfaceVariant, fontWeight: 700 }}>
                                     {item.notionProyecto && <span>{item.notionProyecto}</span>}
-                                    <span>{item.date} {item.startTime}</span>
+                                    <span>{item.date ? `${item.date} ${item.startTime}` : 'Sin fecha'}</span>
                                     {item.notionDiasRestantes && <span>{item.notionDiasRestantes}</span>}
                                 </div>
                             </div>

@@ -75,13 +75,20 @@ function toCalendarEvent(page) {
     const props = page.properties;
     const title = props['Título']?.title?.[0]?.plain_text?.trim();
     const dateProp = props['Fecha y hora']?.date;
-    if (!title || !dateProp?.start) return null;
+    // Antes se descartaba (return null) toda sesión sin "Fecha y hora". Ahora se
+    // trae igual con date/hora en '' para que aparezca en "Por agendar" en AlDía
+    // en vez de quedar invisible.
+    if (!title) return null;
 
-    const { date, time: parsedStart } = parseNotionDate(dateProp.start);
-    const startTime = parsedStart || '09:00';
-    const endTime = dateProp.end
-        ? parseNotionDate(dateProp.end).time || addMinutesToTime(startTime, 90)
-        : addMinutesToTime(startTime, 90);
+    let date = '', startTime = '', endTime = '';
+    if (dateProp?.start) {
+        const parsed = parseNotionDate(dateProp.start);
+        date = parsed.date;
+        startTime = parsed.time || '09:00';
+        endTime = dateProp.end
+            ? parseNotionDate(dateProp.end).time || addMinutesToTime(startTime, 90)
+            : addMinutesToTime(startTime, 90);
+    }
 
     const location = props['Ubicación']?.select?.name;
     const status = props['Estado']?.status?.name;
@@ -178,7 +185,7 @@ export default async function handler(req, res) {
         }
         const event = toCalendarEvent(page);
         if (!event) {
-            res.status(200).json({ ok: true, skipped: 'sin titulo o fecha' });
+            res.status(200).json({ ok: true, skipped: 'sin titulo' });
             return;
         }
         const result = await upsertEvent(event);

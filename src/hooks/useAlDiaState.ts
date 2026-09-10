@@ -139,9 +139,9 @@ export const NOTION_ESTADOS: NotionEstado[] = ['Agendado', 'Realizado', 'En Edic
 export interface CalendarEvent {
     id: number;
     title: string;
-    date: string;      // YYYY-MM-DD
-    startTime: string; // HH:mm
-    endTime: string;   // HH:mm
+    date: string;      // YYYY-MM-DD, o '' si la sesión aún no tiene fecha ("por agendar")
+    startTime: string; // HH:mm, o '' si no tiene fecha
+    endTime: string;   // HH:mm, o '' si no tiene fecha
     description?: string;
     projectId?: number;
     notionId?: string; // ID de la pagina de Notion de origen, si vino importado

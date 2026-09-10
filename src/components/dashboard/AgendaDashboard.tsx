@@ -167,6 +167,7 @@ const PendientesWidget = ({ notes, addNote, toggleNoteItem, updateNote }: { note
 const hoyISO = () => new Date().toLocaleDateString('en-CA');
 
 const formatFecha = (iso: string) => {
+    if (!iso) return 'Sin fecha';
     const [y, m, d] = iso.split('-').map(Number);
     const txt = new Date(y, m - 1, d).toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short' });
     return txt.charAt(0).toUpperCase() + txt.slice(1);
@@ -270,12 +271,20 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
     // esconderse en el Historial solo porque la fecha vieja ya pasó.
     const yaSucedio = (e: CalendarEvent) => e.notionId ? !!e.notionEstado && e.notionEstado !== 'Agendado' : e.date < hoy;
 
+    // Sesiones que existen en Notion pero sin "Fecha y hora" todavía — antes el
+    // sync las descartaba y quedaban invisibles; ahora entran con date '' y se
+    // muestran arriba en su propia sección "Por agendar" para no olvidarlas.
+    const porAgendar = useMemo(
+        () => items.filter(e => !e.date).sort((a, b) => a.title.localeCompare(b.title)),
+        [items]
+    );
+
     const proximos = useMemo(
-        () => items.filter(e => e.date >= hoy || !yaSucedio(e)),
+        () => items.filter(e => e.date && (e.date >= hoy || !yaSucedio(e))),
         [items, hoy]
     );
     const pasados = useMemo(
-        () => [...items].filter(e => e.date < hoy && yaSucedio(e)).reverse(),
+        () => [...items].filter(e => e.date && e.date < hoy && yaSucedio(e)).reverse(),
         [items, hoy]
     );
     const proximaSesion = proximos.find(e => e.date >= hoy) || proximos[0];
@@ -395,7 +404,13 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
 
     const openReagendar = (item: CalendarEvent) => {
         setDateErrorId(null);
-        setDateForm({ date: item.date, startTime: item.startTime, endTime: item.endTime });
+        // Si es una sesión "por agendar" (sin fecha), arranca el formulario con
+        // valores por defecto en vez de campos vacíos.
+        setDateForm({
+            date: item.date || hoyISO(),
+            startTime: item.startTime || '09:00',
+            endTime: item.endTime || '10:30',
+        });
         setEditingDateId(item.id);
     };
 
@@ -466,12 +481,13 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
     };
 
     const renderCard = (item: CalendarEvent) => {
-        const isPast = item.date < hoy;
+        const sinFecha = !item.date;
+        const isPast = !sinFecha && item.date < hoy;
         const isExpanded = expandedId === item.id;
         const isAtrasada = isPast && !yaSucedio(item);
         const isEditingDate = editingDateId === item.id;
         return (
-            <div key={item.id} style={{ ...bento, padding: '0.85rem 1rem', opacity: isPast && !isAtrasada ? 0.7 : 1, ...(isAtrasada ? { borderColor: C.rojo } : {}) }}>
+            <div key={item.id} style={{ ...bento, padding: '0.85rem 1rem', opacity: isPast && !isAtrasada ? 0.7 : 1, ...(isAtrasada ? { borderColor: C.rojo } : sinFecha ? { borderColor: C.ambar } : {}) }}>
                 <div
                     onClick={() => setExpandedId(isExpanded ? null : item.id)}
                     style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', cursor: 'pointer' }}
@@ -479,7 +495,12 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                     <div style={{ minWidth: 0 }}>
                         <div style={{ fontWeight: 800, fontSize: '0.88rem', color: C.onSurface, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
                         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '3px', fontSize: '0.72rem', color: C.onSurfaceVariant, fontWeight: 700 }}>
-                            <span>{formatFecha(item.date)} · {item.startTime}</span>
+                            <span>{sinFecha ? 'Sin fecha asignada' : `${formatFecha(item.date)} · ${item.startTime}`}</span>
+                            {sinFecha && (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: C.ambar, fontWeight: 800 }}>
+                                    <CalendarClock size={11} /> Por agendar
+                                </span>
+                            )}
                             {isAtrasada && (
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: C.rojo, fontWeight: 800 }}>
                                     <AlertTriangle size={11} /> Atrasada — no se hizo, reagéndala
@@ -490,8 +511,8 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                         <button
                             onClick={(e) => { e.stopPropagation(); isEditingDate ? setEditingDateId(null) : openReagendar(item); }}
-                            title="Reagendar"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: isAtrasada ? C.rojo : C.outline, padding: '4px', display: 'flex' }}
+                            title={sinFecha ? 'Agendar' : 'Reagendar'}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: isAtrasada ? C.rojo : sinFecha ? C.ambar : C.outline, padding: '4px', display: 'flex' }}
                         >
                             <CalendarClock size={15} />
                         </button>
@@ -587,7 +608,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                                 style={{ ...botonCompactoPrimario(movil), opacity: savingDateId === item.id ? 0.7 : 1 }}
                             >
                                 {savingDateId === item.id ? <Loader2 size={14} className="agenda-spin" /> : <CalendarClock size={14} />}
-                                Guardar nueva fecha
+                                {sinFecha ? 'Agendar sesión' : 'Guardar nueva fecha'}
                             </button>
                             <button
                                 onClick={() => setEditingDateId(null)}
@@ -642,7 +663,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                         )}
                         {item.notionEntregaFecha && <div><b>Entrega:</b> {formatFecha(item.notionEntregaFecha)}</div>}
                         {item.notionDiasRestantes && <div><b>Días restantes:</b> {item.notionDiasRestantes}</div>}
-                        <div>{item.startTime} – {item.endTime}</div>
+                        {!sinFecha && <div>{item.startTime} – {item.endTime}</div>}
                     </div>
                 )}
             </div>
@@ -749,6 +770,21 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                 </div>
             )}
 
+
+            {/* Por agendar — sesiones que ya están en Notion pero sin "Fecha y hora".
+                Van arriba de todo para que no se olviden: hay que ponerles fecha para
+                que entren a la agenda de verdad. */}
+            {porAgendar.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+                    <div style={{ ...etiqueta, display: 'flex', alignItems: 'center', gap: '6px', color: C.ambar }}>
+                        <CalendarClock size={13} /> Por agendar ({porAgendar.length})
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.72rem', color: C.onSurfaceVariant, fontWeight: 600 }}>
+                        Están en Notion sin fecha. Ponles una para que entren a tu agenda.
+                    </p>
+                    {porAgendar.map(item => renderCard(item))}
+                </div>
+            )}
 
             {/* Pendientes a la izquierda, los detalles (próxima sesión/entrega/etc.) a
                 la derecha en su propia grilla — antes iban uno full-width encima del
@@ -857,9 +893,14 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                         <p style={{ margin: 0, fontSize: '0.85rem' }}>Sin eventos todavía. Agrega uno o activa Notion arriba.</p>
                     </div>
                 )}
-                {items.length > 0 && proximos.length === 0 && (
+                {items.length > 0 && proximos.length === 0 && porAgendar.length === 0 && (
                     <div style={{ textAlign: 'center', padding: '2rem 1rem', color: C.outline }}>
                         <p style={{ margin: 0, fontSize: '0.85rem' }}>Sin sesiones ni entregas por venir.</p>
+                    </div>
+                )}
+                {items.length > 0 && proximos.length === 0 && porAgendar.length > 0 && (
+                    <div style={{ textAlign: 'center', padding: '2rem 1rem', color: C.outline }}>
+                        <p style={{ margin: 0, fontSize: '0.85rem' }}>Nada con fecha todavía. Agéndalas arriba.</p>
                     </div>
                 )}
                 {proximos.map(item => renderCard(item))}
