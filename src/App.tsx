@@ -6,6 +6,7 @@ import { Header } from './components/layout/Header';
 import { useAlDiaState } from './hooks/useAlDiaState';
 import type { Mission, Note } from './hooks/useAlDiaState';
 import { ProfileOverlay } from './components/layout/ProfileOverlay';
+import { PantallaCarga } from './components/common/PantallaCarga';
 // Eager: lo que se ve al primer render (pestaña por defecto + su banner).
 import { ChecklistDiario } from './components/dashboard/ChecklistDiario';
 import { UpcomingList } from './components/dashboard/UpcomingList';
@@ -177,24 +178,7 @@ function App() {
   const selectedProjectDetail = state.projects.find((p: any) => p.id === selectedProjectDetailId);
 
   if (state.isInitialLoad) {
-    return (
-      <div style={{
-        height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', background: '#F7FAF8', gap: '1.5rem'
-      }}>
-        <motion.div
-          animate={{ scale: [1, 1.1, 1], rotate: [0, 10, -10, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          style={{ fontSize: '4rem' }}
-        >
-          🧠
-        </motion.div>
-        <div style={{ textAlign: 'center' }}>
-          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-carbon)' }}>AlDía</h1>
-          <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: '#AAA' }}>SINCRONIZANDO TU MENTE...</p>
-        </div>
-      </div>
-    );
+    return <PantallaCarga completa texto="Sincronizando tu mente…" />;
   }
 
   return (
@@ -206,11 +190,7 @@ function App() {
         onTrashClick={() => setIsTrashOpen(true)}
       />
 
-      <Suspense fallback={
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', color: '#94A3B8', fontSize: '0.8rem', fontWeight: 700 }}>
-          Cargando…
-        </div>
-      }>
+      <Suspense fallback={<PantallaCarga />}>
       <main className={`dashboard ${activeTab === 'Calendario' || activeTab === 'Lienzo' || activeTab === 'Lienzo Ops' ? 'full-bleed' : ''}`}>
         <AnimatePresence mode="wait">
           <motion.div
