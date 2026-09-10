@@ -27,7 +27,7 @@ const VIEJAS = [
 // La versión nueva, con subtítulos y en orden.
 const NUEVAS = [
     '# Entregas',
-    '15 años — atrasada, era hoy 9 sep',
+    '🔴 15 años — atrasada, era hoy 9 sep',
     'Prenatal (embarazada) — entrega mañana 10 sep',
     'Boda — atrasada; un amigo ayuda a editar',
     'Sesión — entrega en 3 días (12 sep)',
@@ -36,10 +36,12 @@ const NUEVAS = [
     '# Clientes',
     'Cliente con entrega lista — esperar que escriba',
     'Mensaje a los que dejé en visto (S/20 de adelanto c/u) — reagendar',
-    '# Dinero — hueco S/550',
+    '# Dinero — hueco S/600',
     'Alquiler del cuarto S/130 → Fijos',
     'Cuota del pasaje S/300 — vence 15 sep → Fijos',
     'Pago de un video S/120 → Deudas',
+    'Sesión de fotos por pagar S/50 → Deudas',
+    'Hueco total a cubrir ahora: S/600',
     '# Plata',
     'Publicar liquidación de mercadería estancada en marketplaces',
 ];

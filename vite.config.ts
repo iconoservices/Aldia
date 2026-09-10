@@ -46,7 +46,8 @@ export default defineConfig({
     })
   ],
   server: {
-    port: 5180,
+    // 5180 por defecto (Firebase, bookmarks); si viene PORT en el entorno, manda ese.
+    port: Number(process.env.PORT) || 5180,
     host: '0.0.0.0',
     proxy: {
       '/api/ddg-search': {

@@ -9,7 +9,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Note } from "../../hooks/useAlDiaState";
-import { C, bento, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina } from "../../theme";
+import { C, bento, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina, RADIO, TOQUE_MINIMO, etiqueta } from "../../theme";
 
 /* ══════════════════════════════════════════════════════════════════
    BandejaDashboard — el volcado sin orden.
@@ -37,8 +37,9 @@ const esSubtitulo = (t: string) => t.trimStart().startsWith('#');
 const textoSubtitulo = (t: string) => t.trimStart().replace(/^#+\s*/, '');
 
 const inputStyle: React.CSSProperties = {
-    padding: "10px 12px", borderRadius: "10px", border: `1px solid ${C.outlineVariant}`,
-    fontSize: "0.9rem", outline: "none", background: "white", boxSizing: "border-box", width: "100%",
+    padding: "12px", borderRadius: RADIO.campo, border: `1px solid ${C.outlineVariant}`,
+    fontSize: "16px", outline: "none", background: C.surfaceLowest, color: C.onSurface,
+    boxSizing: "border-box", width: "100%", fontFamily: "inherit",
 };
 
 export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) => {
@@ -145,7 +146,7 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
     });
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: movil ? "1rem" : "1.4rem", ...paddingPagina(movil), color: "var(--text-carbon)" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: movil ? "16px" : "24px", ...paddingPagina(movil), color: C.onSurface }}>
             <div style={cabecera(movil)}>
                 <div>
                     <h2 style={tituloPagina}>Bandeja</h2>
@@ -159,7 +160,7 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
             {/* Captura rápida */}
             <form
                 onSubmit={e => { e.preventDefault(); tirar(); }}
-                style={{ ...bento, padding: movil ? "0.75rem" : "0.9rem", display: "flex", flexDirection: "column", gap: "8px", position: "sticky", top: movil ? "68px" : "0", zIndex: 3 }}
+                style={{ ...bento, padding: "12px", display: "flex", flexDirection: "column", gap: "8px", position: "sticky", top: movil ? "68px" : "0", zIndex: 3 }}
             >
                 <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                     <button
@@ -167,14 +168,15 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
                         onClick={() => { setModoSeccion(v => !v); inputRef.current?.focus(); }}
                         title="Subtítulo"
                         style={{
-                            flexShrink: 0, display: "flex", alignItems: "center", gap: "5px",
+                            flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
                             background: modoSeccion ? C.primary : C.surfaceContainer,
-                            color: modoSeccion ? "white" : C.onSurfaceVariant,
-                            border: "none", borderRadius: "9px", padding: movil ? "9px 10px" : "9px 12px",
-                            fontWeight: 800, fontSize: "0.78rem", cursor: "pointer",
+                            color: modoSeccion ? "#fff" : C.onSurfaceVariant,
+                            border: "none", borderRadius: RADIO.campo,
+                            minWidth: `${TOQUE_MINIMO}px`, minHeight: `${TOQUE_MINIMO}px`, padding: "0 12px",
+                            fontWeight: 700, fontSize: "0.8rem", cursor: "pointer",
                         }}
                     >
-                        <Type size={14} /> {!movil && (modoSeccion ? "Subtítulo" : "Subtít.")}
+                        <Type size={16} strokeWidth={2.5} /> {!movil && (modoSeccion ? "Subtítulo" : "Subtít.")}
                     </button>
                     <input
                         ref={inputRef}
@@ -189,17 +191,17 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
                     <button type="submit" style={{ display: "none" }} aria-hidden tabIndex={-1} />
                 </div>
                 {modoSeccion && (
-                    <span style={{ fontSize: "0.7rem", color: C.outline }}>
+                    <span style={{ fontSize: "0.72rem", color: C.outline, paddingLeft: "4px" }}>
                         Un subtítulo separa bloques. Arrastra las líneas debajo para agruparlas.
                     </span>
                 )}
             </form>
 
             {/* Lista */}
-            <div style={{ ...bento, padding: movil ? "0.4rem 0.9rem 0.9rem" : "0.5rem 1.1rem 1rem" }}>
+            <div style={{ ...bento, padding: movil ? "4px 12px 12px" : "8px 16px 16px" }}>
                 {visibles.length === 0 && hechos.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: "3rem 1rem", color: C.outline }}>
-                        <Inbox size={34} style={{ opacity: 0.4, marginBottom: "0.6rem" }} />
+                    <div style={{ textAlign: "center", padding: "48px 16px", color: C.outline }}>
+                        <Inbox size={32} strokeWidth={2} style={{ opacity: 0.4, marginBottom: "8px" }} />
                         <p style={{ margin: 0, fontSize: "0.88rem" }}>Vacía. Escribe arriba lo primero que se te cruce.</p>
                     </div>
                 ) : (
@@ -211,24 +213,24 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
                         </DndContext>
 
                         {hechos.length > 0 && (
-                            <div style={{ marginTop: "0.7rem" }}>
+                            <div style={{ marginTop: "12px" }}>
                                 <button
                                     onClick={() => setVerHechos(v => !v)}
-                                    style={{ display: "flex", alignItems: "center", gap: "5px", background: "none", border: "none", cursor: "pointer", padding: "4px 0", color: C.outline, fontSize: "0.74rem", fontWeight: 700 }}
+                                    style={{ ...etiqueta, display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", cursor: "pointer", padding: "8px 0" }}
                                 >
-                                    <ChevronDown size={13} style={{ transform: verHechos ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+                                    <ChevronDown size={14} strokeWidth={2.5} style={{ transform: verHechos ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
                                     Hechos ({hechos.length})
                                 </button>
                                 {verHechos && (
-                                    <div style={{ marginTop: "2px" }}>
+                                    <div style={{ marginTop: "4px" }}>
                                         {hechos.map(item => (
                                             <FilaSimple key={item.id} {...filaProps(item)} />
                                         ))}
                                         <button
                                             onClick={limpiarHechos}
-                                            style={{ display: "flex", alignItems: "center", gap: "5px", marginTop: "8px", background: "none", border: "none", cursor: "pointer", padding: "2px 0", color: C.rojo, fontSize: "0.72rem", fontWeight: 700 }}
+                                            style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "8px", background: "none", border: "none", cursor: "pointer", padding: "4px 0", color: C.rojo, fontSize: "0.72rem", fontWeight: 700 }}
                                         >
-                                            <X size={12} /> Limpiar hechos
+                                            <X size={12} strokeWidth={2.5} /> Limpiar hechos
                                         </button>
                                     </div>
                                 )}
@@ -268,7 +270,7 @@ const Contenido = (p: FilaProps) => {
                 onChange={e => setEditText(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") guardarEdit(); if (e.key === "Escape") setEditId(null); }}
                 onBlur={guardarEdit}
-                style={{ ...inputStyle, fontSize: "0.88rem", padding: "6px 9px", flex: 1 }}
+                style={{ ...inputStyle, fontSize: "16px", padding: "8px", flex: 1 }}
             />
         );
     }
@@ -277,14 +279,11 @@ const Contenido = (p: FilaProps) => {
         return (
             <>
                 {dragHandle}
-                <span style={{
-                    flex: 1, fontSize: "0.72rem", fontWeight: 800, letterSpacing: "0.08em",
-                    textTransform: "uppercase", color: C.onSurfaceVariant, cursor: "text",
-                }} onClick={onEditar}>
+                <span style={{ ...etiqueta, flex: 1, fontSize: "0.72rem", color: C.onSurfaceVariant, cursor: "text" }} onClick={onEditar}>
                     {textoSubtitulo(item.text) || "Subtítulo"}
                 </span>
-                <button onClick={onEditar} title="Editar" style={iconBtn}><Edit2 size={13} /></button>
-                <button onClick={() => descartar(item.id)} title="Quitar" style={{ ...iconBtn, color: C.rojo }}><Trash2 size={13} /></button>
+                <button onClick={onEditar} title="Editar" style={iconBtn}><Edit2 size={16} strokeWidth={2.5} /></button>
+                <button onClick={() => descartar(item.id)} title="Quitar" style={{ ...iconBtn, color: C.rojo }}><Trash2 size={16} strokeWidth={2.5} /></button>
             </>
         );
     }
@@ -296,13 +295,13 @@ const Contenido = (p: FilaProps) => {
                 onClick={() => toggle(item.id)}
                 title="Marcar hecho"
                 style={{
-                    width: "20px", height: "20px", borderRadius: "6px", flexShrink: 0, cursor: "pointer",
+                    width: "22px", height: "22px", borderRadius: "8px", flexShrink: 0, cursor: "pointer",
                     border: `2px solid ${item.completed ? C.secondary : C.outlineVariant}`,
                     background: item.completed ? C.secondary : "transparent",
                     display: "flex", alignItems: "center", justifyContent: "center",
                 }}
             >
-                {item.completed && <Check size={13} color="white" strokeWidth={3} />}
+                {item.completed && <Check size={14} color="#fff" strokeWidth={3} />}
             </div>
             <span
                 onClick={onEditar}
@@ -316,14 +315,14 @@ const Contenido = (p: FilaProps) => {
             </span>
             {!item.completed && (
                 <>
-                    <button onClick={onEditar} title="Editar" style={iconBtn}><Edit2 size={14} /></button>
+                    <button onClick={onEditar} title="Editar" style={iconBtn}><Edit2 size={16} strokeWidth={2.5} /></button>
                     <button onClick={() => aPendientes(item.id)} title="Mandar a Pendientes" style={{ ...iconBtn, color: C.primary }}>
-                        <CornerUpRight size={15} />
+                        <CornerUpRight size={16} strokeWidth={2.5} />
                     </button>
                 </>
             )}
             <button onClick={() => descartar(item.id)} title="Descartar" style={{ ...iconBtn, color: C.rojo }}>
-                <Trash2 size={14} />
+                <Trash2 size={16} strokeWidth={2.5} />
             </button>
         </>
     );
@@ -331,8 +330,8 @@ const Contenido = (p: FilaProps) => {
 
 const filaBox = (movil: boolean, header: boolean): React.CSSProperties => ({
     display: "flex", alignItems: "center", gap: "8px",
-    padding: movil ? "10px 2px" : "9px 4px",
-    marginTop: header ? "10px" : 0,
+    padding: movil ? "8px 0" : "8px 4px",
+    marginTop: header ? "16px" : 0,
     borderBottom: `1px solid ${C.surfaceContainerHigh}`,
 });
 
@@ -358,7 +357,7 @@ const FilaOrdenable = (p: FilaProps) => {
             title="Arrastrar para ordenar"
             style={{ ...iconBtn, cursor: "grab", color: C.outlineVariant, touchAction: "none" }}
         >
-            <GripVertical size={15} />
+            <GripVertical size={16} strokeWidth={2.5} />
         </button>
     );
     return (
@@ -368,7 +367,9 @@ const FilaOrdenable = (p: FilaProps) => {
     );
 };
 
+// Botón de ícono: caja de toque de 32px, radio 8, trazo grueso (línea gráfica v1.0).
 const iconBtn: React.CSSProperties = {
     background: "none", border: "none", cursor: "pointer", color: C.outline,
-    padding: "4px", display: "flex", alignItems: "center", flexShrink: 0,
+    width: "32px", height: "32px", borderRadius: "8px",
+    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
 };
