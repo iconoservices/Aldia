@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-import { initializeFirestore } from "firebase/firestore";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 // Your web app's Firebase configuration
@@ -17,7 +17,13 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
-const db = initializeFirestore(app, { ignoreUndefinedProperties: true });
+// Caché local persistente: al abrir, Firestore responde al instante desde
+// IndexedDB (sin esperar la red) y sincroniza en segundo plano. Multi-pestaña
+// para que varias pestañas/dispositivos compartan la misma caché sin pelearse.
+const db = initializeFirestore(app, {
+  ignoreUndefinedProperties: true,
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+});
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
