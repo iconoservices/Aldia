@@ -1,50 +1,58 @@
 // Final deployment build - Aldia App
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 import { Header } from './components/layout/Header';
-import { UpcomingList } from './components/dashboard/UpcomingList';
-import { MissionList } from './components/dashboard/MissionList';
-import { VidaBloquesDashboard } from './components/dashboard/VidaBloquesDashboard';
-import { CerebroDashboard } from './components/dashboard/CerebroDashboard';
-import { FinanzasDashboard } from './components/dashboard/FinanzasDashboard';
-import { StatsDashboard } from './components/dashboard/StatsDashboard';
-import { ProyectosDashboard } from './components/dashboard/ProyectosDashboard';
-import { ProjectDetailView } from './components/dashboard/ProjectDetailView';
-import { ProjectsKanbanView } from './components/dashboard/ProjectsKanbanView';
-import { LienzoDashboard } from './components/dashboard/LienzoDashboard';
-import { RecycleBinView } from './components/features/RecycleBinView';
-import { TimelineAgendaView } from './components/dashboard/TimelineAgendaView';
-import { NoteDetailView } from './components/dashboard/NoteDetailView';
-import { MissionEditOverlay } from './components/features/MissionEditOverlay';
-import { DayTimelineView } from './components/dashboard/DayTimelineView';
-import { ActionBanner } from './components/dashboard/ActionBanner';
 import { useAlDiaState } from './hooks/useAlDiaState';
 import type { Mission, Note } from './hooks/useAlDiaState';
 import { ProfileOverlay } from './components/layout/ProfileOverlay';
+// Eager: lo que se ve al primer render (pestaña por defecto + su banner).
 import { ChecklistDiario } from './components/dashboard/ChecklistDiario';
-import { PlanDashboard } from './components/dashboard/PlanDashboard';
-import { BaseDatosDashboard } from './components/dashboard/BaseDatosDashboard';
-import { ProyeccionOriginalDashboard } from './components/dashboard/ProyeccionOriginalDashboard';
-import { RitaDashboard } from './components/dashboard/RitaDashboard';
-import { EcosistemaMap } from './components/dashboard/EcosistemaMap';
-import { BienestarDashboard } from './components/dashboard/BienestarDashboard';
-import { DeudasyCobrosDashboard } from './components/dashboard/DeudasyCobrosDashboard';
-import { NegocioDashboard } from './components/dashboard/NegocioDashboard';
-import { NegocioLienzo } from './components/dashboard/NegocioLienzo';
-import { BuscadorDashboard } from './components/dashboard/BuscadorDashboard';
-import { MovimientosDashboard } from './components/dashboard/MovimientosDashboard';
-import { ListasDashboard } from './components/dashboard/ListasDashboard';
-import { PendientesDashboard } from './components/dashboard/PendientesDashboard';
-import { BandejaDashboard } from './components/dashboard/BandejaDashboard';
-import { ComprasDashboard } from './components/dashboard/ComprasDashboard';
-import { ComidasDashboard } from './components/dashboard/ComidasDashboard';
-import { EsporadicosDashboard } from './components/dashboard/EsporadicosDashboard';
-import { NotionDashboard } from './components/dashboard/NotionDashboard';
-import { AgendaDashboard } from './components/dashboard/AgendaDashboard';
-import { TranqueoDeVidaDashboard } from './components/dashboard/TranqueoDeVidaDashboard';
-import { MetasDashboard } from './components/dashboard/MetasDashboard';
-import { RendimientoDashboard } from './components/dashboard/RendimientoDashboard';
+import { UpcomingList } from './components/dashboard/UpcomingList';
+import { MissionList } from './components/dashboard/MissionList';
+import { ActionBanner } from './components/dashboard/ActionBanner';
+
+/* El resto de pantallas y overlays se cargan solo al abrirlas (code-splitting):
+   así el arranque baja el marco + el Checklist, no las ~45 vistas de una. */
+const named = <M extends Record<string, unknown>, K extends keyof M>(
+    loader: () => Promise<M>, key: K,
+) => lazy(() => loader().then(m => ({ default: m[key] as React.ComponentType<any> })));
+
+const VidaBloquesDashboard = named(() => import('./components/dashboard/VidaBloquesDashboard'), 'VidaBloquesDashboard');
+const CerebroDashboard = named(() => import('./components/dashboard/CerebroDashboard'), 'CerebroDashboard');
+const FinanzasDashboard = named(() => import('./components/dashboard/FinanzasDashboard'), 'FinanzasDashboard');
+const StatsDashboard = named(() => import('./components/dashboard/StatsDashboard'), 'StatsDashboard');
+const ProyectosDashboard = named(() => import('./components/dashboard/ProyectosDashboard'), 'ProyectosDashboard');
+const ProjectDetailView = named(() => import('./components/dashboard/ProjectDetailView'), 'ProjectDetailView');
+const ProjectsKanbanView = named(() => import('./components/dashboard/ProjectsKanbanView'), 'ProjectsKanbanView');
+const LienzoDashboard = named(() => import('./components/dashboard/LienzoDashboard'), 'LienzoDashboard');
+const RecycleBinView = named(() => import('./components/features/RecycleBinView'), 'RecycleBinView');
+const TimelineAgendaView = named(() => import('./components/dashboard/TimelineAgendaView'), 'TimelineAgendaView');
+const NoteDetailView = named(() => import('./components/dashboard/NoteDetailView'), 'NoteDetailView');
+const MissionEditOverlay = named(() => import('./components/features/MissionEditOverlay'), 'MissionEditOverlay');
+const DayTimelineView = named(() => import('./components/dashboard/DayTimelineView'), 'DayTimelineView');
+const PlanDashboard = named(() => import('./components/dashboard/PlanDashboard'), 'PlanDashboard');
+const BaseDatosDashboard = named(() => import('./components/dashboard/BaseDatosDashboard'), 'BaseDatosDashboard');
+const ProyeccionOriginalDashboard = named(() => import('./components/dashboard/ProyeccionOriginalDashboard'), 'ProyeccionOriginalDashboard');
+const RitaDashboard = named(() => import('./components/dashboard/RitaDashboard'), 'RitaDashboard');
+const EcosistemaMap = named(() => import('./components/dashboard/EcosistemaMap'), 'EcosistemaMap');
+const BienestarDashboard = named(() => import('./components/dashboard/BienestarDashboard'), 'BienestarDashboard');
+const DeudasyCobrosDashboard = named(() => import('./components/dashboard/DeudasyCobrosDashboard'), 'DeudasyCobrosDashboard');
+const NegocioDashboard = named(() => import('./components/dashboard/NegocioDashboard'), 'NegocioDashboard');
+const NegocioLienzo = named(() => import('./components/dashboard/NegocioLienzo'), 'NegocioLienzo');
+const BuscadorDashboard = named(() => import('./components/dashboard/BuscadorDashboard'), 'BuscadorDashboard');
+const MovimientosDashboard = named(() => import('./components/dashboard/MovimientosDashboard'), 'MovimientosDashboard');
+const ListasDashboard = named(() => import('./components/dashboard/ListasDashboard'), 'ListasDashboard');
+const PendientesDashboard = named(() => import('./components/dashboard/PendientesDashboard'), 'PendientesDashboard');
+const BandejaDashboard = named(() => import('./components/dashboard/BandejaDashboard'), 'BandejaDashboard');
+const ComprasDashboard = named(() => import('./components/dashboard/ComprasDashboard'), 'ComprasDashboard');
+const ComidasDashboard = named(() => import('./components/dashboard/ComidasDashboard'), 'ComidasDashboard');
+const EsporadicosDashboard = named(() => import('./components/dashboard/EsporadicosDashboard'), 'EsporadicosDashboard');
+const NotionDashboard = named(() => import('./components/dashboard/NotionDashboard'), 'NotionDashboard');
+const AgendaDashboard = named(() => import('./components/dashboard/AgendaDashboard'), 'AgendaDashboard');
+const TranqueoDeVidaDashboard = named(() => import('./components/dashboard/TranqueoDeVidaDashboard'), 'TranqueoDeVidaDashboard');
+const MetasDashboard = named(() => import('./components/dashboard/MetasDashboard'), 'MetasDashboard');
+const RendimientoDashboard = named(() => import('./components/dashboard/RendimientoDashboard'), 'RendimientoDashboard');
 
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -198,6 +206,11 @@ function App() {
         onTrashClick={() => setIsTrashOpen(true)}
       />
 
+      <Suspense fallback={
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', color: '#94A3B8', fontSize: '0.8rem', fontWeight: 700 }}>
+          Cargando…
+        </div>
+      }>
       <main className={`dashboard ${activeTab === 'Calendario' || activeTab === 'Lienzo' || activeTab === 'Lienzo Ops' ? 'full-bleed' : ''}`}>
         <AnimatePresence mode="wait">
           <motion.div
@@ -706,6 +719,7 @@ function App() {
         onClear={state.clearTrash}
         onClose={() => setIsTrashOpen(false)}
       />
+      </Suspense>
 
     </div>
   );
