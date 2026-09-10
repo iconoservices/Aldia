@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, X, Trash2, Edit2, Check, MoreVertical, ListTodo, Package, CalendarClock, ChevronDown } from "lucide-react";
+import { Plus, X, Trash2, Edit2, Check, MoreVertical, ListTodo, Package, CalendarClock, ChevronDown, AlertTriangle } from "lucide-react";
 import type { Note, CalendarEvent } from "../../hooks/useAlDiaState";
 import { C, bento, etiqueta, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina } from "../../theme";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
@@ -73,9 +73,16 @@ export const PendientesDashboard = ({ notes, addNote, removeNote, toggleNoteItem
             .sort((a, b) => a.date.localeCompare(b.date)),
         [agenda, hoy]
     );
+    // Entregas cuya fecha de entrega ya venció y todavía no están terminadas ni entregadas.
+    const entregasAtrasadas = useMemo(
+        () => agenda
+            .filter(e => e.notionEntregaFecha && e.notionEntregaFecha < hoy && e.notionEstado !== 'Terminado' && e.notionEstado !== 'Entregado')
+            .sort((a, b) => (a.notionEntregaFecha || '').localeCompare(b.notionEntregaFecha || '')),
+        [agenda, hoy]
+    );
 
     const totalPendientes = grupos.reduce((n, g) => n + g.items.filter(it => !it.completed).length, 0)
-        + porEntregar.length + porReagendar.length;
+        + porEntregar.length + porReagendar.length + entregasAtrasadas.length;
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: movil ? "1rem" : "1.5rem", ...paddingPagina(movil), color: "var(--text-carbon)" }}>
@@ -101,7 +108,12 @@ export const PendientesDashboard = ({ notes, addNote, removeNote, toggleNoteItem
             )}
 
             <div style={{ display: "grid", gridTemplateColumns: movil ? "1fr" : "repeat(auto-fill, minmax(280px, 1fr))", gap: movil ? "0.85rem" : "1.25rem", alignItems: "start" }}>
-                {/* Grupos automáticos primero, para que salte a la vista lo que ya está listo */}
+                {/* Tus grupos primero: es el orden en que vas a hacer las cosas.
+                    Debajo, los grupos AUTO que salen solos de la Agenda. */}
+                {grupos.map(g => (
+                    <GrupoCard key={g.id} grupo={g} removeNote={removeNote} toggleNoteItem={toggleNoteItem} updateNote={updateNote} />
+                ))}
+
                 {porEntregar.length > 0 && (
                     <AutoCard
                         icon={<Package size={15} color={C.verde} />}
@@ -109,6 +121,15 @@ export const PendientesDashboard = ({ notes, addNote, removeNote, toggleNoteItem
                         color={C.verde}
                         items={porEntregar.map(e => ({ id: e.id, texto: e.title, extra: e.notionEntregaFecha ? `entrega ${formatFecha(e.notionEntregaFecha)}` : undefined }))}
                         nota="Editadas, falta entregarlas. Márcalas como Entregado en Agenda."
+                    />
+                )}
+                {entregasAtrasadas.length > 0 && (
+                    <AutoCard
+                        icon={<AlertTriangle size={15} color={C.rojo} />}
+                        titulo="Entregas atrasadas"
+                        color={C.rojo}
+                        items={entregasAtrasadas.map(e => ({ id: e.id, texto: e.title, extra: e.notionEntregaFecha ? `era ${formatFecha(e.notionEntregaFecha)}` : undefined }))}
+                        nota="Su fecha de entrega ya pasó y siguen sin terminar. Ponte al día o reagenda la entrega."
                     />
                 )}
                 {porReagendar.length > 0 && (
@@ -120,13 +141,9 @@ export const PendientesDashboard = ({ notes, addNote, removeNote, toggleNoteItem
                         nota="Su fecha ya pasó y siguen en Agendado. Reagéndalas o ciérralas en Agenda."
                     />
                 )}
-
-                {grupos.map(g => (
-                    <GrupoCard key={g.id} grupo={g} removeNote={removeNote} toggleNoteItem={toggleNoteItem} updateNote={updateNote} />
-                ))}
             </div>
 
-            {grupos.length === 0 && porEntregar.length === 0 && porReagendar.length === 0 && !creando && (
+            {grupos.length === 0 && porEntregar.length === 0 && porReagendar.length === 0 && entregasAtrasadas.length === 0 && !creando && (
                 <div style={{ textAlign: "center", padding: "3rem 1rem", color: C.outline }}>
                     <ListTodo size={32} style={{ opacity: 0.4, marginBottom: "0.5rem" }} />
                     <p style={{ margin: 0, fontSize: "0.85rem" }}>Sin pendientes. Crea el primer grupo arriba.</p>
