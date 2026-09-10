@@ -179,42 +179,44 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
                 </div>
             </div>
 
-            {/* Captura */}
-            <form
-                onSubmit={e => { e.preventDefault(); tirar(); }}
-                style={{ ...bento, padding: "12px", position: "sticky", top: movil ? "68px" : "0", zIndex: 3 }}
-            >
-                <input
-                    ref={inputRef}
-                    autoFocus
-                    enterKeyHint="done"
-                    placeholder="¿Qué tienes en la cabeza? + Enter"
-                    value={captura}
-                    onChange={e => setCaptura(e.target.value)}
-                    style={inputStyle}
-                />
-                <button type="submit" style={{ display: "none" }} aria-hidden tabIndex={-1} />
-            </form>
+            {/* Un solo bloque: captura + filtro + lista */}
+            <div style={{ ...bento, padding: 0, overflow: "hidden" }}>
+                {/* Captura — dentro del mismo bloque, pegada arriba */}
+                <form
+                    onSubmit={e => { e.preventDefault(); tirar(); }}
+                    style={{ padding: "12px", background: C.surfaceLowest, borderBottom: `1px solid ${C.surfaceContainerHigh}` }}
+                >
+                    <input
+                        ref={inputRef}
+                        autoFocus
+                        enterKeyHint="done"
+                        placeholder="¿Qué tienes en la cabeza? + Enter"
+                        value={captura}
+                        onChange={e => setCaptura(e.target.value)}
+                        style={inputStyle}
+                    />
+                    <button type="submit" style={{ display: "none" }} aria-hidden tabIndex={-1} />
+                </form>
 
-            {/* Filtro por etiqueta */}
-            {todasEtiquetas.length > 0 && (
-                <div style={{ display: "flex", gap: "8px", flexWrap: movil ? "nowrap" : "wrap", overflowX: movil ? "auto" : "visible", paddingBottom: movil ? "4px" : 0, alignItems: "center" }}>
-                    <TagIcon size={15} strokeWidth={2.5} style={{ color: C.outline, flexShrink: 0 }} />
-                    {grupos.map(g => (
-                        <button key={g.tag} onClick={() => toggleFiltro(g.tag)} style={chip(filtro.includes(g.tag))}>
-                            {g.tag === SIN ? "sin etiqueta" : g.tag} <span style={{ opacity: 0.7 }}>{g.items.length}</span>
-                        </button>
-                    ))}
-                    {filtro.length > 0 && (
-                        <button onClick={() => setFiltro([])} style={{ ...chip(false), background: "transparent", color: C.rojo }}>
-                            <X size={13} strokeWidth={2.5} /> ver todo
-                        </button>
-                    )}
-                </div>
-            )}
+                {/* Filtro por etiqueta */}
+                {todasEtiquetas.length > 0 && (
+                    <div style={{ display: "flex", gap: "8px", flexWrap: movil ? "nowrap" : "wrap", overflowX: movil ? "auto" : "visible", alignItems: "center", padding: "10px 12px", borderBottom: `1px solid ${C.surfaceContainerHigh}` }}>
+                        <TagIcon size={15} strokeWidth={2.5} style={{ color: C.outline, flexShrink: 0 }} />
+                        {grupos.map(g => (
+                            <button key={g.tag} onClick={() => toggleFiltro(g.tag)} style={chip(filtro.includes(g.tag))}>
+                                {g.tag === SIN ? "sin etiqueta" : g.tag} <span style={{ opacity: 0.7 }}>{g.items.length}</span>
+                            </button>
+                        ))}
+                        {filtro.length > 0 && (
+                            <button onClick={() => setFiltro([])} style={{ ...chip(false), background: "transparent", color: C.rojo }}>
+                                <X size={13} strokeWidth={2.5} /> ver todo
+                            </button>
+                        )}
+                    </div>
+                )}
 
-            {/* Lista agrupada */}
-            <div style={{ ...bento, padding: movil ? "8px 12px 12px" : "12px 16px 16px" }}>
+                {/* Lista agrupada */}
+                <div style={{ padding: movil ? "8px 12px 12px" : "12px 16px 16px" }}>
                 {abiertas.length === 0 && hechos.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "48px 16px", color: C.outline }}>
                         <Inbox size={32} strokeWidth={2} style={{ opacity: 0.4, marginBottom: "8px" }} />
@@ -256,6 +258,7 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
                         )}
                     </>
                 )}
+                </div>
             </div>
         </div>
     );
