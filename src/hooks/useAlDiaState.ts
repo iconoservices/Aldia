@@ -489,7 +489,7 @@ export interface Note {
     title: string;
     content: string;
     type: 'text' | 'checklist';
-    items: { id: number; text: string; completed: boolean }[];
+    items: { id: number; text: string; completed: boolean; tags?: string[] }[];
     q: string; // Cuadrante (opcional, para relevancia)
     color: string;
     date: string;
