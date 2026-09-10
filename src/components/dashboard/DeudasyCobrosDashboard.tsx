@@ -91,11 +91,11 @@ const getEstadoBadge = (tx: Transaction): { label: string; bg: string; text: str
     const diffDays = Math.ceil((txDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
     if (tx.type === "gasto") {
-        if (diffDays < 0) return { label: "Vencido", bg: "#FFDAD6", text: "#93000A" };
+        if (diffDays < 0) return { label: "Vencido", bg: "#FFDAD6", text: "#7A1512" };
         if (diffDays <= 5) return { label: "Próximo", bg: "#FFB786", text: "#6E2C00" };
         return { label: "Pendiente", bg: "#DCE7E1", text: "#4A5F58" };
     } else {
-        if (diffDays < 0) return { label: "Atrasado", bg: "#FFDAD6", text: "#93000A" };
+        if (diffDays < 0) return { label: "Atrasado", bg: "#FFDAD6", text: "#7A1512" };
         if (diffDays <= 5) return { label: "Próximo", bg: "#FFB786", text: "#6E2C00" };
         if (diffDays <= 15) return { label: "Confirmado", bg: "#CDEDDD", text: "#0C8F67" };
         return { label: "Programado", bg: "#DCE7E1", text: "#4A5F58" };
@@ -103,7 +103,7 @@ const getEstadoBadge = (tx: Transaction): { label: string; bg: string; text: str
 };
 
 const formatDate = (dateStr: string) => {
-    if (!dateStr) return "â€”";
+    if (!dateStr) return "—";
     const d = new Date(dateStr + "T12:00:00");
     return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
 };
@@ -123,16 +123,16 @@ const getContactIcon = (contact?: string, type?: string) => {
 };
 
 const getIconColor = (badge: { label: string }) => {
-    if (badge.label === "Vencido" || badge.label === "Atrasado") return { bg: "rgba(186,26,26,0.1)", color: "#BA1A1A" };
-    if (badge.label === "Próximo") return { bg: "rgba(146,71,0,0.1)", color: "#924700" };
+    if (badge.label === "Vencido" || badge.label === "Atrasado") return { bg: "rgba(198,60,60,0.1)", color: "#C63C3C" };
+    if (badge.label === "Próximo") return { bg: "rgba(185,118,10,0.1)", color: "#B9760A" };
     if (badge.label === "Confirmado") return { bg: "rgba(16,185,129,0.1)", color: "#0E9F6E" };
-    return { bg: "#DAE2FD", color: "#565E74" };
+    return { bg: "#DFF3E9", color: "#4A5F58" };
 };
 
 const CARD: React.CSSProperties = {
     background: "#fff",
     borderRadius: "12px",
-    boxShadow: "0px 4px 12px rgba(15,23,24,0.05)",
+    boxShadow: "0px 4px 12px rgba(12,42,32,0.06)",
     overflow: "hidden",
 };
 
@@ -140,7 +140,7 @@ const TH: React.CSSProperties = {
     padding: "14px 16px",
     fontSize: "0.68rem",
     fontWeight: 800,
-    color: "#424754",
+    color: "#4A5F58",
     textTransform: "uppercase",
     letterSpacing: "0.06em",
     textAlign: "left",
@@ -149,8 +149,8 @@ const TH: React.CSSProperties = {
 const TD: React.CSSProperties = {
     padding: "14px 16px",
     fontSize: "0.88rem",
-    color: "#191B23",
-    borderBottom: "1px solid #E6E7F2",
+    color: "#0C2A20",
+    borderBottom: "1px solid #DCE7E1",
 };
 
 const SELECT_MINI: React.CSSProperties = {
@@ -164,7 +164,7 @@ const SELECT_MINI: React.CSSProperties = {
 // ilegible.
 const ABONO_PANEL: React.CSSProperties = {
     display: "flex", flexDirection: "column", gap: "5px",
-    background: "#F7FAF8", border: "1px solid #E6E7F2", borderRadius: "8px",
+    background: "#F7FAF8", border: "1px solid #DCE7E1", borderRadius: "8px",
     padding: "7px", minWidth: "150px",
 };
 
@@ -172,25 +172,25 @@ const BTN_PRIMARY: React.CSSProperties = {
     padding: "10px 18px",
     border: "none",
     borderRadius: "8px",
-    background: "#0058BE",
+    background: "#0FA97A",
     color: "#fff",
-    fontFamily: "'Inter', sans-serif",
+    fontFamily: "'Plus Jakarta Sans', sans-serif",
     fontSize: "0.85rem",
     fontWeight: 600,
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
     gap: "8px",
-    boxShadow: "0 4px 12px rgba(0,88,190,0.25)",
+    boxShadow: "0 4px 12px rgba(15,169,122,0.22)",
 };
 
 const BTN_SECONDARY: React.CSSProperties = {
     padding: "10px 18px",
-    border: "1px solid #C2C6D6",
+    border: "1px solid #DCE7E1",
     borderRadius: "8px",
     background: "#fff",
-    color: "#191B23",
-    fontFamily: "'Inter', sans-serif",
+    color: "#0C2A20",
+    fontFamily: "'Plus Jakarta Sans', sans-serif",
     fontSize: "0.85rem",
     fontWeight: 600,
     cursor: "pointer",
@@ -204,7 +204,7 @@ const BTN_SECONDARY: React.CSSProperties = {
 // trae `item.amount` (el saldo restante de la deuda), no se pide de nuevo.
 const ConvertPanel = ({ item, accounts, cuota, setCuota, dueDay, setDueDay, accountId, setAccountId, onConfirm, onCancel, full }: any) => (
     <div style={{ ...ABONO_PANEL, ...(full ? { flex: "1 1 100%" } : {}) }}>
-        <div style={{ fontSize: "0.64rem", fontWeight: 700, color: "#424754" }}>
+        <div style={{ fontSize: "0.64rem", fontWeight: 700, color: "#4A5F58" }}>
             A plazos · deuda total S/ {item.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
         </div>
         <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
@@ -218,7 +218,7 @@ const ConvertPanel = ({ item, accounts, cuota, setCuota, dueDay, setDueDay, acco
             </select>
         </div>
         <div style={{ display: "flex", gap: "4px" }}>
-            <button onClick={onConfirm} style={{ background: "#4858AB", color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.64rem", cursor: "pointer" }}>Convertir</button>
+            <button onClick={onConfirm} style={{ background: "#0C8F67", color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.64rem", cursor: "pointer" }}>Convertir</button>
             <button onClick={onCancel} style={{ background: "none", border: "none", cursor: "pointer", color: "#6C8079", padding: "2px", fontSize: "0.75rem", fontWeight: 800 }}>✕</button>
         </div>
     </div>
@@ -673,7 +673,7 @@ export const DeudasyCobrosDashboard = ({
         <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
 <thead>
-                    <tr style={{ background: "#F2F3FD", borderBottom: "1px solid #C2C6D6" }}>
+                    <tr style={{ background: "#F1F5F3", borderBottom: "1px solid #DCE7E1" }}>
                         <th style={TH}>Acreedor</th>
                         <th style={TH}>Monto</th>
                         <th style={TH}>Fecha</th>
@@ -684,7 +684,7 @@ export const DeudasyCobrosDashboard = ({
 <tbody>
                     {items.length === 0 && (
                         <tr>
-                            <td colSpan={5} style={{ ...TD, textAlign: "center", color: "#727785", padding: "2.5rem", borderBottom: "none" }}>
+                            <td colSpan={5} style={{ ...TD, textAlign: "center", color: "#6C8079", padding: "2.5rem", borderBottom: "none" }}>
                                 Sin deudas registradas 🎉
                             </td>
                         </tr>
@@ -698,7 +698,7 @@ export const DeudasyCobrosDashboard = ({
                             <Fragment key={item.key}>
                                 <tr
                                     style={{ transition: "background 0.15s" }}
-                                    onMouseEnter={e => (e.currentTarget.style.background = "#F2F3FD")}
+                                    onMouseEnter={e => (e.currentTarget.style.background = "#F1F5F3")}
                                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                                 >
                                     <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent" }}>
@@ -709,7 +709,7 @@ export const DeudasyCobrosDashboard = ({
                                                 </div>
                                             ) : (
                                                 <div style={{ width: "32px", display: "flex", justifyContent: "center", flexShrink: 0 }}>
-                                                    <div style={{ width: "2px", alignSelf: "stretch", minHeight: "18px", background: "#DAE2FD" }} />
+                                                    <div style={{ width: "2px", alignSelf: "stretch", minHeight: "18px", background: "#DFF3E9" }} />
                                                 </div>
                                             )}
                                             <div>
@@ -718,15 +718,15 @@ export const DeudasyCobrosDashboard = ({
                                                 ) : (
                                                     <div style={{ fontSize: "0.72rem", color: "#6C8079", fontWeight: 600 }}>↳ mismo contacto</div>
                                                 )}
-                                                {item.contact && <div style={{ fontSize: "0.72rem", color: "#727785" }}>{item.name}</div>}
+                                                {item.contact && <div style={{ fontSize: "0.72rem", color: "#6C8079" }}>{item.name}</div>}
                                                 {item.originalTx.notes && <div style={{ fontSize: "0.7rem", color: "#6C8079", fontStyle: "italic" }}>{item.originalTx.notes}</div>}
                                             </div>
                                         </div>
                                     </td>
-                                    <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent", fontWeight: 700, color: "#BA1A1A", fontVariantNumeric: "tabular-nums" }}>
+                                    <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent", fontWeight: 700, color: "#C63C3C", fontVariantNumeric: "tabular-nums" }}>
                                         {formatCurrency(item.amount)}
                                     </td>
-                                    <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent", color: "#424754", fontSize: "0.82rem" }}>{formatDate(item.originalTx.dueDate || item.originalTx.fullDate)}</td>
+                                    <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent", color: "#4A5F58", fontSize: "0.82rem" }}>{formatDate(item.originalTx.dueDate || item.originalTx.fullDate)}</td>
                                     <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent" }}>
                                         <span style={{ padding: "3px 10px", borderRadius: "999px", background: badge.bg, color: badge.text, fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
                                             {badge.label}
@@ -754,12 +754,12 @@ export const DeudasyCobrosDashboard = ({
                                                 <>
                                                     <button onClick={() => openAbonar(item)} title="Abonar" style={{ background: "#DCE7E1", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#4A5F58" }}>Abonar</button>
                                                     {addFixedExpense && (
-                                                        <button onClick={() => openConvert(item)} title="Convertir a pago fijo" style={{ background: "#DAE2FD", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#4858AB" }}>A plazos</button>
+                                                        <button onClick={() => openConvert(item)} title="Convertir a pago fijo" style={{ background: "#DFF3E9", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#0C8F67" }}>A plazos</button>
                                                     )}
-                                                    <button onClick={() => handleEdit(item)} title="Editar" style={{ background: "none", border: "1px solid #0058BE", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#0058BE" }}>
+                                                    <button onClick={() => handleEdit(item)} title="Editar" style={{ background: "none", border: "1px solid #0FA97A", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#0FA97A" }}>
                                                         <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>edit</span>
                                                     </button>
-                                                    <button onClick={() => handleDelete(item)} title="Eliminar" style={{ background: "none", border: "1px solid #BA1A1A", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#BA1A1A" }}>
+                                                    <button onClick={() => handleDelete(item)} title="Eliminar" style={{ background: "none", border: "1px solid #C63C3C", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#C63C3C" }}>
                                                         <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>delete</span>
                                                     </button>
                                                 </>
@@ -771,8 +771,8 @@ export const DeudasyCobrosDashboard = ({
                                     <tr style={{ background: "#F7FAF8" }}>
                                         <td colSpan={5} style={{ ...TD, padding: "6px 16px 6px 52px", fontSize: "0.74rem" }}>
                                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                                <span style={{ color: "#727785", fontWeight: 700 }}>Subtotal {item.contact} · {groupCount} deudas</span>
-                                                <span style={{ fontWeight: 800, color: "#BA1A1A" }}>{formatCurrency(groupTotal)}</span>
+                                                <span style={{ color: "#6C8079", fontWeight: 700 }}>Subtotal {item.contact} · {groupCount} deudas</span>
+                                                <span style={{ fontWeight: 800, color: "#C63C3C" }}>{formatCurrency(groupTotal)}</span>
                                             </div>
                                         </td>
                                     </tr>
@@ -789,7 +789,7 @@ export const DeudasyCobrosDashboard = ({
         <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                    <tr style={{ background: "#F2F3FD", borderBottom: "1px solid #C2C6D6" }}>
+                    <tr style={{ background: "#F1F5F3", borderBottom: "1px solid #DCE7E1" }}>
                         <th style={TH}>Deudor</th>
                         <th style={TH}>Monto</th>
                         <th style={TH}>Fecha Est.</th>
@@ -800,7 +800,7 @@ export const DeudasyCobrosDashboard = ({
                 <tbody>
                     {items.length === 0 && (
                         <tr>
-                            <td colSpan={5} style={{ ...TD, textAlign: "center", color: "#727785", padding: "2.5rem", borderBottom: "none" }}>
+                            <td colSpan={5} style={{ ...TD, textAlign: "center", color: "#6C8079", padding: "2.5rem", borderBottom: "none" }}>
                                 Sin cobros registrados
                             </td>
                         </tr>
@@ -814,7 +814,7 @@ export const DeudasyCobrosDashboard = ({
                             <Fragment key={item.key}>
                             <tr
                                 style={{ transition: "background 0.15s" }}
-                                onMouseEnter={e => (e.currentTarget.style.background = "#F2F3FD")}
+                                onMouseEnter={e => (e.currentTarget.style.background = "#F1F5F3")}
                                 onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                             >
                                 <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent" }}>
@@ -834,7 +834,7 @@ export const DeudasyCobrosDashboard = ({
                                             ) : (
                                                 <div style={{ fontSize: "0.72rem", color: "#6C8079", fontWeight: 600 }}>↳ mismo contacto</div>
                                             )}
-                                            {item.contact && <div style={{ fontSize: "0.72rem", color: "#727785" }}>{item.name}</div>}
+                                            {item.contact && <div style={{ fontSize: "0.72rem", color: "#6C8079" }}>{item.name}</div>}
                                             {item.originalTx.notes && <div style={{ fontSize: "0.7rem", color: "#6C8079", fontStyle: "italic" }}>{item.originalTx.notes}</div>}
                                         </div>
                                     </div>
@@ -842,7 +842,7 @@ export const DeudasyCobrosDashboard = ({
                                 <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent", fontWeight: 700, color: "#0E9F6E", fontVariantNumeric: "tabular-nums" }}>
                                     {formatCurrency(item.amount)}
                                 </td>
-                                <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent", color: "#424754", fontSize: "0.82rem" }}>{formatDate(item.originalTx.dueDate || item.originalTx.fullDate)}</td>
+                                <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent", color: "#4A5F58", fontSize: "0.82rem" }}>{formatDate(item.originalTx.dueDate || item.originalTx.fullDate)}</td>
                                 <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent" }}>
                                     <span style={{ padding: "3px 10px", borderRadius: "999px", background: badge.bg, color: badge.text, fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
                                         {badge.label}
@@ -876,15 +876,15 @@ export const DeudasyCobrosDashboard = ({
                                                 <>
                                                     <button onClick={() => openAbonar(item)} title="Cobrar" style={{ background: "#DCE7E1", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#4A5F58" }}>Cobrar</button>
                                                     {updatePreference && (
-                                                        <button onClick={() => openConvert(item)} title="Convertir a cobro fijo" style={{ background: "#DAE2FD", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#4858AB" }}>A plazos</button>
+                                                        <button onClick={() => openConvert(item)} title="Convertir a cobro fijo" style={{ background: "#DFF3E9", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#0C8F67" }}>A plazos</button>
                                                     )}
-                                                    <button onClick={() => handleEdit(item)} title="Editar" style={{ background: "none", border: "1px solid #0058BE", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#0058BE" }}>
+                                                    <button onClick={() => handleEdit(item)} title="Editar" style={{ background: "none", border: "1px solid #0FA97A", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#0FA97A" }}>
                                                         <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>edit</span>
                                                     </button>
-                                                    <button onClick={() => handleDelete(item)} title="Eliminar" style={{ background: "none", border: "1px solid #BA1A1A", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#BA1A1A" }}>
+                                                    <button onClick={() => handleDelete(item)} title="Eliminar" style={{ background: "none", border: "1px solid #C63C3C", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#C63C3C" }}>
                                                         <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>delete</span>
                                                     </button>
-                                                    <button onClick={() => setConfirmPayId(id)} title="Marcar como cobrado" style={{ background: "none", border: "1px solid #C2C6D6", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#424754" }}>
+                                                    <button onClick={() => setConfirmPayId(id)} title="Marcar como cobrado" style={{ background: "none", border: "1px solid #DCE7E1", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#4A5F58" }}>
                                                         <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>check_circle</span>
                                                     </button>
                                                 </>
@@ -897,7 +897,7 @@ export const DeudasyCobrosDashboard = ({
                                 <tr style={{ background: "#F7FAF8" }}>
                                     <td colSpan={5} style={{ ...TD, padding: "6px 16px 6px 52px", fontSize: "0.74rem" }}>
                                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                            <span style={{ color: "#727785", fontWeight: 700 }}>Subtotal {item.contact} · {groupCount} cobros</span>
+                                            <span style={{ color: "#6C8079", fontWeight: 700 }}>Subtotal {item.contact} · {groupCount} cobros</span>
                                             <span style={{ fontWeight: 800, color: "#0E9F6E" }}>{formatCurrency(groupTotal)}</span>
                                         </div>
                                     </td>
@@ -916,7 +916,7 @@ export const DeudasyCobrosDashboard = ({
     const renderDebtCards = (items: DebtGroup[]) => (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", padding: "0.75rem" }}>
             {items.length === 0 && (
-                <p style={{ textAlign: "center", color: "#727785", padding: "2rem 0", margin: 0, fontSize: "0.85rem" }}>Sin deudas registradas 🎉</p>
+                <p style={{ textAlign: "center", color: "#6C8079", padding: "2rem 0", margin: 0, fontSize: "0.85rem" }}>Sin deudas registradas 🎉</p>
             )}
             {annotateGroups(items).map(({ item, groupCount, groupTotal, isFirstOfGroup, isLastOfGroup }) => {
                 const badge = getEstadoBadge(item.originalTx);
@@ -925,7 +925,7 @@ export const DeudasyCobrosDashboard = ({
                 const id = item.originalTx.id;
                 return (
                     <Fragment key={item.key}>
-                    <div style={{ background: "#fff", border: "1px solid #E6E7F2", borderLeft: isFirstOfGroup ? "1px solid #E6E7F2" : "3px solid #DAE2FD", borderRadius: "12px", padding: "10px 12px" }}>
+                    <div style={{ background: "#fff", border: "1px solid #DCE7E1", borderLeft: isFirstOfGroup ? "1px solid #DCE7E1" : "3px solid #DFF3E9", borderRadius: "12px", padding: "10px 12px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                             <div style={{ width: "30px", height: "30px", borderRadius: "50%", background: iconC.bg, color: iconC.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                 <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>{icon}</span>
@@ -936,12 +936,12 @@ export const DeudasyCobrosDashboard = ({
                                 ) : (
                                     <div style={{ fontSize: "0.7rem", color: "#6C8079", fontWeight: 700 }}>↳ mismo contacto</div>
                                 )}
-                                {item.contact && <div style={{ fontSize: "0.66rem", color: "#727785", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>}
+                                {item.contact && <div style={{ fontSize: "0.66rem", color: "#6C8079", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>}
                                 {item.originalTx.notes && <div style={{ fontSize: "0.64rem", color: "#6C8079", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.originalTx.notes}</div>}
                             </div>
                             <div style={{ textAlign: "right", flexShrink: 0 }}>
-                                <div style={{ fontWeight: 700, color: "#BA1A1A", fontSize: "0.82rem", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(item.amount)}</div>
-                                <div style={{ fontSize: "0.6rem", color: "#424754" }}>{formatDate(item.originalTx.dueDate || item.originalTx.fullDate)}</div>
+                                <div style={{ fontWeight: 700, color: "#C63C3C", fontSize: "0.82rem", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(item.amount)}</div>
+                                <div style={{ fontSize: "0.6rem", color: "#4A5F58" }}>{formatDate(item.originalTx.dueDate || item.originalTx.fullDate)}</div>
                             </div>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: (abonarId === id || convertId === id) ? "flex-start" : "center", marginTop: "8px", gap: "6px", flexWrap: "wrap" }}>
@@ -967,12 +967,12 @@ export const DeudasyCobrosDashboard = ({
                                 <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
                                     <button onClick={() => openAbonar(item)} title="Abonar" style={{ background: "#DCE7E1", border: "none", borderRadius: "4px", padding: "4px 7px", fontWeight: 700, fontSize: "0.62rem", cursor: "pointer", color: "#4A5F58" }}>Abonar</button>
                                     {addFixedExpense && (
-                                        <button onClick={() => openConvert(item)} title="Convertir a pago fijo" style={{ background: "#DAE2FD", border: "none", borderRadius: "4px", padding: "4px 7px", fontWeight: 700, fontSize: "0.62rem", cursor: "pointer", color: "#4858AB" }}>A plazos</button>
+                                        <button onClick={() => openConvert(item)} title="Convertir a pago fijo" style={{ background: "#DFF3E9", border: "none", borderRadius: "4px", padding: "4px 7px", fontWeight: 700, fontSize: "0.62rem", cursor: "pointer", color: "#0C8F67" }}>A plazos</button>
                                     )}
-                                    <button onClick={() => handleEdit(item)} title="Editar" style={{ background: "none", border: "1px solid #0058BE", borderRadius: "6px", padding: "4px 6px", cursor: "pointer", color: "#0058BE", display: "flex" }}>
+                                    <button onClick={() => handleEdit(item)} title="Editar" style={{ background: "none", border: "1px solid #0FA97A", borderRadius: "6px", padding: "4px 6px", cursor: "pointer", color: "#0FA97A", display: "flex" }}>
                                         <span className="material-symbols-outlined" style={{ fontSize: "13px" }}>edit</span>
                                     </button>
-                                    <button onClick={() => handleDelete(item)} title="Eliminar" style={{ background: "none", border: "1px solid #BA1A1A", borderRadius: "6px", padding: "4px 6px", cursor: "pointer", color: "#BA1A1A", display: "flex" }}>
+                                    <button onClick={() => handleDelete(item)} title="Eliminar" style={{ background: "none", border: "1px solid #C63C3C", borderRadius: "6px", padding: "4px 6px", cursor: "pointer", color: "#C63C3C", display: "flex" }}>
                                         <span className="material-symbols-outlined" style={{ fontSize: "13px" }}>delete</span>
                                     </button>
                                 </div>
@@ -980,9 +980,9 @@ export const DeudasyCobrosDashboard = ({
                         </div>
                     </div>
                     {isLastOfGroup && groupCount > 1 && (
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F7FAF8", border: "1px dashed #C2C6D6", borderRadius: "8px", padding: "5px 10px", fontSize: "0.68rem", marginTop: "-0.3rem" }}>
-                            <span style={{ color: "#727785", fontWeight: 700 }}>Subtotal {item.contact} · {groupCount} deudas</span>
-                            <span style={{ fontWeight: 800, color: "#BA1A1A" }}>{formatCurrency(groupTotal)}</span>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F7FAF8", border: "1px dashed #DCE7E1", borderRadius: "8px", padding: "5px 10px", fontSize: "0.68rem", marginTop: "-0.3rem" }}>
+                            <span style={{ color: "#6C8079", fontWeight: 700 }}>Subtotal {item.contact} · {groupCount} deudas</span>
+                            <span style={{ fontWeight: 800, color: "#C63C3C" }}>{formatCurrency(groupTotal)}</span>
                         </div>
                     )}
                     </Fragment>
@@ -994,7 +994,7 @@ export const DeudasyCobrosDashboard = ({
     const renderCobroCards = (items: DebtGroup[]) => (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", padding: "0.75rem" }}>
             {items.length === 0 && (
-                <p style={{ textAlign: "center", color: "#727785", padding: "2rem 0", margin: 0, fontSize: "0.85rem" }}>Sin cobros registrados</p>
+                <p style={{ textAlign: "center", color: "#6C8079", padding: "2rem 0", margin: 0, fontSize: "0.85rem" }}>Sin cobros registrados</p>
             )}
             {annotateGroups(items).map(({ item, groupCount, groupTotal, isFirstOfGroup, isLastOfGroup }) => {
                 const badge = getEstadoBadge(item.originalTx);
@@ -1003,7 +1003,7 @@ export const DeudasyCobrosDashboard = ({
                 const id = item.originalTx.id;
                 return (
                     <Fragment key={item.key}>
-                    <div style={{ background: "#fff", border: "1px solid #E6E7F2", borderLeft: isFirstOfGroup ? "1px solid #E6E7F2" : "3px solid #CDEDDD", borderRadius: "12px", padding: "10px 12px" }}>
+                    <div style={{ background: "#fff", border: "1px solid #DCE7E1", borderLeft: isFirstOfGroup ? "1px solid #DCE7E1" : "3px solid #CDEDDD", borderRadius: "12px", padding: "10px 12px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                             <div style={{ width: "30px", height: "30px", borderRadius: "50%", background: iconC.bg, color: iconC.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                 <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>{icon}</span>
@@ -1014,12 +1014,12 @@ export const DeudasyCobrosDashboard = ({
                                 ) : (
                                     <div style={{ fontSize: "0.7rem", color: "#6C8079", fontWeight: 700 }}>↳ mismo contacto</div>
                                 )}
-                                {item.contact && <div style={{ fontSize: "0.66rem", color: "#727785", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>}
+                                {item.contact && <div style={{ fontSize: "0.66rem", color: "#6C8079", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>}
                                 {item.originalTx.notes && <div style={{ fontSize: "0.64rem", color: "#6C8079", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.originalTx.notes}</div>}
                             </div>
                             <div style={{ textAlign: "right", flexShrink: 0 }}>
                                 <div style={{ fontWeight: 700, color: "#0E9F6E", fontSize: "0.82rem", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(item.amount)}</div>
-                                <div style={{ fontSize: "0.6rem", color: "#424754" }}>{formatDate(item.originalTx.dueDate || item.originalTx.fullDate)}</div>
+                                <div style={{ fontSize: "0.6rem", color: "#4A5F58" }}>{formatDate(item.originalTx.dueDate || item.originalTx.fullDate)}</div>
                             </div>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px", gap: "6px", flexWrap: "wrap" }}>
@@ -1050,15 +1050,15 @@ export const DeudasyCobrosDashboard = ({
                                 <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
                                     <button onClick={() => openAbonar(item)} title="Cobrar" style={{ background: "#DCE7E1", border: "none", borderRadius: "4px", padding: "4px 7px", fontWeight: 700, fontSize: "0.62rem", cursor: "pointer", color: "#4A5F58" }}>Cobrar</button>
                                     {updatePreference && (
-                                        <button onClick={() => openConvert(item)} title="Convertir a cobro fijo" style={{ background: "#DAE2FD", border: "none", borderRadius: "4px", padding: "4px 7px", fontWeight: 700, fontSize: "0.62rem", cursor: "pointer", color: "#4858AB" }}>A plazos</button>
+                                        <button onClick={() => openConvert(item)} title="Convertir a cobro fijo" style={{ background: "#DFF3E9", border: "none", borderRadius: "4px", padding: "4px 7px", fontWeight: 700, fontSize: "0.62rem", cursor: "pointer", color: "#0C8F67" }}>A plazos</button>
                                     )}
-                                    <button onClick={() => handleEdit(item)} title="Editar" style={{ background: "none", border: "1px solid #0058BE", borderRadius: "6px", padding: "4px 6px", cursor: "pointer", color: "#0058BE", display: "flex" }}>
+                                    <button onClick={() => handleEdit(item)} title="Editar" style={{ background: "none", border: "1px solid #0FA97A", borderRadius: "6px", padding: "4px 6px", cursor: "pointer", color: "#0FA97A", display: "flex" }}>
                                         <span className="material-symbols-outlined" style={{ fontSize: "13px" }}>edit</span>
                                     </button>
-                                    <button onClick={() => handleDelete(item)} title="Eliminar" style={{ background: "none", border: "1px solid #BA1A1A", borderRadius: "6px", padding: "4px 6px", cursor: "pointer", color: "#BA1A1A", display: "flex" }}>
+                                    <button onClick={() => handleDelete(item)} title="Eliminar" style={{ background: "none", border: "1px solid #C63C3C", borderRadius: "6px", padding: "4px 6px", cursor: "pointer", color: "#C63C3C", display: "flex" }}>
                                         <span className="material-symbols-outlined" style={{ fontSize: "13px" }}>delete</span>
                                     </button>
-                                    <button onClick={() => setConfirmPayId(id)} title="Marcar como cobrado" style={{ background: "none", border: "1px solid #C2C6D6", borderRadius: "6px", padding: "4px 6px", cursor: "pointer", color: "#424754", display: "flex" }}>
+                                    <button onClick={() => setConfirmPayId(id)} title="Marcar como cobrado" style={{ background: "none", border: "1px solid #DCE7E1", borderRadius: "6px", padding: "4px 6px", cursor: "pointer", color: "#4A5F58", display: "flex" }}>
                                         <span className="material-symbols-outlined" style={{ fontSize: "13px" }}>check_circle</span>
                                     </button>
                                 </div>
@@ -1066,8 +1066,8 @@ export const DeudasyCobrosDashboard = ({
                         </div>
                     </div>
                     {isLastOfGroup && groupCount > 1 && (
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F7FAF8", border: "1px dashed #C2C6D6", borderRadius: "8px", padding: "5px 10px", fontSize: "0.68rem", marginTop: "-0.3rem" }}>
-                            <span style={{ color: "#727785", fontWeight: 700 }}>Subtotal {item.contact} · {groupCount} cobros</span>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F7FAF8", border: "1px dashed #DCE7E1", borderRadius: "8px", padding: "5px 10px", fontSize: "0.68rem", marginTop: "-0.3rem" }}>
+                            <span style={{ color: "#6C8079", fontWeight: 700 }}>Subtotal {item.contact} · {groupCount} cobros</span>
                             <span style={{ fontWeight: 800, color: "#0E9F6E" }}>{formatCurrency(groupTotal)}</span>
                         </div>
                     )}
@@ -1083,7 +1083,7 @@ export const DeudasyCobrosDashboard = ({
     const renderContactView = () => (
         <div style={{ display: "flex", flexDirection: "column", gap: movil ? "0.6rem" : "0.85rem" }}>
             {contactGroups.length === 0 && (
-                <p style={{ textAlign: "center", color: "#727785", padding: "2.5rem 0", margin: 0, fontSize: "0.85rem" }}>Sin deudas o cobros registrados 🎉</p>
+                <p style={{ textAlign: "center", color: "#6C8079", padding: "2.5rem 0", margin: 0, fontSize: "0.85rem" }}>Sin deudas o cobros registrados 🎉</p>
             )}
             {contactGroups.map(cg => {
                 const key = cg.contact || "__sin_contacto__";
@@ -1093,20 +1093,20 @@ export const DeudasyCobrosDashboard = ({
                 const contactPhone = cg.contact ? findContactByName(cg.contact)?.phone : undefined;
                 return (
                     <div key={key} style={CARD}>
-                        <div style={{ width: "100%", display: "flex", alignItems: "stretch", background: "#F2F3FD" }}>
+                        <div style={{ width: "100%", display: "flex", alignItems: "stretch", background: "#F1F5F3" }}>
                             <button
                                 onClick={() => toggleContactExpanded(key)}
                                 style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: movil ? "0.85rem 1rem" : "1rem 1.25rem", background: "none", border: "none", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}
                             >
                                 <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
-                                    <div style={{ width: "34px", height: "34px", borderRadius: "50%", background: "#DAE2FD", color: "#0058BE", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                    <div style={{ width: "34px", height: "34px", borderRadius: "50%", background: "#DFF3E9", color: "#0FA97A", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                         <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>{cg.contact ? "person" : "help_outline"}</span>
                                     </div>
                                     <div style={{ minWidth: 0 }}>
-                                        <div style={{ fontWeight: 700, fontSize: movil ? "0.85rem" : "0.95rem", color: "#191B23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                        <div style={{ fontWeight: 700, fontSize: movil ? "0.85rem" : "0.95rem", color: "#0C2A20", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                             {cg.contact || "Sin contacto"}
                                         </div>
-                                        <div style={{ fontSize: "0.68rem", color: "#727785" }}>
+                                        <div style={{ fontSize: "0.68rem", color: "#6C8079" }}>
                                             {cg.items.length} registro{cg.items.length !== 1 ? "s" : ""}{contactPhone ? ` · ${contactPhone}` : ""}
                                         </div>
                                     </div>
@@ -1114,8 +1114,8 @@ export const DeudasyCobrosDashboard = ({
                                 <div style={{ display: "flex", alignItems: "center", gap: movil ? "8px" : "14px", flexShrink: 0 }}>
                                     {cg.totalDebo > 0 && (
                                         <div style={{ textAlign: "right" }}>
-                                            <div style={{ fontSize: "0.6rem", fontWeight: 700, color: "#BA1A1A", textTransform: "uppercase" as const }}>Debo</div>
-                                            <div style={{ fontWeight: 700, color: "#BA1A1A", fontSize: movil ? "0.78rem" : "0.85rem", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(cg.totalDebo)}</div>
+                                            <div style={{ fontSize: "0.6rem", fontWeight: 700, color: "#C63C3C", textTransform: "uppercase" as const }}>Debo</div>
+                                            <div style={{ fontWeight: 700, color: "#C63C3C", fontSize: movil ? "0.78rem" : "0.85rem", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(cg.totalDebo)}</div>
                                         </div>
                                     )}
                                     {cg.totalMeDeben > 0 && (
@@ -1124,11 +1124,11 @@ export const DeudasyCobrosDashboard = ({
                                             <div style={{ fontWeight: 700, color: "#0E9F6E", fontSize: movil ? "0.78rem" : "0.85rem", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(cg.totalMeDeben)}</div>
                                         </div>
                                     )}
-                                    <span className="material-symbols-outlined" style={{ fontSize: "20px", color: "#727785", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>expand_more</span>
+                                    <span className="material-symbols-outlined" style={{ fontSize: "20px", color: "#6C8079", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>expand_more</span>
                                 </div>
                             </button>
                             {cg.contact && setContacts && (
-                                <button onClick={() => openEditContact(cg.contact)} title="Editar contacto" style={{ background: "none", border: "none", borderLeft: "1px solid #C2C6D6", cursor: "pointer", color: "#727785", padding: "0 14px", display: "flex", alignItems: "center", flexShrink: 0 }}>
+                                <button onClick={() => openEditContact(cg.contact)} title="Editar contacto" style={{ background: "none", border: "none", borderLeft: "1px solid #DCE7E1", cursor: "pointer", color: "#6C8079", padding: "0 14px", display: "flex", alignItems: "center", flexShrink: 0 }}>
                                     <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>edit</span>
                                 </button>
                             )}
@@ -1146,7 +1146,7 @@ export const DeudasyCobrosDashboard = ({
     );
 
     return (
-        <div style={{ fontFamily: "'Inter', sans-serif", minHeight: "100%", paddingBottom: "3rem", color: "#191B23" }}>
+        <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", minHeight: "100%", paddingBottom: "3rem", color: "#0C2A20" }}>
 
             {/* ── HEADER ──
                 Antes: título+subtítulo en su fila, 3 tarjetas grandes con borde de
@@ -1159,21 +1159,21 @@ export const DeudasyCobrosDashboard = ({
             <div style={{
                 display: "flex", flexWrap: "wrap", alignItems: "center", gap: movil ? "10px" : "12px",
                 background: "#fff", padding: movil ? "10px 14px" : "10px 16px", borderRadius: "18px",
-                boxShadow: "0 4px 12px rgba(15,23,24,0.05)", marginBottom: movil ? "1.25rem" : "1.5rem",
+                boxShadow: "0 4px 12px rgba(12,42,32,0.06)", marginBottom: movil ? "1.25rem" : "1.5rem",
             }}>
-                <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 900, color: "#191B23", whiteSpace: "nowrap", flexShrink: 0 }}>
+                <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 900, color: "#0C2A20", whiteSpace: "nowrap", flexShrink: 0 }}>
                     Deudas
                 </h2>
 
                 <div style={{ display: "flex", alignItems: "center", gap: movil ? "10px" : "16px", flexWrap: "wrap", flex: "1 1 auto", minWidth: 0 }}>
-                    <span style={{ fontSize: movil ? "0.72rem" : "0.78rem", color: "#424754", fontWeight: 600, whiteSpace: "nowrap" }}>
-                        Por pagar <b style={{ color: "#BA1A1A", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(totalPagar)}</b>
+                    <span style={{ fontSize: movil ? "0.72rem" : "0.78rem", color: "#4A5F58", fontWeight: 600, whiteSpace: "nowrap" }}>
+                        Por pagar <b style={{ color: "#C63C3C", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(totalPagar)}</b>
                     </span>
-                    <span style={{ fontSize: movil ? "0.72rem" : "0.78rem", color: "#424754", fontWeight: 600, whiteSpace: "nowrap" }}>
+                    <span style={{ fontSize: movil ? "0.72rem" : "0.78rem", color: "#4A5F58", fontWeight: 600, whiteSpace: "nowrap" }}>
                         Por cobrar <b style={{ color: "#0E9F6E", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(totalCobrar)}</b>
                     </span>
-                    <span style={{ fontSize: movil ? "0.72rem" : "0.78rem", color: "#424754", fontWeight: 600, whiteSpace: "nowrap" }}>
-                        Balance <b style={{ color: balanceNeto >= 0 ? "#0058BE" : "#BA1A1A", fontVariantNumeric: "tabular-nums" }}>
+                    <span style={{ fontSize: movil ? "0.72rem" : "0.78rem", color: "#4A5F58", fontWeight: 600, whiteSpace: "nowrap" }}>
+                        Balance <b style={{ color: balanceNeto >= 0 ? "#0FA97A" : "#C63C3C", fontVariantNumeric: "tabular-nums" }}>
                             {balanceNeto < 0 ? "-" : ""}{formatCurrency(Math.abs(balanceNeto))}
                         </b>
                     </span>
@@ -1181,7 +1181,7 @@ export const DeudasyCobrosDashboard = ({
 
                 {/* Toggle de tipo, mismo estilo de pastillas que el período de Finanzas
                     (fondo tenue + una pastilla activa sólida) en vez del <select> de antes. */}
-                <div style={{ display: "flex", background: "#F1F2F9", borderRadius: "999px", padding: "3px", border: "1px solid #C2C6D6", flexShrink: 0 }}>
+                <div style={{ display: "flex", background: "#F1F5F3", borderRadius: "999px", padding: "3px", border: "1px solid #DCE7E1", flexShrink: 0 }}>
                     {([["todos", "Todos"], ["deuda", "Deudas"], ["cobro", "Cobros"]] as [FilterType, string][]).map(([value, label]) => {
                         const activo = filterType === value;
                         return (
@@ -1192,8 +1192,8 @@ export const DeudasyCobrosDashboard = ({
                                     border: "none", borderRadius: "999px", cursor: "pointer", flexShrink: 0,
                                     padding: movil ? "5px 9px" : "5px 13px", fontSize: movil ? "0.68rem" : "0.75rem", fontWeight: 700,
                                     fontFamily: "inherit", transition: "all 0.15s",
-                                    background: activo ? "#0058BE" : "transparent",
-                                    color: activo ? "#fff" : "#424754",
+                                    background: activo ? "#0FA97A" : "transparent",
+                                    color: activo ? "#fff" : "#4A5F58",
                                     whiteSpace: "nowrap",
                                 }}
                             >
@@ -1204,7 +1204,7 @@ export const DeudasyCobrosDashboard = ({
                 </div>
 
                 <select value={filterEstado} onChange={e => setFilterEstado(e.target.value as FilterEstado)}
-                    style={{ background: "#F8F9FC", border: "1px solid #C2C6D6", borderRadius: "999px", padding: "6px 10px", fontSize: movil ? "0.72rem" : "0.78rem", fontFamily: "'Inter',sans-serif", color: "#191B23", cursor: "pointer", flexShrink: 0 }}>
+                    style={{ background: "#F7FAF8", border: "1px solid #DCE7E1", borderRadius: "999px", padding: "6px 10px", fontSize: movil ? "0.72rem" : "0.78rem", fontFamily: "'Plus Jakarta Sans',sans-serif", color: "#0C2A20", cursor: "pointer", flexShrink: 0 }}>
                     <option value="todos">Todos los Estados</option>
                     <option value="vencido">Vencido</option>
                     <option value="proximo">Próximo</option>
@@ -1218,14 +1218,14 @@ export const DeudasyCobrosDashboard = ({
                     <button
                         onClick={() => setViewMode(v => v === "contacto" ? "list" : "contacto")}
                         title="Por contacto"
-                        style={{ padding: "6px 10px", borderRadius: "8px", border: `1px solid ${viewMode === "contacto" ? "#0058BE" : "#C2C6D6"}`, background: viewMode === "contacto" ? "#EAF1FC" : "transparent", cursor: "pointer", color: viewMode === "contacto" ? "#0058BE" : "#424754", display: "flex", alignItems: "center", gap: "5px", fontSize: movil ? "0.72rem" : "0.78rem", fontWeight: 700, fontFamily: "inherit" }}>
+                        style={{ padding: "6px 10px", borderRadius: "8px", border: `1px solid ${viewMode === "contacto" ? "#0FA97A" : "#DCE7E1"}`, background: viewMode === "contacto" ? "#ECFDF5" : "transparent", cursor: "pointer", color: viewMode === "contacto" ? "#0FA97A" : "#4A5F58", display: "flex", alignItems: "center", gap: "5px", fontSize: movil ? "0.72rem" : "0.78rem", fontWeight: 700, fontFamily: "inherit" }}>
                         <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>group</span>
                         {!movil && "Por contacto"}
                     </button>
                     {!movil && (
                         <>
                             {(["grid", "list"] as const).map(m => (
-                                <button key={m} onClick={() => setViewMode(m)} style={{ padding: "6px 10px", borderRadius: "8px", border: `1px solid ${viewMode === m ? "#0058BE" : "#C2C6D6"}`, background: viewMode === m ? "#EAF1FC" : "transparent", cursor: "pointer", color: viewMode === m ? "#0058BE" : "#424754", display: "flex" }}>
+                                <button key={m} onClick={() => setViewMode(m)} style={{ padding: "6px 10px", borderRadius: "8px", border: `1px solid ${viewMode === m ? "#0FA97A" : "#DCE7E1"}`, background: viewMode === m ? "#ECFDF5" : "transparent", cursor: "pointer", color: viewMode === m ? "#0FA97A" : "#4A5F58", display: "flex" }}>
                                     <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>{m === "grid" ? "grid_view" : "list"}</span>
                                 </button>
                             ))}
@@ -1252,31 +1252,31 @@ export const DeudasyCobrosDashboard = ({
                         <div style={{ display: "flex", flexDirection: "column", gap: movil ? "1.25rem" : "1.5rem" }}>
                             {deudasAPlazos.length > 0 && (
                                 <section style={CARD}>
-                                    <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
-                                        <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
-                                            <span className="material-symbols-outlined" style={{ color: "#BA1A1A", fontSize: "20px" }}>event_repeat</span>
+                                    <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #DCE7E1", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F1F5F3" }}>
+                                        <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0C2A20", display: "flex", alignItems: "center", gap: "8px" }}>
+                                            <span className="material-symbols-outlined" style={{ color: "#C63C3C", fontSize: "20px" }}>event_repeat</span>
                                             Deudas a plazos ({deudasAPlazos.length})
                                         </h3>
-                                        <span style={{ fontSize: "0.72rem", color: "#424754" }}>Se abonan desde Fijos</span>
+                                        <span style={{ fontSize: "0.72rem", color: "#4A5F58" }}>Se abonan desde Fijos</span>
                                     </div>
                                     <div style={{ padding: movil ? "0.85rem" : "1rem 1.5rem", display: "flex", flexDirection: "column", gap: "10px" }}>
                                         {deudasAPlazos.map(item => {
                                             const restante = Math.max(0, (item.totalAmount ?? 0) - (item.paidToDate ?? 0));
                                             return (
-                                                <div key={item.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 14px", padding: "10px 12px", borderRadius: "10px", background: "#F8F9FC", border: "1px solid #E5E7F0" }}>
+                                                <div key={item.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 14px", padding: "10px 12px", borderRadius: "10px", background: "#F7FAF8", border: "1px solid #DCE7E1" }}>
                                                     <div style={{ flex: "1 1 140px", minWidth: 0 }}>
-                                                        <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#191B23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                        <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0C2A20", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                                             {item.text}
                                                         </div>
-                                                        {item.contact && <div style={{ fontSize: "0.7rem", color: "#424754" }}>{item.contact}</div>}
+                                                        {item.contact && <div style={{ fontSize: "0.7rem", color: "#4A5F58" }}>{item.contact}</div>}
                                                     </div>
-                                                    <div style={{ fontSize: "0.74rem", color: "#424754" }}>
-                                                        Falta <b style={{ color: "#191B23" }}>{formatCurrency(restante)}</b> de {formatCurrency(item.totalAmount ?? 0)} · {formatCurrency(item.amount)}/mes
+                                                    <div style={{ fontSize: "0.74rem", color: "#4A5F58" }}>
+                                                        Falta <b style={{ color: "#0C2A20" }}>{formatCurrency(restante)}</b> de {formatCurrency(item.totalAmount ?? 0)} · {formatCurrency(item.amount)}/mes
                                                     </div>
                                                     <button
                                                         onClick={() => volverADeuda(item)}
                                                         title="Dejar de tratarla como pago fijo mensual y volver a manejarla suelta desde acá"
-                                                        style={{ marginLeft: "auto", background: "none", border: "1px solid #C2C6D6", borderRadius: "8px", padding: "5px 10px", fontSize: "0.68rem", fontWeight: 700, color: "#424754", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                                                        style={{ marginLeft: "auto", background: "none", border: "1px solid #DCE7E1", borderRadius: "8px", padding: "5px 10px", fontSize: "0.68rem", fontWeight: 700, color: "#4A5F58", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
                                                     >
                                                         Volver a Deudas
                                                     </button>
@@ -1287,9 +1287,9 @@ export const DeudasyCobrosDashboard = ({
                                 </section>
                             )}
                             <section style={CARD}>
-                                <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
-                                    <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
-                                        <span className="material-symbols-outlined" style={{ color: "#BA1A1A", fontSize: "20px" }}>outbox</span>
+                                <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #DCE7E1", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F1F5F3" }}>
+                                    <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0C2A20", display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <span className="material-symbols-outlined" style={{ color: "#C63C3C", fontSize: "20px" }}>outbox</span>
                                         Deudas (Cuentas por Pagar)
                                     </h3>
                                 </div>
@@ -1302,31 +1302,31 @@ export const DeudasyCobrosDashboard = ({
                         <div style={{ display: "flex", flexDirection: "column", gap: movil ? "1.25rem" : "1.5rem" }}>
                             {cobrosAPlazos.length > 0 && (
                                 <section style={CARD}>
-                                    <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
-                                        <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
+                                    <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #DCE7E1", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F1F5F3" }}>
+                                        <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0C2A20", display: "flex", alignItems: "center", gap: "8px" }}>
                                             <span className="material-symbols-outlined" style={{ color: "#0E9F6E", fontSize: "20px" }}>event_repeat</span>
                                             Cobros a plazos ({cobrosAPlazos.length})
                                         </h3>
-                                        <span style={{ fontSize: "0.72rem", color: "#424754" }}>Se cobran desde Fijos</span>
+                                        <span style={{ fontSize: "0.72rem", color: "#4A5F58" }}>Se cobran desde Fijos</span>
                                     </div>
                                     <div style={{ padding: movil ? "0.85rem" : "1rem 1.5rem", display: "flex", flexDirection: "column", gap: "10px" }}>
                                         {cobrosAPlazos.map(item => {
                                             const restante = Math.max(0, (item.totalAmount ?? 0) - (item.paidToDate ?? 0));
                                             return (
-                                                <div key={item.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 14px", padding: "10px 12px", borderRadius: "10px", background: "#F8F9FC", border: "1px solid #E5E7F0" }}>
+                                                <div key={item.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 14px", padding: "10px 12px", borderRadius: "10px", background: "#F7FAF8", border: "1px solid #DCE7E1" }}>
                                                     <div style={{ flex: "1 1 140px", minWidth: 0 }}>
-                                                        <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#191B23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                        <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0C2A20", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                                             {item.name}
                                                         </div>
-                                                        {item.contact && <div style={{ fontSize: "0.7rem", color: "#424754" }}>{item.contact}</div>}
+                                                        {item.contact && <div style={{ fontSize: "0.7rem", color: "#4A5F58" }}>{item.contact}</div>}
                                                     </div>
-                                                    <div style={{ fontSize: "0.74rem", color: "#424754" }}>
-                                                        Falta <b style={{ color: "#191B23" }}>{formatCurrency(restante)}</b> de {formatCurrency(item.totalAmount ?? 0)} · {formatCurrency(item.amount)}/mes
+                                                    <div style={{ fontSize: "0.74rem", color: "#4A5F58" }}>
+                                                        Falta <b style={{ color: "#0C2A20" }}>{formatCurrency(restante)}</b> de {formatCurrency(item.totalAmount ?? 0)} · {formatCurrency(item.amount)}/mes
                                                     </div>
                                                     <button
                                                         onClick={() => volverACobro(item)}
                                                         title="Dejar de tratarlo como cobro fijo mensual y volver a manejarlo suelto desde acá"
-                                                        style={{ marginLeft: "auto", background: "none", border: "1px solid #C2C6D6", borderRadius: "8px", padding: "5px 10px", fontSize: "0.68rem", fontWeight: 700, color: "#424754", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                                                        style={{ marginLeft: "auto", background: "none", border: "1px solid #DCE7E1", borderRadius: "8px", padding: "5px 10px", fontSize: "0.68rem", fontWeight: 700, color: "#4A5F58", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
                                                     >
                                                         Volver a Cobros
                                                     </button>
@@ -1337,8 +1337,8 @@ export const DeudasyCobrosDashboard = ({
                                 </section>
                             )}
                             <section style={CARD}>
-                                <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #C2C6D6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F2F3FD" }}>
-                                    <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", display: "flex", alignItems: "center", gap: "8px" }}>
+                                <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #DCE7E1", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F1F5F3" }}>
+                                    <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0C2A20", display: "flex", alignItems: "center", gap: "8px" }}>
                                         <span className="material-symbols-outlined" style={{ color: "#0E9F6E", fontSize: "20px" }}>move_to_inbox</span>
                                         Cobros (Cuentas por Cobrar)
                                     </h3>
@@ -1374,19 +1374,19 @@ export const DeudasyCobrosDashboard = ({
                                 style={{ background: "#fff", borderRadius: "16px", padding: movil ? "1.25rem" : "2rem", width: movil ? "92vw" : "min(480px, 90vw)", maxHeight: "100%", overflowY: "auto", boxShadow: "0px 12px 24px rgba(15,23,42,0.12)", pointerEvents: "auto" }}
                             >
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                            <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#191B23", fontFamily: "'Inter',sans-serif" }}>{editingTx ? "Editar Deuda / Cobro" : "Agregar Deuda / Cobro"}</h3>
-                            <button onClick={() => { setShowAddModal(false); setEditingTx(null); setNewAccountId(""); setNewDueDate(""); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#727785", padding: "4px" }}>
+                            <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#0C2A20", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{editingTx ? "Editar Deuda / Cobro" : "Agregar Deuda / Cobro"}</h3>
+                            <button onClick={() => { setShowAddModal(false); setEditingTx(null); setNewAccountId(""); setNewDueDate(""); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#6C8079", padding: "4px" }}>
                                 <span className="material-symbols-outlined">close</span>
                             </button>
                         </div>
 
                             <div style={{ display: "flex", gap: "8px", marginBottom: "1.25rem" }}>
                                 {([
-                                    { value: "gasto", label: "💸 Deuda (Debo)", activeColor: "#BA1A1A", activeBg: "#FFDAD6", activeText: "#93000A" },
+                                    { value: "gasto", label: "💸 Deuda (Debo)", activeColor: "#C63C3C", activeBg: "#FFDAD6", activeText: "#7A1512" },
                                     { value: "ingreso", label: "💰 Cobro (Me Deben)", activeColor: "#0E9F6E", activeBg: "#CDEDDD", activeText: "#0C8F67" },
                                 ] as const).map(opt => (
                                     <button key={opt.value} onClick={() => setNewType(opt.value)}
-                                        style={{ flex: 1, padding: "10px", borderRadius: "8px", border: `2px solid ${newType === opt.value ? opt.activeColor : "#C2C6D6"}`, background: newType === opt.value ? opt.activeBg : "#fff", color: newType === opt.value ? opt.activeText : "#424754", fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", transition: "all 0.15s" }}>
+                                        style={{ flex: 1, padding: "10px", borderRadius: "8px", border: `2px solid ${newType === opt.value ? opt.activeColor : "#DCE7E1"}`, background: newType === opt.value ? opt.activeBg : "#fff", color: newType === opt.value ? opt.activeText : "#4A5F58", fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", transition: "all 0.15s" }}>
                                         {opt.label}
                                     </button>
                                 ))}
@@ -1398,7 +1398,7 @@ export const DeudasyCobrosDashboard = ({
                                 { label: "Monto (S/)", value: newAmount, setter: setNewAmount, placeholder: "0.00" },
                             ].map(field => (
                                 <div key={field.label} style={{ marginBottom: "1rem" }}>
-                                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#424754", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Inter',sans-serif" }}>
+                                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                                         {field.label}
                                     </label>
                                     <input
@@ -1415,9 +1415,9 @@ export const DeudasyCobrosDashboard = ({
                                         }}
                                         placeholder={field.placeholder}
                                         list={field.listId}
-                                        style={{ width: "100%", padding: "10px 12px", border: "1px solid #C2C6D6", borderRadius: "8px", fontFamily: "'Inter',sans-serif", fontSize: "0.9rem", color: "#191B23", boxSizing: "border-box" as const, outline: "none" }}
-                                        onFocus={e => (e.target.style.borderColor = "#0058BE")}
-                                        onBlur={e => (e.target.style.borderColor = "#C2C6D6")}
+                                        style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: "#0C2A20", boxSizing: "border-box" as const, outline: "none" }}
+                                        onFocus={e => (e.target.style.borderColor = "#0FA97A")}
+                                        onBlur={e => (e.target.style.borderColor = "#DCE7E1")}
                                     />
                                     {field.listId && (
                                         <datalist id={field.listId}>
@@ -1430,16 +1430,16 @@ export const DeudasyCobrosDashboard = ({
                                             value={newPhone}
                                             onChange={e => setNewPhone(e.target.value)}
                                             placeholder="Teléfono de este contacto (opcional)"
-                                            style={{ width: "100%", marginTop: "6px", padding: "8px 12px", border: "1px solid #C2C6D6", borderRadius: "8px", fontFamily: "'Inter',sans-serif", fontSize: "0.8rem", color: "#191B23", boxSizing: "border-box" as const, outline: "none" }}
-                                            onFocus={e => (e.target.style.borderColor = "#0058BE")}
-                                            onBlur={e => (e.target.style.borderColor = "#C2C6D6")}
+                                            style={{ width: "100%", marginTop: "6px", padding: "8px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.8rem", color: "#0C2A20", boxSizing: "border-box" as const, outline: "none" }}
+                                            onFocus={e => (e.target.style.borderColor = "#0FA97A")}
+                                            onBlur={e => (e.target.style.borderColor = "#DCE7E1")}
                                         />
                                     )}
                                 </div>
                             ))}
 
                             <div style={{ marginBottom: "1rem" }}>
-                                <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#424754", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Inter',sans-serif" }}>
+                                <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                                     Detalle (opcional)
                                 </label>
                                 <textarea
@@ -1447,40 +1447,40 @@ export const DeudasyCobrosDashboard = ({
                                     onChange={e => setNewNotes(e.target.value)}
                                     placeholder="Ej: quedamos en pagar en 3 partes, primera el 15..."
                                     rows={2}
-                                    style={{ width: "100%", padding: "10px 12px", border: "1px solid #C2C6D6", borderRadius: "8px", fontFamily: "'Inter',sans-serif", fontSize: "0.85rem", color: "#191B23", boxSizing: "border-box" as const, outline: "none", resize: "vertical" }}
-                                    onFocus={e => (e.target.style.borderColor = "#0058BE")}
-                                    onBlur={e => (e.target.style.borderColor = "#C2C6D6")}
+                                    style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.85rem", color: "#0C2A20", boxSizing: "border-box" as const, outline: "none", resize: "vertical" }}
+                                    onFocus={e => (e.target.style.borderColor = "#0FA97A")}
+                                    onBlur={e => (e.target.style.borderColor = "#DCE7E1")}
                                 />
                             </div>
 
                             <div style={{ marginBottom: "1rem" }}>
-                                <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#424754", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Inter',sans-serif" }}>
+                                <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                                     Fecha límite (opcional)
                                 </label>
                                 <input
                                     type="date"
                                     value={newDueDate}
                                     onChange={e => setNewDueDate(e.target.value)}
-                                    style={{ width: "100%", padding: "10px 12px", border: "1px solid #C2C6D6", borderRadius: "8px", fontFamily: "'Inter',sans-serif", fontSize: "0.9rem", color: "#191B23", boxSizing: "border-box" as const, outline: "none" }}
+                                    style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: "#0C2A20", boxSizing: "border-box" as const, outline: "none" }}
                                 />
                             </div>
 
                             {editingTx && (
                                 <div style={{ marginBottom: "1rem" }}>
-                                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#424754", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Inter',sans-serif" }}>
+                                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                                         ¿A qué cuenta pertenece? (referencia)
                                     </label>
                                     <select
                                         value={newAccountId}
                                         onChange={e => setNewAccountId(e.target.value)}
-                                        style={{ width: "100%", padding: "10px 12px", border: "1px solid #C2C6D6", borderRadius: "8px", fontFamily: "'Inter',sans-serif", fontSize: "0.9rem", color: "#191B23", boxSizing: "border-box" as const, outline: "none", background: "#fff" }}
+                                        style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: "#0C2A20", boxSizing: "border-box" as const, outline: "none", background: "#fff" }}
                                     >
                                         <option value="">Sin cuenta asignada</option>
                                         {accounts.map(acc => (
                                             <option key={acc.id} value={acc.id}>{acc.name}</option>
                                         ))}
                                     </select>
-                                    <p style={{ margin: "6px 0 0", fontSize: "0.7rem", color: "#424754" }}>
+                                    <p style={{ margin: "6px 0 0", fontSize: "0.7rem", color: "#4A5F58" }}>
                                         Solo cambia la referencia — para mover efectivo de verdad usa "Abonar".
                                     </p>
                                 </div>
@@ -1488,13 +1488,13 @@ export const DeudasyCobrosDashboard = ({
 
                             {!editingTx && (
                                 <div style={{ marginBottom: "1rem" }}>
-                                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#424754", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Inter',sans-serif" }}>
+                                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                                         {newType === "gasto" ? "¿A qué cuenta entró el efectivo? (opcional)" : "¿De qué cuenta salió el efectivo? (opcional)"}
                                     </label>
                                     <select
                                         value={newAccountId}
                                         onChange={e => setNewAccountId(e.target.value)}
-                                        style={{ width: "100%", padding: "10px 12px", border: "1px solid #C2C6D6", borderRadius: "8px", fontFamily: "'Inter',sans-serif", fontSize: "0.9rem", color: "#191B23", boxSizing: "border-box" as const, outline: "none", background: "#fff" }}
+                                        style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: "#0C2A20", boxSizing: "border-box" as const, outline: "none", background: "#fff" }}
                                     >
                                         <option value="">Solo registrar la deuda (sin mover efectivo)</option>
                                         {accounts.map(acc => (
@@ -1502,7 +1502,7 @@ export const DeudasyCobrosDashboard = ({
                                         ))}
                                     </select>
                                     {newAccountId && (
-                                        <p style={{ margin: "6px 0 0", fontSize: "0.7rem", color: "#424754" }}>
+                                        <p style={{ margin: "6px 0 0", fontSize: "0.7rem", color: "#4A5F58" }}>
                                             {newType === "gasto"
                                                 ? "Se sumará el monto a esa cuenta, como si te hubieran prestado el efectivo."
                                                 : "Se restará el monto de esa cuenta, como si hubieras prestado el efectivo."}
@@ -1542,13 +1542,13 @@ export const DeudasyCobrosDashboard = ({
                                 style={{ background: "#fff", borderRadius: "16px", padding: movil ? "1.25rem" : "1.75rem", width: movil ? "92vw" : "min(380px, 90vw)", maxHeight: "100%", overflowY: "auto", boxShadow: "0px 12px 24px rgba(15,23,42,0.12)", pointerEvents: "auto" }}
                             >
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-                                    <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#191B23", fontFamily: "'Inter',sans-serif" }}>{editingContact.name}</h3>
-                                    <button onClick={() => setEditingContact(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#727785", padding: "4px" }}>
+                                    <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0C2A20", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{editingContact.name}</h3>
+                                    <button onClick={() => setEditingContact(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6C8079", padding: "4px" }}>
                                         <span className="material-symbols-outlined">close</span>
                                     </button>
                                 </div>
                                 <div style={{ marginBottom: "1rem" }}>
-                                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#424754", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Inter',sans-serif" }}>
+                                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                                         Teléfono
                                     </label>
                                     <input
@@ -1556,13 +1556,13 @@ export const DeudasyCobrosDashboard = ({
                                         value={editContactPhone}
                                         onChange={e => setEditContactPhone(e.target.value)}
                                         placeholder="Ej: 987 654 321"
-                                        style={{ width: "100%", padding: "10px 12px", border: "1px solid #C2C6D6", borderRadius: "8px", fontFamily: "'Inter',sans-serif", fontSize: "0.9rem", color: "#191B23", boxSizing: "border-box" as const, outline: "none" }}
-                                        onFocus={e => (e.target.style.borderColor = "#0058BE")}
-                                        onBlur={e => (e.target.style.borderColor = "#C2C6D6")}
+                                        style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: "#0C2A20", boxSizing: "border-box" as const, outline: "none" }}
+                                        onFocus={e => (e.target.style.borderColor = "#0FA97A")}
+                                        onBlur={e => (e.target.style.borderColor = "#DCE7E1")}
                                     />
                                 </div>
                                 <div style={{ marginBottom: "1rem" }}>
-                                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#424754", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Inter',sans-serif" }}>
+                                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                                         Notas (opcional)
                                     </label>
                                     <input
@@ -1570,9 +1570,9 @@ export const DeudasyCobrosDashboard = ({
                                         value={editContactNotes}
                                         onChange={e => setEditContactNotes(e.target.value)}
                                         placeholder="Ej: compañero de trabajo"
-                                        style={{ width: "100%", padding: "10px 12px", border: "1px solid #C2C6D6", borderRadius: "8px", fontFamily: "'Inter',sans-serif", fontSize: "0.9rem", color: "#191B23", boxSizing: "border-box" as const, outline: "none" }}
-                                        onFocus={e => (e.target.style.borderColor = "#0058BE")}
-                                        onBlur={e => (e.target.style.borderColor = "#C2C6D6")}
+                                        style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: "#0C2A20", boxSizing: "border-box" as const, outline: "none" }}
+                                        onFocus={e => (e.target.style.borderColor = "#0FA97A")}
+                                        onBlur={e => (e.target.style.borderColor = "#DCE7E1")}
                                     />
                                 </div>
                                 <div style={{ display: "flex", gap: "8px", marginTop: "1.5rem" }}>
