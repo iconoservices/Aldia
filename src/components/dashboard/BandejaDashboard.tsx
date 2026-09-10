@@ -89,6 +89,7 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
     const [pickId, setPickId] = useState<number | null>(null);
     const [filtro, setFiltro] = useState<string[]>([]);
     const [borrarId, setBorrarId] = useState<number | null>(null);
+    const [gestionAbierta, setGestionAbierta] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const items = bandeja?.items ?? [];
@@ -99,12 +100,45 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
     const patchItem = (id: number, patch: Partial<Item>) =>
         bandeja && setItems(bandeja.items.map(it => it.id === id ? { ...it, ...patch } : it));
 
-    // Todas las etiquetas usadas, en orden de primera aparición.
+    // Lista de etiquetas configurada: se guarda como JSON en el `content` de la
+    // nota (campo libre que los checklist no usan). Persiste aunque nadie la use.
+    const etiquetasConfig = useMemo<string[]>(() => {
+        try { const a = JSON.parse(bandeja?.content || "[]"); return Array.isArray(a) ? a.filter((x): x is string => typeof x === "string") : []; }
+        catch { return []; }
+    }, [bandeja?.content]);
+
+    // Todas: primero las configuradas, luego cualquiera suelta que aún use algún ítem.
     const todasEtiquetas = useMemo(() => {
-        const vistas: string[] = [];
+        const vistas = [...etiquetasConfig];
         for (const it of items) for (const t of it.tags ?? []) if (!vistas.includes(t)) vistas.push(t);
         return vistas;
-    }, [items]);
+    }, [items, etiquetasConfig]);
+
+    const crearEtiqueta = (nombre: string) => {
+        const t = slug(nombre);
+        if (t && !etiquetasConfig.includes(t) && bandeja) {
+            updateNote(bandeja.id, { content: JSON.stringify([...etiquetasConfig, t]) });
+        }
+        return slug(nombre);
+    };
+    const borrarEtiqueta = (t: string) => {
+        if (!bandeja) return;
+        const items2 = bandeja.items.map(i => {
+            if (!(i.tags ?? []).includes(t)) return i;
+            const rest = (i.tags ?? []).filter(x => x !== t);
+            return { ...i, tags: rest.length ? rest : undefined };
+        });
+        updateNote(bandeja.id, { content: JSON.stringify(etiquetasConfig.filter(x => x !== t)), items: items2 });
+        setFiltro(f => f.filter(x => x !== t));
+    };
+    // Para el modal por ítem: crea la etiqueta (si es nueva) y la asigna.
+    const crearYAsignar = (id: number, nombre: string) => {
+        const t = slug(nombre);
+        if (!t || !bandeja) return;
+        const cfg = etiquetasConfig.includes(t) ? etiquetasConfig : [...etiquetasConfig, t];
+        const items2 = bandeja.items.map(i => i.id === id ? { ...i, tags: [...new Set([...(i.tags ?? []), t])] } : i);
+        updateNote(bandeja.id, { content: JSON.stringify(cfg), items: items2 });
+    };
 
     // Grupos: "sin etiqueta" primero (la bandeja cruda), luego una por etiqueta.
     const grupos = useMemo(() => {
@@ -224,22 +258,23 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
 
             {/* Un solo bloque: filtro + captura + lista */}
             <div style={{ ...bento, padding: 0, overflow: "hidden" }}>
-                {/* Filtro por etiqueta — arriba del todo */}
-                {todasEtiquetas.length > 0 && (
-                    <div style={{ display: "flex", gap: "8px", flexWrap: movil ? "nowrap" : "wrap", overflowX: movil ? "auto" : "visible", alignItems: "center", padding: "10px 12px", borderBottom: `1px solid ${C.surfaceContainerHigh}` }}>
-                        <TagIcon size={15} strokeWidth={2.5} style={{ color: C.outline, flexShrink: 0 }} />
-                        {grupos.map(g => (
-                            <button key={g.tag} onClick={() => toggleFiltro(g.tag)} style={chip(filtro.includes(g.tag))}>
-                                {g.tag === SIN ? "sin etiqueta" : g.tag} <span style={{ opacity: 0.7 }}>{g.items.length}</span>
-                            </button>
-                        ))}
-                        {filtro.length > 0 && (
-                            <button onClick={() => setFiltro([])} style={{ ...chip(false), background: "transparent", color: C.rojo }}>
-                                <X size={13} strokeWidth={2.5} /> ver todo
-                            </button>
-                        )}
-                    </div>
-                )}
+                {/* Filtro + gestión de etiquetas — arriba del todo */}
+                <div style={{ display: "flex", gap: "8px", flexWrap: movil ? "nowrap" : "wrap", overflowX: movil ? "auto" : "visible", alignItems: "center", padding: "10px 12px", borderBottom: `1px solid ${C.surfaceContainerHigh}` }}>
+                    <TagIcon size={15} strokeWidth={2.5} style={{ color: C.outline, flexShrink: 0 }} />
+                    {grupos.map(g => (
+                        <button key={g.tag} onClick={() => toggleFiltro(g.tag)} style={chip(filtro.includes(g.tag))}>
+                            {g.tag === SIN ? "sin etiqueta" : g.tag} <span style={{ opacity: 0.7 }}>{g.items.length}</span>
+                        </button>
+                    ))}
+                    {filtro.length > 0 && (
+                        <button onClick={() => setFiltro([])} style={{ ...chip(false), background: "transparent", color: C.rojo }}>
+                            <X size={13} strokeWidth={2.5} /> ver todo
+                        </button>
+                    )}
+                    <button onClick={() => setGestionAbierta(true)} title="Gestionar etiquetas" style={{ ...chip(false), background: "transparent", color: C.outline, marginLeft: "auto", flexShrink: 0 }}>
+                        <Plus size={14} strokeWidth={2.5} /> etiqueta
+                    </button>
+                </div>
 
                 {/* Captura */}
                 <form
@@ -313,7 +348,18 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
                     item={itemAEtiquetar}
                     todasEtiquetas={todasEtiquetas}
                     toggleTag={toggleTag}
+                    crearYAsignar={crearYAsignar}
                     onClose={() => setPickId(null)}
+                />
+            )}
+
+            {gestionAbierta && (
+                <TagManagerModal
+                    todas={todasEtiquetas}
+                    enUso={new Set(items.flatMap(i => i.tags ?? []))}
+                    crear={crearEtiqueta}
+                    borrar={borrarEtiqueta}
+                    onClose={() => setGestionAbierta(false)}
                 />
             )}
 
@@ -454,8 +500,8 @@ const SortableFila = (p: FilaProps) => {
 };
 
 /* Ventanita centrada para elegir la etiqueta de una línea. */
-const TagModal = ({ item, todasEtiquetas, toggleTag, onClose }: {
-    item: Item; todasEtiquetas: string[]; toggleTag: (id: number, t: string) => void; onClose: () => void;
+const TagModal = ({ item, todasEtiquetas, toggleTag, crearYAsignar, onClose }: {
+    item: Item; todasEtiquetas: string[]; toggleTag: (id: number, t: string) => void; crearYAsignar: (id: number, nombre: string) => void; onClose: () => void;
 }) => {
     const [creando, setCreando] = useState(false);
     const [nueva, setNueva] = useState("");
@@ -463,8 +509,7 @@ const TagModal = ({ item, todasEtiquetas, toggleTag, onClose }: {
     const opciones = [...new Set([...todasEtiquetas, ...tags])];
 
     const crear = () => {
-        const t = slug(nueva);
-        if (t && !tags.includes(t)) toggleTag(item.id, t);
+        if (nueva.trim()) crearYAsignar(item.id, nueva);
         setNueva("");
         setCreando(false);
     };
@@ -519,6 +564,78 @@ const TagModal = ({ item, todasEtiquetas, toggleTag, onClose }: {
                     Listo
                 </button>
             </div>
+        </div>
+    );
+};
+
+/* Ventanita para configurar la lista de etiquetas (persisten aunque nadie las use). */
+const TagManagerModal = ({ todas, enUso, crear, borrar, onClose }: {
+    todas: string[]; enUso: Set<string>; crear: (n: string) => void; borrar: (t: string) => void; onClose: () => void;
+}) => {
+    const [nueva, setNueva] = useState("");
+    const [porBorrar, setPorBorrar] = useState<string | null>(null);
+
+    const agregar = () => { if (nueva.trim()) { crear(nueva); setNueva(""); } };
+
+    return (
+        <div
+            onClick={onClose}
+            style={{ position: "fixed", inset: 0, zIndex: 9999, padding: "20px", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
+        >
+            <div
+                onClick={e => e.stopPropagation()}
+                style={{ background: C.surfaceLowest, borderRadius: "24px", padding: "22px", width: "100%", maxWidth: "380px", boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}
+            >
+                <div style={{ ...etiqueta, fontSize: "0.62rem", color: C.outline }}>Etiquetas</div>
+                <p style={{ margin: "4px 0 16px", fontSize: "0.82rem", color: C.onSurfaceVariant }}>
+                    Se quedan guardadas para reusarlas. Borrar una la quita de todas sus líneas.
+                </p>
+
+                <form onSubmit={e => { e.preventDefault(); agregar(); }} style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+                    <input
+                        autoFocus value={nueva}
+                        onChange={e => setNueva(e.target.value)}
+                        placeholder="Nueva etiqueta (ej. centro)"
+                        style={{ ...inputStyle, fontSize: "0.9rem", padding: "10px 12px" }}
+                    />
+                    <button type="submit" style={{ flexShrink: 0, background: C.primary, color: "#fff", border: "none", borderRadius: RADIO.campo, padding: "0 16px", fontWeight: 800, fontSize: "0.8rem", cursor: "pointer" }}>
+                        Añadir
+                    </button>
+                </form>
+
+                {todas.length === 0 ? (
+                    <p style={{ fontSize: "0.8rem", color: C.outline, margin: "0 0 16px" }}>Todavía no hay etiquetas.</p>
+                ) : (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
+                        {todas.map(t => (
+                            <span key={t} style={{ ...miniChip(false), paddingRight: "5px" }}>
+                                {t}
+                                {enUso.has(t) && <span style={{ opacity: 0.5, fontWeight: 600 }}> · en uso</span>}
+                                <button onClick={() => setPorBorrar(t)} title="Borrar etiqueta" style={{ background: "none", border: "none", cursor: "pointer", color: C.outline, display: "flex", padding: "2px", marginLeft: "2px" }}>
+                                    <X size={12} strokeWidth={3} />
+                                </button>
+                            </span>
+                        ))}
+                    </div>
+                )}
+
+                <button
+                    onClick={onClose}
+                    style={{ width: "100%", padding: "12px", borderRadius: "14px", border: "none", background: C.primary, color: "#fff", fontWeight: 800, fontSize: "0.85rem", cursor: "pointer", fontFamily: "inherit" }}
+                >
+                    Listo
+                </button>
+            </div>
+
+            <ConfirmDialog
+                open={porBorrar != null}
+                title="Borrar etiqueta"
+                message={`¿Borrar "${porBorrar}"? Se quita de todas las líneas que la tienen.`}
+                confirmLabel="Borrar"
+                cancelLabel="Cancelar"
+                onConfirm={() => { if (porBorrar) borrar(porBorrar); setPorBorrar(null); }}
+                onCancel={() => setPorBorrar(null)}
+            />
         </div>
     );
 };
