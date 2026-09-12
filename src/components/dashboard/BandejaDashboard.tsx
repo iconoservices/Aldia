@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Inbox, Check, Trash2, CornerUpRight, ChevronDown, X, Plus, Tag as TagIcon, GripVertical } from "lucide-react";
+import { Inbox, Check, Trash2, CornerUpRight, ChevronDown, X, Plus, Tag as TagIcon, GripVertical, Sparkles } from "lucide-react";
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, useDroppable,
 } from "@dnd-kit/core";
@@ -91,6 +91,9 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
     const [borrarId, setBorrarId] = useState<number | null>(null);
     const [grupoAEnviar, setGrupoAEnviar] = useState<string | null>(null);
     const [gestionAbierta, setGestionAbierta] = useState(false);
+    const [iaCargando, setIaCargando] = useState(false);
+    const [iaError, setIaError] = useState<string | null>(null);
+    const [iaRevision, setIaRevision] = useState<{ id: number; text: string; tag: string; incluir: boolean }[] | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const items = bandeja?.items ?? [];
@@ -208,6 +211,48 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
 
     const toggleFiltro = (t: string) => setFiltro(f => f.includes(t) ? f.filter(x => x !== t) : [...f, t]);
 
+    // ── Etiquetar con IA: pide sugerencias para lo sin repartir, el usuario revisa ──
+    const sinEtiquetar = useMemo(() => abiertas.filter(it => (it.tags ?? []).length === 0), [abiertas]);
+
+    const pedirSugerenciasIA = async () => {
+        if (sinEtiquetar.length === 0 || iaCargando) return;
+        setIaCargando(true);
+        setIaError(null);
+        try {
+            const res = await fetch('/api/tag-bandeja', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    items: sinEtiquetar.map(it => ({ id: it.id, text: it.text })),
+                    etiquetas: etiquetasConfig,
+                }),
+            });
+            const data = await res.json().catch(() => null);
+            if (!data) throw new Error('El servidor no devolvió una respuesta válida');
+            if (!res.ok) throw new Error(data.error || 'La IA no respondió');
+            const porId = new Map<number, string>(
+                (data.sugerencias ?? []).map((s: any) => [Number(s.id), slug(String(s.tag ?? ''))])
+            );
+            const filas = sinEtiquetar
+                .map(it => ({ id: it.id, text: it.text, tag: porId.get(it.id) || '', incluir: true }))
+                .filter(f => f.tag);
+            if (filas.length === 0) throw new Error('No llegaron sugerencias usables');
+            setIaRevision(filas);
+        } catch (err) {
+            setIaError(err instanceof Error ? err.message : 'No se pudo conectar con la IA');
+        } finally {
+            setIaCargando(false);
+        }
+    };
+
+    const aplicarSugerenciasIA = () => {
+        if (!iaRevision) return;
+        for (const f of iaRevision) {
+            if (f.incluir && f.tag.trim()) crearYAsignar(f.id, f.tag.trim());
+        }
+        setIaRevision(null);
+    };
+
     // ── Arrastrar: reordenar dentro del grupo y mover entre etiquetas ──
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -283,10 +328,25 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
                             <X size={13} strokeWidth={2.5} /> ver todo
                         </button>
                     )}
-                    <button onClick={() => setGestionAbierta(true)} title="Gestionar etiquetas" style={{ ...chip(false), background: "transparent", color: C.outline, marginLeft: "auto", flexShrink: 0 }}>
+                    {sinEtiquetar.length > 0 && (
+                        <button
+                            onClick={pedirSugerenciasIA}
+                            disabled={iaCargando}
+                            title="Sugerir etiquetas con IA para lo sin repartir"
+                            style={{ ...chip(false), background: "transparent", color: C.primary, marginLeft: "auto", flexShrink: 0, opacity: iaCargando ? 0.6 : 1 }}
+                        >
+                            <Sparkles size={14} strokeWidth={2.5} /> {iaCargando ? "pensando…" : "etiquetar con IA"}
+                        </button>
+                    )}
+                    <button onClick={() => setGestionAbierta(true)} title="Gestionar etiquetas" style={{ ...chip(false), background: "transparent", color: C.outline, marginLeft: sinEtiquetar.length > 0 ? 0 : "auto", flexShrink: 0 }}>
                         <Plus size={14} strokeWidth={2.5} /> etiqueta
                     </button>
                 </div>
+                {iaError && (
+                    <div style={{ padding: "8px 12px", fontSize: "0.75rem", color: C.rojo, borderBottom: `1px solid ${C.surfaceContainerHigh}` }}>
+                        {iaError}
+                    </div>
+                )}
 
                 {/* Captura */}
                 <form
@@ -369,6 +429,15 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
                     toggleTag={toggleTag}
                     crearYAsignar={crearYAsignar}
                     onClose={() => setPickId(null)}
+                />
+            )}
+
+            {iaRevision && (
+                <IARevisionModal
+                    filas={iaRevision}
+                    setFilas={setIaRevision}
+                    onAplicar={aplicarSugerenciasIA}
+                    onClose={() => setIaRevision(null)}
                 />
             )}
 
@@ -670,6 +739,81 @@ const TagManagerModal = ({ todas, enUso, crear, borrar, onClose }: {
                 onConfirm={() => { if (porBorrar) borrar(porBorrar); setPorBorrar(null); }}
                 onCancel={() => setPorBorrar(null)}
             />
+        </div>
+    );
+};
+
+/* Ventanita de revisión: la IA propuso etiquetas, el usuario ajusta o destilda antes de aplicar. */
+type FilaIA = { id: number; text: string; tag: string; incluir: boolean };
+
+const IARevisionModal = ({ filas, setFilas, onAplicar, onClose }: {
+    filas: FilaIA[]; setFilas: (v: FilaIA[]) => void; onAplicar: () => void; onClose: () => void;
+}) => {
+    const patch = (id: number, cambio: Partial<FilaIA>) =>
+        setFilas(filas.map(f => f.id === id ? { ...f, ...cambio } : f));
+
+    const incluidas = filas.filter(f => f.incluir && f.tag.trim()).length;
+
+    return (
+        <div
+            onClick={onClose}
+            style={{ position: "fixed", inset: 0, zIndex: 9999, padding: "20px", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
+        >
+            <div
+                onClick={e => e.stopPropagation()}
+                style={{ background: C.surfaceLowest, borderRadius: "24px", padding: "22px", width: "100%", maxWidth: "420px", maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}
+            >
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Sparkles size={15} strokeWidth={2.5} style={{ color: C.primary }} />
+                    <div style={{ ...etiqueta, fontSize: "0.62rem", color: C.outline }}>Sugerencias de la IA</div>
+                </div>
+                <p style={{ margin: "4px 0 14px", fontSize: "0.8rem", color: C.onSurfaceVariant }}>
+                    Revisa o corrige la etiqueta de cada línea. Destilda las que no quieras aplicar.
+                </p>
+
+                <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px", paddingRight: "2px" }}>
+                    {filas.map(f => (
+                        <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", opacity: f.incluir ? 1 : 0.45 }}>
+                            <div
+                                onClick={() => patch(f.id, { incluir: !f.incluir })}
+                                title={f.incluir ? "Excluir esta línea" : "Incluir esta línea"}
+                                style={{
+                                    width: "20px", height: "20px", borderRadius: "7px", flexShrink: 0, cursor: "pointer",
+                                    border: `2px solid ${f.incluir ? C.secondary : C.outlineVariant}`,
+                                    background: f.incluir ? C.secondary : "transparent",
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                }}
+                            >
+                                {f.incluir && <Check size={12} color="#fff" strokeWidth={3} />}
+                            </div>
+                            <span style={{ flex: 1, minWidth: 0, fontSize: "0.85rem", color: C.onSurface, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {f.text}
+                            </span>
+                            <input
+                                value={f.tag}
+                                onChange={e => patch(f.id, { tag: e.target.value })}
+                                style={{ width: "100px", flexShrink: 0, padding: "6px 8px", fontSize: "0.72rem", fontWeight: 700, borderRadius: RADIO.chip, border: `1px solid ${C.outlineVariant}`, outline: "none", background: C.surfaceContainer, color: C.onSurfaceVariant, textAlign: "center" }}
+                            />
+                        </div>
+                    ))}
+                </div>
+
+                <div style={{ display: "flex", gap: "10px", marginTop: "18px" }}>
+                    <button
+                        onClick={onClose}
+                        style={{ flex: 1, padding: "12px", borderRadius: "14px", border: `1px solid ${C.outlineVariant}`, background: "transparent", color: C.onSurfaceVariant, fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", fontFamily: "inherit" }}
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={onAplicar}
+                        disabled={incluidas === 0}
+                        style={{ flex: 1, padding: "12px", borderRadius: "14px", border: "none", background: C.primary, color: "#fff", fontWeight: 800, fontSize: "0.85rem", cursor: incluidas === 0 ? "default" : "pointer", fontFamily: "inherit", opacity: incluidas === 0 ? 0.5 : 1 }}
+                    >
+                        Aplicar {incluidas > 0 ? `(${incluidas})` : ""}
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };
