@@ -1,8 +1,16 @@
-import { useMemo, useState } from "react";
-import { Plus, X, Trash2, Edit2, Check, MoreVertical, ListTodo, Package, CalendarClock, ChevronDown, AlertTriangle } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Plus, X, Trash2, Edit2, Check, MoreVertical, ListTodo, Package, CalendarClock, ChevronDown, AlertTriangle, GripVertical } from "lucide-react";
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, useDraggable, useDroppable } from "@dnd-kit/core";
+import type { DragEndEvent } from "@dnd-kit/core";
 import type { Note, CalendarEvent } from "../../hooks/useAlDiaState";
 import { C, bento, etiqueta, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina } from "../../theme";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
+
+// Marca especial (en `q`) del grupo fijo "por hacer" — va siempre primero y
+// recibe tareas arrastradas desde los demás grupos. Se identifica por esta
+// marca, no por el título, así el usuario lo puede renombrar sin romperlo.
+const Q_POR_HACER = "pendiente-inbox";
+const DROP_POR_HACER = "por-hacer-drop";
 
 /* ══════════════════════════════════════════════════════════════════
    PendientesDashboard — el "cerebro" de cosas sueltas por hacer, tal
@@ -48,8 +56,37 @@ export const PendientesDashboard = ({ notes, addNote, removeNote, toggleNoteItem
         [notes]
     );
 
+    // "Por hacer": grupo fijo, siempre primero, único que recibe tareas
+    // arrastradas desde los demás. Se auto-crea una vez si no existe.
+    const porHacer = useMemo(
+        () => notes.find(n => n.type === 'checklist' && n.q === Q_POR_HACER) || null,
+        [notes]
+    );
+    const creandoPorHacerRef = useRef(false);
+    useEffect(() => {
+        if (!porHacer && !creandoPorHacerRef.current) {
+            creandoPorHacerRef.current = true;
+            addNote("Por hacer", "", "checklist", [], Q_POR_HACER, "#FFFFFF");
+        }
+    }, [porHacer, addNote]);
+
     const [nuevoGrupo, setNuevoGrupo] = useState("");
     const [creando, setCreando] = useState(false);
+
+    // ── Arrastrar: solo de un grupo del usuario hacia "Por hacer" ──
+    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+    const onDragEnd = (e: DragEndEvent) => {
+        const { active, over } = e;
+        if (!over || over.id !== DROP_POR_HACER || !porHacer) return;
+        const data = active.data.current as { item?: Note['items'][number]; sourceGroupId?: number } | undefined;
+        const item = data?.item;
+        const sourceGroupId = data?.sourceGroupId;
+        if (!item || sourceGroupId == null || sourceGroupId === porHacer.id) return;
+        const origen = notes.find(n => n.id === sourceGroupId);
+        if (!origen) return;
+        updateNote(sourceGroupId, { items: origen.items.filter(it => it.id !== item.id) });
+        updateNote(porHacer.id, { items: [...porHacer.items, item] });
+    };
 
     const crearGrupo = () => {
         const t = nuevoGrupo.trim();
@@ -82,6 +119,7 @@ export const PendientesDashboard = ({ notes, addNote, removeNote, toggleNoteItem
     );
 
     const totalPendientes = grupos.reduce((n, g) => n + g.items.filter(it => !it.completed).length, 0)
+        + (porHacer?.items.filter(it => !it.completed).length ?? 0)
         + porEntregar.length + porReagendar.length + entregasAtrasadas.length;
 
     return (
@@ -107,11 +145,15 @@ export const PendientesDashboard = ({ notes, addNote, removeNote, toggleNoteItem
                 </button>
             )}
 
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <div style={{ display: "grid", gridTemplateColumns: movil ? "1fr" : "repeat(auto-fill, minmax(280px, 1fr))", gap: movil ? "0.85rem" : "1.25rem", alignItems: "start" }}>
-                {/* Tus grupos primero: es el orden en que vas a hacer las cosas.
-                    Debajo, los grupos AUTO que salen solos de la Agenda. */}
+                {/* "Por hacer" siempre primero: única que recibe tareas arrastradas
+                    de los demás grupos. Debajo, tus grupos, y luego los AUTO. */}
+                {porHacer && (
+                    <GrupoCard grupo={porHacer} removeNote={removeNote} toggleNoteItem={toggleNoteItem} updateNote={updateNote} dropId={DROP_POR_HACER} />
+                )}
                 {grupos.map(g => (
-                    <GrupoCard key={g.id} grupo={g} removeNote={removeNote} toggleNoteItem={toggleNoteItem} updateNote={updateNote} />
+                    <GrupoCard key={g.id} grupo={g} removeNote={removeNote} toggleNoteItem={toggleNoteItem} updateNote={updateNote} arrastrable />
                 ))}
 
                 {porEntregar.length > 0 && (
@@ -142,6 +184,7 @@ export const PendientesDashboard = ({ notes, addNote, removeNote, toggleNoteItem
                     />
                 )}
             </div>
+            </DndContext>
 
             {grupos.length === 0 && porEntregar.length === 0 && porReagendar.length === 0 && entregasAtrasadas.length === 0 && !creando && (
                 <div style={{ textAlign: "center", padding: "3rem 1rem", color: C.outline }}>
@@ -175,7 +218,11 @@ const AutoCard = ({ icon, titulo, color, items, nota }: { icon: React.ReactNode;
 );
 
 /* ── Tarjeta de grupo del usuario (editable) ─────────────────────── */
-const GrupoCard = ({ grupo, removeNote, toggleNoteItem, updateNote }: { grupo: Note; removeNote: (id: number) => void; toggleNoteItem: (noteId: number, itemId: number) => void; updateNote: (id: number, updates: Partial<Note>) => void }) => {
+const GrupoCard = ({ grupo, removeNote, toggleNoteItem, updateNote, dropId, arrastrable }: {
+    grupo: Note; removeNote: (id: number) => void; toggleNoteItem: (noteId: number, itemId: number) => void; updateNote: (id: number, updates: Partial<Note>) => void;
+    dropId?: string; arrastrable?: boolean;
+}) => {
+    const { setNodeRef: setDropRef, isOver } = useDroppable({ id: dropId ?? `sin-drop-${grupo.id}`, disabled: !dropId });
     const [editandoTitulo, setEditandoTitulo] = useState(false);
     const [tituloDraft, setTituloDraft] = useState(grupo.title);
     const [nuevoItem, setNuevoItem] = useState("");
@@ -223,14 +270,109 @@ const GrupoCard = ({ grupo, removeNote, toggleNoteItem, updateNote }: { grupo: N
         setEditandoTitulo(false);
     };
 
-    const fila = (item: Note['items'][number]) => (
-        <div key={item.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 0" }}>
+    const fila = (item: Note['items'][number], puedeArrastrar: boolean) => (
+        <FilaPendiente
+            key={item.id}
+            item={item}
+            grupoId={grupo.id}
+            arrastrable={puedeArrastrar}
+            editItemId={editItemId}
+            editItemText={editItemText}
+            setEditItemText={setEditItemText}
+            guardarEdit={guardarEdit}
+            toggleNoteItem={toggleNoteItem}
+            itemMenuId={itemMenuId}
+            setItemMenuId={setItemMenuId}
+            empezarEdit={empezarEdit}
+            quitar={quitar}
+        />
+    );
+
+    return (
+        <div ref={setDropRef} style={{ ...bento, padding: "1.1rem", display: "flex", flexDirection: "column", gap: "0.7rem", ...(dropId ? { border: `1.5px dashed ${isOver ? C.primary : C.outlineVariant}`, background: isOver ? C.surfaceContainerLow : undefined } : {}) }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                {editandoTitulo ? (
+                    <input autoFocus value={tituloDraft} onChange={e => setTituloDraft(e.target.value)} onKeyDown={e => e.key === "Enter" && guardarTitulo()} onBlur={guardarTitulo} style={{ ...inputStyle, fontWeight: 800, flex: 1 }} />
+                ) : (
+                    <span style={{ ...etiqueta, flex: 1, fontSize: "0.9rem" }}>{grupo.title}{pendientes.length > 0 ? ` (${pendientes.length})` : ''}</span>
+                )}
+                <div style={{ position: "relative" }}>
+                    <button onClick={() => setMenuAbierto(v => !v)} title="Opciones" style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "3px", display: "flex" }}><MoreVertical size={15} /></button>
+                    {menuAbierto && (
+                        <div style={{ position: "absolute", top: "100%", right: 0, zIndex: 5, background: "white", border: `1px solid ${C.outlineVariant}`, borderRadius: "9px", boxShadow: "0 4px 14px rgba(0,0,0,0.1)", overflow: "hidden", minWidth: "140px" }}>
+                            <button onClick={() => { setTituloDraft(grupo.title); setEditandoTitulo(true); setMenuAbierto(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", color: C.onSurface, fontSize: "0.78rem", fontWeight: 600, textAlign: "left" }}><Edit2 size={13} /> Renombrar</button>
+                            <button onClick={() => { setConfirmarBorrar(true); setMenuAbierto(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", color: C.rojo, fontSize: "0.78rem", fontWeight: 600, textAlign: "left", borderTop: `1px solid ${C.surfaceContainerLow}` }}><Trash2 size={13} /> Eliminar grupo</button>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {grupo.items.length === 0 && (
+                    <p style={{ fontSize: "0.75rem", color: C.outline, margin: 0, fontStyle: "italic" }}>Sin ítems. Agrega uno abajo.</p>
+                )}
+                {pendientes.map(it => fila(it, !!arrastrable))}
+            </div>
+
+            {hechos.length > 0 && (
+                <div>
+                    <button onClick={() => setVerHechos(v => !v)} style={{ display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", cursor: "pointer", padding: 0, color: C.outline, fontSize: "0.7rem", fontWeight: 700 }}>
+                        <ChevronDown size={12} style={{ transform: verHechos ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} /> Hechos ({hechos.length})
+                    </button>
+                    {verHechos && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: "4px" }}>
+                            {hechos.map(it => fila(it, false))}
+                            <button onClick={limpiarHechos} style={{ alignSelf: "flex-start", background: "none", border: "none", cursor: "pointer", padding: "2px 0", color: C.rojo, fontSize: "0.68rem", fontWeight: 700 }}>Limpiar hechos</button>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                <input placeholder="+ agregar..." value={nuevoItem} onChange={e => setNuevoItem(e.target.value)} onKeyDown={e => e.key === "Enter" && agregar()} style={{ ...inputStyle, fontSize: "0.8rem", padding: "6px 9px" }} />
+                <button onClick={agregar} style={{ background: C.surfaceContainerLow, border: "none", borderRadius: "7px", padding: "6px 9px", cursor: "pointer", color: C.onSurfaceVariant, display: "flex" }}><Plus size={14} /></button>
+            </div>
+
+            <ConfirmDialog
+                open={confirmarBorrar}
+                title="Eliminar grupo"
+                message={`¿Eliminar "${grupo.title}"? Se pierden todos sus ítems.`}
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                onConfirm={() => { removeNote(grupo.id); setConfirmarBorrar(false); }}
+                onCancel={() => setConfirmarBorrar(false)}
+            />
+        </div>
+    );
+};
+
+/* ── Fila de un ítem dentro de un grupo; arrastrable hacia "Por hacer" ── */
+const FilaPendiente = ({ item, grupoId, arrastrable, editItemId, editItemText, setEditItemText, guardarEdit, toggleNoteItem, itemMenuId, setItemMenuId, empezarEdit, quitar }: {
+    item: Note['items'][number]; grupoId: number; arrastrable: boolean;
+    editItemId: number | null; editItemText: string; setEditItemText: (v: string) => void; guardarEdit: () => void;
+    toggleNoteItem: (noteId: number, itemId: number) => void;
+    itemMenuId: number | null; setItemMenuId: (v: number | ((prev: number | null) => number | null)) => void;
+    empezarEdit: (itemId: number, text: string) => void; quitar: (itemId: number) => void;
+}) => {
+    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+        id: `pend-${grupoId}-${item.id}`,
+        data: { item, sourceGroupId: grupoId },
+        disabled: !arrastrable,
+    });
+
+    return (
+        <div ref={setNodeRef} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 0", opacity: isDragging ? 0.4 : 1 }}>
             {editItemId === item.id ? (
                 <input autoFocus value={editItemText} onChange={e => setEditItemText(e.target.value)} onKeyDown={e => e.key === "Enter" && guardarEdit()} onBlur={guardarEdit} style={{ ...inputStyle, fontSize: "0.8rem", padding: "5px 8px", flex: 1 }} />
             ) : (
                 <>
+                    {arrastrable && (
+                        <button {...attributes} {...listeners} title="Arrastrar a Por hacer" style={{ background: "none", border: "none", cursor: "grab", color: C.outlineVariant, padding: "2px", display: "flex", touchAction: "none" }}>
+                            <GripVertical size={14} />
+                        </button>
+                    )}
                     <div
-                        onClick={() => toggleNoteItem(grupo.id, item.id)}
+                        onClick={() => toggleNoteItem(grupoId, item.id)}
                         style={{
                             width: "18px", height: "18px", borderRadius: "5px", flexShrink: 0, cursor: "pointer",
                             border: `2px solid ${item.completed ? C.secondary : C.outlineVariant}`,
@@ -254,63 +396,6 @@ const GrupoCard = ({ grupo, removeNote, toggleNoteItem, updateNote }: { grupo: N
                     </div>
                 </>
             )}
-        </div>
-    );
-
-    return (
-        <div style={{ ...bento, padding: "1.1rem", display: "flex", flexDirection: "column", gap: "0.7rem" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                {editandoTitulo ? (
-                    <input autoFocus value={tituloDraft} onChange={e => setTituloDraft(e.target.value)} onKeyDown={e => e.key === "Enter" && guardarTitulo()} onBlur={guardarTitulo} style={{ ...inputStyle, fontWeight: 800, flex: 1 }} />
-                ) : (
-                    <span style={{ ...etiqueta, flex: 1, fontSize: "0.9rem" }}>{grupo.title}{pendientes.length > 0 ? ` (${pendientes.length})` : ''}</span>
-                )}
-                <div style={{ position: "relative" }}>
-                    <button onClick={() => setMenuAbierto(v => !v)} title="Opciones" style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "3px", display: "flex" }}><MoreVertical size={15} /></button>
-                    {menuAbierto && (
-                        <div style={{ position: "absolute", top: "100%", right: 0, zIndex: 5, background: "white", border: `1px solid ${C.outlineVariant}`, borderRadius: "9px", boxShadow: "0 4px 14px rgba(0,0,0,0.1)", overflow: "hidden", minWidth: "140px" }}>
-                            <button onClick={() => { setTituloDraft(grupo.title); setEditandoTitulo(true); setMenuAbierto(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", color: C.onSurface, fontSize: "0.78rem", fontWeight: 600, textAlign: "left" }}><Edit2 size={13} /> Renombrar</button>
-                            <button onClick={() => { setConfirmarBorrar(true); setMenuAbierto(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", color: C.rojo, fontSize: "0.78rem", fontWeight: 600, textAlign: "left", borderTop: `1px solid ${C.surfaceContainerLow}` }}><Trash2 size={13} /> Eliminar grupo</button>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                {grupo.items.length === 0 && (
-                    <p style={{ fontSize: "0.75rem", color: C.outline, margin: 0, fontStyle: "italic" }}>Sin ítems. Agrega uno abajo.</p>
-                )}
-                {pendientes.map(fila)}
-            </div>
-
-            {hechos.length > 0 && (
-                <div>
-                    <button onClick={() => setVerHechos(v => !v)} style={{ display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", cursor: "pointer", padding: 0, color: C.outline, fontSize: "0.7rem", fontWeight: 700 }}>
-                        <ChevronDown size={12} style={{ transform: verHechos ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} /> Hechos ({hechos.length})
-                    </button>
-                    {verHechos && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: "4px" }}>
-                            {hechos.map(fila)}
-                            <button onClick={limpiarHechos} style={{ alignSelf: "flex-start", background: "none", border: "none", cursor: "pointer", padding: "2px 0", color: C.rojo, fontSize: "0.68rem", fontWeight: 700 }}>Limpiar hechos</button>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                <input placeholder="+ agregar..." value={nuevoItem} onChange={e => setNuevoItem(e.target.value)} onKeyDown={e => e.key === "Enter" && agregar()} style={{ ...inputStyle, fontSize: "0.8rem", padding: "6px 9px" }} />
-                <button onClick={agregar} style={{ background: C.surfaceContainerLow, border: "none", borderRadius: "7px", padding: "6px 9px", cursor: "pointer", color: C.onSurfaceVariant, display: "flex" }}><Plus size={14} /></button>
-            </div>
-
-            <ConfirmDialog
-                open={confirmarBorrar}
-                title="Eliminar grupo"
-                message={`¿Eliminar "${grupo.title}"? Se pierden todos sus ítems.`}
-                confirmLabel="Eliminar"
-                cancelLabel="Cancelar"
-                onConfirm={() => { removeNote(grupo.id); setConfirmarBorrar(false); }}
-                onCancel={() => setConfirmarBorrar(false)}
-            />
         </div>
     );
 };
