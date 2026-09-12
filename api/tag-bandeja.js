@@ -19,18 +19,19 @@ export default async function handler(req, res) {
 
     const etiquetasDisponibles = Array.isArray(etiquetas) ? etiquetas : [];
 
-    const prompt = `Eres un clasificador de contexto para una lista de tareas/notas cortas en español.
+    const prompt = `Eres un clasificador de contexto para una lista de tareas/notas cortas en español, para la bandeja de entrada personal de un usuario.
 
-Una ETIQUETA es una categoría AMPLIA y reusable que agrupa varias tareas por lugar, área de la vida o proyecto (ejemplos: "casa", "trabajo", "salud", "finanzas", "lectura", "mandados", "centro", "personal"). Debe poder aplicarse a muchas tareas distintas.
+Una ETIQUETA es una categoría AMPLIA y reusable que agrupa varias tareas por lugar, área de la vida, cliente o proyecto. NUNCA puede ser el mismo texto (o casi el mismo) que la tarea — eso no agrupa nada. Ejemplos de lo que NO debes hacer:
+- tarea "correr" -> etiqueta "correr" ❌ (correcto: "salud" o "deporte")
+- tarea "leer" -> etiqueta "leer" ❌ (correcto: "lectura" o "personal")
+- tarea "llamar al dentista" -> etiqueta "dentista" ❌ (correcto: "salud")
 
-REGLA MÁS IMPORTANTE: la etiqueta NUNCA puede ser el mismo texto (o casi el mismo) que la tarea — eso no agrupa nada, es inútil. Ejemplos de lo que NO debes hacer:
-- tarea "correr" -> etiqueta "correr" ❌ (correcto sería "salud" o "deporte")
-- tarea "leer" -> etiqueta "leer" ❌ (correcto sería "lectura" o "personal")
-- tarea "llamar al dentista" -> etiqueta "dentista" ❌ (correcto sería "salud")
+PASO 1 — mira las etiquetas que este usuario YA usa (si hay): ${etiquetasDisponibles.length ? etiquetasDisponibles.join(', ') : '(ninguna todavía, es su primera vez)'}
+Esas etiquetas te dicen cómo esta persona organiza SU vida — pueden ser áreas de negocio (ej. "clientes", "entregas", "dinero"), no solo genéricas de vida diaria. Antes de inventar una etiqueta nueva, revisa en serio si alguna de las que ya existen encaja, aunque sea a grandes rasgos — se prefiere reusar sobre crear.
 
-Etiquetas que ya existen en este tablero — prioriza reusar una si encaja, aunque sea a grandes rasgos: ${etiquetasDisponibles.length ? etiquetasDisponibles.join(', ') : '(ninguna todavía)'}
+PASO 2 — si de verdad ninguna existente encaja, mira TODO el lote de líneas nuevas junto (no una por una): si dos o más líneas del lote comparten el mismo tema, dales la MISMA etiqueta nueva en vez de inventar una distinta para cada una. No repartas en una etiqueta de un solo uso si puedes agrupar.
 
-Si de verdad ninguna encaja, propone una etiqueta nueva corta (una palabra, minúscula, sin acentos) que sea una CATEGORÍA reusable, no el nombre de la tarea.
+PASO 3 — la etiqueta nueva debe ser corta (una palabra, minúscula, sin acentos) y del mismo "nivel" que las que ya existen: un ÁREA de la vida/negocio, no una actividad puntual.
 
 Líneas a clasificar (id -> texto):
 ${items.map(it => `${it.id} -> ${it.text}`).join('\n')}
@@ -46,7 +47,7 @@ Responde SOLO con un JSON, sin texto adicional, con esta forma exacta:
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'openai/gpt-oss-20b',
+                model: 'openai/gpt-oss-120b',
                 messages: [{ role: 'user', content: prompt }],
                 temperature: 0.2,
                 response_format: { type: 'json_object' }
