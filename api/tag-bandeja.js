@@ -19,11 +19,18 @@ export default async function handler(req, res) {
 
     const etiquetasDisponibles = Array.isArray(etiquetas) ? etiquetas : [];
 
-    const prompt = `Eres un clasificador que asigna etiquetas de contexto a líneas sueltas de una lista de tareas/notas en español.
+    const prompt = `Eres un clasificador de contexto para una lista de tareas/notas cortas en español.
 
-Etiquetas ya existentes (usa una de estas si encaja): ${etiquetasDisponibles.length ? etiquetasDisponibles.join(', ') : '(ninguna todavía)'}
+Una ETIQUETA es una categoría AMPLIA y reusable que agrupa varias tareas por lugar, área de la vida o proyecto (ejemplos: "casa", "trabajo", "salud", "finanzas", "lectura", "mandados", "centro", "personal"). Debe poder aplicarse a muchas tareas distintas.
 
-Si ninguna etiqueta existente encaja bien, propone una nueva etiqueta corta (una palabra, minúscula, sin acentos, ej: "centro", "casa", "finanzas", "laptop").
+REGLA MÁS IMPORTANTE: la etiqueta NUNCA puede ser el mismo texto (o casi el mismo) que la tarea — eso no agrupa nada, es inútil. Ejemplos de lo que NO debes hacer:
+- tarea "correr" -> etiqueta "correr" ❌ (correcto sería "salud" o "deporte")
+- tarea "leer" -> etiqueta "leer" ❌ (correcto sería "lectura" o "personal")
+- tarea "llamar al dentista" -> etiqueta "dentista" ❌ (correcto sería "salud")
+
+Etiquetas que ya existen en este tablero — prioriza reusar una si encaja, aunque sea a grandes rasgos: ${etiquetasDisponibles.length ? etiquetasDisponibles.join(', ') : '(ninguna todavía)'}
+
+Si de verdad ninguna encaja, propone una etiqueta nueva corta (una palabra, minúscula, sin acentos) que sea una CATEGORÍA reusable, no el nombre de la tarea.
 
 Líneas a clasificar (id -> texto):
 ${items.map(it => `${it.id} -> ${it.text}`).join('\n')}
