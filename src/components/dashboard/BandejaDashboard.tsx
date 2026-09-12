@@ -93,8 +93,13 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
     const [gestionAbierta, setGestionAbierta] = useState(false);
     const [iaCargando, setIaCargando] = useState(false);
     const [iaError, setIaError] = useState<string | null>(null);
-    const [iaRevision, setIaRevision] = useState<{ id: number; text: string; tag: string; incluir: boolean }[] | null>(null);
+    const [iaPendientes, setIaPendientes] = useState<Set<number>>(new Set());
     const inputRef = useRef<HTMLInputElement>(null);
+
+    const confirmarIA = (id: number) => setIaPendientes(prev => {
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev); next.delete(id); return next;
+    });
 
     const items = bandeja?.items ?? [];
     const abiertas = items.filter(it => !it.completed);
@@ -142,6 +147,7 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
         const cfg = etiquetasConfig.includes(t) ? etiquetasConfig : [...etiquetasConfig, t];
         const items2 = bandeja.items.map(i => i.id === id ? { ...i, tags: [...new Set([...(i.tags ?? []), t])] } : i);
         updateNote(bandeja.id, { content: JSON.stringify(cfg), items: items2 });
+        confirmarIA(id);
     };
 
     // Grupos: "sin etiqueta" primero (la bandeja cruda), luego una por etiqueta.
@@ -167,7 +173,11 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
     };
 
     const toggle = (id: number) => patchItem(id, { completed: !bandeja!.items.find(i => i.id === id)?.completed });
-    const descartar = (id: number) => bandeja && setItems(bandeja.items.filter(it => it.id !== id));
+    const descartar = (id: number) => {
+        if (!bandeja) return;
+        setItems(bandeja.items.filter(it => it.id !== id));
+        confirmarIA(id);
+    };
     const limpiarHechos = () => bandeja && setItems(bandeja.items.filter(it => !it.completed));
 
     const guardarEdit = () => {
@@ -183,6 +193,7 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
         const ts = it.tags ?? [];
         const next = ts.includes(tag) ? ts.filter(x => x !== tag) : [...ts, tag];
         patchItem(id, { tags: next.length ? next : undefined });
+        confirmarIA(id);
     };
 
     // Manda líneas a la pestaña Pendientes. El nombre del grupo destino sale de
@@ -211,11 +222,13 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
 
     const toggleFiltro = (t: string) => setFiltro(f => f.includes(t) ? f.filter(x => x !== t) : [...f, t]);
 
-    // ── Etiquetar con IA: pide sugerencias para lo sin repartir, el usuario revisa ──
+    // ── Etiquetar con IA: reparte lo sin etiquetar en sus grupos (reales o nuevos)
+    // de una vez; cada línea queda marcada "pendiente" (acento ámbar) hasta que el
+    // usuario la confirma con un toque, o la corrige tocando su etiqueta o borrándola.
     const sinEtiquetar = useMemo(() => abiertas.filter(it => (it.tags ?? []).length === 0), [abiertas]);
 
     const pedirSugerenciasIA = async () => {
-        if (sinEtiquetar.length === 0 || iaCargando) return;
+        if (sinEtiquetar.length === 0 || iaCargando || !bandeja) return;
         setIaCargando(true);
         setIaError(null);
         try {
@@ -233,24 +246,26 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
             const porId = new Map<number, string>(
                 (data.sugerencias ?? []).map((s: any) => [Number(s.id), slug(String(s.tag ?? ''))])
             );
-            const filas = sinEtiquetar
-                .map(it => ({ id: it.id, text: it.text, tag: porId.get(it.id) || '', incluir: true }))
+            const aplicadas = sinEtiquetar
+                .map(it => ({ id: it.id, tag: porId.get(it.id) || '' }))
                 .filter(f => f.tag);
-            if (filas.length === 0) throw new Error('No llegaron sugerencias usables');
-            setIaRevision(filas);
+            if (aplicadas.length === 0) throw new Error('No llegaron sugerencias usables');
+
+            let cfg = etiquetasConfig;
+            const porItem = new Map(aplicadas.map(f => [f.id, f.tag]));
+            const items2 = bandeja.items.map(i => {
+                const t = porItem.get(i.id);
+                if (!t) return i;
+                if (!cfg.includes(t)) cfg = [...cfg, t];
+                return { ...i, tags: [...new Set([...(i.tags ?? []), t])] };
+            });
+            updateNote(bandeja.id, { content: JSON.stringify(cfg), items: items2 });
+            setIaPendientes(prev => new Set([...prev, ...aplicadas.map(f => f.id)]));
         } catch (err) {
             setIaError(err instanceof Error ? err.message : 'No se pudo conectar con la IA');
         } finally {
             setIaCargando(false);
         }
-    };
-
-    const aplicarSugerenciasIA = () => {
-        if (!iaRevision) return;
-        for (const f of iaRevision) {
-            if (f.incluir && f.tag.trim()) crearYAsignar(f.id, f.tag.trim());
-        }
-        setIaRevision(null);
     };
 
     // ── Arrastrar: reordenar dentro del grupo y mover entre etiquetas ──
@@ -287,10 +302,13 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
             next.splice(ni < 0 ? next.length : ni, 0, moved);
         }
         setItems(next);
+        confirmarIA(activeId);
     };
 
     const filaProps = (item: Item, grupoTag?: string) => ({
         item, movil, grupoTag,
+        pendienteIA: iaPendientes.has(item.id),
+        confirmarIA: () => confirmarIA(item.id),
         abrirPick: () => setPickId(item.id),
         editId, editText, setEditId, setEditText, guardarEdit,
         toggle, descartar: (id: number) => setBorrarId(id), aPendientes,
@@ -432,15 +450,6 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
                 />
             )}
 
-            {iaRevision && (
-                <IARevisionModal
-                    filas={iaRevision}
-                    setFilas={setIaRevision}
-                    onAplicar={aplicarSugerenciasIA}
-                    onClose={() => setIaRevision(null)}
-                />
-            )}
-
             {gestionAbierta && (
                 <TagManagerModal
                     todas={todasEtiquetas}
@@ -495,16 +504,27 @@ interface FilaProps {
     aPendientes: (id: number) => void;
     onEditar: () => void;
     dragHandle?: React.ReactNode;
+    pendienteIA?: boolean;
+    confirmarIA?: () => void;
 }
 
 const Fila = (p: FilaProps) => {
-    const { item, grupoTag, editId, editText, setEditId, setEditText, guardarEdit, toggle, descartar, aPendientes, onEditar, abrirPick, dragHandle } = p;
+    const { item, grupoTag, editId, editText, setEditId, setEditText, guardarEdit, toggle, descartar, aPendientes, onEditar, abrirPick, dragHandle, pendienteIA, confirmarIA } = p;
     const tags = item.tags ?? [];
     // En la vista agrupada no repetimos el chip de la etiqueta del propio grupo.
     const chipsVisibles = tags.filter(t => t !== grupoTag);
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: "6px", padding: "8px 0", borderBottom: `1px solid ${C.surfaceContainerHigh}` }}>
+        <div style={{
+            display: "flex", flexDirection: "column", gap: "6px", padding: "8px 8px 8px 8px", marginBottom: "1px",
+            borderBottom: `1px solid ${C.surfaceContainerHigh}`,
+            ...(pendienteIA ? { background: `${C.ambar}14`, borderLeft: `3px solid ${C.ambar}`, borderRadius: RADIO.campo, paddingLeft: "8px" } : {}),
+        }}>
+            {pendienteIA && (
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.62rem", fontWeight: 800, color: C.ambar }}>
+                    <Sparkles size={11} strokeWidth={2.5} /> SUGERIDO POR IA — REVISA
+                </div>
+            )}
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 {dragHandle}
                 {editId === item.id ? (
@@ -541,6 +561,11 @@ const Fila = (p: FilaProps) => {
                         </span>
                         {!item.completed && (
                             <>
+                                {pendienteIA && confirmarIA && (
+                                    <button onClick={confirmarIA} title="Confirmar etiqueta sugerida" style={{ ...iconBtn, color: C.ambar }}>
+                                        <Check size={17} strokeWidth={3} />
+                                    </button>
+                                )}
                                 <button onClick={abrirPick} title="Etiqueta" style={iconBtn}>
                                     <Plus size={17} strokeWidth={2.5} />
                                 </button>
@@ -743,77 +768,3 @@ const TagManagerModal = ({ todas, enUso, crear, borrar, onClose }: {
     );
 };
 
-/* Ventanita de revisión: la IA propuso etiquetas, el usuario ajusta o destilda antes de aplicar. */
-type FilaIA = { id: number; text: string; tag: string; incluir: boolean };
-
-const IARevisionModal = ({ filas, setFilas, onAplicar, onClose }: {
-    filas: FilaIA[]; setFilas: (v: FilaIA[]) => void; onAplicar: () => void; onClose: () => void;
-}) => {
-    const patch = (id: number, cambio: Partial<FilaIA>) =>
-        setFilas(filas.map(f => f.id === id ? { ...f, ...cambio } : f));
-
-    const incluidas = filas.filter(f => f.incluir && f.tag.trim()).length;
-
-    return (
-        <div
-            onClick={onClose}
-            style={{ position: "fixed", inset: 0, zIndex: 9999, padding: "20px", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
-        >
-            <div
-                onClick={e => e.stopPropagation()}
-                style={{ background: C.surfaceLowest, borderRadius: "24px", padding: "22px", width: "100%", maxWidth: "420px", maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}
-            >
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <Sparkles size={15} strokeWidth={2.5} style={{ color: C.primary }} />
-                    <div style={{ ...etiqueta, fontSize: "0.62rem", color: C.outline }}>Sugerencias de la IA</div>
-                </div>
-                <p style={{ margin: "4px 0 14px", fontSize: "0.8rem", color: C.onSurfaceVariant }}>
-                    Revisa o corrige la etiqueta de cada línea. Destilda las que no quieras aplicar.
-                </p>
-
-                <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px", paddingRight: "2px" }}>
-                    {filas.map(f => (
-                        <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", opacity: f.incluir ? 1 : 0.45 }}>
-                            <div
-                                onClick={() => patch(f.id, { incluir: !f.incluir })}
-                                title={f.incluir ? "Excluir esta línea" : "Incluir esta línea"}
-                                style={{
-                                    width: "20px", height: "20px", borderRadius: "7px", flexShrink: 0, cursor: "pointer",
-                                    border: `2px solid ${f.incluir ? C.secondary : C.outlineVariant}`,
-                                    background: f.incluir ? C.secondary : "transparent",
-                                    display: "flex", alignItems: "center", justifyContent: "center",
-                                }}
-                            >
-                                {f.incluir && <Check size={12} color="#fff" strokeWidth={3} />}
-                            </div>
-                            <span style={{ flex: 1, minWidth: 0, fontSize: "0.85rem", color: C.onSurface, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {f.text}
-                            </span>
-                            <input
-                                value={f.tag}
-                                onChange={e => patch(f.id, { tag: e.target.value })}
-                                style={{ width: "100px", flexShrink: 0, padding: "6px 8px", fontSize: "0.72rem", fontWeight: 700, borderRadius: RADIO.chip, border: `1px solid ${C.outlineVariant}`, outline: "none", background: C.surfaceContainer, color: C.onSurfaceVariant, textAlign: "center" }}
-                            />
-                        </div>
-                    ))}
-                </div>
-
-                <div style={{ display: "flex", gap: "10px", marginTop: "18px" }}>
-                    <button
-                        onClick={onClose}
-                        style={{ flex: 1, padding: "12px", borderRadius: "14px", border: `1px solid ${C.outlineVariant}`, background: "transparent", color: C.onSurfaceVariant, fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", fontFamily: "inherit" }}
-                    >
-                        Cancelar
-                    </button>
-                    <button
-                        onClick={onAplicar}
-                        disabled={incluidas === 0}
-                        style={{ flex: 1, padding: "12px", borderRadius: "14px", border: "none", background: C.primary, color: "#fff", fontWeight: 800, fontSize: "0.85rem", cursor: incluidas === 0 ? "default" : "pointer", fontFamily: "inherit", opacity: incluidas === 0 ? 0.5 : 1 }}
-                    >
-                        Aplicar {incluidas > 0 ? `(${incluidas})` : ""}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
