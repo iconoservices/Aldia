@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
+import type { Analytics } from "firebase/analytics";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
@@ -16,7 +16,14 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
+// Analytics solo mide uso, no bloquea nada visible — se carga después del
+// primer render en vez de sumar peso al bundle inicial.
+let analytics: Analytics | null = null;
+if (typeof window !== 'undefined') {
+  window.addEventListener('load', () => {
+    import('firebase/analytics').then(({ getAnalytics }) => { analytics = getAnalytics(app); });
+  });
+}
 // Caché local persistente: al abrir, Firestore responde al instante desde
 // IndexedDB (sin esperar la red) y sincroniza en segundo plano. Multi-pestaña
 // para que varias pestañas/dispositivos compartan la misma caché sin pelearse.
