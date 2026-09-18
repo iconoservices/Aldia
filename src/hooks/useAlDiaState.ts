@@ -153,7 +153,8 @@ export interface CalendarEvent {
     notionSaldoPorCobrar?: number;
     notionEntregaFecha?: string;     // YYYY-MM-DD, fecha de entrega calculada en Notion
     notionDiasRestantes?: string;    // texto ya formateado por Notion, ej. "🟢 A tiempo: 18 días"
-    notionCelular?: string;          // Celular (phone_number) del cliente, tal cual en Notion
+    notionCelular?: string;          // Celular del cliente (columna número en Notion)
+    notionFechaOriginal?: string;    // "Fecha original" (YYYY-MM-DD): la fecha antes de reagendar por 1ª vez
 }
 
 export interface Habit {

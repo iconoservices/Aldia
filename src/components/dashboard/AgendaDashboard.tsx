@@ -435,13 +435,17 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
             setSavingDateId(item.id);
             setDateErrorId(null);
             try {
+                // La fecha de antes se guarda una sola vez (la primera vez que se
+                // reagenda) en "Fecha original" de Notion; las siguientes la respetan.
+                const cambioFecha = !!item.date && item.date !== dateForm.date;
+                const fechaOriginal = cambioFecha && !item.notionFechaOriginal ? item.date : undefined;
                 const res = await fetch('/api/update-notion-date', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ notionId: item.notionId, ...dateForm })
+                    body: JSON.stringify({ notionId: item.notionId, ...dateForm, fechaOriginal })
                 });
                 if (!res.ok) throw new Error('respuesta no ok');
-                updateCalendarEvent(item.id, { ...dateForm });
+                updateCalendarEvent(item.id, { ...dateForm, ...(fechaOriginal ? { notionFechaOriginal: fechaOriginal } : {}) });
                 setEditingDateId(null);
             } catch (err) {
                 console.error('No se pudo reagendar en Notion:', err);
@@ -519,6 +523,11 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                             {isAtrasada && (
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: C.rojo, fontWeight: 800 }}>
                                     <AlertTriangle size={11} /> Atrasada — no se hizo, reagéndala
+                                </span>
+                            )}
+                            {!sinFecha && item.notionFechaOriginal && item.notionFechaOriginal !== item.date && (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: C.ambar, fontWeight: 800 }}>
+                                    <CalendarClock size={11} /> Reagendada · era {formatFecha(item.notionFechaOriginal)}
                                 </span>
                             )}
                         </div>

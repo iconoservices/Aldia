@@ -16,31 +16,43 @@ export default async function handler(req, res) {
         return;
     }
 
-    const { notionId, date, startTime, endTime } = req.body || {};
+    // fechaOriginal (opcional, "YYYY-MM-DD"): la fecha que tenía la sesión antes
+    // de reagendarla por primera vez. Se guarda en la columna "Fecha original"
+    // de Notion para no perder el historial; el cliente solo la manda si esa
+    // columna todavía está vacía.
+    const { notionId, date, startTime, endTime, fechaOriginal } = req.body || {};
     if (!notionId || !date || !startTime) {
         res.status(400).json({ error: 'faltan notionId, date o startTime' });
         return;
     }
 
+    const properties = {
+        'Fecha y hora': {
+            date: {
+                start: `${date}T${startTime}:00.000${OFFSET}`,
+                end: endTime ? `${date}T${endTime}:00.000${OFFSET}` : null
+            }
+        }
+    };
+    if (fechaOriginal) properties['Fecha original'] = { date: { start: fechaOriginal } };
+
+    const patch = (props) => fetch(`https://api.notion.com/v1/pages/${notionId}`, {
+        method: 'PATCH',
+        headers: {
+            Authorization: `Bearer ${process.env.NOTION_TOKEN}`,
+            'Notion-Version': '2022-06-28',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ properties: props })
+    });
+
     try {
-        const notionRes = await fetch(`https://api.notion.com/v1/pages/${notionId}`, {
-            method: 'PATCH',
-            headers: {
-                Authorization: `Bearer ${process.env.NOTION_TOKEN}`,
-                'Notion-Version': '2022-06-28',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                properties: {
-                    'Fecha y hora': {
-                        date: {
-                            start: `${date}T${startTime}:00.000${OFFSET}`,
-                            end: endTime ? `${date}T${endTime}:00.000${OFFSET}` : null
-                        }
-                    }
-                }
-            })
-        });
+        let notionRes = await patch(properties);
+        // Si la columna "Fecha original" no existe (o se borró), reagendar no
+        // debe fallar por eso: se reintenta solo con la fecha nueva.
+        if (!notionRes.ok && fechaOriginal) {
+            notionRes = await patch({ 'Fecha y hora': properties['Fecha y hora'] });
+        }
         const page = await notionRes.json();
         if (!notionRes.ok) {
             res.status(502).json({ error: 'notion error', detail: page });
