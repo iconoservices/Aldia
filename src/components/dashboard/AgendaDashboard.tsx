@@ -166,6 +166,17 @@ const PendientesWidget = ({ notes, addNote, toggleNoteItem, updateNote }: { note
 
 const hoyISO = () => new Date().toLocaleDateString('en-CA');
 
+// Al cambiar la hora de inicio, la de fin se mueve con ella conservando la
+// duración que ya había (90 min si no hay una válida), sin pasar de 23:59.
+const aMinutos = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+const deMinutos = (n: number) => `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
+const finAlMoverInicio = (inicioViejo: string, finViejo: string, inicioNuevo: string) => {
+    if (!inicioNuevo) return finViejo;
+    let dur = inicioViejo && finViejo ? aMinutos(finViejo) - aMinutos(inicioViejo) : 0;
+    if (!(dur > 0)) dur = 90;
+    return deMinutos(Math.min(aMinutos(inicioNuevo) + dur, 23 * 60 + 59));
+};
+
 const formatFecha = (iso: string) => {
     if (!iso) return 'Sin fecha';
     const [y, m, d] = iso.split('-').map(Number);
@@ -237,6 +248,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
     const [editingMeta, setEditingMeta] = useState(false);
     const [metaInput, setMetaInput] = useState('');
     const [notionOptions, setNotionOptions] = useState<{ proyecto: string[]; ubicacion: string[] } | null>(null);
+    const [opcionesFallo, setOpcionesFallo] = useState(false);
 
     // El campo notionSyncEnabled falta en documentos viejos de Firestore (se
     // agregó después) — el resto del pipeline (webhook, script de sync) ya lo
@@ -249,10 +261,11 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
     // para poder mostrarlas como botones en vez de que se escriban a mano.
     useEffect(() => {
         if (!showAddForm || !crearEnNotion || !notionActive || notionOptions) return;
+        setOpcionesFallo(false);
         fetch('/api/get-notion-options')
             .then(res => res.ok ? res.json() : null)
-            .then(data => { if (data) setNotionOptions(data); })
-            .catch(() => {});
+            .then(data => { if (data) setNotionOptions(data); else setOpcionesFallo(true); })
+            .catch(() => setOpcionesFallo(true));
     }, [showAddForm, crearEnNotion, notionActive, notionOptions]);
 
     const items = useMemo(
@@ -406,8 +419,10 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
         setDateErrorId(null);
         // Si es una sesión "por agendar" (sin fecha), arranca el formulario con
         // valores por defecto en vez de campos vacíos.
+        // Si la fecha ya pasó (sesión atrasada) arranca en hoy: con la fecha vieja
+        // puesta, guardar sin tocarla la dejaba igual de atrasada.
         setDateForm({
-            date: item.date || hoyISO(),
+            date: item.date && item.date >= hoyISO() ? item.date : hoyISO(),
             startTime: item.startTime || '09:00',
             endTime: item.endTime || '10:30',
         });
@@ -598,7 +613,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                     <div onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.6rem', paddingTop: '0.6rem', borderTop: `1px solid ${C.surfaceContainer}` }}>
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                             <input type="date" value={dateForm.date} onChange={e => setDateForm(f => ({ ...f, date: e.target.value }))} style={{ ...campo(movil), flex: '1 1 130px' }} />
-                            <input type="time" value={dateForm.startTime} onChange={e => setDateForm(f => ({ ...f, startTime: e.target.value }))} style={{ ...campo(movil), flex: '1 1 90px' }} />
+                            <input type="time" value={dateForm.startTime} onChange={e => setDateForm(f => ({ ...f, startTime: e.target.value, endTime: finAlMoverInicio(f.startTime, f.endTime, e.target.value) }))} style={{ ...campo(movil), flex: '1 1 90px' }} />
                             <input type="time" value={dateForm.endTime} onChange={e => setDateForm(f => ({ ...f, endTime: e.target.value }))} style={{ ...campo(movil), flex: '1 1 90px' }} />
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -729,21 +744,24 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                     />
                     <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
                         <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} style={{ ...campo(movil), flex: '1 1 140px' }} />
-                        <input type="time" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} style={{ ...campo(movil), flex: '1 1 100px' }} />
+                        <input type="time" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value, endTime: finAlMoverInicio(f.startTime, f.endTime, e.target.value) }))} style={{ ...campo(movil), flex: '1 1 100px' }} />
                         <input type="time" value={form.endTime} onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} style={{ ...campo(movil), flex: '1 1 100px' }} />
                     </div>
                     {crearEnNotion ? (
                         <>
-                            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-                                <input placeholder="Proyecto (ej. JuanMa Producer, Personal)" value={form.proyecto} onChange={e => setForm(f => ({ ...f, proyecto: e.target.value }))} style={{ ...campo(movil), flex: '1 1 200px' }} />
-                                <input placeholder="Ubicación (opcional)" value={form.ubicacion} onChange={e => setForm(f => ({ ...f, ubicacion: e.target.value }))} style={{ ...campo(movil), flex: '1 1 140px' }} />
-                            </div>
-                            {notionOptions && (
-                                <>
-                                    <ChipsSelector options={notionOptions.proyecto} value={form.proyecto} onSelect={v => setForm(f => ({ ...f, proyecto: v }))} />
-                                    <ChipsSelector options={notionOptions.ubicacion} value={form.ubicacion} onSelect={v => setForm(f => ({ ...f, ubicacion: v }))} />
-                                </>
-                            )}
+                            <div style={{ fontSize: '0.68rem', fontWeight: 800, color: C.outline, letterSpacing: '0.04em' }}>PROYECTO</div>
+                            {notionOptions
+                                ? <ChipsSelector options={notionOptions.proyecto} value={form.proyecto} onSelect={v => setForm(f => ({ ...f, proyecto: v }))} />
+                                : <div style={{ fontSize: '0.72rem', color: opcionesFallo ? C.rojo : C.outline }}>{opcionesFallo ? 'No se pudieron traer los proyectos de Notion.' : 'Cargando proyectos…'}</div>}
+                            <select
+                                value={form.ubicacion}
+                                onChange={e => setForm(f => ({ ...f, ubicacion: e.target.value }))}
+                                disabled={!notionOptions}
+                                style={{ ...campo(movil), color: form.ubicacion ? C.onSurface : C.outline }}
+                            >
+                                <option value="">Ubicación (opcional)</option>
+                                {(notionOptions?.ubicacion ?? []).map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
                             <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
                                 <input type="tel" placeholder="Celular del cliente (opcional)" value={form.celular} onChange={e => setForm(f => ({ ...f, celular: e.target.value }))} style={{ ...campo(movil), flex: '1 1 160px' }} />
                             </div>
