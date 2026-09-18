@@ -99,7 +99,7 @@ function toCalendarEvent(page) {
         notionSaldoPorCobrar: readFormula(props['Saldo por cobrar']),
         notionEntregaFecha: entregaDate?.start ? parseNotionDate(entregaDate.start).date : undefined,
         notionDiasRestantes: readFormula(props['Dias Restantes']),
-        notionCelular: props['Celular']?.phone_number
+        notionCelular: props['Celular']?.number != null ? String(props['Celular'].number) : props['Celular']?.phone_number
     };
     return Object.fromEntries(Object.entries(event).filter(([, v]) => v !== undefined));
 }

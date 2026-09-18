@@ -34,7 +34,9 @@ export default async function handler(req, res) {
     if (ubicacion) properties['Ubicación'] = { select: { name: ubicacion } };
     if (precio !== undefined && precio !== null && precio !== '') properties['Precio'] = { number: Number(precio) };
     if (cobrado !== undefined && cobrado !== null && cobrado !== '') properties['Cobrado'] = { number: Number(cobrado) };
-    if (celular) properties['Celular'] = { phone_number: celular };
+    // "Celular" es columna de tipo número en Notion (no teléfono): solo dígitos.
+    const celularDigitos = celular ? String(celular).replace(/\D/g, '') : '';
+    if (celularDigitos) properties['Celular'] = { number: Number(celularDigitos) };
 
     try {
         const notionRes = await fetch('https://api.notion.com/v1/pages', {
