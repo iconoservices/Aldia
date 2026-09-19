@@ -313,7 +313,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                  va fijo a la derecha y abre la cuadrícula completa. */}
             <div className="mobile-bottom-nav">
                 <div className="mbn-scroll" ref={bottomScrollRef}>
-                    {PRIMARY_ITEMS.map(item => {
+                    {/* Bandeja no va en la barra: se abre desde el botón de "Mi Día" */}
+                    {PRIMARY_ITEMS.filter(item => item.tab !== 'Bandeja').map(item => {
                         const isActive = activeTab === item.tab;
                         return (
                             <button

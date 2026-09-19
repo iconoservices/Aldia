@@ -313,6 +313,7 @@ function App() {
                 categoryAccountScope={state.categoryAccountScope}
                 categoryGroups={state.categoryGroups}
                 groupAccountScope={state.groupAccountScope}
+                onOpenBandeja={() => setActiveTab('Bandeja')}
               />
             ) : activeTab === 'Plan' ? (
               <PlanDashboard

@@ -22,7 +22,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import type { DailyBlock } from '../../hooks/useAlDiaState';
 
-import { C, bento as bentoCard, useIsMobile, TOQUE_MINIMO, MONO } from '../../theme';
+import { C, bento as bentoCard, useIsMobile, MONO } from '../../theme';
 import { RegistroMovimiento } from '../features/RegistroMovimiento';
 
 /* ─── Period ────────────────────────────────────────────────────
@@ -176,6 +176,7 @@ interface ChecklistDiarioProps {
     categoryAccountScope?: { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
     categoryGroups?: { ingreso: Record<string, string>; gasto: Record<string, string> };
     groupAccountScope?: { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
+    onOpenBandeja?: () => void;
 }
 
 const SORT_STORAGE_KEY = 'aldia-checklist-custom-order';
@@ -184,6 +185,7 @@ export const ChecklistDiario = ({
     dailyBlocks, addDailyBlock, toggleDailyBlock, removeDailyBlock, updateDailyBlock, projects,
     addTransaction, accounts = [],
     incomeCategories, expenseCategories, categoryAccountScope, categoryGroups, groupAccountScope,
+    onOpenBandeja,
 }: ChecklistDiarioProps) => {
     /* La fecha se recalcula sola: si la app queda abierta y pasa medianoche,
        el checklist salta al día nuevo sin necesidad de recargar. */
@@ -206,7 +208,6 @@ export const ChecklistDiario = ({
     const todayLabel = useMemo(() =>
         new Date(`${todayStr}T00:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }), [todayStr]);
 
-    const [searchQuery,     setSearchQuery]      = useState('');
     const [groupByProject,  setGroupByProject]   = useState(false);
     const [pendientesFirst, setPendientesFirst]  = useState(true);
     const [customOrder,     setCustomOrder]      = useState<string[]>([]);
@@ -306,12 +307,7 @@ export const ChecklistDiario = ({
         return list;
     }, [todayTemplates, groupByProject, customOrder, dailyBlocks, todayStr, projects, pendientesFirst]);
 
-    /* ── Visible (filtered) tasks ── */
-    const visibleTasks = useMemo(() => {
-        let list = sortedTasks;
-        if (searchQuery.trim()) list = list.filter(t => t.label.toLowerCase().includes(searchQuery.toLowerCase()));
-        return list;
-    }, [sortedTasks, searchQuery]);
+    const visibleTasks = sortedTasks;
 
     const visibleIds = useMemo(() => visibleTasks.map(t => taskKey(t.label, t.period)), [visibleTasks]);
 
@@ -453,92 +449,21 @@ export const ChecklistDiario = ({
         return (
             <div style={{ padding: '12px 12px 150px', minHeight: '100%' }}>
 
-                {/* Search / Filter toolbar */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem', width: '100%' }}>
-                    {/* Search */}
-                    <div style={{
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        background: C.surfaceContainerLow, padding: '0 14px',
-                        borderRadius: '999px', border: `1px solid ${C.outlineVariant}`,
-                        flex: 1, minHeight: `${TOQUE_MINIMO}px`, boxSizing: 'border-box',
-                    }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.onSurfaceVariant }}>search</span>
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            placeholder="Buscar tarea..."
-                            style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: '1rem', color: C.onSurface, width: '100%', fontFamily: 'inherit' }}
-                        />
-                    </div>
-
-                    {/* Pendientes primero toggle */}
-                    <button
-                        onClick={() => setPendientesFirst(v => !v)}
-                        title={pendientesFirst ? 'Pendientes primero: ON' : 'Pendientes primero: OFF'}
-                        style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: pendientesFirst ? 'rgba(15, 169, 122,0.10)' : C.surfaceContainerHigh,
-                            border: `1.5px solid ${pendientesFirst ? C.primary : C.outlineVariant}`,
-                            borderRadius: '999px', padding: '0 12px',
-                            minWidth: `${TOQUE_MINIMO}px`, minHeight: `${TOQUE_MINIMO}px`,
-                            cursor: 'pointer', flexShrink: 0,
-                        }}
-                    >
-                        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: pendientesFirst ? C.primary : C.onSurfaceVariant }}>
-                            vertical_align_top
-                        </span>
-                    </button>
-
-                    {/* Agrupar por proyecto */}
-                    <button
-                        onClick={() => setGroupByProject(v => !v)}
-                        title={groupByProject ? 'Agrupado por proyecto' : 'Agrupar por proyecto'}
-                        style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: groupByProject ? 'rgba(15, 169, 122,0.10)' : C.surfaceContainerHigh,
-                            border: `1.5px solid ${groupByProject ? C.primary : 'transparent'}`,
-                            borderRadius: '999px', padding: '0 12px',
-                            minWidth: `${TOQUE_MINIMO}px`, minHeight: `${TOQUE_MINIMO}px`,
-                            cursor: 'pointer', flexShrink: 0,
-                        }}
-                    >
-                        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: groupByProject ? C.primary : C.onSurfaceVariant }}>folder</span>
-                    </button>
-
-                    {/* Reset custom order */}
-                    {customOrder.length > 0 && (
-                        <button
-                            onClick={resetOrder}
-                            title="Restaurar orden automático"
-                            style={{
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                background: 'rgba(15, 169, 122,0.08)', border: 'none',
-                                borderRadius: '999px', padding: '0 12px',
-                                minWidth: `${TOQUE_MINIMO}px`, minHeight: `${TOQUE_MINIMO}px`,
-                                cursor: 'pointer', flexShrink: 0,
-                            }}
-                        >
-                            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.primary }}>restart_alt</span>
-                        </button>
-                    )}
-                </div>
-
                 {/* Progress Card */}
                 <div style={{
                     background: '#ffffff',
                     border: `1px solid ${C.outlineVariant}`,
-                    borderRadius: '1.25rem',
-                    padding: '1.25rem',
+                    borderRadius: '1rem',
+                    padding: '0.8rem 1rem',
                     boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
-                    marginBottom: '1rem'
+                    marginBottom: '0.75rem'
                 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                         <div>
-                            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: C.onSurface }}>
+                            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: C.onSurface }}>
                                 Tu progreso hoy
                             </h3>
-                            <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: C.onSurfaceVariant, fontWeight: 500 }}>
+                            <p style={{ margin: '1px 0 0', fontSize: '0.72rem', color: C.onSurfaceVariant, fontWeight: 500 }}>
                                 {progressPct === 100 ? '¡Jornada completada! 🎉' : 
                                  progressPct >= 75 ? '¡Casi terminas tu jornada!' : 
                                  progressPct >= 50 ? '¡Vas por la mitad, sigue así!' : 
@@ -547,12 +472,12 @@ export const ChecklistDiario = ({
                             </p>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'baseline', color: C.primary, fontFamily: MONO }}>
-                            <span style={{ fontSize: '2.2rem', fontWeight: 600 }}>{progressPct}</span>
-                            <span style={{ fontSize: '1.1rem', fontWeight: 600 }}>%</span>
+                            <span style={{ fontSize: '1.6rem', fontWeight: 600 }}>{progressPct}</span>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>%</span>
                         </div>
                     </div>
 
-                    <div style={{ width: '100%', height: '8px', background: C.surfaceContainer, borderRadius: '999px', overflow: 'hidden', marginBottom: '16px' }}>
+                    <div style={{ width: '100%', height: '6px', background: C.surfaceContainer, borderRadius: '999px', overflow: 'hidden', marginBottom: '10px' }}>
                         <motion.div
                             animate={{ width: `${progressPct}%` }}
                             transition={{ duration: 0.7, ease: 'easeOut' }}
@@ -560,24 +485,84 @@ export const ChecklistDiario = ({
                         />
                     </div>
 
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
                         <div style={{
                             display: 'flex', alignItems: 'center', gap: '6px',
                             background: 'rgba(15, 169, 122,0.08)', color: C.primary,
-                            padding: '6px 12px', borderRadius: '999px',
-                            fontSize: '0.75rem', fontWeight: 700,
+                            padding: '4px 6px', borderRadius: '999px', whiteSpace: 'nowrap',
+                            fontSize: '0.7rem', fontWeight: 700,
                         }}>
                             <span className="material-symbols-outlined" style={{ fontSize: '14px', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                            {completedToday} completadas
+                            {completedToday} hechas
                         </div>
                         <div style={{
                             display: 'flex', alignItems: 'center', gap: '6px',
                             background: C.surfaceContainer, color: C.onSurfaceVariant,
-                            padding: '6px 12px', borderRadius: '999px',
-                            fontSize: '0.75rem', fontWeight: 700,
+                            padding: '4px 6px', borderRadius: '999px', whiteSpace: 'nowrap',
+                            fontSize: '0.7rem', fontWeight: 700,
                         }}>
                             <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>schedule</span>
-                            {totalToday - completedToday} pendientes
+                            {totalToday - completedToday} por hacer
+                        </div>
+
+                        {/* Filtros, en la misma fila que los contadores */}
+                        <div style={{ display: 'flex', gap: '4px', marginLeft: 'auto' }}>
+                            {onOpenBandeja && (
+                                <button
+                                    onClick={onOpenBandeja}
+                                    title="Abrir la Bandeja"
+                                    style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        background: C.surfaceContainerHigh, border: '1.5px solid transparent',
+                                        borderRadius: '999px', width: '26px', height: '26px', padding: 0,
+                                        cursor: 'pointer', flexShrink: 0,
+                                    }}
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '15px', color: C.onSurfaceVariant }}>inbox</span>
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setPendientesFirst(v => !v)}
+                                title={pendientesFirst ? 'Pendientes primero: ON' : 'Pendientes primero: OFF'}
+                                style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    background: pendientesFirst ? 'rgba(15, 169, 122,0.10)' : C.surfaceContainerHigh,
+                                    border: `1.5px solid ${pendientesFirst ? C.primary : C.outlineVariant}`,
+                                    borderRadius: '999px', width: '26px', height: '26px', padding: 0,
+                                    cursor: 'pointer', flexShrink: 0,
+                                }}
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: '15px', color: pendientesFirst ? C.primary : C.onSurfaceVariant }}>
+                                    vertical_align_top
+                                </span>
+                            </button>
+                            <button
+                                onClick={() => setGroupByProject(v => !v)}
+                                title={groupByProject ? 'Agrupado por proyecto' : 'Agrupar por proyecto'}
+                                style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    background: groupByProject ? 'rgba(15, 169, 122,0.10)' : C.surfaceContainerHigh,
+                                    border: `1.5px solid ${groupByProject ? C.primary : 'transparent'}`,
+                                    borderRadius: '999px', width: '26px', height: '26px', padding: 0,
+                                    cursor: 'pointer', flexShrink: 0,
+                                }}
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: '15px', color: groupByProject ? C.primary : C.onSurfaceVariant }}>folder</span>
+                            </button>
+                            {customOrder.length > 0 && (
+                                <button
+                                    onClick={resetOrder}
+                                    title="Restaurar orden automático"
+                                    style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        background: 'rgba(15, 169, 122,0.08)', border: 'none',
+                                        borderRadius: '999px', width: '26px', height: '26px', padding: 0,
+                                        cursor: 'pointer', flexShrink: 0,
+                                    }}
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '15px', color: C.primary }}>restart_alt</span>
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -634,10 +619,10 @@ export const ChecklistDiario = ({
                                             checklist
                                         </span>
                                         <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: '0.95rem', color: C.onSurface }}>
-                                            {searchQuery ? 'Sin resultados' : 'Sin tareas programadas'}
+                                            Sin tareas programadas
                                         </p>
                                         <p style={{ margin: 0, fontSize: '0.8rem' }}>
-                                            {searchQuery ? 'Intenta con otro término.' : 'Añade tareas en Vida › Rutina.'}
+                                            Añade tareas en Vida › Rutina.
                                         </p>
                                     </motion.div>
                                 )}
@@ -867,23 +852,6 @@ export const ChecklistDiario = ({
                         categoryGroups={categoryGroups} groupAccountScope={groupAccountScope}
                     />
                 )}
-
-                {/* Search */}
-                <div style={{
-                    display: 'flex', alignItems: 'center', gap: '8px',
-                    background: C.surfaceContainerLow, padding: '8px 14px',
-                    borderRadius: '999px', border: `1px solid ${C.outlineVariant}`,
-                    minWidth: '200px',
-                }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.onSurfaceVariant }}>search</span>
-                    <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        placeholder="Buscar tarea..."
-                        style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: '0.85rem', color: C.onSurface, width: '100%', fontFamily: 'inherit' }}
-                    />
-                </div>
             </div>
 
             {/* ── Contenido ── */}
@@ -1061,10 +1029,10 @@ export const ChecklistDiario = ({
                                             checklist
                                         </span>
                                         <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: '0.95rem', color: C.onSurface }}>
-                                            {searchQuery ? 'Sin resultados' : 'Sin tareas programadas'}
+                                            Sin tareas programadas
                                         </p>
                                         <p style={{ margin: 0, fontSize: '0.8rem' }}>
-                                            {searchQuery ? 'Intenta con otro término.' : 'Añade tareas en Vida › Rutina.'}
+                                            Añade tareas en Vida › Rutina.
                                         </p>
                                     </motion.div>
                                 )}
