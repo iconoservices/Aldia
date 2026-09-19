@@ -51,8 +51,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     const PRIMARY_ITEMS = [
         { label: 'Mi Día', tab: 'Checklist', icon: 'task_alt' },
         { label: 'Bandeja', tab: 'Bandeja', icon: 'inbox' },
-        { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
         { label: 'Agenda', tab: 'Agenda', icon: 'event' },
+        { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
         { label: 'Entregas', tab: 'Entregas', icon: 'local_fire_department' },
         { label: 'Finanzas',  tab: 'Finanzas',  icon: 'payments'      },
         { label: 'Fijos', tab: 'Plan',      icon: 'savings'       },
