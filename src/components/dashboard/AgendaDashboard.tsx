@@ -336,7 +336,6 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
     const mesActual = hoy.slice(0, 7); // YYYY-MM
     const sesionesEsteMes = items.filter(e => e.date.startsWith(mesActual));
     const sesionesEsteMesCount = sesionesEsteMes.length;
-    const sesionesEsteMesHechas = sesionesEsteMes.filter(e => yaSucedio(e)).length;
     const metaSesiones = preferences.metaSesionesMes;
 
     const guardarMeta = () => {
@@ -911,7 +910,6 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                                     </button>
                                 </div>
                                 {metaSesiones ? <BarraProgreso pct={(sesionesEsteMesCount / metaSesiones) * 100} /> : null}
-                                <div style={{ fontSize: '0.68rem', color: C.outline, fontWeight: 600, marginTop: metaSesiones ? '4px' : 0 }}>{sesionesEsteMesHechas} hechas · {sesionesEsteMesCount - sesionesEsteMesHechas} por venir</div>
                             </>
                         )}
                     </div>
@@ -924,7 +922,6 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                     <div><b>Sesión:</b> la próxima sesión que todavía no ocurre.</div>
                     <div><b>Entrega:</b> la entrega pendiente con la fecha más cercana (Entrega en Notion, sin marcar Entregado).</div>
                     <div><b>Este mes:</b> cuántas sesiones tienes con fecha en el mes actual, pasadas y por venir. Con meta, se muestra como «X de meta».</div>
-                    <div><b>Hechas / por venir:</b> hechas = ya pasaron o su estado en Notion avanzó de Agendado; por venir = las que faltan del mes.</div>
                 </div>
             )}
 
