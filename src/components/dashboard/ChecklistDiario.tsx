@@ -166,13 +166,11 @@ const TaskCard = ({
 ══════════════════════════════════════════════════════════════ */
 const Q_POR_HACER = 'pendiente-inbox';
 
-const PorHacerDesplegable = ({ notes, addNote, updateNote }: {
+const PorHacerDesplegable = ({ notes, updateNote }: {
     notes: Note[];
-    addNote?: (title: string, content: string, type: 'text' | 'checklist', items: any[], q: string, color: string) => void;
     updateNote?: (id: number, updates: Partial<Note>) => void;
 }) => {
     const [abierto, setAbierto] = useState(false);
-    const [nuevo, setNuevo] = useState('');
     const nota = notes.find(n => n.type === 'checklist' && n.q === Q_POR_HACER) || null;
     const items = nota?.items ?? [];
     const pendientes = items.filter(i => !i.completed);
@@ -181,16 +179,9 @@ const PorHacerDesplegable = ({ notes, addNote, updateNote }: {
         if (!nota || !updateNote) return;
         updateNote(nota.id, { items: items.map(i => i.id === id ? { ...i, completed: !i.completed } : i) });
     };
-    const agregar = () => {
-        const t = nuevo.trim();
-        if (!t) return;
-        const item = { id: Date.now() + Math.random(), text: t, completed: false };
-        if (nota && updateNote) updateNote(nota.id, { items: [...items, item] });
-        else if (addNote) addNote('Por hacer', '', 'checklist', [item], Q_POR_HACER, '#FFFFFF');
-        setNuevo('');
-    };
 
-    if (!updateNote && !addNote) return null;
+    // Solo aparece lo que ya está en "Por hacer" de Pendientes; ahí se agrega.
+    if (!nota || pendientes.length === 0) return null;
     return (
         <div style={{ ...bentoCard, padding: '0.5rem 0.85rem' }}>
             <button
@@ -216,18 +207,6 @@ const PorHacerDesplegable = ({ notes, addNote, updateNote }: {
                             <span style={{ fontSize: '0.83rem', color: C.onSurface, lineHeight: 1.3 }}>{i.text}</span>
                         </div>
                     ))}
-                    <div style={{ display: 'flex', gap: '6px', paddingTop: '4px' }}>
-                        <input
-                            value={nuevo}
-                            onChange={e => setNuevo(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && agregar()}
-                            placeholder="+ agregar..."
-                            style={{ flex: 1, minWidth: 0, padding: '5px 9px', minHeight: '32px', boxSizing: 'border-box', fontSize: '0.8rem', borderRadius: '8px', border: `1px solid ${C.outlineVariant}`, outline: 'none', background: 'white', fontFamily: 'inherit' }}
-                        />
-                        <button onClick={agregar} style={{ background: C.surfaceContainerLow, border: 'none', borderRadius: '8px', padding: '0 10px', cursor: 'pointer', color: C.onSurfaceVariant, display: 'flex', alignItems: 'center' }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
-                        </button>
-                    </div>
                 </div>
             )}
         </div>
@@ -253,7 +232,6 @@ interface ChecklistDiarioProps {
     groupAccountScope?: { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
     onOpenBandeja?: () => void;
     notes?: Note[];
-    addNote?: (title: string, content: string, type: 'text' | 'checklist', items: any[], q: string, color: string) => void;
     updateNote?: (id: number, updates: Partial<Note>) => void;
 }
 
@@ -263,7 +241,7 @@ export const ChecklistDiario = ({
     dailyBlocks, addDailyBlock, toggleDailyBlock, removeDailyBlock, updateDailyBlock, projects,
     addTransaction, accounts = [],
     incomeCategories, expenseCategories, categoryAccountScope, categoryGroups, groupAccountScope,
-    onOpenBandeja, notes = [], addNote, updateNote,
+    onOpenBandeja, notes = [], updateNote,
 }: ChecklistDiarioProps) => {
     /* La fecha se recalcula sola: si la app queda abierta y pasa medianoche,
        el checklist salta al día nuevo sin necesidad de recargar. */
@@ -652,7 +630,7 @@ export const ChecklistDiario = ({
 
                 {/* DnD Tasks List */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <PorHacerDesplegable notes={notes} addNote={addNote} updateNote={updateNote} />
+                    <PorHacerDesplegable notes={notes} updateNote={updateNote} />
                     <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
@@ -1079,7 +1057,7 @@ export const ChecklistDiario = ({
                         </div>
                     </div>
 
-                    <PorHacerDesplegable notes={notes} addNote={addNote} updateNote={updateNote} />
+                    <PorHacerDesplegable notes={notes} updateNote={updateNote} />
 
                     {/* DnD List */}
                     <DndContext
