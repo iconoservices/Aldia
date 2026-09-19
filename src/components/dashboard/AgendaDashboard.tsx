@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Camera, PackageCheck, RefreshCw, Plus, Trash2, ChevronDown, Loader2, ExternalLink, X, History, CalendarClock, AlertTriangle, HardDrive, CalendarDays, Wallet, ListTodo, Check, Info } from "lucide-react";
+import { RefreshCw, Plus, Trash2, ChevronDown, Loader2, ExternalLink, X, History, CalendarClock, AlertTriangle, Wallet, ListTodo, Check, Info } from "lucide-react";
 import type { CalendarEvent, UserPreferences, NotionEstado, Note } from "../../hooks/useAlDiaState";
 import { NOTION_ESTADOS } from "../../hooks/useAlDiaState";
 import { C, bento, useIsMobile, paddingPagina, money, campo, etiqueta, RADIO, TOQUE_MINIMO } from "../../theme";
@@ -104,7 +104,7 @@ const PendientesWidget = ({ notes, addNote, toggleNoteItem, updateNote }: { note
         <div style={{ ...bento, padding: '0.55rem 0.8rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                 <ListTodo size={14} color={C.secondary} />
-                <span style={etiqueta}>Pendientes{pendientes.length > 0 ? ` (${pendientes.length})` : ''}</span>
+                <span style={etiqueta}>Notas{pendientes.length > 0 ? ` (${pendientes.length})` : ''}</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '220px', overflowY: 'auto' }}>
                 {pendientes.map(item => (
@@ -147,7 +147,7 @@ const PendientesWidget = ({ notes, addNote, toggleNoteItem, updateNote }: { note
             )}
             <div style={{ display: 'flex', gap: '6px' }}>
                 <input
-                    placeholder="+ agregar pendiente..."
+                    placeholder="+ agregar nota..."
                     value={nuevoTexto}
                     onChange={e => setNuevoTexto(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && agregar()}
@@ -244,6 +244,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
     const [abonoErrorId, setAbonoErrorId] = useState<number | null>(null);
     const [editingMeta, setEditingMeta] = useState(false);
     const [infoResumen, setInfoResumen] = useState(false);
+    const [verNotas, setVerNotas] = useState(false);
     const [metaInput, setMetaInput] = useState('');
     const [notionOptions, setNotionOptions] = useState<{ proyecto: string[]; ubicacion: string[] } | null>(null);
     const [opcionesFallo, setOpcionesFallo] = useState(false);
@@ -691,9 +692,10 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
         );
     };
 
-    const tarjetaResumen: React.CSSProperties = { ...bento, padding: movil ? '0.4rem 0.55rem' : '0.8rem', display: 'flex', gap: movil ? '7px' : '9px', alignItems: 'center', ...(movil ? { flex: '1 0 88px', minWidth: 0 } : {}) };
-    const cajaIcono = movil ? 26 : 36;
-    const botonChico: React.CSSProperties = movil ? { padding: '5px 10px', minHeight: '32px', fontSize: '0.75rem', whiteSpace: 'nowrap' } : {};
+    // En móvil las tarjetas van planas, como columnas de UNA sola tarjeta (separadas por una línea fina).
+    const tarjetaResumen: React.CSSProperties = { display: 'flex', gap: '7px', alignItems: 'center', padding: '0.1rem 0.75rem', flex: '1 0 88px', minWidth: 0, borderLeft: `1px solid ${C.outlineVariant}` };
+    const notasPendientes = (notes.find(n => n.type === 'checklist' && n.title.trim().toLowerCase() === 'pendientes')?.items ?? []).filter(it => !it.completed).length;
+    const botonChico: React.CSSProperties = { padding: '5px 10px', minHeight: '32px', fontSize: '0.75rem', whiteSpace: 'nowrap' };
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: movil ? "0.6rem" : "1.5rem", ...paddingPagina(movil), color: "var(--text-carbon)" }}>
@@ -704,25 +706,27 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                     <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: C.onSurface, whiteSpace: 'nowrap' }}>Agenda</h2>
                     <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: C.onSurfaceVariant, fontWeight: 600, whiteSpace: movil ? 'normal' : 'nowrap' }}>Tus próximas sesiones y entregas, a un vistazo.</p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: movil ? '0.4rem' : '0.6rem', flexWrap: movil ? 'nowrap' : 'wrap', marginLeft: movil ? 0 : 'auto', ...(movil ? { flex: '1 1 100%' } : {}) }}>
-                    <div title={`Notion ${notionActive ? 'activada' : 'desactivada'}`} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: movil ? '0.72rem' : '0.78rem', fontWeight: 800, color: C.onSurfaceVariant, whiteSpace: 'nowrap', marginRight: movil ? 'auto' : 0 }}>
-                        <RefreshCw size={13} color={notionActive ? C.verde : C.outline} className={syncing ? 'agenda-spin' : ''} />
-                        {movil ? null : `Notion ${notionActive ? 'activada' : 'desactivada'}`}
-                    </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: movil ? '0.4rem' : '0.6rem', flexWrap: 'nowrap', justifyContent: 'flex-end', marginLeft: 'auto', ...(movil ? { flex: '1 1 100%' } : {}) }}>
                     {!notionActive ? (
                         <button onClick={handleActivar} style={{ ...botonCompacto(movil), ...botonChico, background: C.verde, color: '#fff' }}>
                             Activar
                         </button>
                     ) : (
-                        <button onClick={handleSync} disabled={syncing} style={{ ...botonCompactoPrimario(movil), ...botonChico, opacity: syncing ? 0.7 : 1, cursor: syncing ? 'wait' : 'pointer' }}>
+                        <button onClick={handleSync} disabled={syncing} title="Sincronizar con Notion" style={{ ...botonCompactoPrimario(movil), ...botonChico, padding: '5px 9px', opacity: syncing ? 0.7 : 1, cursor: syncing ? 'wait' : 'pointer' }}>
                             {syncing ? <Loader2 size={13} className="agenda-spin" /> : <RefreshCw size={13} />}
-                            {movil ? 'Sincronizar' : 'Sincronizar ahora'}
+                            
                         </button>
                     )}
                     <button onClick={() => setShowAddForm(s => !s)} style={{ ...botonCompactoPrimario(movil), ...botonChico }}>
                         {showAddForm ? <X size={15} /> : <Plus size={15} />}
                         {showAddForm ? 'Cerrar' : 'Agregar'}
                     </button>
+                    {(
+                        <button onClick={() => setVerNotas(v => !v)} style={{ ...botonCompacto(movil), ...botonChico, background: verNotas ? C.primaryContainer : C.surfaceContainerHigh, color: verNotas ? C.onPrimaryContainer : C.onSurfaceVariant }}>
+                            <ListTodo size={14} />
+                            Notas{notasPendientes > 0 ? ` (${notasPendientes})` : ''}
+                        </button>
+                    )}
                 </div>
             </div>
             {syncMsg && (
@@ -817,15 +821,12 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
             {/* Pendientes a la izquierda, los detalles (próxima sesión/entrega/etc.) a
                 la derecha en su propia grilla — antes iban uno full-width encima del
                 otro; ahora quedan lado a lado en vez de montados. */}
-            <div style={{ display: 'grid', gridTemplateColumns: movil ? '1fr' : '1fr 1.5fr', gap: movil ? '0.5rem' : '0.9rem', alignItems: 'start' }}>
-            <PendientesWidget notes={notes} addNote={addNote} toggleNoteItem={toggleNoteItem} updateNote={updateNote} />
-            <div style={movil ? { display: 'flex', gap: '0.45rem', overflowX: 'auto', scrollbarWidth: 'none' } : { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.7rem' }}>
-                <div style={tarjetaResumen}>
-                    <div style={{ width: cajaIcono, height: cajaIcono, borderRadius: '10px', background: 'rgba(99,102,241,0.12)', display: movil ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Camera size={16} color="#3ED9A0" />
-                    </div>
+            <div style={{ display: 'grid', gridTemplateColumns: (verNotas && !movil) ? '1fr 1.5fr' : '1fr', gap: movil ? '0.5rem' : '0.9rem', alignItems: 'start' }}>
+            {verNotas && <PendientesWidget notes={notes} addNote={addNote} toggleNoteItem={toggleNoteItem} updateNote={updateNote} />}
+            <div style={{ ...bento, display: 'flex', padding: '0.5rem 0', overflowX: 'auto', scrollbarWidth: 'none' }}>
+                <div style={{ ...tarjetaResumen, borderLeft: 'none' }}>
                     <div style={{ minWidth: 0 }}>
-                        <div style={etiqueta}>{movil ? 'Sesión' : 'Próxima sesión'}</div>
+                        <div style={etiqueta}>Sesión</div>
                         {proximaSesion ? (
                             <>
                                 <div style={{ fontWeight: 800, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{proximaSesion.title}</div>
@@ -838,11 +839,8 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                     </div>
                 </div>
                 <div style={tarjetaResumen}>
-                    <div style={{ width: cajaIcono, height: cajaIcono, borderRadius: '10px', background: 'rgba(15,169,122,0.12)', display: movil ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <PackageCheck size={16} color="#0FA97A" />
-                    </div>
                     <div style={{ minWidth: 0 }}>
-                        <div style={etiqueta}>{movil ? 'Entrega' : 'Próxima entrega'}</div>
+                        <div style={etiqueta}>Entrega</div>
                         {proximaEntrega ? (
                             <>
                                 <div style={{ fontWeight: 800, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{proximaEntrega.title}</div>
@@ -856,9 +854,6 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                 </div>
                 {entregasTotal > 0 && (
                     <div style={tarjetaResumen}>
-                        <div style={{ width: cajaIcono, height: cajaIcono, borderRadius: '10px', background: 'rgba(230,168,23,0.14)', display: movil ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <HardDrive size={16} color={C.ambar} />
-                        </div>
                         <div style={{ minWidth: 0, flex: 1 }}>
                             <div style={etiqueta}>Entregas</div>
                             <div style={{ fontSize: '0.78rem', fontWeight: 800 }}>
@@ -872,12 +867,9 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                     </div>
                 )}
                 <div style={tarjetaResumen}>
-                    <div style={{ width: cajaIcono, height: cajaIcono, borderRadius: '10px', background: 'rgba(99,102,241,0.12)', display: movil ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <CalendarDays size={16} color="#3ED9A0" />
-                    </div>
                     <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <div style={etiqueta}>{movil ? 'Este mes' : 'Sesiones este mes'}</div>
+                            <div style={etiqueta}>Este mes</div>
                             <button onClick={() => setInfoResumen(v => !v)} title="Qué mide cada número" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: infoResumen ? C.primary : C.outlineVariant }}>
                                 <Info size={12} />
                             </button>
