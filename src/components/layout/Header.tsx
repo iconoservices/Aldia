@@ -147,7 +147,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     // Map active tab to a friendly title for mobile header
     const getViewTitle = (tab: string) => {
         switch (tab) {
-            case 'Checklist': return 'Checklist Diario';
+            case 'Checklist': return 'Mi Día';
             case 'Bandeja': return 'Bandeja';
             case 'Pendientes': return 'Pendientes';
             case 'Plan': return 'Ingresos y Gastos Fijos';
