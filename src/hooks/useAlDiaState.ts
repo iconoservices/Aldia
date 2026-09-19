@@ -494,6 +494,7 @@ export interface Note {
     q: string; // Cuadrante (opcional, para relevancia)
     color: string;
     date: string;
+    enMiDia?: boolean; // Solo listas: si está en true, la lista también se muestra en Mi Día
 }
 
 // Generador de IDs para bloques diarios.

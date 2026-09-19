@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, X, RotateCcw, Trash2, Edit2, Check, ListChecks, MoreVertical } from "lucide-react";
+import { Plus, X, RotateCcw, Trash2, Edit2, Check, ListChecks, MoreVertical, Send } from "lucide-react";
 import type { Note } from "../../hooks/useAlDiaState";
 import { C, bento, etiqueta, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina } from "../../theme";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
@@ -27,7 +27,7 @@ export const ListasDashboard = ({ notes, addNote, removeNote, toggleNoteItem, up
     const movil = useIsMobile();
     // Los grupos de "Pendientes" (q: 'pendiente' o la lista histórica "Pendientes")
     // viven en su propia pestaña — acá solo van los kits reutilizables.
-    const listas = notes.filter(n => n.type === "checklist" && n.q !== "pendiente" && n.q !== "bandeja" && n.title.trim().toLowerCase() !== "pendientes");
+    const listas = notes.filter(n => n.type === "checklist" && n.q !== "pendiente" && n.q !== "pendiente-inbox" && n.q !== "bandeja" && n.title.trim().toLowerCase() !== "pendientes");
 
     const [newListName, setNewListName] = useState("");
     const [addingList, setAddingList] = useState(false);
@@ -43,7 +43,18 @@ export const ListasDashboard = ({ notes, addNote, removeNote, toggleNoteItem, up
         <div style={{ display: "flex", flexDirection: "column", gap: movil ? "1rem" : "1.5rem", ...paddingPagina(movil), color: "var(--text-carbon)" }}>
             <div style={cabecera(movil)}>
                 <div>
-                    <h2 style={tituloPagina}>Listas</h2>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <h2 style={tituloPagina}>Listas</h2>
+                        {!addingList && (
+                            <button
+                                onClick={() => setAddingList(true)}
+                                title="Nueva lista"
+                                style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", flexShrink: 0, borderRadius: "50%", border: `1.5px solid ${C.outlineVariant}`, background: "none", cursor: "pointer", color: C.onSurfaceVariant }}
+                            >
+                                <Plus size={16} />
+                            </button>
+                        )}
+                    </div>
                     <p style={subtituloPagina}>Kits reutilizables: arma la lista una vez y reinícala cada vez que la vuelvas a usar.</p>
                 </div>
             </div>
@@ -54,11 +65,7 @@ export const ListasDashboard = ({ notes, addNote, removeNote, toggleNoteItem, up
                     <button onClick={submitNewList} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "8px", padding: "8px 14px", fontWeight: 800, fontSize: "0.8rem", cursor: "pointer", whiteSpace: "nowrap" }}>Crear</button>
                     <button onClick={() => { setAddingList(false); setNewListName(""); }} style={{ background: "none", border: "none", cursor: "pointer", color: C.outline, padding: "6px" }}><X size={16} /></button>
                 </div>
-            ) : (
-                <button onClick={() => setAddingList(true)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "none", border: `2px dashed ${C.outlineVariant}`, borderRadius: "12px", padding: "12px", cursor: "pointer", color: C.outline, fontWeight: 700, fontSize: "0.85rem" }}>
-                    <Plus size={16} /> Nueva lista
-                </button>
-            )}
+            ) : null}
 
             {listas.length === 0 && !addingList && (
                 <div style={{ textAlign: "center", padding: "3rem 1rem", color: C.outline }}>
@@ -95,9 +102,15 @@ const ListaCard = ({ lista, removeNote, toggleNoteItem, updateNote }: { lista: N
         setNewItemText("");
     };
 
+    // Borrar un ítem pide confirmación (evita perderlo por un toque de más).
+    const [itemPorBorrar, setItemPorBorrar] = useState<number | null>(null);
     const removeItem = (itemId: number) => {
-        updateNote(lista.id, { items: lista.items.filter(it => it.id !== itemId) });
+        setItemPorBorrar(itemId);
         setItemMenuOpenId(null);
+    };
+    const confirmarRemoveItem = () => {
+        if (itemPorBorrar != null) updateNote(lista.id, { items: lista.items.filter(it => it.id !== itemPorBorrar) });
+        setItemPorBorrar(null);
     };
 
     const startEditItem = (itemId: number, text: string) => {
@@ -130,6 +143,14 @@ const ListaCard = ({ lista, removeNote, toggleNoteItem, updateNote }: { lista: N
                 ) : (
                     <span style={{ ...etiqueta, flex: 1, fontSize: "0.9rem" }}>{lista.title}</span>
                 )}
+                <button
+                    onClick={() => updateNote(lista.id, { enMiDia: !lista.enMiDia })}
+                    title={lista.enMiDia ? "Quitar de Mi Día" : "Enviar a Mi Día"}
+                    style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0, border: "none", borderRadius: "999px", padding: "4px 9px", cursor: "pointer", fontFamily: "inherit", fontSize: "0.68rem", fontWeight: 800, background: lista.enMiDia ? "rgba(15, 169, 122,0.12)" : C.surfaceContainer, color: lista.enMiDia ? C.primary : C.onSurfaceVariant }}
+                >
+                    {lista.enMiDia ? <Check size={12} strokeWidth={3} /> : <Send size={12} />}
+                    {lista.enMiDia ? "En Mi Día" : "Mi Día"}
+                </button>
                 <div style={{ position: "relative" }}>
                     <button onClick={() => setCardMenuOpen(v => !v)} title="Opciones" style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "3px", display: "flex" }}><MoreVertical size={15} /></button>
                     {cardMenuOpen && (
@@ -194,6 +215,16 @@ const ListaCard = ({ lista, removeNote, toggleNoteItem, updateNote }: { lista: N
                     <RotateCcw size={13} /> Reiniciar
                 </button>
             )}
+
+            <ConfirmDialog
+                open={itemPorBorrar != null}
+                title="Eliminar ítem"
+                message={`¿Eliminar "${lista.items.find(it => it.id === itemPorBorrar)?.text ?? ''}"?`}
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                onConfirm={confirmarRemoveItem}
+                onCancel={() => setItemPorBorrar(null)}
+            />
 
             <ConfirmDialog
                 open={confirmDelete}

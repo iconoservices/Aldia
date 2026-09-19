@@ -160,28 +160,27 @@ const TaskCard = ({
 };
 
 /* ══════════════════════════════════════════════════════════════
-   PorHacerDesplegable — el grupo "Por hacer" de Pendientes, a mano en
+   NotaDesplegable / NotasDelDia — el grupo "Por hacer" de Pendientes, a mano en
    Mi Día. Es la MISMA nota (q: 'pendiente-inbox'), así que lo que se
    anota o se marca acá se ve en Pendientes y al revés.
 ══════════════════════════════════════════════════════════════ */
 const Q_POR_HACER = 'pendiente-inbox';
 
-const PorHacerDesplegable = ({ notes, updateNote }: {
-    notes: Note[];
+const NotaDesplegable = ({ nota, titulo, soloPendientes, updateNote }: {
+    nota: Note;
+    titulo: string;
+    soloPendientes: boolean;
     updateNote?: (id: number, updates: Partial<Note>) => void;
 }) => {
     const [abierto, setAbierto] = useState(true);
-    const nota = notes.find(n => n.type === 'checklist' && n.q === Q_POR_HACER) || null;
-    const items = nota?.items ?? [];
-    const pendientes = items.filter(i => !i.completed);
+    const pendientes = nota.items.filter(i => !i.completed);
+    const visibles = soloPendientes ? pendientes : nota.items;
 
     const marcar = (id: number) => {
-        if (!nota || !updateNote) return;
-        updateNote(nota.id, { items: items.map(i => i.id === id ? { ...i, completed: !i.completed } : i) });
+        if (!updateNote) return;
+        updateNote(nota.id, { items: nota.items.map(i => i.id === id ? { ...i, completed: !i.completed } : i) });
     };
 
-    // Solo aparece lo que ya está en "Por hacer" de Pendientes; ahí se agrega.
-    if (!nota || pendientes.length === 0) return null;
     return (
         <div style={{ ...bentoCard, padding: '0.5rem 0.85rem' }}>
             <button
@@ -189,7 +188,7 @@ const PorHacerDesplegable = ({ notes, updateNote }: {
                 style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', fontFamily: 'inherit', color: C.onSurface }}
             >
                 <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.primary }}>checklist</span>
-                <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>Por hacer</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, textAlign: 'left' }}>{titulo}</span>
                 {pendientes.length > 0 && (
                     <span style={{ fontSize: '0.68rem', fontWeight: 800, background: 'rgba(15, 169, 122,0.10)', color: C.primary, borderRadius: '999px', padding: '1px 8px' }}>{pendientes.length}</span>
                 )}
@@ -197,19 +196,36 @@ const PorHacerDesplegable = ({ notes, updateNote }: {
             </button>
             {abierto && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingTop: '4px' }}>
-                    {pendientes.map(i => (
+                    {visibles.map(i => (
                         <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
                             <button
                                 onClick={() => marcar(i.id)}
                                 aria-label="Marcar hecho"
-                                style={{ width: '18px', height: '18px', minWidth: '18px', borderRadius: '5px', border: `2px solid ${C.outlineVariant}`, background: 'transparent', cursor: 'pointer', padding: 0 }}
-                            />
-                            <span style={{ fontSize: '0.83rem', color: C.onSurface, lineHeight: 1.3 }}>{i.text}</span>
+                                style={{ width: '18px', height: '18px', minWidth: '18px', borderRadius: '5px', border: `2px solid ${i.completed ? C.secondary : C.outlineVariant}`, background: i.completed ? C.secondary : 'transparent', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                                {i.completed && <span className="material-symbols-outlined" style={{ fontSize: '12px', color: '#fff' }}>check</span>}
+                            </button>
+                            <span style={{ fontSize: '0.83rem', color: i.completed ? C.outline : C.onSurface, textDecoration: i.completed ? 'line-through' : 'none', lineHeight: 1.3 }}>{i.text}</span>
                         </div>
                     ))}
                 </div>
             )}
         </div>
+    );
+};
+
+/* "Por hacer" de Pendientes (solo lo pendiente; ahí se agrega) + las listas
+   que se enviaron a Mi Día desde Listas (con todos sus ítems, para tildarlos). */
+const NotasDelDia = ({ notes, updateNote }: { notes: Note[]; updateNote?: (id: number, updates: Partial<Note>) => void }) => {
+    const porHacer = notes.find(n => n.type === 'checklist' && n.q === Q_POR_HACER);
+    const listas = notes.filter(n => n.type === 'checklist' && n.enMiDia && n.q !== Q_POR_HACER);
+    const verPorHacer = porHacer && porHacer.items.some(i => !i.completed);
+    if (!verPorHacer && listas.length === 0) return null;
+    return (
+        <>
+            {verPorHacer && <NotaDesplegable nota={porHacer!} titulo="Por hacer" soloPendientes updateNote={updateNote} />}
+            {listas.map(l => <NotaDesplegable key={l.id} nota={l} titulo={l.title} soloPendientes={false} updateNote={updateNote} />)}
+        </>
     );
 };
 
@@ -630,7 +646,7 @@ export const ChecklistDiario = ({
 
                 {/* DnD Tasks List */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <PorHacerDesplegable notes={notes} updateNote={updateNote} />
+                    <NotasDelDia notes={notes} updateNote={updateNote} />
                     <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
@@ -1057,7 +1073,7 @@ export const ChecklistDiario = ({
                         </div>
                     </div>
 
-                    <PorHacerDesplegable notes={notes} updateNote={updateNote} />
+                    <NotasDelDia notes={notes} updateNote={updateNote} />
 
                     {/* DnD List */}
                     <DndContext

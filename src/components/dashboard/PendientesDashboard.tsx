@@ -250,9 +250,15 @@ const GrupoCard = ({ grupo, removeNote, toggleNoteItem, updateNote, dropId, arra
         setNuevoItem("");
     };
 
+    // Borrar una tarea pide confirmación (evita perderla por un toque de más).
+    const [itemPorBorrar, setItemPorBorrar] = useState<number | null>(null);
     const quitar = (itemId: number) => {
-        updateNote(grupo.id, { items: grupo.items.filter(it => it.id !== itemId) });
+        setItemPorBorrar(itemId);
         setItemMenuId(null);
+    };
+    const confirmarQuitar = () => {
+        if (itemPorBorrar != null) updateNote(grupo.id, { items: grupo.items.filter(it => it.id !== itemPorBorrar) });
+        setItemPorBorrar(null);
     };
 
     const empezarEdit = (itemId: number, text: string) => {
@@ -308,7 +314,10 @@ const GrupoCard = ({ grupo, removeNote, toggleNoteItem, updateNote, dropId, arra
                     {menuAbierto && (
                         <div style={{ position: "absolute", top: "100%", right: 0, zIndex: 5, background: "white", border: `1px solid ${C.outlineVariant}`, borderRadius: "9px", boxShadow: "0 4px 14px rgba(0,0,0,0.1)", overflow: "hidden", minWidth: "140px" }}>
                             <button onClick={() => { setTituloDraft(grupo.title); setEditandoTitulo(true); setMenuAbierto(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", color: C.onSurface, fontSize: "0.78rem", fontWeight: 600, textAlign: "left" }}><Edit2 size={13} /> Renombrar</button>
-                            <button onClick={() => { setConfirmarBorrar(true); setMenuAbierto(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", color: C.rojo, fontSize: "0.78rem", fontWeight: 600, textAlign: "left", borderTop: `1px solid ${C.surfaceContainerLow}` }}><Trash2 size={13} /> Eliminar grupo</button>
+{/* "Por hacer" es fijo: solo se renombra, no se elimina */}
+                            {!dropId && (
+                                                        <button onClick={() => { setConfirmarBorrar(true); setMenuAbierto(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", color: C.rojo, fontSize: "0.78rem", fontWeight: 600, textAlign: "left", borderTop: `1px solid ${C.surfaceContainerLow}` }}><Trash2 size={13} /> Eliminar grupo</button>
+                            )}
                         </div>
                     )}
                 </div>
@@ -339,6 +348,16 @@ const GrupoCard = ({ grupo, removeNote, toggleNoteItem, updateNote, dropId, arra
                 <input placeholder="+ agregar..." value={nuevoItem} onChange={e => setNuevoItem(e.target.value)} onKeyDown={e => e.key === "Enter" && agregar()} style={{ ...inputStyle, fontSize: "0.8rem", padding: "6px 9px" }} />
                 <button onClick={agregar} style={{ background: C.surfaceContainerLow, border: "none", borderRadius: "7px", padding: "6px 9px", cursor: "pointer", color: C.onSurfaceVariant, display: "flex" }}><Plus size={14} /></button>
             </div>
+
+            <ConfirmDialog
+                open={itemPorBorrar != null}
+                title="Eliminar tarea"
+                message={`¿Eliminar "${grupo.items.find(it => it.id === itemPorBorrar)?.text ?? ''}"?`}
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                onConfirm={confirmarQuitar}
+                onCancel={() => setItemPorBorrar(null)}
+            />
 
             <ConfirmDialog
                 open={confirmarBorrar}
