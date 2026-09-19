@@ -126,7 +126,18 @@ export const PendientesDashboard = ({ notes, addNote, removeNote, toggleNoteItem
         <div style={{ display: "flex", flexDirection: "column", gap: movil ? "1rem" : "1.5rem", ...paddingPagina(movil), color: "var(--text-carbon)" }}>
             <div style={cabecera(movil)}>
                 <div>
-                    <h2 style={tituloPagina}>Pendientes</h2>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <h2 style={tituloPagina}>Pendientes</h2>
+                        {!creando && (
+                            <button
+                                onClick={() => setCreando(true)}
+                                title="Nuevo grupo"
+                                style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", flexShrink: 0, borderRadius: "50%", border: `1.5px solid ${C.outlineVariant}`, background: "none", cursor: "pointer", color: C.onSurfaceVariant }}
+                            >
+                                <Plus size={16} />
+                            </button>
+                        )}
+                    </div>
                     <p style={subtituloPagina}>
                         Todo lo suelto por hacer, agrupado. {totalPendientes > 0 ? `${totalPendientes} sin cerrar.` : 'Nada sin cerrar.'}
                     </p>
@@ -139,11 +150,7 @@ export const PendientesDashboard = ({ notes, addNote, removeNote, toggleNoteItem
                     <button onClick={crearGrupo} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "8px", padding: "8px 14px", fontWeight: 800, fontSize: "0.8rem", cursor: "pointer", whiteSpace: "nowrap" }}>Crear</button>
                     <button onClick={() => { setCreando(false); setNuevoGrupo(""); }} style={{ background: "none", border: "none", cursor: "pointer", color: C.outline, padding: "6px" }}><X size={16} /></button>
                 </div>
-            ) : (
-                <button onClick={() => setCreando(true)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "none", border: `2px dashed ${C.outlineVariant}`, borderRadius: "12px", padding: "12px", cursor: "pointer", color: C.outline, fontWeight: 700, fontSize: "0.85rem" }}>
-                    <Plus size={16} /> Nuevo grupo
-                </button>
-            )}
+            ) : null}
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <div style={{ display: "grid", gridTemplateColumns: movil ? "1fr" : "repeat(auto-fill, minmax(280px, 1fr))", gap: movil ? "0.85rem" : "1.25rem", alignItems: "start" }}>
