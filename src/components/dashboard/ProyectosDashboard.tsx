@@ -272,7 +272,6 @@ const ProjectCard = ({
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
-                borderTop: `6px solid ${project.color}`,
                 cursor: 'pointer',
                 background: 'white',
                 gap: '16px',
