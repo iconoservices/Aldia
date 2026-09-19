@@ -1233,7 +1233,7 @@ export const BloquesDashboard = ({
                 </div>
             </div>
             <p style={{ margin: '0 0 1.5rem', fontSize: '0.8rem', color: '#4A5F58', fontWeight: 500, opacity: 0.8, maxWidth: '640px', lineHeight: 1.4 }}>
-                Las tareas que se repiten cada semana. Aparecen en tu Checklist ("Mi Jornada") los días que marques.
+                Las tareas que se repiten cada semana. Aparecen en tu Checklist ("Mi Día") los días que marques.
             </p>
 
             {/* ─── SUB-VISTA: SEMANA (planilla existente) ─── */}
