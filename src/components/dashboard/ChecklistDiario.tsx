@@ -20,7 +20,7 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { DailyBlock } from '../../hooks/useAlDiaState';
+import type { DailyBlock, Note } from '../../hooks/useAlDiaState';
 
 import { C, bento as bentoCard, useIsMobile, MONO } from '../../theme';
 import { RegistroMovimiento } from '../features/RegistroMovimiento';
@@ -160,6 +160,81 @@ const TaskCard = ({
 };
 
 /* ══════════════════════════════════════════════════════════════
+   PorHacerDesplegable — el grupo "Por hacer" de Pendientes, a mano en
+   Mi Día. Es la MISMA nota (q: 'pendiente-inbox'), así que lo que se
+   anota o se marca acá se ve en Pendientes y al revés.
+══════════════════════════════════════════════════════════════ */
+const Q_POR_HACER = 'pendiente-inbox';
+
+const PorHacerDesplegable = ({ notes, addNote, updateNote }: {
+    notes: Note[];
+    addNote?: (title: string, content: string, type: 'text' | 'checklist', items: any[], q: string, color: string) => void;
+    updateNote?: (id: number, updates: Partial<Note>) => void;
+}) => {
+    const [abierto, setAbierto] = useState(false);
+    const [nuevo, setNuevo] = useState('');
+    const nota = notes.find(n => n.type === 'checklist' && n.q === Q_POR_HACER) || null;
+    const items = nota?.items ?? [];
+    const pendientes = items.filter(i => !i.completed);
+
+    const marcar = (id: number) => {
+        if (!nota || !updateNote) return;
+        updateNote(nota.id, { items: items.map(i => i.id === id ? { ...i, completed: !i.completed } : i) });
+    };
+    const agregar = () => {
+        const t = nuevo.trim();
+        if (!t) return;
+        const item = { id: Date.now() + Math.random(), text: t, completed: false };
+        if (nota && updateNote) updateNote(nota.id, { items: [...items, item] });
+        else if (addNote) addNote('Por hacer', '', 'checklist', [item], Q_POR_HACER, '#FFFFFF');
+        setNuevo('');
+    };
+
+    if (!updateNote && !addNote) return null;
+    return (
+        <div style={{ ...bentoCard, padding: '0.5rem 0.85rem', marginBottom: '0.75rem' }}>
+            <button
+                onClick={() => setAbierto(v => !v)}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', fontFamily: 'inherit', color: C.onSurface }}
+            >
+                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.primary }}>checklist</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>Por hacer</span>
+                {pendientes.length > 0 && (
+                    <span style={{ fontSize: '0.68rem', fontWeight: 800, background: 'rgba(15, 169, 122,0.10)', color: C.primary, borderRadius: '999px', padding: '1px 8px' }}>{pendientes.length}</span>
+                )}
+                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.outline, marginLeft: 'auto', transform: abierto ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>expand_more</span>
+            </button>
+            {abierto && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingTop: '4px' }}>
+                    {pendientes.map(i => (
+                        <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
+                            <button
+                                onClick={() => marcar(i.id)}
+                                aria-label="Marcar hecho"
+                                style={{ width: '18px', height: '18px', minWidth: '18px', borderRadius: '5px', border: `2px solid ${C.outlineVariant}`, background: 'transparent', cursor: 'pointer', padding: 0 }}
+                            />
+                            <span style={{ fontSize: '0.83rem', color: C.onSurface, lineHeight: 1.3 }}>{i.text}</span>
+                        </div>
+                    ))}
+                    <div style={{ display: 'flex', gap: '6px', paddingTop: '4px' }}>
+                        <input
+                            value={nuevo}
+                            onChange={e => setNuevo(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && agregar()}
+                            placeholder="+ agregar..."
+                            style={{ flex: 1, minWidth: 0, padding: '5px 9px', minHeight: '32px', boxSizing: 'border-box', fontSize: '0.8rem', borderRadius: '8px', border: `1px solid ${C.outlineVariant}`, outline: 'none', background: 'white', fontFamily: 'inherit' }}
+                        />
+                        <button onClick={agregar} style={{ background: C.surfaceContainerLow, border: 'none', borderRadius: '8px', padding: '0 10px', cursor: 'pointer', color: C.onSurfaceVariant, display: 'flex', alignItems: 'center' }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+/* ══════════════════════════════════════════════════════════════
    Main Component
 ══════════════════════════════════════════════════════════════ */
 interface ChecklistDiarioProps {
@@ -177,6 +252,9 @@ interface ChecklistDiarioProps {
     categoryGroups?: { ingreso: Record<string, string>; gasto: Record<string, string> };
     groupAccountScope?: { ingreso: Record<string, number[]>; gasto: Record<string, number[]> };
     onOpenBandeja?: () => void;
+    notes?: Note[];
+    addNote?: (title: string, content: string, type: 'text' | 'checklist', items: any[], q: string, color: string) => void;
+    updateNote?: (id: number, updates: Partial<Note>) => void;
 }
 
 const SORT_STORAGE_KEY = 'aldia-checklist-custom-order';
@@ -185,7 +263,7 @@ export const ChecklistDiario = ({
     dailyBlocks, addDailyBlock, toggleDailyBlock, removeDailyBlock, updateDailyBlock, projects,
     addTransaction, accounts = [],
     incomeCategories, expenseCategories, categoryAccountScope, categoryGroups, groupAccountScope,
-    onOpenBandeja,
+    onOpenBandeja, notes = [], addNote, updateNote,
 }: ChecklistDiarioProps) => {
     /* La fecha se recalcula sola: si la app queda abierta y pasa medianoche,
        el checklist salta al día nuevo sin necesidad de recargar. */
@@ -567,6 +645,8 @@ export const ChecklistDiario = ({
                     </div>
                 </div>
 
+                <PorHacerDesplegable notes={notes} addNote={addNote} updateNote={updateNote} />
+
                 {/* Ayuda: qué es esta lista */}
                 <p style={{ margin: '0 0 12px', fontSize: '0.78rem', color: C.onSurfaceVariant, lineHeight: 1.4 }}>
                     Tu lista de hoy. Mantén pulsado y arrastra para ponerla en el orden en que la vas a hacer.
@@ -873,6 +953,8 @@ export const ChecklistDiario = ({
 
             {/* ── Contenido ── */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+                <PorHacerDesplegable notes={notes} addNote={addNote} updateNote={updateNote} />
 
                 {/* Progreso Diario — banda superior */}
                 <section style={{
