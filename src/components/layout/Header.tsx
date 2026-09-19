@@ -150,28 +150,28 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             case 'Checklist': return 'Mi Día';
             case 'Bandeja': return 'Bandeja';
             case 'Pendientes': return 'Pendientes';
-            case 'Plan': return 'Ingresos y Gastos Fijos';
-            case 'Compras': return 'Lista de Compras & Deseos';
-            case 'Comidas': return 'Calendario de Comidas';
+            case 'Plan': return 'Fijos';
+            case 'Compras': return 'Compras';
+            case 'Comidas': return 'Comidas';
             case 'Bloques': return 'Rutina';
             case 'Finanzas': return 'Finanzas';
-            case 'Deudas': return 'Deudas y Cobros';
-            case 'Acción': return 'Mi Acción';
+            case 'Deudas': return 'Deudas';
+            case 'Acción': return 'Acción';
             case 'Base de Datos': return 'Base de Datos';
-            case 'Proyección': return 'Proyección Financiera';
+            case 'Proyección': return 'Proyección';
             case 'Calendario': return 'Calendario';
-            case 'Stats': return 'Estadísticas';
+            case 'Stats': return 'Datos';
             case 'Cerebro': return 'Cerebro';
-            case 'Vida': return 'Mi Vida';
+            case 'Vida': return 'Vida';
             case 'Proyectos': return 'Proyectos';
-            case 'Metas': return 'Metas a Mediano y Largo Plazo';
-            case 'Tablero': return 'Tablero Kanban';
+            case 'Metas': return 'Metas';
+            case 'Tablero': return 'Tablero';
             case 'Lienzo': return 'Lienzo';
-            case 'Lienzo Ops': return 'Lienzo de Operaciones';
+            case 'Lienzo Ops': return 'Lienzo Ops';
             case 'Bienestar': return 'Bienestar';
-            case 'Negocio': return 'Simulador de Negocio';
+            case 'Negocio': return 'Negocio';
             case 'Rendimiento': return 'Rendimiento';
-            case 'Buscador': return 'Super Buscador Web';
+            case 'Buscador': return 'Buscador';
             default: return tab;
         }
     };
@@ -279,6 +279,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                 </div>
             </div>
 
+            <div className="mobile-header-spacer" />
+
             {/* ── Mobile Slide-out Drawer ── */}
             <div 
                 className={`mobile-drawer-backdrop ${isDrawerOpen ? 'open' : ''}`} 
@@ -346,7 +348,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             <div className={`mobile-more-sheet ${isMoreOpen ? 'open' : ''}`}>
                 <div className="mobile-more-handle" />
                 <div className="mobile-more-grid">
-                    {[...PRIMARY_ITEMS, ...SECONDARY_ITEMS].map(item => {
+                    {[...PRIMARY_ITEMS, ...SECONDARY_ITEMS].filter(item => item.tab !== 'Bandeja').map(item => {
                         const isActive = activeTab === item.tab;
                         return (
                             <button
@@ -366,6 +368,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             <style>{`
                 /* Default / Desktop Hiding rules */
                 .mobile-header-bar,
+                .mobile-header-spacer,
                 .mobile-bottom-nav,
                 .mobile-drawer,
                 .mobile-drawer-backdrop,
@@ -388,9 +391,21 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         height: 60px;
                         background: #F7FAF8;
                         border-bottom: 1px solid #EDF3F0;
-                        position: sticky;
+                        position: fixed;
                         top: 0;
+                        left: 0;
+                        right: 0;
+                        box-sizing: border-box;
+                        padding-top: env(safe-area-inset-top, 0px);
+                        height: calc(60px + env(safe-area-inset-top, 0px));
                         z-index: 100;
+                    }
+
+                    /* Ocupa el lugar de la barra fija para que el contenido no quede tapado */
+                    .mobile-header-spacer {
+                        display: block;
+                        flex-shrink: 0;
+                        height: calc(60px + env(safe-area-inset-top, 0px));
                     }
 
                     .mobile-menu-trigger {
@@ -408,7 +423,11 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     .mobile-title-container {
                         display: flex;
                         align-items: center;
+                        justify-content: flex-start;
                         gap: 10px;
+                        flex: 1;
+                        min-width: 0;
+                        margin: 0 8px;
                     }
 
                     .mobile-logo-text {
@@ -425,6 +444,10 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         color: #0C2A20;
                         border-left: 1px solid #DCE7E1;
                         padding-left: 10px;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        min-width: 0;
                     }
 
                     .mobile-profile-trigger {
