@@ -905,16 +905,9 @@ export const useAlDiaState = () => {
                 const startOfWeek = new Date(current.setDate(diff));
 
                 const seededBlocks: DailyBlock[] = [];
+                // Una sola tarea de ejemplo (antes se sembraban 9 de demostración).
                 const taskTemplates = [
                     { label: 'Bañarme', period: 'Mañana' as const, projectId: 1, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
-                    { label: 'Comer', period: 'Mañana' as const, projectId: 1, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
-                    { label: 'Leer', period: 'Tarde' as const, projectId: 1, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
-                    { label: 'Subir noticia 1', period: 'Mañana' as const, projectId: 2, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
-                    { label: 'Subir noticia 2', period: 'Tarde' as const, projectId: 2, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
-                    { label: 'Subir noticia 3', period: 'Tarde' as const, projectId: 2, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
-                    { label: 'Subir noticia 4', period: 'Noche' as const, projectId: 2, repeatDays: [0, 1, 2, 3, 4, 5, 6] },
-                    { label: 'Subir video Geekpedia', period: 'Tarde' as const, projectId: 6, repeatDays: [2, 5] },
-                    { label: 'Sesiones de fotos / Grabación', period: 'Tarde' as const, projectId: 5, repeatDays: [0, 1, 2, 3, 4] }
                 ];
 
                 for (let i = 0; i < 7; i++) {

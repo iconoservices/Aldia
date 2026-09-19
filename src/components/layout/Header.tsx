@@ -490,7 +490,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                         display: flex;
                         align-items: center;
                         gap: 2px;
-                        padding: 0 8px;
+                        padding: 0 8px 0 20px;
                         overflow-x: auto;
                         -webkit-overflow-scrolling: touch;
                         scrollbar-width: none;
