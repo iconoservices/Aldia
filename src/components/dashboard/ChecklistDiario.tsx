@@ -170,7 +170,7 @@ const PorHacerDesplegable = ({ notes, updateNote }: {
     notes: Note[];
     updateNote?: (id: number, updates: Partial<Note>) => void;
 }) => {
-    const [abierto, setAbierto] = useState(false);
+    const [abierto, setAbierto] = useState(true);
     const nota = notes.find(n => n.type === 'checklist' && n.q === Q_POR_HACER) || null;
     const items = nota?.items ?? [];
     const pendientes = items.filter(i => !i.completed);
