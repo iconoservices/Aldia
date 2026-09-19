@@ -843,6 +843,23 @@ export const ChecklistDiario = ({
                     </p>
                 </div>
 
+                {/* Bandeja ya no va en el menú: se abre desde acá */}
+                {onOpenBandeja && (
+                    <button
+                        onClick={onOpenBandeja}
+                        title="Abrir la Bandeja"
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            background: C.surfaceContainerHigh, color: C.onSurfaceVariant,
+                            border: 'none', borderRadius: '999px', padding: '7px 14px',
+                            fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                    >
+                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>inbox</span>
+                        Bandeja
+                    </button>
+                )}
+
                 {/* Registrar dinero sin salir del día */}
                 {addTransaction && (
                     <RegistroRapido

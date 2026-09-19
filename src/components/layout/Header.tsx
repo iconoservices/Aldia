@@ -192,7 +192,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                 {/* Nav Items */}
                 <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', overflowY: 'auto', paddingRight: '2px' }}>
                     {/* Primary group */}
-                    {PRIMARY_ITEMS.map(item => renderSidebarBtn(item))}
+                    {PRIMARY_ITEMS.filter(item => item.tab !== 'Bandeja').map(item => renderSidebarBtn(item))}
 
                     {/* Divider */}
                     <div style={{ margin: '10px 0 6px', display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px' }}>
@@ -295,7 +295,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     </button>
                 </div>
                 <div className="mobile-drawer-tabs">
-                    {PRIMARY_ITEMS.map(item => renderSidebarBtn(item))}
+                    {PRIMARY_ITEMS.filter(item => item.tab !== 'Bandeja').map(item => renderSidebarBtn(item))}
                     <div style={{ margin: '10px 0 6px', display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px' }}>
                         <span style={{ flex: 1, height: '1px', background: '#DCE7E1' }} />
                         <span style={{ fontSize: '10px', fontWeight: 700, color: '#6C8079', letterSpacing: '0.08em', whiteSpace: 'nowrap', opacity: 0.7 }}>
