@@ -192,7 +192,7 @@ const PorHacerDesplegable = ({ notes, addNote, updateNote }: {
 
     if (!updateNote && !addNote) return null;
     return (
-        <div style={{ ...bentoCard, padding: '0.5rem 0.85rem', marginBottom: '0.75rem' }}>
+        <div style={{ ...bentoCard, padding: '0.5rem 0.85rem' }}>
             <button
                 onClick={() => setAbierto(v => !v)}
                 style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', fontFamily: 'inherit', color: C.onSurface }}
@@ -645,8 +645,6 @@ export const ChecklistDiario = ({
                     </div>
                 </div>
 
-                <PorHacerDesplegable notes={notes} addNote={addNote} updateNote={updateNote} />
-
                 {/* Ayuda: qué es esta lista */}
                 <p style={{ margin: '0 0 12px', fontSize: '0.78rem', color: C.onSurfaceVariant, lineHeight: 1.4 }}>
                     Tu lista de hoy. Mantén pulsado y arrastra para ponerla en el orden en que la vas a hacer.
@@ -654,6 +652,7 @@ export const ChecklistDiario = ({
 
                 {/* DnD Tasks List */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <PorHacerDesplegable notes={notes} addNote={addNote} updateNote={updateNote} />
                     <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
@@ -954,8 +953,6 @@ export const ChecklistDiario = ({
             {/* ── Contenido ── */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-                <PorHacerDesplegable notes={notes} addNote={addNote} updateNote={updateNote} />
-
                 {/* Progreso Diario — banda superior */}
                 <section style={{
                     ...bentoTarea, border: 'none',
@@ -1081,6 +1078,8 @@ export const ChecklistDiario = ({
                             </button>
                         </div>
                     </div>
+
+                    <PorHacerDesplegable notes={notes} addNote={addNote} updateNote={updateNote} />
 
                     {/* DnD List */}
                     <DndContext
