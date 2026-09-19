@@ -101,14 +101,11 @@ const PendientesWidget = ({ notes, addNote, toggleNoteItem, updateNote }: { note
     };
 
     return (
-        <div style={{ ...bento, padding: '0.9rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+        <div style={{ ...bento, padding: '0.55rem 0.8rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                <ListTodo size={15} color={C.secondary} />
+                <ListTodo size={14} color={C.secondary} />
                 <span style={etiqueta}>Pendientes{pendientes.length > 0 ? ` (${pendientes.length})` : ''}</span>
             </div>
-            {pendientes.length === 0 && hechos.length === 0 && (
-                <p style={{ margin: 0, fontSize: '0.78rem', color: C.outline, fontStyle: 'italic' }}>Nada pendiente. Agrega algo que no debas olvidar.</p>
-            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '220px', overflowY: 'auto' }}>
                 {pendientes.map(item => (
                     <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '3px 0' }}>
@@ -154,9 +151,9 @@ const PendientesWidget = ({ notes, addNote, toggleNoteItem, updateNote }: { note
                     value={nuevoTexto}
                     onChange={e => setNuevoTexto(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && agregar()}
-                    style={{ ...campo(movil), flex: 1, padding: '6px 9px', fontSize: '0.8rem' }}
+                    style={{ ...campo(movil), flex: 1, padding: '4px 9px', minHeight: '32px', fontSize: '0.78rem' }}
                 />
-                <button onClick={agregar} style={{ background: C.surfaceContainerLow, border: 'none', borderRadius: '7px', padding: '6px 9px', cursor: 'pointer', color: C.onSurfaceVariant, display: 'flex' }}>
+                <button onClick={agregar} style={{ background: C.surfaceContainerLow, border: 'none', borderRadius: '7px', padding: '4px 9px', minHeight: '32px', cursor: 'pointer', color: C.onSurfaceVariant, display: 'flex', alignItems: 'center' }}>
                     <Plus size={14} />
                 </button>
             </div>
@@ -694,8 +691,11 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
         );
     };
 
+    const tarjetaResumen: React.CSSProperties = { ...bento, padding: movil ? '0.4rem 0.55rem' : '0.8rem', display: 'flex', gap: movil ? '7px' : '9px', alignItems: 'center', ...(movil ? { flex: '1 0 88px', minWidth: 0 } : {}) };
+    const cajaIcono = movil ? 26 : 36;
+
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: movil ? "1rem" : "1.5rem", ...paddingPagina(movil), color: "var(--text-carbon)" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: movil ? "0.6rem" : "1.5rem", ...paddingPagina(movil), color: "var(--text-carbon)" }}>
             {/* Misma cápsula blanca de una sola fila que Finanzas/Entregas: título +
                 controles, todo al mismo nivel en vez de flotar sobre el fondo. */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: movil ? 'wrap' : 'nowrap', background: 'white', padding: '10px 14px', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
@@ -816,15 +816,15 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
             {/* Pendientes a la izquierda, los detalles (próxima sesión/entrega/etc.) a
                 la derecha en su propia grilla — antes iban uno full-width encima del
                 otro; ahora quedan lado a lado en vez de montados. */}
-            <div style={{ display: 'grid', gridTemplateColumns: movil ? '1fr' : '1fr 1.5fr', gap: '0.9rem', alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: movil ? '1fr' : '1fr 1.5fr', gap: movil ? '0.5rem' : '0.9rem', alignItems: 'start' }}>
             <PendientesWidget notes={notes} addNote={addNote} toggleNoteItem={toggleNoteItem} updateNote={updateNote} />
-            <div style={{ display: 'grid', gridTemplateColumns: movil ? '1fr' : 'repeat(2, 1fr)', gap: '0.7rem' }}>
-                <div style={{ ...bento, padding: '0.8rem', display: 'flex', gap: '9px', alignItems: 'center' }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(99,102,241,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={movil ? { display: 'flex', gap: '0.45rem', overflowX: 'auto', scrollbarWidth: 'none' } : { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.7rem' }}>
+                <div style={tarjetaResumen}>
+                    <div style={{ width: cajaIcono, height: cajaIcono, borderRadius: '10px', background: 'rgba(99,102,241,0.12)', display: movil ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <Camera size={16} color="#3ED9A0" />
                     </div>
                     <div style={{ minWidth: 0 }}>
-                        <div style={etiqueta}>Próxima sesión</div>
+                        <div style={etiqueta}>{movil ? 'Sesión' : 'Próxima sesión'}</div>
                         {proximaSesion ? (
                             <>
                                 <div style={{ fontWeight: 800, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{proximaSesion.title}</div>
@@ -833,15 +833,15 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                                     {' '}({diasRestantes(proximaSesion.date) === 0 ? 'hoy' : `en ${diasRestantes(proximaSesion.date)}d`})
                                 </div>
                             </>
-                        ) : <div style={{ fontSize: '0.76rem', color: C.outline, fontWeight: 600 }}>Sin sesiones programadas.</div>}
+                        ) : <div style={{ fontSize: '0.85rem', color: C.outlineVariant, fontWeight: 800 }}>—</div>}
                     </div>
                 </div>
-                <div style={{ ...bento, padding: '0.8rem', display: 'flex', gap: '9px', alignItems: 'center' }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(15,169,122,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <div style={tarjetaResumen}>
+                    <div style={{ width: cajaIcono, height: cajaIcono, borderRadius: '10px', background: 'rgba(15,169,122,0.12)', display: movil ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <PackageCheck size={16} color="#0FA97A" />
                     </div>
                     <div style={{ minWidth: 0 }}>
-                        <div style={etiqueta}>Próxima entrega</div>
+                        <div style={etiqueta}>{movil ? 'Entrega' : 'Próxima entrega'}</div>
                         {proximaEntrega ? (
                             <>
                                 <div style={{ fontWeight: 800, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{proximaEntrega.title}</div>
@@ -850,12 +850,12 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                                     {proximaEntrega.notionDiasRestantes ? ` · ${proximaEntrega.notionDiasRestantes}` : ''}
                                 </div>
                             </>
-                        ) : <div style={{ fontSize: '0.76rem', color: C.outline, fontWeight: 600 }}>Sin entregas pendientes.</div>}
+                        ) : <div style={{ fontSize: '0.85rem', color: C.outlineVariant, fontWeight: 800 }}>—</div>}
                     </div>
                 </div>
                 {entregasTotal > 0 && (
-                    <div style={{ ...bento, padding: '0.8rem', display: 'flex', gap: '9px', alignItems: 'center' }}>
-                        <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(230,168,23,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <div style={tarjetaResumen}>
+                        <div style={{ width: cajaIcono, height: cajaIcono, borderRadius: '10px', background: 'rgba(230,168,23,0.14)', display: movil ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <HardDrive size={16} color={C.ambar} />
                         </div>
                         <div style={{ minWidth: 0, flex: 1 }}>
@@ -870,12 +870,12 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                         </div>
                     </div>
                 )}
-                <div style={{ ...bento, padding: '0.8rem', display: 'flex', gap: '9px', alignItems: 'center' }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(99,102,241,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <div style={tarjetaResumen}>
+                    <div style={{ width: cajaIcono, height: cajaIcono, borderRadius: '10px', background: 'rgba(99,102,241,0.12)', display: movil ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <CalendarDays size={16} color="#3ED9A0" />
                     </div>
                     <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={etiqueta}>Sesiones este mes</div>
+                        <div style={etiqueta}>{movil ? 'Este mes' : 'Sesiones este mes'}</div>
                         {editingMeta ? (
                             <div style={{ display: 'flex', gap: '5px', alignItems: 'center', marginTop: '2px' }}>
                                 <input

@@ -77,8 +77,8 @@ const TaskCard = ({
                 exit={{ opacity: 0, scale: 0.95 }}
                 style={{
                     ...bentoTarea,
-                    padding: '14px 16px',
-                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '8px 12px',
+                    display: 'flex', alignItems: 'center', gap: '8px',
                     background: isDone ? '#F7FAF8' : C.surfaceLowest,
                     opacity: isDone ? 0.72 : 1,
                     cursor: isDragging ? 'grabbing' : 'default',
@@ -126,14 +126,14 @@ const TaskCard = ({
                 {/* Content */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
-                        fontSize: '0.92rem', fontWeight: 600, color: C.onSurface,
+                        fontSize: '0.88rem', fontWeight: 600, color: C.onSurface, lineHeight: 1.25,
                         textDecoration: isDone ? 'line-through' : 'none',
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     }}>
                         {label}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', color: C.onSurfaceVariant }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '1px', flexWrap: 'wrap' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', color: C.onSurfaceVariant }}>
                             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: projColor, display: 'inline-block' }} />
                             {projName}
                         </span>
@@ -573,7 +573,7 @@ export const ChecklistDiario = ({
                 </p>
 
                 {/* DnD Tasks List */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
