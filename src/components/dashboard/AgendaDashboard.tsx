@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Camera, PackageCheck, RefreshCw, Plus, Trash2, ChevronDown, Loader2, ExternalLink, X, History, CalendarClock, AlertTriangle, HardDrive, CalendarDays, Wallet, ListTodo, Check } from "lucide-react";
+import { Camera, PackageCheck, RefreshCw, Plus, Trash2, ChevronDown, Loader2, ExternalLink, X, History, CalendarClock, AlertTriangle, HardDrive, CalendarDays, Wallet, ListTodo, Check, Info } from "lucide-react";
 import type { CalendarEvent, UserPreferences, NotionEstado, Note } from "../../hooks/useAlDiaState";
 import { NOTION_ESTADOS } from "../../hooks/useAlDiaState";
 import { C, bento, useIsMobile, paddingPagina, money, campo, etiqueta, RADIO, TOQUE_MINIMO } from "../../theme";
@@ -243,6 +243,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
     const [savingAbonoId, setSavingAbonoId] = useState<number | null>(null);
     const [abonoErrorId, setAbonoErrorId] = useState<number | null>(null);
     const [editingMeta, setEditingMeta] = useState(false);
+    const [infoResumen, setInfoResumen] = useState(false);
     const [metaInput, setMetaInput] = useState('');
     const [notionOptions, setNotionOptions] = useState<{ proyecto: string[]; ubicacion: string[] } | null>(null);
     const [opcionesFallo, setOpcionesFallo] = useState(false);
@@ -693,6 +694,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
 
     const tarjetaResumen: React.CSSProperties = { ...bento, padding: movil ? '0.4rem 0.55rem' : '0.8rem', display: 'flex', gap: movil ? '7px' : '9px', alignItems: 'center', ...(movil ? { flex: '1 0 88px', minWidth: 0 } : {}) };
     const cajaIcono = movil ? 26 : 36;
+    const botonChico: React.CSSProperties = movil ? { padding: '5px 10px', minHeight: '32px', fontSize: '0.75rem', whiteSpace: 'nowrap' } : {};
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: movil ? "0.6rem" : "1.5rem", ...paddingPagina(movil), color: "var(--text-carbon)" }}>
@@ -703,22 +705,22 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                     <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: C.onSurface, whiteSpace: 'nowrap' }}>Agenda</h2>
                     <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: C.onSurfaceVariant, fontWeight: 600, whiteSpace: movil ? 'normal' : 'nowrap' }}>Tus próximas sesiones y entregas, a un vistazo.</p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginLeft: 'auto' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 800, color: C.onSurfaceVariant }}>
-                        <RefreshCw size={14} color={notionActive ? C.verde : C.outline} className={syncing ? 'agenda-spin' : ''} />
-                        Notion {notionActive ? 'activada' : 'desactivada'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: movil ? '0.4rem' : '0.6rem', flexWrap: movil ? 'nowrap' : 'wrap', marginLeft: movil ? 0 : 'auto', ...(movil ? { flex: '1 1 100%' } : {}) }}>
+                    <div title={`Notion ${notionActive ? 'activada' : 'desactivada'}`} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: movil ? '0.72rem' : '0.78rem', fontWeight: 800, color: C.onSurfaceVariant, whiteSpace: 'nowrap', marginRight: movil ? 'auto' : 0 }}>
+                        <RefreshCw size={13} color={notionActive ? C.verde : C.outline} className={syncing ? 'agenda-spin' : ''} />
+                        {movil ? null : `Notion ${notionActive ? 'activada' : 'desactivada'}`}
                     </div>
                     {!notionActive ? (
-                        <button onClick={handleActivar} style={{ ...botonCompacto(movil), background: C.verde, color: '#fff' }}>
+                        <button onClick={handleActivar} style={{ ...botonCompacto(movil), ...botonChico, background: C.verde, color: '#fff' }}>
                             Activar
                         </button>
                     ) : (
-                        <button onClick={handleSync} disabled={syncing} style={{ ...botonCompactoPrimario(movil), opacity: syncing ? 0.7 : 1, cursor: syncing ? 'wait' : 'pointer' }}>
+                        <button onClick={handleSync} disabled={syncing} style={{ ...botonCompactoPrimario(movil), ...botonChico, opacity: syncing ? 0.7 : 1, cursor: syncing ? 'wait' : 'pointer' }}>
                             {syncing ? <Loader2 size={13} className="agenda-spin" /> : <RefreshCw size={13} />}
-                            Sincronizar ahora
+                            {movil ? 'Sincronizar' : 'Sincronizar ahora'}
                         </button>
                     )}
-                    <button onClick={() => setShowAddForm(s => !s)} style={botonCompactoPrimario(movil)}>
+                    <button onClick={() => setShowAddForm(s => !s)} style={{ ...botonCompactoPrimario(movil), ...botonChico }}>
                         {showAddForm ? <X size={15} /> : <Plus size={15} />}
                         {showAddForm ? 'Cerrar' : 'Agregar'}
                     </button>
@@ -875,7 +877,12 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                         <CalendarDays size={16} color="#3ED9A0" />
                     </div>
                     <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={etiqueta}>{movil ? 'Este mes' : 'Sesiones este mes'}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <div style={etiqueta}>{movil ? 'Este mes' : 'Sesiones este mes'}</div>
+                            <button onClick={() => setInfoResumen(v => !v)} title="Qué mide cada número" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', color: infoResumen ? C.primary : C.outlineVariant }}>
+                                <Info size={12} />
+                            </button>
+                        </div>
                         {editingMeta ? (
                             <div style={{ display: 'flex', gap: '5px', alignItems: 'center', marginTop: '2px' }}>
                                 <input
@@ -911,6 +918,15 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                 </div>
             </div>
             </div>
+
+            {infoResumen && (
+                <div style={{ ...bento, padding: '0.65rem 0.8rem', display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '0.72rem', color: C.onSurfaceVariant, lineHeight: 1.35 }}>
+                    <div><b>Sesión:</b> la próxima sesión que todavía no ocurre.</div>
+                    <div><b>Entrega:</b> la entrega pendiente con la fecha más cercana (Entrega en Notion, sin marcar Entregado).</div>
+                    <div><b>Este mes:</b> cuántas sesiones tienes con fecha en el mes actual, pasadas y por venir. Con meta, se muestra como «X de meta».</div>
+                    <div><b>Hechas / por venir:</b> hechas = ya pasaron o su estado en Notion avanzó de Agendado; por venir = las que faltan del mes.</div>
+                </div>
+            )}
 
             {/* Próximas — ordenadas por Fecha y hora (la sesión en sí), no por Estado */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
