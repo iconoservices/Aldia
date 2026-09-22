@@ -774,6 +774,15 @@ export const ChecklistDiario = ({
                 {/* DnD Tasks List */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <NotasDelDia notes={notes} updateNote={updateNote} />
+
+                    {/* ── Entregas en desarrollo (Móvil) ── */}
+                    <EntregasEnDesarrollo
+                        sporadicProjects={sporadicProjects}
+                        calendarEvents={calendarEvents}
+                        todayStr={todayStr}
+                        onOpenEntregas={onOpenEntregas}
+                    />
+
                     <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
