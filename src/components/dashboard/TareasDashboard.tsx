@@ -37,6 +37,33 @@ const DIAS_SEMANA = [
     { idx: 0, label: 'D', full: 'Dom' },
 ];
 
+/** Extrae tareas de un solo texto: permite una sola tarea, múltiples líneas, o títulos con ':' */
+const parseTasksFromText = (text: string): string[] => {
+    const rawLines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const tasks: string[] = [];
+    let currentTitle = '';
+
+    for (const rawLine of rawLines) {
+        // Eliminar viñetas o marcas si las pegó o escribió: -, *, •, 1., ☑, ☐
+        const clean = rawLine.replace(/^[-\*\•\☑\☐\d+\.]\s*/, '').trim();
+        if (!clean) continue;
+
+        // Si la línea es un encabezado o título (termina en ':' o empieza con '#')
+        if (clean.endsWith(':') || rawLine.startsWith('#')) {
+            currentTitle = clean.replace(/^[#\s]+/, '').replace(/:$/, '').trim();
+            continue;
+        }
+
+        if (currentTitle) {
+            tasks.push(`${currentTitle}: ${clean}`);
+        } else {
+            tasks.push(clean);
+        }
+    }
+
+    return tasks;
+};
+
 export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     dailyBlocks,
     addDailyBlock,
@@ -47,8 +74,8 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
 }) => {
     const todayStr = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
 
-    // ── Form State ──
-    const [label, setLabel] = useState('');
+    // ── Form State (Texto unificado: 1 tarea o varias en el mismo texto) ──
+    const [textoTarea, setTextoTarea] = useState('');
     const [tipo, setTipo] = useState<'repetitiva' | 'suelta'>('suelta');
     const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // default Lun-Vie
     const [targetDate, setTargetDate] = useState(todayStr);
@@ -56,12 +83,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     const [projectId, setProjectId] = useState<number | undefined>(undefined);
     const [isFormOpen, setIsFormOpen] = useState(false);
 
-    // ── Modo Keep / Nota (Múltiples tareas) ──
-    const [modoEntrada, setModoEntrada] = useState<'simple' | 'keep'>('simple');
-    const [tituloKeep, setTituloKeep] = useState('');
-    const [keepItemsText, setKeepItemsText] = useState('');
-    const [keepConPrefijo, setKeepConPrefijo] = useState(false);
-    const [keepViewCheckboxes, setKeepViewCheckboxes] = useState(true);
+    const parsedTasks = useMemo(() => parseTasksFromText(textoTarea), [textoTarea]);
 
     // ── Edit Modal State ──
     const [editingTask, setEditingTask] = useState<DailyBlock | null>(null);
@@ -165,14 +187,13 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     // ── Handlers ──
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        const items = parseTasksFromText(textoTarea);
+        if (items.length === 0) return;
 
-        if (modoEntrada === 'simple') {
-            const trimmed = label.trim();
-            if (!trimmed) return;
-
+        items.forEach(itemText => {
             if (tipo === 'repetitiva') {
                 addDailyBlock(
-                    trimmed,
+                    itemText,
                     'Otro',
                     todayStr,
                     false,
@@ -183,7 +204,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                 );
             } else {
                 addDailyBlock(
-                    trimmed,
+                    itemText,
                     'Otro',
                     targetDate || todayStr,
                     false,
@@ -193,51 +214,10 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                     true
                 );
             }
-        } else {
-            // Modo Keep / Nota multilínea
-            const rawLines = keepItemsText
-                .split('\n')
-                .map(l => l.replace(/^[-\*\•\d+\.]\s*/, '').trim())
-                .filter(Boolean);
-
-            if (rawLines.length === 0 && !label.trim()) return;
-            const items = rawLines.length > 0 ? rawLines : [label.trim()];
-
-            items.forEach(itemText => {
-                const finalLabel = (keepConPrefijo && tituloKeep.trim())
-                    ? `${tituloKeep.trim()}: ${itemText}`
-                    : itemText;
-
-                if (tipo === 'repetitiva') {
-                    addDailyBlock(
-                        finalLabel,
-                        'Otro',
-                        todayStr,
-                        false,
-                        projectId,
-                        selectedDays.length > 0 ? selectedDays : [0, 1, 2, 3, 4, 5, 6],
-                        targetTime || undefined,
-                        true
-                    );
-                } else {
-                    addDailyBlock(
-                        finalLabel,
-                        'Otro',
-                        targetDate || todayStr,
-                        false,
-                        projectId,
-                        undefined,
-                        targetTime || undefined,
-                        true
-                    );
-                }
-            });
-        }
+        });
 
         // Reset form
-        setLabel('');
-        setTituloKeep('');
-        setKeepItemsText('');
+        setTextoTarea('');
         setTargetTime('');
         setIsFormOpen(false);
     };
@@ -338,216 +318,89 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                                 </button>
                             </div>
 
-                            {/* Selector Tipo y Modo */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                                {/* Selector Tipo */}
-                                <div style={{ display: 'flex', gap: '4px', background: C.surfaceContainer, padding: '3px', borderRadius: '10px' }}>
-                                    <button
-                                        type="button"
-                                        onClick={() => setTipo('suelta')}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: '5px',
-                                            border: 'none', borderRadius: '8px', padding: '6px 14px',
-                                            fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
-                                            background: tipo === 'suelta' ? C.surfaceLowest : 'transparent',
-                                            color: tipo === 'suelta' ? C.onSurface : C.onSurfaceVariant,
-                                            boxShadow: tipo === 'suelta' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
-                                            transition: 'all 0.15s',
-                                        }}
-                                    >
-                                        <span className="material-symbols-outlined" style={{ fontSize: '16px', color: tipo === 'suelta' ? C.primary : 'inherit' }}>push_pin</span>
-                                        De una vez
-                                    </button>
+                            {/* Selector Tipo */}
+                            <div style={{ display: 'flex', gap: '6px', background: C.surfaceContainer, padding: '3px', borderRadius: '10px', width: 'fit-content' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setTipo('suelta')}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                        border: 'none', borderRadius: '8px', padding: '6px 14px',
+                                        fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
+                                        background: tipo === 'suelta' ? C.surfaceLowest : 'transparent',
+                                        color: tipo === 'suelta' ? C.onSurface : C.onSurfaceVariant,
+                                        boxShadow: tipo === 'suelta' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                                        transition: 'all 0.15s',
+                                    }}
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '16px', color: tipo === 'suelta' ? C.primary : 'inherit' }}>push_pin</span>
+                                    De una vez (Suelta)
+                                </button>
 
-                                    <button
-                                        type="button"
-                                        onClick={() => setTipo('repetitiva')}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: '5px',
-                                            border: 'none', borderRadius: '8px', padding: '6px 14px',
-                                            fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
-                                            background: tipo === 'repetitiva' ? C.surfaceLowest : 'transparent',
-                                            color: tipo === 'repetitiva' ? C.onSurface : C.onSurfaceVariant,
-                                            boxShadow: tipo === 'repetitiva' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
-                                            transition: 'all 0.15s',
-                                        }}
-                                    >
-                                        <span className="material-symbols-outlined" style={{ fontSize: '16px', color: tipo === 'repetitiva' ? C.ambar : 'inherit' }}>alarm</span>
-                                        Repetitiva
-                                    </button>
-                                </div>
-
-                                {/* Selector Formato: Simple vs Keep */}
-                                <div style={{ display: 'flex', gap: '3px', background: C.surfaceContainer, padding: '3px', borderRadius: '10px' }}>
-                                    <button
-                                        type="button"
-                                        onClick={() => setModoEntrada('simple')}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: '4px',
-                                            border: 'none', borderRadius: '7px', padding: '5px 10px',
-                                            fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
-                                            background: modoEntrada === 'simple' ? C.surfaceLowest : 'transparent',
-                                            color: modoEntrada === 'simple' ? C.onSurface : C.onSurfaceVariant,
-                                            boxShadow: modoEntrada === 'simple' ? '0 2px 5px rgba(0,0,0,0.06)' : 'none',
-                                        }}
-                                    >
-                                        <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>check_circle</span>
-                                        Simple
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setModoEntrada('keep');
-                                            if (label && !keepItemsText) setKeepItemsText(label);
-                                        }}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: '4px',
-                                            border: 'none', borderRadius: '7px', padding: '5px 10px',
-                                            fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
-                                            background: modoEntrada === 'keep' ? C.surfaceLowest : 'transparent',
-                                            color: modoEntrada === 'keep' ? '#B9760A' : C.onSurfaceVariant,
-                                            boxShadow: modoEntrada === 'keep' ? '0 2px 5px rgba(0,0,0,0.06)' : 'none',
-                                        }}
-                                    >
-                                        <span className="material-symbols-outlined" style={{ fontSize: '15px', color: '#B9760A' }}>edit_note</span>
-                                        Nota / Keep
-                                    </button>
-                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setTipo('repetitiva')}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                        border: 'none', borderRadius: '8px', padding: '6px 14px',
+                                        fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
+                                        background: tipo === 'repetitiva' ? C.surfaceLowest : 'transparent',
+                                        color: tipo === 'repetitiva' ? C.onSurface : C.onSurfaceVariant,
+                                        boxShadow: tipo === 'repetitiva' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                                        transition: 'all 0.15s',
+                                    }}
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '16px', color: tipo === 'repetitiva' ? C.ambar : 'inherit' }}>alarm</span>
+                                    Repetitiva (Como Alarma)
+                                </button>
                             </div>
 
-                            {/* Entrada de Tarea según Modo */}
-                            {modoEntrada === 'simple' ? (
-                                <div>
-                                    <input
-                                        type="text"
-                                        value={label}
-                                        onChange={e => setLabel(e.target.value)}
-                                        placeholder={tipo === 'repetitiva' ? 'Ej. Tomar vitaminas, Hacer ejercicio, Subir historias...' : 'Ej. Comprar cable HDMI, Llamar al contador, Arreglar puerta...'}
-                                        autoFocus
-                                        required={modoEntrada === 'simple'}
-                                        style={{
-                                            width: '100%',
-                                            boxSizing: 'border-box',
-                                            padding: '12px 14px',
-                                            fontSize: '0.95rem',
-                                            borderRadius: '10px',
-                                            border: `1.5px solid ${C.outlineVariant}`,
-                                            background: C.surface,
-                                            color: C.onSurface,
-                                            fontFamily: 'inherit',
-                                            outline: 'none',
-                                        }}
-                                    />
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setModoEntrada('keep');
-                                                if (label) setKeepItemsText(label);
-                                            }}
-                                            style={{
-                                                display: 'flex', alignItems: 'center', gap: '4px',
-                                                background: 'none', border: 'none', cursor: 'pointer',
-                                                color: C.primary, fontSize: '0.74rem', fontWeight: 600,
-                                            }}
-                                        >
-                                            <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>playlist_add</span>
-                                            ¿Varias tareas? Escribir en lista tipo Keep
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(230,168,23,0.05)', border: '1.5px solid rgba(230,168,23,0.25)', borderRadius: '12px', padding: '12px' }}>
-                                    {/* Título de la nota */}
-                                    <div>
-                                        <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#B9760A', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
-                                            <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>title</span>
-                                            Título o Tema de la Nota (Opcional):
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={tituloKeep}
-                                            onChange={e => setTituloKeep(e.target.value)}
-                                            placeholder="Ej. Sesión de fotos, Compras de la semana, Trámites..."
-                                            style={{
-                                                width: '100%', boxSizing: 'border-box',
-                                                padding: '8px 12px', borderRadius: '8px',
-                                                border: `1px solid ${C.outlineVariant}`, background: C.surfaceLowest,
-                                                color: C.onSurface, fontFamily: 'inherit', fontSize: '0.88rem', fontWeight: 600,
-                                                outline: 'none',
-                                            }}
-                                        />
-                                    </div>
+                            {/* Entrada de Tarea(s) en el mismo texto */}
+                            <div>
+                                <textarea
+                                    value={textoTarea}
+                                    onChange={e => setTextoTarea(e.target.value)}
+                                    placeholder={tipo === 'repetitiva'
+                                        ? `Escribe una o varias tareas (una por línea)...
+Ej:
+Tomar vitaminas
+Hacer ejercicio
+Leer 10 páginas`
+                                        : `Escribe una o varias tareas (una por línea)...
+Ej:
+Comprar cable HDMI
+Llamar al contador
 
-                                    {/* Toolbar de Keep */}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
-                                        <label style={{ fontSize: '0.72rem', fontWeight: 700, color: C.onSurfaceVariant, textTransform: 'uppercase' }}>
-                                            Tareas / Elementos (uno por línea):
-                                        </label>
-                                        <button
-                                            type="button"
-                                            onClick={() => setKeepViewCheckboxes(v => !v)}
-                                            style={{
-                                                display: 'flex', alignItems: 'center', gap: '4px',
-                                                background: keepViewCheckboxes ? 'rgba(15,169,122,0.1)' : C.surfaceContainer,
-                                                border: `1px solid ${keepViewCheckboxes ? C.primary : 'transparent'}`,
-                                                borderRadius: '6px', padding: '3px 8px',
-                                                fontSize: '0.72rem', fontWeight: 600,
-                                                color: keepViewCheckboxes ? C.primary : C.onSurfaceVariant,
-                                                cursor: 'pointer',
-                                            }}
-                                        >
-                                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>
-                                                {keepViewCheckboxes ? 'check_box' : 'notes'}
-                                            </span>
-                                            {keepViewCheckboxes ? 'Casillas activas' : 'Texto libre'}
-                                        </button>
+O con títulos:
+Supermercado:
+- Leche
+- Huevos`}
+                                    autoFocus
+                                    required
+                                    rows={4}
+                                    style={{
+                                        width: '100%',
+                                        boxSizing: 'border-box',
+                                        padding: '12px 14px',
+                                        fontSize: '0.92rem',
+                                        lineHeight: 1.45,
+                                        borderRadius: '10px',
+                                        border: `1.5px solid ${C.outlineVariant}`,
+                                        background: C.surface,
+                                        color: C.onSurface,
+                                        fontFamily: 'inherit',
+                                        outline: 'none',
+                                        resize: 'vertical',
+                                        minHeight: '110px',
+                                    }}
+                                />
+                                {parsedTasks.length > 1 && (
+                                    <div style={{ marginTop: '5px', fontSize: '0.76rem', fontWeight: 700, color: C.primary, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>checklist</span>
+                                        {parsedTasks.length} tareas detectadas se crearán juntas
                                     </div>
-
-                                    {/* Textarea multilínea estilo Google Keep */}
-                                    <div>
-                                        <textarea
-                                            value={keepItemsText}
-                                            onChange={e => setKeepItemsText(e.target.value)}
-                                            placeholder={`Escribe o pega tus tareas aquí, una por línea:
-${keepViewCheckboxes ? '☑ ' : '- '}Comprar cable HDMI
-${keepViewCheckboxes ? '☑ ' : '- '}Llamar al contador
-${keepViewCheckboxes ? '☑ ' : '- '}Subir fotos a la galería`}
-                                            rows={5}
-                                            required={modoEntrada === 'keep'}
-                                            style={{
-                                                width: '100%', boxSizing: 'border-box',
-                                                padding: '10px 12px',
-                                                fontSize: '0.88rem', lineHeight: 1.5,
-                                                borderRadius: '8px',
-                                                border: `1px solid ${C.outlineVariant}`,
-                                                background: C.surfaceLowest,
-                                                color: C.onSurface,
-                                                fontFamily: 'inherit',
-                                                outline: 'none',
-                                                resize: 'vertical',
-                                            }}
-                                        />
-                                    </div>
-
-                                    {/* Contador y opción de prefijo */}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px', fontSize: '0.74rem' }}>
-                                        <span style={{ color: C.onSurfaceVariant, fontWeight: 600 }}>
-                                            {keepItemsText.split('\n').filter(l => l.trim().length > 0).length} tarea(s) detectada(s)
-                                        </span>
-                                        {tituloKeep.trim() && (
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', color: C.onSurfaceVariant }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={keepConPrefijo}
-                                                    onChange={e => setKeepConPrefijo(e.target.checked)}
-                                                />
-                                                Prefijar título a cada tarea
-                                            </label>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
 
                             {/* Opciones según tipo */}
                             {tipo === 'repetitiva' ? (
@@ -690,8 +543,8 @@ ${keepViewCheckboxes ? '☑ ' : '- '}Subir fotos a la galería`}
                                     }}
                                 >
                                     <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>check</span>
-                                    {modoEntrada === 'keep' && keepItemsText.split('\n').filter(l => l.trim().length > 0).length > 1
-                                        ? `Guardar ${keepItemsText.split('\n').filter(l => l.trim().length > 0).length} Tareas`
+                                    {parsedTasks.length > 1
+                                        ? `Guardar ${parsedTasks.length} Tareas`
                                         : 'Guardar Tarea'}
                                 </button>
                             </div>
