@@ -267,6 +267,8 @@ function App() {
                 dailyBlocks={state.dailyBlocks}
                 addDailyBlock={state.addDailyBlock}
                 toggleDailyBlock={state.toggleDailyBlock}
+                updateDailyBlock={state.updateDailyBlock}
+                removeDailyBlock={state.removeDailyBlock}
               />
             ) : (activeTab === 'Vida' || activeTab === 'Bloques') ? (
               <VidaBloquesDashboard

@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, Filter, Trash2, Star, Plus, Package, Camera, RefreshCw, Loader2, X, Target, AlertTriangle, ListOrdered } from 'lucide-react';
-import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, useDroppable } from '@dnd-kit/core';
+import { Calendar, Clock, ChevronLeft, ChevronRight, CalendarDays, Filter, Trash2, Star, Plus, Package, Camera, RefreshCw, Loader2, X, Target, AlertTriangle, ListOrdered, LayoutGrid, Check, GripVertical } from 'lucide-react';
+import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, useDroppable, DragOverlay } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -54,6 +54,8 @@ interface TimelineAgendaViewProps {
     dailyBlocks?: any[];
     addDailyBlock?: (label: string, period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro', date: string, completed?: boolean, projectId?: number, repeatDays?: number[]) => void;
     toggleDailyBlock?: (id: number) => void;
+    updateDailyBlock?: (id: number, updates: Record<string, any>) => void;
+    removeDailyBlock?: (ids: number | number[]) => void;
 }
 
 const DIAS_CORTOS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
@@ -89,10 +91,825 @@ const colorSesionNotion = (fecha: string, estado: string | undefined) => {
     return estado === 'Agendado' ? '#D97706' : '#6C8079';
 };
 
+// ══════════════════════════════════════════════════════════════════════════════
+// TABLERO SEMANAL: TAREAS Y RUTINAS COMO PIEZAS ARRISTRABLES
+// ══════════════════════════════════════════════════════════════════════════════
+
+export interface TableroPiece {
+    id: string;
+    blockId?: number;
+    type: 'repetitiva' | 'suelta';
+    label: string;
+    period: string;
+    completed: boolean;
+    projectId?: number;
+    repeatDays?: number[];
+    time?: string;
+    date?: string;
+}
+
+const isRepetitiveActiveOnDay = (repeatDays: number[] | undefined, dayIdx: number, jsDay: number): boolean => {
+    if (!repeatDays || repeatDays.length === 0) return false;
+    // dayIdx: 0=Lun, 1=Mar, 2=Mié, 3=Jue, 4=Vie, 5=Sáb, 6=Dom
+    // jsDay:  0=Dom, 1=Lun, 2=Mar, 3=Mié, 4=Jue, 5=Vie, 6=Sáb
+    return repeatDays.includes(dayIdx) || repeatDays.includes(jsDay);
+};
+
+interface TableroPieceCardProps {
+    piece: TableroPiece;
+    dateStr: string;
+    isOverToday: boolean;
+    projects: any[];
+    onToggle: () => void;
+    onDelete?: () => void;
+}
+
+const TableroPieceCard = ({
+    piece,
+    dateStr,
+    projects,
+    onToggle,
+    onDelete,
+}: TableroPieceCardProps) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+        id: piece.id,
+        data: { piece, dateStr },
+    });
+
+    const project = projects.find(p => p.id === piece.projectId);
+    const isRep = piece.type === 'repetitiva';
+
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.35 : 1,
+        touchAction: 'none',
+        position: 'relative',
+        zIndex: isDragging ? 25 : 1,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style}>
+            <div
+                style={{
+                    background: piece.completed
+                        ? '#F7FAF8'
+                        : isRep
+                        ? 'linear-gradient(180deg, #F3FAF6 0%, #FFFFFF 100%)'
+                        : '#FFFFFF',
+                    borderRadius: '11px',
+                    border: piece.completed
+                        ? '1px solid #E2EBE5'
+                        : isRep
+                        ? '1.5px solid #C4E8D7'
+                        : '1.5px solid #E2ECE6',
+                    padding: '8px 10px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                    boxShadow: isDragging ? '0 8px 24px rgba(0,0,0,0.12)' : '0 1px 3px rgba(0,0,0,0.03)',
+                    transition: 'all 0.15s ease',
+                    position: 'relative',
+                }}
+            >
+                {/* Cabecera de la pieza */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0, flex: 1 }}>
+                        <span
+                            style={{
+                                fontSize: '0.62rem',
+                                fontWeight: 800,
+                                textTransform: 'uppercase',
+                                padding: '1px 6px',
+                                borderRadius: '5px',
+                                background: isRep ? 'rgba(15, 169, 122, 0.12)' : 'rgba(108, 128, 121, 0.1)',
+                                color: isRep ? '#0FA97A' : '#556A63',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                flexShrink: 0,
+                            }}
+                        >
+                            {isRep ? '🔁 Rutina' : '📌 Tarea'}
+                        </span>
+
+                        {piece.time && (
+                            <span
+                                style={{
+                                    fontSize: '0.62rem',
+                                    fontWeight: 800,
+                                    color: '#0FA97A',
+                                    background: 'rgba(15, 169, 122, 0.08)',
+                                    padding: '1px 5px',
+                                    borderRadius: '4px',
+                                    fontFamily: 'monospace',
+                                    flexShrink: 0,
+                                }}
+                            >
+                                ⏰ {piece.time}
+                            </span>
+                        )}
+
+                        {project && (
+                            <span
+                                style={{
+                                    fontSize: '0.62rem',
+                                    color: '#556A63',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    minWidth: 0,
+                                }}
+                            >
+                                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: project.color, flexShrink: 0 }} />
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{project.name}</span>
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Grip para arrastrar como pieza */}
+                    <div
+                        {...attributes}
+                        {...listeners}
+                        title="Arrastra para mover a otro día"
+                        style={{ cursor: 'grab', color: '#9BB1A8', display: 'flex', alignItems: 'center', padding: '1px' }}
+                    >
+                        <GripVertical size={13} />
+                    </div>
+                </div>
+
+                {/* Fila principal: Checkbox + Texto */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onToggle();
+                        }}
+                        style={{
+                            width: '18px',
+                            height: '18px',
+                            minWidth: '18px',
+                            borderRadius: '50%',
+                            border: `1.5px solid ${piece.completed ? '#0FA97A' : '#9BB1A8'}`,
+                            background: piece.completed ? '#0FA97A' : 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            padding: 0,
+                            marginTop: '2px',
+                            transition: 'all 0.15s',
+                        }}
+                    >
+                        {piece.completed && <Check size={11} color="#FFFFFF" strokeWidth={3} />}
+                    </button>
+
+                    <div
+                        style={{
+                            fontSize: '0.82rem',
+                            fontWeight: 700,
+                            lineHeight: 1.3,
+                            color: piece.completed ? '#8A9E96' : '#1A2923',
+                            textDecoration: piece.completed ? 'line-through' : 'none',
+                            wordBreak: 'break-word',
+                            flex: 1,
+                        }}
+                    >
+                        {piece.label}
+                    </div>
+
+                    {onDelete && !isRep && (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDelete();
+                            }}
+                            title="Eliminar tarea"
+                            style={{
+                                border: 'none',
+                                background: 'transparent',
+                                color: '#A0B4AB',
+                                cursor: 'pointer',
+                                padding: '2px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                opacity: 0.7,
+                            }}
+                        >
+                            <Trash2 size={12} />
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+interface TableroDayColumnProps {
+    day: {
+        date: Date;
+        dateStr: string;
+        dayIdx: number;
+        isToday: boolean;
+        isSelected: boolean;
+        dels: any[];
+        evs: any[];
+    };
+    pieces: TableroPiece[];
+    projects: any[];
+    onTogglePiece: (piece: TableroPiece, dateStr: string) => void;
+    onDeletePiece?: (piece: TableroPiece) => void;
+    onQuickAdd: (dateStr: string, text: string) => void;
+    onSelectDay: (date: Date) => void;
+}
+
+const TableroDayColumn = ({
+    day,
+    pieces,
+    projects,
+    onTogglePiece,
+    onDeletePiece,
+    onQuickAdd,
+    onSelectDay,
+}: TableroDayColumnProps) => {
+    const { setNodeRef, isOver } = useDroppable({
+        id: `day-col-${day.dateStr}`,
+        data: { dateStr: day.dateStr, dayIdx: day.dayIdx },
+    });
+
+    const [isAdding, setIsAdding] = useState(false);
+    const [quickText, setQuickText] = useState('');
+
+    const dayName = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'][day.dayIdx];
+    const completedCount = pieces.filter(p => p.completed).length;
+    const totalCount = pieces.length;
+    const progressPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+    const handleAddSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!quickText.trim()) return;
+        onQuickAdd(day.dateStr, quickText.trim());
+        setQuickText('');
+        setIsAdding(false);
+    };
+
+    const pieceIds = useMemo(() => pieces.map(p => p.id), [pieces]);
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={{
+                flex: '1 1 0',
+                minWidth: '200px',
+                background: day.isToday ? '#F6FBF8' : '#FFFFFF',
+                borderRadius: '16px',
+                border: isOver
+                    ? '2px dashed #0FA97A'
+                    : day.isToday
+                    ? '2px solid rgba(15, 169, 122, 0.45)'
+                    : '1px solid #E2ECE6',
+                boxShadow: isOver
+                    ? '0 6px 20px rgba(15, 169, 122, 0.12)'
+                    : day.isToday
+                    ? '0 4px 14px rgba(15, 169, 122, 0.08)'
+                    : '0 2px 6px rgba(0,0,0,0.02)',
+                display: 'flex',
+                flexDirection: 'column',
+                transition: 'all 0.2s ease',
+                overflow: 'hidden',
+            }}
+        >
+            {/* Cabecera del día */}
+            <div
+                onClick={() => onSelectDay(day.date)}
+                style={{
+                    padding: '10px 12px',
+                    borderBottom: '1px solid #E8F0EB',
+                    background: day.isToday
+                        ? 'linear-gradient(180deg, rgba(15, 169, 122, 0.12) 0%, rgba(15, 169, 122, 0.04) 100%)'
+                        : '#FAFDFB',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 900, color: day.isToday ? '#0FA97A' : '#4C6058', textTransform: 'uppercase' }}>
+                            {dayName}
+                        </span>
+                        <span
+                            style={{
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '50%',
+                                background: day.isToday ? '#0FA97A' : '#E8F1EC',
+                                color: day.isToday ? '#FFFFFF' : '#2A3D36',
+                                fontSize: '0.8rem',
+                                fontWeight: 800,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            {day.date.getDate()}
+                        </span>
+                    </div>
+
+                    {day.isToday && (
+                        <span
+                            style={{
+                                fontSize: '0.62rem',
+                                fontWeight: 900,
+                                background: '#0FA97A',
+                                color: '#FFFFFF',
+                                borderRadius: '999px',
+                                padding: '2px 7px',
+                                letterSpacing: '0.02em',
+                            }}
+                        >
+                            HOY
+                        </span>
+                    )}
+
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: completedCount === totalCount && totalCount > 0 ? '#0FA97A' : '#738A82' }}>
+                        {completedCount}/{totalCount}
+                    </span>
+                </div>
+
+                {/* Barra de progreso */}
+                {totalCount > 0 && (
+                    <div style={{ height: '3px', background: '#E6EFEA', borderRadius: '999px', marginTop: '6px', overflow: 'hidden' }}>
+                        <div
+                            style={{
+                                height: '100%',
+                                width: `${progressPct}%`,
+                                background: completedCount === totalCount ? '#0FA97A' : '#3ED9A0',
+                                borderRadius: '999px',
+                                transition: 'width 0.25s ease',
+                            }}
+                        />
+                    </div>
+                )}
+            </div>
+
+            {/* Eventos / Entregas de este día */}
+            {((day.dels && day.dels.length > 0) || (day.evs && day.evs.length > 0)) && (
+                <div style={{ padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: '3px', background: '#F8FCFA', borderBottom: '1px solid #EBF3EE' }}>
+                    {day.dels?.map(d => (
+                        <div
+                            key={d.id}
+                            style={{
+                                fontSize: '0.65rem',
+                                fontWeight: 800,
+                                background: d.color || '#0FA97A',
+                                color: '#FFFFFF',
+                                padding: '2px 6px',
+                                borderRadius: '5px',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                            }}
+                        >
+                            <span>📦</span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.title}</span>
+                        </div>
+                    ))}
+                    {day.evs?.map(e => (
+                        <div
+                            key={e.id}
+                            style={{
+                                fontSize: '0.65rem',
+                                fontWeight: 700,
+                                background: e.color || '#3ED9A0',
+                                color: '#FFFFFF',
+                                padding: '2px 6px',
+                                borderRadius: '5px',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                            }}
+                        >
+                            📅 {e.startTime ? `${e.startTime} · ` : ''}{e.title}
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Lista de Piezas (Tareas y Rutinas) */}
+            <div style={{ flex: 1, padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px', minHeight: '120px' }}>
+                <SortableContext items={pieceIds} strategy={verticalListSortingStrategy}>
+                    {pieces.length > 0 ? (
+                        pieces.map(piece => (
+                            <TableroPieceCard
+                                key={piece.id}
+                                piece={piece}
+                                dateStr={day.dateStr}
+                                isOverToday={day.isToday}
+                                projects={projects}
+                                onToggle={() => onTogglePiece(piece, day.dateStr)}
+                                onDelete={() => onDeletePiece?.(piece)}
+                            />
+                        ))
+                    ) : (
+                        <div
+                            style={{
+                                flex: 1,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '16px 8px',
+                                textAlign: 'center',
+                                border: '1px dashed #D9E6DF',
+                                borderRadius: '10px',
+                                color: '#97ACA3',
+                                fontSize: '0.72rem',
+                            }}
+                        >
+                            <LayoutGrid size={18} style={{ opacity: 0.5, marginBottom: '4px' }} />
+                            <span>Sin piezas</span>
+                            <span style={{ fontSize: '0.65rem', opacity: 0.75 }}>Suelta una tarea aquí</span>
+                        </div>
+                    )}
+                </SortableContext>
+            </div>
+
+            {/* Quick Add */}
+            <div style={{ padding: '8px', borderTop: '1px solid #EDF5F0', background: '#FAFCFB' }}>
+                {isAdding ? (
+                    <form onSubmit={handleAddSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <input
+                            type="text"
+                            value={quickText}
+                            onChange={e => setQuickText(e.target.value)}
+                            placeholder="Nueva pieza..."
+                            autoFocus
+                            style={{
+                                width: '100%',
+                                boxSizing: 'border-box',
+                                padding: '6px 8px',
+                                borderRadius: '8px',
+                                border: '1.5px solid #0FA97A',
+                                fontSize: '0.78rem',
+                                outline: 'none',
+                                fontFamily: 'inherit',
+                            }}
+                        />
+                        <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
+                            <button
+                                type="button"
+                                onClick={() => { setIsAdding(false); setQuickText(''); }}
+                                style={{
+                                    border: 'none',
+                                    background: '#EAEFEA',
+                                    borderRadius: '6px',
+                                    padding: '4px 8px',
+                                    fontSize: '0.68rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="submit"
+                                style={{
+                                    border: 'none',
+                                    background: '#0FA97A',
+                                    color: '#FFFFFF',
+                                    borderRadius: '6px',
+                                    padding: '4px 10px',
+                                    fontSize: '0.68rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                Añadir
+                            </button>
+                        </div>
+                    </form>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={() => setIsAdding(true)}
+                        style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px',
+                            border: 'none',
+                            background: 'transparent',
+                            color: '#0FA97A',
+                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            padding: '4px 0',
+                            borderRadius: '8px',
+                            transition: 'background 0.15s',
+                        }}
+                    >
+                        <Plus size={13} />
+                        <span>Añadir pieza</span>
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+};
+
+interface TableroSemanalProps {
+    weekDays: any[];
+    dailyBlocks: any[];
+    projects: any[];
+    toggleDailyBlock?: (id: number) => void;
+    addDailyBlock?: (label: string, period: any, date: string, completed?: boolean, projectId?: number, repeatDays?: number[]) => void;
+    updateDailyBlock?: (id: number, updates: Record<string, any>) => void;
+    removeDailyBlock?: (ids: number | number[]) => void;
+    onSelectDate: (d: Date) => void;
+}
+
+export const TableroSemanal = ({
+    weekDays,
+    dailyBlocks = [],
+    projects = [],
+    toggleDailyBlock,
+    addDailyBlock,
+    updateDailyBlock,
+    removeDailyBlock,
+    onSelectDate,
+}: TableroSemanalProps) => {
+    const [activeDragPiece, setActiveDragPiece] = useState<{ piece: TableroPiece; dateStr: string } | null>(null);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+    );
+
+    // Plantillas únicas de tareas repetitivas
+    const uniqueRepetitivas = useMemo(() => {
+        const map = new Map<string, any>();
+        dailyBlocks.forEach(b => {
+            if (b.repeatDays && b.repeatDays.length > 0 && b.isActive !== false) {
+                const key = `${b.label.trim().toLowerCase()}||${b.period || 'Otro'}`;
+                if (!map.has(key)) {
+                    map.set(key, b);
+                }
+            }
+        });
+        return Array.from(map.values());
+    }, [dailyBlocks]);
+
+    // Tareas sueltas
+    const sueltas = useMemo(() => {
+        return dailyBlocks.filter(b => !b.repeatDays || b.repeatDays.length === 0);
+    }, [dailyBlocks]);
+
+    // Cálculo de piezas por cada día
+    const dayPiecesMap = useMemo(() => {
+        const map: Record<string, TableroPiece[]> = {};
+
+        weekDays.forEach(wd => {
+            const repsOnDay: TableroPiece[] = uniqueRepetitivas
+                .filter(r => isRepetitiveActiveOnDay(r.repeatDays, wd.dayIdx, wd.date.getDay()))
+                .map(r => {
+                    const isDone = dailyBlocks.some(
+                        b => b.label.trim().toLowerCase() === r.label.trim().toLowerCase() &&
+                             (b.period || 'Otro') === (r.period || 'Otro') &&
+                             b.date === wd.dateStr &&
+                             b.completed
+                    );
+                    return {
+                        id: `rep-${r.id}-${wd.dateStr}`,
+                        blockId: r.id,
+                        type: 'repetitiva' as const,
+                        label: r.label,
+                        period: r.period || 'Otro',
+                        completed: isDone,
+                        projectId: r.projectId,
+                        repeatDays: r.repeatDays,
+                        time: r.time,
+                        date: wd.dateStr,
+                    };
+                });
+
+            const sueltasOnDay: TableroPiece[] = sueltas
+                .filter(s => s.date === wd.dateStr)
+                .map(s => ({
+                    id: `suelta-${s.id}`,
+                    blockId: s.id,
+                    type: 'suelta' as const,
+                    label: s.label,
+                    period: s.period || 'Otro',
+                    completed: !!s.completed,
+                    projectId: s.projectId,
+                    time: s.time,
+                    date: s.date,
+                }));
+
+            // Orden: pendientes primero, completadas al final
+            map[wd.dateStr] = [...repsOnDay, ...sueltasOnDay].sort((a, b) => {
+                if (a.completed !== b.completed) return Number(a.completed) - Number(b.completed);
+                return (a.time || '99:99').localeCompare(b.time || '99:99');
+            });
+        });
+
+        return map;
+    }, [weekDays, uniqueRepetitivas, sueltas, dailyBlocks]);
+
+    const handleTogglePiece = (piece: TableroPiece, dayDateStr: string) => {
+        if (piece.type === 'suelta' && piece.blockId) {
+            toggleDailyBlock?.(piece.blockId);
+        } else if (piece.type === 'repetitiva') {
+            const existing = dailyBlocks.find(
+                b => b.label.trim().toLowerCase() === piece.label.trim().toLowerCase() &&
+                     (b.period || 'Otro') === piece.period &&
+                     b.date === dayDateStr
+            );
+            if (existing) {
+                toggleDailyBlock?.(existing.id);
+            } else {
+                addDailyBlock?.(piece.label, (piece.period as any) || 'Otro', dayDateStr, true, piece.projectId, piece.repeatDays);
+            }
+        }
+    };
+
+    const handleDeletePiece = (piece: TableroPiece) => {
+        if (piece.type === 'suelta' && piece.blockId && removeDailyBlock) {
+            removeDailyBlock(piece.blockId);
+        }
+    };
+
+    const handleQuickAdd = (dateStr: string, text: string) => {
+        addDailyBlock?.(text, 'Otro', dateStr, false, undefined, undefined);
+    };
+
+    const handleDragStart = (event: any) => {
+        const activeData = event.active.data?.current;
+        if (activeData) {
+            setActiveDragPiece({
+                piece: activeData.piece,
+                dateStr: activeData.dateStr,
+            });
+        }
+    };
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        setActiveDragPiece(null);
+        if (!over) return;
+
+        let targetDateStr: string | null = null;
+        if (String(over.id).startsWith('day-col-')) {
+            targetDateStr = String(over.id).replace('day-col-', '');
+        } else if (over.data.current?.dateStr) {
+            targetDateStr = over.data.current.dateStr;
+        }
+
+        if (!targetDateStr) return;
+
+        const piece = active.data.current?.piece as TableroPiece | undefined;
+        const sourceDateStr = active.data.current?.dateStr as string | undefined;
+
+        if (!piece) return;
+
+        if (piece.type === 'suelta' && piece.blockId) {
+            if (targetDateStr !== sourceDateStr && updateDailyBlock) {
+                updateDailyBlock(piece.blockId, { date: targetDateStr });
+            }
+        } else if (piece.type === 'repetitiva' && piece.blockId) {
+            if (targetDateStr !== sourceDateStr && updateDailyBlock) {
+                const targetWd = weekDays.find(w => w.dateStr === targetDateStr);
+                if (targetWd) {
+                    const targetDayIdx = targetWd.dayIdx;
+                    const targetJsDay = targetWd.date.getDay();
+                    const currDays = piece.repeatDays || [];
+                    if (!currDays.includes(targetDayIdx) && !currDays.includes(targetJsDay)) {
+                        updateDailyBlock(piece.blockId, { repeatDays: [...currDays, targetDayIdx] });
+                    }
+                }
+            }
+        }
+    };
+
+    return (
+        <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+        >
+            <div style={{ padding: '0.85rem 1rem 2rem', width: '100%', boxSizing: 'border-box' }}>
+                {/* Banner de estatus y explicación */}
+                <div
+                    style={{
+                        marginBottom: '0.85rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        background: '#FFFFFF',
+                        border: '1px solid #E2ECE6',
+                        borderRadius: '14px',
+                        padding: '10px 14px',
+                        flexWrap: 'wrap',
+                        gap: '8px',
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="material-symbols-outlined" style={{ color: '#0FA97A', fontSize: '20px' }}>
+                            dashboard
+                        </span>
+                        <div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1A2923' }}>
+                                Tablero Semanal por Piezas
+                            </div>
+                            <div style={{ fontSize: '0.72rem', color: '#6C8079' }}>
+                                Visualiza tus rutinas activas y mueve tareas entre días arrastrándolas como piezas.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span
+                            style={{
+                                fontSize: '0.72rem',
+                                fontWeight: 800,
+                                background: 'rgba(15, 169, 122, 0.1)',
+                                color: '#0FA97A',
+                                padding: '3px 10px',
+                                borderRadius: '999px',
+                            }}
+                        >
+                            Semana: {weekDays[0]?.date.getDate()} – {weekDays[6]?.date.getDate()} {weekDays[0]?.date.toLocaleDateString('es-ES', { month: 'short' })}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Grilla horizontal de 7 columnas */}
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(7, minmax(195px, 1fr))',
+                        gap: '10px',
+                        overflowX: 'auto',
+                        paddingBottom: '1rem',
+                        alignItems: 'start',
+                    }}
+                >
+                    {weekDays.map(wd => (
+                        <TableroDayColumn
+                            key={wd.dateStr}
+                            day={wd}
+                            pieces={dayPiecesMap[wd.dateStr] || []}
+                            projects={projects}
+                            onTogglePiece={handleTogglePiece}
+                            onDeletePiece={handleDeletePiece}
+                            onQuickAdd={handleQuickAdd}
+                            onSelectDay={onSelectDate}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            <DragOverlay>
+                {activeDragPiece ? (
+                    <div
+                        style={{
+                            background: '#FFFFFF',
+                            borderRadius: '11px',
+                            border: '2px solid #0FA97A',
+                            padding: '8px 12px',
+                            boxShadow: '0 12px 28px rgba(0,0,0,0.18)',
+                            fontSize: '0.82rem',
+                            fontWeight: 800,
+                            color: '#1A2923',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            cursor: 'grabbing',
+                            opacity: 0.95,
+                        }}
+                    >
+                        <GripVertical size={14} color="#0FA97A" />
+                        <span>{activeDragPiece.piece.label}</span>
+                    </div>
+                ) : null}
+            </DragOverlay>
+        </DndContext>
+    );
+};
+
 export const TimelineAgendaView = ({
     calendarEvents, projects = [], rutinas = [], missions = [], habits = [], dailyBlocks = [],
     onRemoveEvent, onToggleMission, updateRoutine, updateCalendarEvent, addRoutine, addCalendarEvent,
-    addDailyBlock, toggleDailyBlock
+    addDailyBlock, toggleDailyBlock, updateDailyBlock, removeDailyBlock
 }: TimelineAgendaViewProps) => {
     const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768);
     useEffect(() => {
@@ -1126,11 +1943,11 @@ export const TimelineAgendaView = ({
                                 <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-carbon)', whiteSpace: 'nowrap' }}>
                                     {viewMode === 'month'
                                         ? monthNames[selectedDate.getMonth()]
-                                        : viewMode === 'timeline'
+                                        : (viewMode === 'timeline' || viewMode === 'tasks')
                                             ? (isMobile ? `${dayNames[dayIdx]} ${selectedDate.getDate()} de ${monthNames[selectedDate.getMonth()]}` : `Semana: ${weekDays[0].date.getDate()} - ${weekDays[6].date.getDate()} ${monthNames[selectedDate.getMonth()]}`)
                                             : todayStr}
                                 </h2>
-                                <div style={{ fontSize: '0.6rem', fontWeight: 800, color: '#6C8079', textTransform: 'uppercase', lineHeight: 1 }}>{({ timeline: 'SEMANA', month: 'MES', appointments: 'CITAS', tasks: 'TAREAS' } as Record<string, string>)[viewMode] || viewMode.toUpperCase()}</div>
+                                <div style={{ fontSize: '0.6rem', fontWeight: 800, color: '#6C8079', textTransform: 'uppercase', lineHeight: 1 }}>{({ timeline: 'SEMANA', month: 'MES', appointments: 'CITAS', tasks: 'TABLERO DÍA A DÍA' } as Record<string, string>)[viewMode] || viewMode.toUpperCase()}</div>
                             </div>
                         </div>
 
@@ -1138,7 +1955,7 @@ export const TimelineAgendaView = ({
                             <button onClick={() => setViewMode('timeline')} style={{ flex: 1, padding: '7px 2px', border: 'none', borderRadius: '10px', background: viewMode === 'timeline' ? 'white' : 'transparent', fontSize: '0.6rem', fontWeight: 900, color: viewMode === 'timeline' ? 'var(--domain-orange)' : '#6C8079', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><Clock size={11} /> TIMELINE</button>
                             <button onClick={() => setViewMode('month')} style={{ flex: 1, padding: '7px 2px', border: 'none', borderRadius: '10px', background: viewMode === 'month' ? 'white' : 'transparent', fontSize: '0.6rem', fontWeight: 900, color: viewMode === 'month' ? 'var(--domain-orange)' : '#6C8079', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><CalendarDays size={11} /> MES</button>
                             <button onClick={() => setViewMode('appointments')} style={{ flex: 1, padding: '7px 2px', border: 'none', borderRadius: '10px', background: viewMode === 'appointments' ? 'white' : 'transparent', fontSize: '0.6rem', fontWeight: 900, color: viewMode === 'appointments' ? 'var(--domain-orange)' : '#6C8079', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><Filter size={11} /> CITAS</button>
-                            <button onClick={() => setViewMode('tasks')} style={{ flex: 1, padding: '7px 2px', border: 'none', borderRadius: '10px', background: viewMode === 'tasks' ? 'white' : 'transparent', fontSize: '0.6rem', fontWeight: 900, color: viewMode === 'tasks' ? 'var(--domain-orange)' : '#6C8079', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><Calendar size={11} /> TAREAS</button>
+                            <button onClick={() => setViewMode('tasks')} style={{ flex: 1, padding: '7px 2px', border: 'none', borderRadius: '10px', background: viewMode === 'tasks' ? 'white' : 'transparent', fontSize: '0.6rem', fontWeight: 900, color: viewMode === 'tasks' ? 'var(--domain-orange)' : '#6C8079', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><LayoutGrid size={11} /> TABLERO</button>
                         </div>
 
                         <div className="timeline-nav-buttons" style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end', alignItems: 'center' }}>
@@ -1149,15 +1966,15 @@ export const TimelineAgendaView = ({
                             >
                                 <Plus size={HDR_ICON} />
                             </button>
-                            {viewMode === 'timeline' && !isMobile && (
+                            {(viewMode === 'timeline' || viewMode === 'tasks') && !isMobile && (
                                 <>
                                     <button onClick={() => changeDate(-1)} title="Día anterior" style={{ ...hdrBtnText, gap: '1px' }}><ChevronLeft size={14} />1d</button>
                                     <button onClick={() => changeDate(1)} title="Día siguiente" style={{ ...hdrBtnText, gap: '1px' }}>1d<ChevronRight size={14} /></button>
                                 </>
                             )}
-                            <button onClick={() => viewMode === 'month' ? changeMonth(-1) : changeDate(viewMode === 'timeline' ? (isMobile ? -1 : -7) : -1)} title={viewMode === 'timeline' && !isMobile ? 'Semana anterior' : undefined} style={hdrBtn}><ChevronLeft size={HDR_ICON} /></button>
+                            <button onClick={() => viewMode === 'month' ? changeMonth(-1) : changeDate((viewMode === 'timeline' || viewMode === 'tasks') ? (isMobile ? -1 : -7) : -1)} title={(viewMode === 'timeline' || viewMode === 'tasks') && !isMobile ? 'Semana anterior' : undefined} style={hdrBtn}><ChevronLeft size={HDR_ICON} /></button>
                             <button onClick={() => { setSelectedDate(new Date()); scrollToNow(); setTimeout(scrollToNow, 300); }} style={hdrBtnText}>HOY</button>
-                            <button onClick={() => viewMode === 'month' ? changeMonth(1) : changeDate(viewMode === 'timeline' ? (isMobile ? 1 : 7) : 1)} title={viewMode === 'timeline' && !isMobile ? 'Semana siguiente' : undefined} style={hdrBtn}><ChevronRight size={HDR_ICON} /></button>
+                            <button onClick={() => viewMode === 'month' ? changeMonth(1) : changeDate((viewMode === 'timeline' || viewMode === 'tasks') ? (isMobile ? 1 : 7) : 1)} title={(viewMode === 'timeline' || viewMode === 'tasks') && !isMobile ? 'Semana siguiente' : undefined} style={hdrBtn}><ChevronRight size={HDR_ICON} /></button>
 
                             {/* Separador — a la derecha van juntos los toggles de los dos
                                 paneles laterales (ambos viven de este lado). */}
@@ -1441,16 +2258,16 @@ export const TimelineAgendaView = ({
                         </div>
                     )}
                     {viewMode === 'tasks' && (
-                        <div style={{ padding: '1.5rem' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                {dayMissions.map((m: any) => (
-                                    <div key={m.id} style={{ background: 'white', padding: '14px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <button onClick={() => onToggleMission?.(m.id)} style={{ width: '24px', height: '24px', borderRadius: '8px', background: m.completed ? 'var(--domain-green)' : 'white', border: '2px solid #EEE' }} />
-                                        <div style={{ fontWeight: 700 }}>{m.text}</div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                        <TableroSemanal
+                            weekDays={weekDays}
+                            dailyBlocks={dailyBlocks}
+                            projects={projects}
+                            toggleDailyBlock={toggleDailyBlock}
+                            addDailyBlock={addDailyBlock}
+                            updateDailyBlock={updateDailyBlock}
+                            removeDailyBlock={removeDailyBlock}
+                            onSelectDate={setSelectedDate}
+                        />
                     )}
                 </div>
             </main>
