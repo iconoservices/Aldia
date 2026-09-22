@@ -249,13 +249,16 @@ const daysBetween = (a: string, b: string) =>
 const semaforoColor = (dias: number) =>
     dias < 0 ? '#C63C3C' : dias <= 2 ? '#B9760A' : '#0FA97A';
 
-const EntregasEnDesarrollo = ({ sporadicProjects, calendarEvents, todayStr, onOpenEntregas }: {
+const EntregasEnDesarrollo = ({ sporadicProjects, calendarEvents, todayStr, onOpenEntregas, startSporadicTimer, pauseSporadicTimer }: {
     sporadicProjects: SporadicProject[];
     calendarEvents: CalendarEvent[];
     todayStr: string;
     onOpenEntregas?: () => void;
+    startSporadicTimer?: (id: number) => void;
+    pauseSporadicTimer?: (id: number) => void;
 }) => {
     const [abierto, setAbierto] = useState(true);
+    const [mostrarTodas, setMostrarTodas] = useState(false);
 
     const activas = useMemo(() =>
         sporadicProjects.filter(p =>
@@ -272,6 +275,87 @@ const EntregasEnDesarrollo = ({ sporadicProjects, calendarEvents, todayStr, onOp
 
     if (activas.length === 0) return null;
 
+    const renderItem = (p: SporadicProject) => {
+        const dias = daysBetween(todayStr, p.dueDate);
+        const ev = p.notionId ? calendarEvents.find(e => e.notionId === p.notionId) : undefined;
+        const estado = ev?.notionEstado;
+        const color = semaforoColor(dias);
+        const diasLabel = dias < 0
+            ? `${Math.abs(dias)}d atraso`
+            : dias === 0 ? 'Hoy' : dias === 1 ? 'Mañana' : `${dias}d`;
+
+        return (
+            <div
+                key={p.id}
+                style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '6px 8px', borderRadius: '10px',
+                    background: dias < 0 ? 'rgba(198, 60, 60, 0.04)' : 'transparent',
+                    cursor: onOpenEntregas ? 'pointer' : 'default',
+                    transition: 'background 0.15s',
+                }}
+                onClick={onOpenEntregas}
+                title={`Ir a Entregas — ${p.title}`}
+            >
+                {/* Semáforo dot */}
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, flexShrink: 0 }} />
+                {/* Título */}
+                <span style={{
+                    flex: 1, minWidth: 0, fontSize: '0.83rem', fontWeight: 600,
+                    color: C.onSurface, lineHeight: 1.3,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>{p.title}</span>
+                {/* Estado Notion badge */}
+                {estado && (
+                    <span style={{
+                        fontSize: '0.62rem', fontWeight: 700,
+                        color: ESTADO_COLOR_MINI[estado] || C.onSurfaceVariant,
+                        background: `${ESTADO_COLOR_MINI[estado] || C.outline}14`,
+                        borderRadius: '6px', padding: '1px 6px',
+                        whiteSpace: 'nowrap', flexShrink: 0,
+                    }}>{estado}</span>
+                )}
+                {/* Días restantes */}
+                <span style={{
+                    fontSize: '0.68rem', fontWeight: 800, color,
+                    whiteSpace: 'nowrap', flexShrink: 0,
+                }}>{diasLabel}</span>
+                {/* Botón Play / Pause */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (p.activeSince) {
+                            pauseSporadicTimer?.(p.id);
+                        } else {
+                            startSporadicTimer?.(p.id);
+                        }
+                    }}
+                    title={p.activeSince ? 'Pausar cronómetro' : 'Iniciar cronómetro'}
+                    style={{
+                        width: '26px', height: '26px', borderRadius: '50%',
+                        background: p.activeSince ? 'rgba(198, 60, 60, 0.12)' : 'rgba(15, 169, 122, 0.12)',
+                        border: 'none',
+                        color: p.activeSince ? '#C63C3C' : C.primary,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', flexShrink: 0,
+                        transition: 'all 0.15s',
+                    }}
+                >
+                    <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>
+                        {p.activeSince ? 'pause' : 'play_arrow'}
+                    </span>
+                </button>
+                {/* Indicadores extra */}
+                {!!p.activeSince && (
+                    <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#C63C3C', animation: 'pulse 1.5s infinite', flexShrink: 0 }}>timer</span>
+                )}
+                {!!p.pinned && !p.activeSince && (
+                    <span className="material-symbols-outlined" style={{ fontSize: '13px', color: '#B9760A', flexShrink: 0 }}>push_pin</span>
+                )}
+            </div>
+        );
+    };
+
     return (
         <div style={{ ...bentoCard, padding: '0.5rem 0.85rem' }}>
             <button
@@ -285,60 +369,34 @@ const EntregasEnDesarrollo = ({ sporadicProjects, calendarEvents, todayStr, onOp
             </button>
             {abierto && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '4px' }}>
-                    {activas.map(p => {
-                        const dias = daysBetween(todayStr, p.dueDate);
-                        const ev = p.notionId ? calendarEvents.find(e => e.notionId === p.notionId) : undefined;
-                        const estado = ev?.notionEstado;
-                        const color = semaforoColor(dias);
-                        const diasLabel = dias < 0
-                            ? `${Math.abs(dias)}d atraso`
-                            : dias === 0 ? 'Hoy' : dias === 1 ? 'Mañana' : `${dias}d`;
-                        return (
-                            <div
-                                key={p.id}
+                    {/* Solo la primera visible por defecto */}
+                    {renderItem(activas[0])}
+
+                    {/* El resto es desplegable */}
+                    {activas.length > 1 && (
+                        <>
+                            {mostrarTodas && activas.slice(1).map(p => renderItem(p))}
+
+                            <button
+                                onClick={() => setMostrarTodas(v => !v)}
                                 style={{
-                                    display: 'flex', alignItems: 'center', gap: '8px',
-                                    padding: '6px 8px', borderRadius: '10px',
-                                    background: dias < 0 ? 'rgba(198, 60, 60, 0.04)' : 'transparent',
-                                    cursor: onOpenEntregas ? 'pointer' : 'default',
-                                    transition: 'background 0.15s',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                                    background: 'none', border: 'none',
+                                    color: C.outline, fontSize: '0.72rem', fontWeight: 700,
+                                    cursor: 'pointer', padding: '4px 0', marginTop: '2px',
+                                    fontFamily: 'inherit',
+                                    transition: 'color 0.15s',
                                 }}
-                                onClick={onOpenEntregas}
-                                title={`Ir a Entregas — ${p.title}`}
                             >
-                                {/* Semáforo dot */}
-                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, flexShrink: 0 }} />
-                                {/* Título */}
-                                <span style={{
-                                    flex: 1, minWidth: 0, fontSize: '0.83rem', fontWeight: 600,
-                                    color: C.onSurface, lineHeight: 1.3,
-                                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                                }}>{p.title}</span>
-                                {/* Estado Notion badge */}
-                                {estado && (
-                                    <span style={{
-                                        fontSize: '0.62rem', fontWeight: 700,
-                                        color: ESTADO_COLOR_MINI[estado] || C.onSurfaceVariant,
-                                        background: `${ESTADO_COLOR_MINI[estado] || C.outline}14`,
-                                        borderRadius: '6px', padding: '1px 6px',
-                                        whiteSpace: 'nowrap', flexShrink: 0,
-                                    }}>{estado}</span>
-                                )}
-                                {/* Días restantes */}
-                                <span style={{
-                                    fontSize: '0.68rem', fontWeight: 800, color,
-                                    whiteSpace: 'nowrap', flexShrink: 0,
-                                }}>{diasLabel}</span>
-                                {/* Indicadores extra */}
-                                {!!p.activeSince && (
-                                    <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#C63C3C', animation: 'pulse 1.5s infinite', flexShrink: 0 }}>timer</span>
-                                )}
-                                {!!p.pinned && !p.activeSince && (
-                                    <span className="material-symbols-outlined" style={{ fontSize: '13px', color: '#B9760A', flexShrink: 0 }}>push_pin</span>
-                                )}
-                            </div>
-                        );
-                    })}
+                                <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>
+                                    {mostrarTodas ? 'expand_less' : 'expand_more'}
+                                </span>
+                                {mostrarTodas
+                                    ? 'Mostrar menos'
+                                    : `Ver ${activas.length - 1} más`}
+                            </button>
+                        </>
+                    )}
                 </div>
             )}
         </div>
@@ -368,6 +426,8 @@ interface ChecklistDiarioProps {
     sporadicProjects?: SporadicProject[];
     calendarEvents?: CalendarEvent[];
     onOpenEntregas?: () => void;
+    startSporadicTimer?: (id: number) => void;
+    pauseSporadicTimer?: (id: number) => void;
 }
 
 const SORT_STORAGE_KEY = 'aldia-checklist-custom-order';
@@ -378,6 +438,7 @@ export const ChecklistDiario = ({
     incomeCategories, expenseCategories, categoryAccountScope, categoryGroups, groupAccountScope,
     onOpenBandeja, notes = [], updateNote,
     sporadicProjects = [], calendarEvents = [], onOpenEntregas,
+    startSporadicTimer, pauseSporadicTimer,
 }: ChecklistDiarioProps) => {
     /* La fecha se recalcula sola: si la app queda abierta y pasa medianoche,
        el checklist salta al día nuevo sin necesidad de recargar. */
@@ -781,6 +842,8 @@ export const ChecklistDiario = ({
                         calendarEvents={calendarEvents}
                         todayStr={todayStr}
                         onOpenEntregas={onOpenEntregas}
+                        startSporadicTimer={startSporadicTimer}
+                        pauseSporadicTimer={pauseSporadicTimer}
                     />
 
                     <DndContext
@@ -1214,6 +1277,8 @@ export const ChecklistDiario = ({
                         calendarEvents={calendarEvents}
                         todayStr={todayStr}
                         onOpenEntregas={onOpenEntregas}
+                        startSporadicTimer={startSporadicTimer}
+                        pauseSporadicTimer={pauseSporadicTimer}
                     />
 
                     {/* DnD List */}

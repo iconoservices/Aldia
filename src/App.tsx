@@ -322,6 +322,8 @@ function App() {
                 sporadicProjects={state.sporadicProjects}
                 calendarEvents={state.agenda}
                 onOpenEntregas={() => setActiveTab('Esporadicos')}
+                startSporadicTimer={state.startSporadicTimer}
+                pauseSporadicTimer={state.pauseSporadicTimer}
               />
             ) : activeTab === 'Tareas' ? (
               <TareasDashboard
