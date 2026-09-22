@@ -53,9 +53,15 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // default Lun-Vie
     const [targetDate, setTargetDate] = useState(todayStr);
     const [targetTime, setTargetTime] = useState('');
-    const [period, setPeriod] = useState<'Mañana' | 'Tarde' | 'Noche' | 'Otro'>('Mañana');
     const [projectId, setProjectId] = useState<number | undefined>(undefined);
     const [isFormOpen, setIsFormOpen] = useState(false);
+
+    // ── Modo Keep / Nota (Múltiples tareas) ──
+    const [modoEntrada, setModoEntrada] = useState<'simple' | 'keep'>('simple');
+    const [tituloKeep, setTituloKeep] = useState('');
+    const [keepItemsText, setKeepItemsText] = useState('');
+    const [keepConPrefijo, setKeepConPrefijo] = useState(false);
+    const [keepViewCheckboxes, setKeepViewCheckboxes] = useState(true);
 
     // ── Edit Modal State ──
     const [editingTask, setEditingTask] = useState<DailyBlock | null>(null);
@@ -63,7 +69,6 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     const [editDays, setEditDays] = useState<number[]>([]);
     const [editDate, setEditDate] = useState('');
     const [editTime, setEditTime] = useState('');
-    const [editPeriod, setEditPeriod] = useState<'Mañana' | 'Tarde' | 'Noche' | 'Otro'>('Mañana');
     const [editProjectId, setEditProjectId] = useState<number | undefined>(undefined);
 
     const handleStartEdit = (b: DailyBlock) => {
@@ -72,7 +77,6 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
         setEditDays(b.repeatDays || [0, 1, 2, 3, 4, 5, 6]);
         setEditDate(b.date || todayStr);
         setEditTime(b.time || '');
-        setEditPeriod(b.period || 'Mañana');
         setEditProjectId(b.projectId);
     };
 
@@ -97,7 +101,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                         label: editLabel.trim(),
                         repeatDays: editDays.length > 0 ? editDays : [0, 1, 2, 3, 4, 5, 6],
                         time: editTime || undefined,
-                        period: editPeriod,
+                        period: editingTask.period || 'Otro',
                         projectId: editProjectId,
                     });
                 });
@@ -106,7 +110,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                 label: editLabel.trim(),
                 date: editDate || todayStr,
                 time: editTime || undefined,
-                period: editPeriod,
+                period: editingTask.period || 'Otro',
                 projectId: editProjectId,
             });
         }
@@ -161,35 +165,79 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     // ── Handlers ──
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const trimmed = label.trim();
-        if (!trimmed) return;
 
-        if (tipo === 'repetitiva') {
-            addDailyBlock(
-                trimmed,
-                period,
-                todayStr,
-                false,
-                projectId,
-                selectedDays.length > 0 ? selectedDays : [0, 1, 2, 3, 4, 5, 6],
-                targetTime || undefined,
-                true // activa por defecto como una alarma
-            );
+        if (modoEntrada === 'simple') {
+            const trimmed = label.trim();
+            if (!trimmed) return;
+
+            if (tipo === 'repetitiva') {
+                addDailyBlock(
+                    trimmed,
+                    'Otro',
+                    todayStr,
+                    false,
+                    projectId,
+                    selectedDays.length > 0 ? selectedDays : [0, 1, 2, 3, 4, 5, 6],
+                    targetTime || undefined,
+                    true // activa por defecto como una alarma
+                );
+            } else {
+                addDailyBlock(
+                    trimmed,
+                    'Otro',
+                    targetDate || todayStr,
+                    false,
+                    projectId,
+                    undefined, // sin repeatDays = de una sola vez
+                    targetTime || undefined,
+                    true
+                );
+            }
         } else {
-            addDailyBlock(
-                trimmed,
-                period,
-                targetDate || todayStr,
-                false,
-                projectId,
-                undefined, // sin repeatDays = de una sola vez
-                targetTime || undefined,
-                true
-            );
+            // Modo Keep / Nota multilínea
+            const rawLines = keepItemsText
+                .split('\n')
+                .map(l => l.replace(/^[-\*\•\d+\.]\s*/, '').trim())
+                .filter(Boolean);
+
+            if (rawLines.length === 0 && !label.trim()) return;
+            const items = rawLines.length > 0 ? rawLines : [label.trim()];
+
+            items.forEach(itemText => {
+                const finalLabel = (keepConPrefijo && tituloKeep.trim())
+                    ? `${tituloKeep.trim()}: ${itemText}`
+                    : itemText;
+
+                if (tipo === 'repetitiva') {
+                    addDailyBlock(
+                        finalLabel,
+                        'Otro',
+                        todayStr,
+                        false,
+                        projectId,
+                        selectedDays.length > 0 ? selectedDays : [0, 1, 2, 3, 4, 5, 6],
+                        targetTime || undefined,
+                        true
+                    );
+                } else {
+                    addDailyBlock(
+                        finalLabel,
+                        'Otro',
+                        targetDate || todayStr,
+                        false,
+                        projectId,
+                        undefined,
+                        targetTime || undefined,
+                        true
+                    );
+                }
+            });
         }
 
         // Reset form
         setLabel('');
+        setTituloKeep('');
+        setKeepItemsText('');
         setTargetTime('');
         setIsFormOpen(false);
     };
@@ -290,66 +338,216 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                                 </button>
                             </div>
 
-                            {/* Selector Tipo */}
-                            <div style={{ display: 'flex', gap: '8px', background: C.surfaceContainer, padding: '4px', borderRadius: '12px', width: 'fit-content' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setTipo('suelta')}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: '6px',
-                                        border: 'none', borderRadius: '9px', padding: '7px 16px',
-                                        fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer',
-                                        background: tipo === 'suelta' ? C.surfaceLowest : 'transparent',
-                                        color: tipo === 'suelta' ? C.onSurface : C.onSurfaceVariant,
-                                        boxShadow: tipo === 'suelta' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
-                                        transition: 'all 0.15s',
-                                    }}
-                                >
-                                    <span className="material-symbols-outlined" style={{ fontSize: '18px', color: tipo === 'suelta' ? C.primary : 'inherit' }}>push_pin</span>
-                                    De una vez (Suelta)
-                                </button>
+                            {/* Selector Tipo y Modo */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                {/* Selector Tipo */}
+                                <div style={{ display: 'flex', gap: '4px', background: C.surfaceContainer, padding: '3px', borderRadius: '10px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setTipo('suelta')}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '5px',
+                                            border: 'none', borderRadius: '8px', padding: '6px 14px',
+                                            fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
+                                            background: tipo === 'suelta' ? C.surfaceLowest : 'transparent',
+                                            color: tipo === 'suelta' ? C.onSurface : C.onSurfaceVariant,
+                                            boxShadow: tipo === 'suelta' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                                            transition: 'all 0.15s',
+                                        }}
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: '16px', color: tipo === 'suelta' ? C.primary : 'inherit' }}>push_pin</span>
+                                        De una vez
+                                    </button>
 
-                                <button
-                                    type="button"
-                                    onClick={() => setTipo('repetitiva')}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: '6px',
-                                        border: 'none', borderRadius: '9px', padding: '7px 16px',
-                                        fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer',
-                                        background: tipo === 'repetitiva' ? C.surfaceLowest : 'transparent',
-                                        color: tipo === 'repetitiva' ? C.onSurface : C.onSurfaceVariant,
-                                        boxShadow: tipo === 'repetitiva' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
-                                        transition: 'all 0.15s',
-                                    }}
-                                >
-                                    <span className="material-symbols-outlined" style={{ fontSize: '18px', color: tipo === 'repetitiva' ? C.ambar : 'inherit' }}>alarm</span>
-                                    Repetitiva (Como Alarma)
-                                </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setTipo('repetitiva')}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '5px',
+                                            border: 'none', borderRadius: '8px', padding: '6px 14px',
+                                            fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
+                                            background: tipo === 'repetitiva' ? C.surfaceLowest : 'transparent',
+                                            color: tipo === 'repetitiva' ? C.onSurface : C.onSurfaceVariant,
+                                            boxShadow: tipo === 'repetitiva' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                                            transition: 'all 0.15s',
+                                        }}
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: '16px', color: tipo === 'repetitiva' ? C.ambar : 'inherit' }}>alarm</span>
+                                        Repetitiva
+                                    </button>
+                                </div>
+
+                                {/* Selector Formato: Simple vs Keep */}
+                                <div style={{ display: 'flex', gap: '3px', background: C.surfaceContainer, padding: '3px', borderRadius: '10px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setModoEntrada('simple')}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '4px',
+                                            border: 'none', borderRadius: '7px', padding: '5px 10px',
+                                            fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
+                                            background: modoEntrada === 'simple' ? C.surfaceLowest : 'transparent',
+                                            color: modoEntrada === 'simple' ? C.onSurface : C.onSurfaceVariant,
+                                            boxShadow: modoEntrada === 'simple' ? '0 2px 5px rgba(0,0,0,0.06)' : 'none',
+                                        }}
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>check_circle</span>
+                                        Simple
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setModoEntrada('keep');
+                                            if (label && !keepItemsText) setKeepItemsText(label);
+                                        }}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '4px',
+                                            border: 'none', borderRadius: '7px', padding: '5px 10px',
+                                            fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
+                                            background: modoEntrada === 'keep' ? C.surfaceLowest : 'transparent',
+                                            color: modoEntrada === 'keep' ? '#B9760A' : C.onSurfaceVariant,
+                                            boxShadow: modoEntrada === 'keep' ? '0 2px 5px rgba(0,0,0,0.06)' : 'none',
+                                        }}
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: '15px', color: '#B9760A' }}>edit_note</span>
+                                        Nota / Keep
+                                    </button>
+                                </div>
                             </div>
 
-                            {/* Input Tarea */}
-                            <div>
-                                <input
-                                    type="text"
-                                    value={label}
-                                    onChange={e => setLabel(e.target.value)}
-                                    placeholder={tipo === 'repetitiva' ? 'Ej. Tomar vitaminas, Hacer ejercicio, Subir historias...' : 'Ej. Comprar cable HDMI, Llamar al contador, Arreglar puerta...'}
-                                    autoFocus
-                                    required
-                                    style={{
-                                        width: '100%',
-                                        boxSizing: 'border-box',
-                                        padding: '12px 14px',
-                                        fontSize: '0.95rem',
-                                        borderRadius: '10px',
-                                        border: `1.5px solid ${C.outlineVariant}`,
-                                        background: C.surface,
-                                        color: C.onSurface,
-                                        fontFamily: 'inherit',
-                                        outline: 'none',
-                                    }}
-                                />
-                            </div>
+                            {/* Entrada de Tarea según Modo */}
+                            {modoEntrada === 'simple' ? (
+                                <div>
+                                    <input
+                                        type="text"
+                                        value={label}
+                                        onChange={e => setLabel(e.target.value)}
+                                        placeholder={tipo === 'repetitiva' ? 'Ej. Tomar vitaminas, Hacer ejercicio, Subir historias...' : 'Ej. Comprar cable HDMI, Llamar al contador, Arreglar puerta...'}
+                                        autoFocus
+                                        required={modoEntrada === 'simple'}
+                                        style={{
+                                            width: '100%',
+                                            boxSizing: 'border-box',
+                                            padding: '12px 14px',
+                                            fontSize: '0.95rem',
+                                            borderRadius: '10px',
+                                            border: `1.5px solid ${C.outlineVariant}`,
+                                            background: C.surface,
+                                            color: C.onSurface,
+                                            fontFamily: 'inherit',
+                                            outline: 'none',
+                                        }}
+                                    />
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setModoEntrada('keep');
+                                                if (label) setKeepItemsText(label);
+                                            }}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: '4px',
+                                                background: 'none', border: 'none', cursor: 'pointer',
+                                                color: C.primary, fontSize: '0.74rem', fontWeight: 600,
+                                            }}
+                                        >
+                                            <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>playlist_add</span>
+                                            ¿Varias tareas? Escribir en lista tipo Keep
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(230,168,23,0.05)', border: '1.5px solid rgba(230,168,23,0.25)', borderRadius: '12px', padding: '12px' }}>
+                                    {/* Título de la nota */}
+                                    <div>
+                                        <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#B9760A', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                                            <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>title</span>
+                                            Título o Tema de la Nota (Opcional):
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={tituloKeep}
+                                            onChange={e => setTituloKeep(e.target.value)}
+                                            placeholder="Ej. Sesión de fotos, Compras de la semana, Trámites..."
+                                            style={{
+                                                width: '100%', boxSizing: 'border-box',
+                                                padding: '8px 12px', borderRadius: '8px',
+                                                border: `1px solid ${C.outlineVariant}`, background: C.surfaceLowest,
+                                                color: C.onSurface, fontFamily: 'inherit', fontSize: '0.88rem', fontWeight: 600,
+                                                outline: 'none',
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* Toolbar de Keep */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                                        <label style={{ fontSize: '0.72rem', fontWeight: 700, color: C.onSurfaceVariant, textTransform: 'uppercase' }}>
+                                            Tareas / Elementos (uno por línea):
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setKeepViewCheckboxes(v => !v)}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: '4px',
+                                                background: keepViewCheckboxes ? 'rgba(15,169,122,0.1)' : C.surfaceContainer,
+                                                border: `1px solid ${keepViewCheckboxes ? C.primary : 'transparent'}`,
+                                                borderRadius: '6px', padding: '3px 8px',
+                                                fontSize: '0.72rem', fontWeight: 600,
+                                                color: keepViewCheckboxes ? C.primary : C.onSurfaceVariant,
+                                                cursor: 'pointer',
+                                            }}
+                                        >
+                                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>
+                                                {keepViewCheckboxes ? 'check_box' : 'notes'}
+                                            </span>
+                                            {keepViewCheckboxes ? 'Casillas activas' : 'Texto libre'}
+                                        </button>
+                                    </div>
+
+                                    {/* Textarea multilínea estilo Google Keep */}
+                                    <div>
+                                        <textarea
+                                            value={keepItemsText}
+                                            onChange={e => setKeepItemsText(e.target.value)}
+                                            placeholder={`Escribe o pega tus tareas aquí, una por línea:
+${keepViewCheckboxes ? '☑ ' : '- '}Comprar cable HDMI
+${keepViewCheckboxes ? '☑ ' : '- '}Llamar al contador
+${keepViewCheckboxes ? '☑ ' : '- '}Subir fotos a la galería`}
+                                            rows={5}
+                                            required={modoEntrada === 'keep'}
+                                            style={{
+                                                width: '100%', boxSizing: 'border-box',
+                                                padding: '10px 12px',
+                                                fontSize: '0.88rem', lineHeight: 1.5,
+                                                borderRadius: '8px',
+                                                border: `1px solid ${C.outlineVariant}`,
+                                                background: C.surfaceLowest,
+                                                color: C.onSurface,
+                                                fontFamily: 'inherit',
+                                                outline: 'none',
+                                                resize: 'vertical',
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* Contador y opción de prefijo */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px', fontSize: '0.74rem' }}>
+                                        <span style={{ color: C.onSurfaceVariant, fontWeight: 600 }}>
+                                            {keepItemsText.split('\n').filter(l => l.trim().length > 0).length} tarea(s) detectada(s)
+                                        </span>
+                                        {tituloKeep.trim() && (
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', color: C.onSurfaceVariant }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={keepConPrefijo}
+                                                    onChange={e => setKeepConPrefijo(e.target.checked)}
+                                                />
+                                                Prefijar título a cada tarea
+                                            </label>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Opciones según tipo */}
                             {tipo === 'repetitiva' ? (
@@ -425,9 +623,9 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                                 </div>
                             )}
 
-                            {/* Fila extra: Hora opcional, Momento del día y Proyecto */}
+                            {/* Fila extra: Hora opcional (Alarma) y Proyecto */}
                             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', paddingTop: '4px' }}>
-                                <div style={{ flex: 1, minWidth: '120px' }}>
+                                <div style={{ flex: 1, minWidth: '130px' }}>
                                     <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
                                         Hora (Alarma):
                                     </label>
@@ -445,28 +643,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                                     />
                                 </div>
 
-                                <div style={{ flex: 1, minWidth: '120px' }}>
-                                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
-                                        Momento del día:
-                                    </label>
-                                    <select
-                                        value={period}
-                                        onChange={e => setPeriod(e.target.value as any)}
-                                        style={{
-                                            width: '100%', boxSizing: 'border-box',
-                                            padding: '8px 12px', borderRadius: '8px',
-                                            border: `1px solid ${C.outlineVariant}`, background: C.surface,
-                                            color: C.onSurface, fontFamily: 'inherit', fontSize: '0.85rem',
-                                        }}
-                                    >
-                                        <option value="Mañana">Mañana</option>
-                                        <option value="Tarde">Tarde</option>
-                                        <option value="Noche">Noche</option>
-                                        <option value="Otro">Otro</option>
-                                    </select>
-                                </div>
-
-                                <div style={{ width: '100%' }}>
+                                <div style={{ flex: 2, minWidth: '180px' }}>
                                     <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
                                         Proyecto (Opcional):
                                     </label>
@@ -513,7 +690,9 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                                     }}
                                 >
                                     <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>check</span>
-                                    Guardar Tarea
+                                    {modoEntrada === 'keep' && keepItemsText.split('\n').filter(l => l.trim().length > 0).length > 1
+                                        ? `Guardar ${keepItemsText.split('\n').filter(l => l.trim().length > 0).length} Tareas`
+                                        : 'Guardar Tarea'}
                                 </button>
                             </div>
                         </motion.form>
@@ -922,45 +1101,22 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                                     </div>
                                 )}
 
-                                {/* Hora y Momento */}
-                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                                    <div style={{ flex: 1, minWidth: '120px' }}>
-                                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
-                                            Hora (Alarma):
-                                        </label>
-                                        <input
-                                            type="time"
-                                            value={editTime}
-                                            onChange={e => setEditTime(e.target.value)}
-                                            style={{
-                                                width: '100%', boxSizing: 'border-box',
-                                                padding: '8px 10px', borderRadius: '8px',
-                                                border: `1px solid ${C.outlineVariant}`, background: C.surface,
-                                                color: C.onSurface, fontFamily: MONO, fontSize: '0.85rem',
-                                            }}
-                                        />
-                                    </div>
-
-                                    <div style={{ flex: 1, minWidth: '120px' }}>
-                                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
-                                            Momento:
-                                        </label>
-                                        <select
-                                            value={editPeriod}
-                                            onChange={e => setEditPeriod(e.target.value as any)}
-                                            style={{
-                                                width: '100%', boxSizing: 'border-box',
-                                                padding: '8px 10px', borderRadius: '8px',
-                                                border: `1px solid ${C.outlineVariant}`, background: C.surface,
-                                                color: C.onSurface, fontFamily: 'inherit', fontSize: '0.85rem',
-                                            }}
-                                        >
-                                            <option value="Mañana">Mañana</option>
-                                            <option value="Tarde">Tarde</option>
-                                            <option value="Noche">Noche</option>
-                                            <option value="Otro">Otro</option>
-                                        </select>
-                                    </div>
+                                {/* Hora de Alarma */}
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
+                                        Hora (Alarma):
+                                    </label>
+                                    <input
+                                        type="time"
+                                        value={editTime}
+                                        onChange={e => setEditTime(e.target.value)}
+                                        style={{
+                                            width: '100%', boxSizing: 'border-box',
+                                            padding: '8px 10px', borderRadius: '8px',
+                                            border: `1px solid ${C.outlineVariant}`, background: C.surface,
+                                            color: C.onSurface, fontFamily: MONO, fontSize: '0.85rem',
+                                        }}
+                                    />
                                 </div>
 
                                 {/* Proyecto */}

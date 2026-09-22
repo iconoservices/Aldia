@@ -31,8 +31,14 @@ import { RegistroMovimiento } from '../features/RegistroMovimiento';
    las nuevas se crean siempre como 'Otro'. */
 type Period = 'Mañana' | 'Tarde' | 'Noche' | 'Otro';
 
-/* Igual que el bento compartido, con la transición que usan las tarjetas de tarea */
-const bentoTarea: React.CSSProperties = { ...bentoCard, transition: 'box-shadow 0.2s' };
+/* Tarjeta de tarea compacta para Mi Día */
+const bentoTarea: React.CSSProperties = {
+    background: C.surfaceLowest,
+    borderRadius: '10px',
+    border: `1px solid ${C.outlineVariant}`,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+    transition: 'box-shadow 0.15s, border-color 0.15s',
+};
 
 /* ─── Task key helper ───────────────────────────────────────── */
 const taskKey = (label: string, period: string) => `${label.toLowerCase()}||${period}`;
@@ -47,13 +53,14 @@ interface TaskCardProps {
     isDone: boolean;
     projColor: string;
     projName: string;
+    time?: string;
     isDragging?: boolean;
     onToggle: () => void;
     onMenuClick: (e: React.MouseEvent, label: string, period: Period) => void;
 }
 
 const TaskCard = ({
-    id, label, period, isDone, projColor, projName,
+    id, label, period, isDone, projColor, projName, time,
     isDragging = false, onToggle, onMenuClick,
 }: TaskCardProps) => {
     const {
@@ -72,18 +79,20 @@ const TaskCard = ({
         <div ref={setNodeRef} style={style}>
             <motion.div
                 layout
-                initial={{ opacity: 0, y: 6 }}
+                initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 style={{
                     ...bentoTarea,
-                    padding: '8px 12px',
+                    padding: '5px 10px',
                     display: 'flex', alignItems: 'center', gap: '8px',
                     background: isDone ? '#F7FAF8' : C.surfaceLowest,
                     opacity: isDone ? 0.72 : 1,
                     cursor: isDragging ? 'grabbing' : 'default',
+                    minHeight: '34px',
+                    boxSizing: 'border-box',
                 }}
-                whileHover={!isSortDragging ? { boxShadow: '0 4px 20px rgba(0,0,0,0.08)' } as any : undefined}
+                whileHover={!isSortDragging ? { boxShadow: '0 3px 12px rgba(0,0,0,0.06)' } as any : undefined}
                 className="task-card-row"
             >
                 {/* Drag handle */}
@@ -93,23 +102,23 @@ const TaskCard = ({
                     title="Arrastrar para reordenar"
                     style={{
                         background: 'none', border: 'none', cursor: 'grab',
-                        padding: '2px 0', color: C.outlineVariant,
+                        padding: 0, color: C.outlineVariant,
                         display: 'flex', alignItems: 'center',
                         opacity: 0, transition: 'opacity 0.15s',
                         flexShrink: 0,
                     }}
                     className="drag-handle"
                 >
-                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>drag_indicator</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>drag_indicator</span>
                 </button>
 
                 {/* Checkbox */}
                 <button
                     onClick={onToggle}
                     style={{
-                        width: '22px', height: '22px', minWidth: '22px',
-                        borderRadius: '6px',
-                        border: `2px solid ${isDone ? projColor : C.outlineVariant}`,
+                        width: '18px', height: '18px', minWidth: '18px',
+                        borderRadius: '5px',
+                        border: `1.5px solid ${isDone ? projColor : C.outlineVariant}`,
                         background: isDone ? projColor : 'transparent',
                         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         transition: 'all 0.15s', padding: 0, flexShrink: 0,
@@ -118,26 +127,42 @@ const TaskCard = ({
                     {isDone && (
                         <span
                             className="material-symbols-outlined"
-                            style={{ fontSize: '14px', color: '#fff', fontVariationSettings: "'FILL' 1" }}
+                            style={{ fontSize: '13px', color: '#fff', fontVariationSettings: "'FILL' 1" }}
                         >check</span>
                     )}
                 </button>
 
-                {/* Content */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                        fontSize: '0.88rem', fontWeight: 600, color: C.onSurface, lineHeight: 1.25,
+                {/* Content: label + badges on one compact line */}
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                    <span style={{
+                        fontSize: '0.82rem', fontWeight: 600, color: C.onSurface, lineHeight: 1.25,
                         textDecoration: isDone ? 'line-through' : 'none',
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     }}>
                         {label}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '1px', flexWrap: 'wrap' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.68rem', color: C.onSurfaceVariant }}>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: projColor, display: 'inline-block' }} />
-                            {projName}
+                    </span>
+
+                    {time && (
+                        <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '2px',
+                            fontSize: '0.64rem', color: C.onSurfaceVariant, fontFamily: MONO,
+                            background: 'rgba(0,0,0,0.04)', padding: '1px 5px', borderRadius: '4px',
+                            flexShrink: 0,
+                        }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '11px', color: C.outline }}>schedule</span>
+                            {time}
                         </span>
-                    </div>
+                    )}
+
+                    <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '3px',
+                        fontSize: '0.64rem', color: C.onSurfaceVariant,
+                        background: 'rgba(0,0,0,0.03)', padding: '1px 6px', borderRadius: '4px',
+                        flexShrink: 0,
+                    }}>
+                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: projColor, display: 'inline-block' }} />
+                        {projName}
+                    </span>
                 </div>
 
                 {/* Menu */}
@@ -148,11 +173,11 @@ const TaskCard = ({
                     style={{
                         background: 'none', border: 'none', cursor: 'pointer',
                         color: '#6C8079', opacity: 0, transition: 'opacity 0.15s',
-                        padding: '4px', display: 'flex', alignItems: 'center',
-                        borderRadius: '8px', flexShrink: 0,
+                        padding: '2px', display: 'flex', alignItems: 'center',
+                        borderRadius: '6px', flexShrink: 0,
                     }}
                 >
-                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>more_vert</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>more_vert</span>
                 </button>
             </motion.div>
         </div>
@@ -833,7 +858,7 @@ export const ChecklistDiario = ({
                 </p>
 
                 {/* DnD Tasks List */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <NotasDelDia notes={notes} updateNote={updateNote} />
 
                     {/* ── Entregas en desarrollo (Móvil) ── */}
@@ -875,6 +900,7 @@ export const ChecklistDiario = ({
                                                 isDone={isDone}
                                                 projColor={projColor}
                                                 projName={projName}
+                                                time={task.time}
                                                 onToggle={() => handleToggle(task.label, task.period)}
                                                 onMenuClick={handleMenuClick}
                                             />
@@ -1185,7 +1211,7 @@ export const ChecklistDiario = ({
                 </p>
 
                 {/* ── Task list ── */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
 
                     {/* List header */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
@@ -1257,7 +1283,7 @@ export const ChecklistDiario = ({
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '5px',
                                     background: groupByProject ? 'rgba(15, 169, 122,0.10)' : C.surfaceContainerHigh,
-                                    border: `1px solid ${groupByProject ? C.primary : 'transparent'}`,
+                                    border: `1.5px solid ${groupByProject ? C.primary : 'transparent'}`,
                                     borderRadius: '8px', padding: '5px 10px',
                                     fontSize: '0.72rem', color: groupByProject ? C.primary : C.onSurfaceVariant, fontWeight: 600,
                                     cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.15s',
@@ -1311,6 +1337,7 @@ export const ChecklistDiario = ({
                                                 isDone={isDone}
                                                 projColor={projColor}
                                                 projName={projName}
+                                                time={task.time}
                                                 onToggle={() => handleToggle(task.label, task.period)}
                                                 onMenuClick={handleMenuClick}
                                             />
