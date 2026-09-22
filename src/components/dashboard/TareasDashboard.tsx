@@ -231,7 +231,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                 </div>
 
                 <button
-                    onClick={() => setIsFormOpen(v => !v)}
+                    onClick={() => setIsFormOpen(true)}
                     style={{
                         display: 'flex', alignItems: 'center', gap: '8px',
                         background: C.primary, color: '#fff', border: 'none',
@@ -241,243 +241,283 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                         transition: 'transform 0.15s, opacity 0.15s',
                     }}
                 >
-                    <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
-                        {isFormOpen ? 'close' : 'add'}
-                    </span>
-                    {isFormOpen ? 'Cerrar' : 'Nueva Tarea'}
+                    <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>add</span>
+                    Nueva Tarea
                 </button>
             </div>
 
-            {/* ── Formulario de Creación ── */}
+            {/* ── Modal Flotante: Nueva Tarea ── */}
             <AnimatePresence>
                 {isFormOpen && (
-                    <motion.form
-                        initial={{ opacity: 0, y: -10, height: 0 }}
-                        animate={{ opacity: 1, y: 0, height: 'auto' }}
-                        exit={{ opacity: 0, y: -10, height: 0 }}
-                        transition={{ duration: 0.2 }}
-                        onSubmit={handleSubmit}
-                        style={{
-                            background: C.surfaceLowest,
-                            borderRadius: '16px',
-                            border: `1px solid ${C.outlineVariant}`,
-                            padding: '1.25rem',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '1rem',
-                            boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
-                        }}
-                    >
-                        {/* Selector Tipo */}
-                        <div style={{ display: 'flex', gap: '8px', background: C.surfaceContainer, padding: '4px', borderRadius: '12px', width: 'fit-content' }}>
-                            <button
-                                type="button"
-                                onClick={() => setTipo('suelta')}
-                                style={{
-                                    display: 'flex', alignItems: 'center', gap: '6px',
-                                    border: 'none', borderRadius: '9px', padding: '7px 16px',
-                                    fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer',
-                                    background: tipo === 'suelta' ? C.surfaceLowest : 'transparent',
-                                    color: tipo === 'suelta' ? C.onSurface : C.onSurfaceVariant,
-                                    boxShadow: tipo === 'suelta' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
-                                    transition: 'all 0.15s',
-                                }}
-                            >
-                                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: tipo === 'suelta' ? C.primary : 'inherit' }}>push_pin</span>
-                                De una vez (Suelta)
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => setTipo('repetitiva')}
-                                style={{
-                                    display: 'flex', alignItems: 'center', gap: '6px',
-                                    border: 'none', borderRadius: '9px', padding: '7px 16px',
-                                    fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer',
-                                    background: tipo === 'repetitiva' ? C.surfaceLowest : 'transparent',
-                                    color: tipo === 'repetitiva' ? C.onSurface : C.onSurfaceVariant,
-                                    boxShadow: tipo === 'repetitiva' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
-                                    transition: 'all 0.15s',
-                                }}
-                            >
-                                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: tipo === 'repetitiva' ? C.ambar : 'inherit' }}>alarm</span>
-                                Repetitiva (Como Alarma)
-                            </button>
-                        </div>
-
-                        {/* Input Tarea */}
-                        <div>
-                            <input
-                                type="text"
-                                value={label}
-                                onChange={e => setLabel(e.target.value)}
-                                placeholder={tipo === 'repetitiva' ? 'Ej. Tomar vitaminas, Hacer ejercicio, Subir historias...' : 'Ej. Comprar cable HDMI, Llamar al contador, Arreglar puerta...'}
-                                autoFocus
-                                required
-                                style={{
-                                    width: '100%',
-                                    boxSizing: 'border-box',
-                                    padding: '12px 14px',
-                                    fontSize: '0.95rem',
-                                    borderRadius: '10px',
-                                    border: `1.5px solid ${C.outlineVariant}`,
-                                    background: C.surface,
-                                    color: C.onSurface,
-                                    fontFamily: 'inherit',
-                                    outline: 'none',
-                                }}
-                            />
-                        </div>
-
-                        {/* Opciones según tipo */}
-                        {tipo === 'repetitiva' ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: C.onSurfaceVariant, textTransform: 'uppercase' }}>
-                                    Días en que se repite:
-                                </label>
-                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                    {DIAS_SEMANA.map(d => {
-                                        const activo = selectedDays.includes(d.idx);
-                                        return (
-                                            <button
-                                                key={d.idx}
-                                                type="button"
-                                                onClick={() => toggleDia(d.idx)}
-                                                style={{
-                                                    width: '38px', height: '38px', borderRadius: '10px',
-                                                    border: `1.5px solid ${activo ? C.primary : C.outlineVariant}`,
-                                                    background: activo ? 'rgba(15, 169, 122, 0.12)' : C.surfaceLowest,
-                                                    color: activo ? C.primary : C.onSurfaceVariant,
-                                                    fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer',
-                                                    transition: 'all 0.15s',
-                                                }}
-                                            >
-                                                {d.label}
-                                            </button>
-                                        );
-                                    })}
-
-                                    <div style={{ display: 'flex', gap: '6px', marginLeft: '6px' }}>
-                                        <button
-                                            type="button"
-                                            onClick={() => setSelectedDays([0, 1, 2, 3, 4, 5, 6])}
-                                            style={{
-                                                border: 'none', background: C.surfaceContainerHigh,
-                                                borderRadius: '8px', padding: '6px 10px',
-                                                fontSize: '0.72rem', fontWeight: 600, color: C.onSurfaceVariant, cursor: 'pointer',
-                                            }}
-                                        >
-                                            Todos los días
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setSelectedDays([1, 2, 3, 4, 5])}
-                                            style={{
-                                                border: 'none', background: C.surfaceContainerHigh,
-                                                borderRadius: '8px', padding: '6px 10px',
-                                                fontSize: '0.72rem', fontWeight: 600, color: C.onSurfaceVariant, cursor: 'pointer',
-                                            }}
-                                        >
-                                            L a V
-                                        </button>
-                                    </div>
+                    <div style={{
+                        position: 'fixed', inset: 0,
+                        background: 'rgba(0,0,0,0.5)',
+                        backdropFilter: 'blur(4px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        zIndex: 9999, padding: '1rem',
+                    }}>
+                        <motion.form
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            transition={{ duration: 0.15 }}
+                            onSubmit={handleSubmit}
+                            style={{
+                                background: C.surfaceLowest,
+                                borderRadius: '16px',
+                                border: `1px solid ${C.outlineVariant}`,
+                                width: '100%', maxWidth: '520px',
+                                padding: '1.5rem',
+                                boxShadow: '0 16px 40px rgba(0,0,0,0.18)',
+                                display: 'flex', flexDirection: 'column', gap: '1rem',
+                                maxHeight: '90vh', overflowY: 'auto',
+                            }}
+                        >
+                            {/* Modal Header */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: '24px', color: C.primary }}>add_task</span>
+                                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: C.onSurface }}>
+                                        Nueva Tarea
+                                    </h3>
                                 </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsFormOpen(false)}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, padding: '4px', display: 'flex' }}
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>close</span>
+                                </button>
                             </div>
-                        ) : (
-                            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
-                                        Fecha:
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={targetDate}
-                                        onChange={e => setTargetDate(e.target.value)}
-                                        style={{
-                                            padding: '8px 12px', borderRadius: '8px',
-                                            border: `1px solid ${C.outlineVariant}`, background: C.surface,
-                                            color: C.onSurface, fontFamily: 'inherit', fontSize: '0.85rem',
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        )}
 
-                        {/* Fila extra: Hora opcional, Momento del día y Proyecto */}
-                        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', paddingTop: '4px' }}>
-                            <div>
-                                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
-                                    Hora (Opcional tipo alarma):
-                                </label>
-                                <input
-                                    type="time"
-                                    value={targetTime}
-                                    onChange={e => setTargetTime(e.target.value)}
-                                    placeholder="--:--"
+                            {/* Selector Tipo */}
+                            <div style={{ display: 'flex', gap: '8px', background: C.surfaceContainer, padding: '4px', borderRadius: '12px', width: 'fit-content' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setTipo('suelta')}
                                     style={{
-                                        padding: '8px 12px', borderRadius: '8px',
-                                        border: `1px solid ${C.outlineVariant}`, background: C.surface,
-                                        color: C.onSurface, fontFamily: MONO, fontSize: '0.85rem',
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                        border: 'none', borderRadius: '9px', padding: '7px 16px',
+                                        fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer',
+                                        background: tipo === 'suelta' ? C.surfaceLowest : 'transparent',
+                                        color: tipo === 'suelta' ? C.onSurface : C.onSurfaceVariant,
+                                        boxShadow: tipo === 'suelta' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                                        transition: 'all 0.15s',
+                                    }}
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '18px', color: tipo === 'suelta' ? C.primary : 'inherit' }}>push_pin</span>
+                                    De una vez (Suelta)
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setTipo('repetitiva')}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                        border: 'none', borderRadius: '9px', padding: '7px 16px',
+                                        fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer',
+                                        background: tipo === 'repetitiva' ? C.surfaceLowest : 'transparent',
+                                        color: tipo === 'repetitiva' ? C.onSurface : C.onSurfaceVariant,
+                                        boxShadow: tipo === 'repetitiva' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                                        transition: 'all 0.15s',
+                                    }}
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '18px', color: tipo === 'repetitiva' ? C.ambar : 'inherit' }}>alarm</span>
+                                    Repetitiva (Como Alarma)
+                                </button>
+                            </div>
+
+                            {/* Input Tarea */}
+                            <div>
+                                <input
+                                    type="text"
+                                    value={label}
+                                    onChange={e => setLabel(e.target.value)}
+                                    placeholder={tipo === 'repetitiva' ? 'Ej. Tomar vitaminas, Hacer ejercicio, Subir historias...' : 'Ej. Comprar cable HDMI, Llamar al contador, Arreglar puerta...'}
+                                    autoFocus
+                                    required
+                                    style={{
+                                        width: '100%',
+                                        boxSizing: 'border-box',
+                                        padding: '12px 14px',
+                                        fontSize: '0.95rem',
+                                        borderRadius: '10px',
+                                        border: `1.5px solid ${C.outlineVariant}`,
+                                        background: C.surface,
+                                        color: C.onSurface,
+                                        fontFamily: 'inherit',
+                                        outline: 'none',
                                     }}
                                 />
                             </div>
 
-                            <div>
-                                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
-                                    Momento del día:
-                                </label>
-                                <select
-                                    value={period}
-                                    onChange={e => setPeriod(e.target.value as any)}
-                                    style={{
-                                        padding: '8px 12px', borderRadius: '8px',
-                                        border: `1px solid ${C.outlineVariant}`, background: C.surface,
-                                        color: C.onSurface, fontFamily: 'inherit', fontSize: '0.85rem',
-                                    }}
-                                >
-                                    <option value="Mañana">Mañana</option>
-                                    <option value="Tarde">Tarde</option>
-                                    <option value="Noche">Noche</option>
-                                    <option value="Otro">Otro</option>
-                                </select>
+                            {/* Opciones según tipo */}
+                            {tipo === 'repetitiva' ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: C.onSurfaceVariant, textTransform: 'uppercase' }}>
+                                        Días en que se repite:
+                                    </label>
+                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                        {DIAS_SEMANA.map(d => {
+                                            const activo = selectedDays.includes(d.idx);
+                                            return (
+                                                <button
+                                                    key={d.idx}
+                                                    type="button"
+                                                    onClick={() => toggleDia(d.idx)}
+                                                    style={{
+                                                        width: '38px', height: '38px', borderRadius: '10px',
+                                                        border: `1.5px solid ${activo ? C.primary : C.outlineVariant}`,
+                                                        background: activo ? 'rgba(15, 169, 122, 0.12)' : C.surfaceLowest,
+                                                        color: activo ? C.primary : C.onSurfaceVariant,
+                                                        fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer',
+                                                        transition: 'all 0.15s',
+                                                    }}
+                                                >
+                                                    {d.label}
+                                                </button>
+                                            );
+                                        })}
+
+                                        <div style={{ display: 'flex', gap: '6px', marginLeft: '6px' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedDays([0, 1, 2, 3, 4, 5, 6])}
+                                                style={{
+                                                    border: 'none', background: C.surfaceContainerHigh,
+                                                    borderRadius: '8px', padding: '6px 10px',
+                                                    fontSize: '0.72rem', fontWeight: 600, color: C.onSurfaceVariant, cursor: 'pointer',
+                                                }}
+                                            >
+                                                Todos los días
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedDays([1, 2, 3, 4, 5])}
+                                                style={{
+                                                    border: 'none', background: C.surfaceContainerHigh,
+                                                    borderRadius: '8px', padding: '6px 10px',
+                                                    fontSize: '0.72rem', fontWeight: 600, color: C.onSurfaceVariant, cursor: 'pointer',
+                                                }}
+                                            >
+                                                L a V
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
+                                            Fecha:
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={targetDate}
+                                            onChange={e => setTargetDate(e.target.value)}
+                                            style={{
+                                                padding: '8px 12px', borderRadius: '8px',
+                                                border: `1px solid ${C.outlineVariant}`, background: C.surface,
+                                                color: C.onSurface, fontFamily: 'inherit', fontSize: '0.85rem',
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Fila extra: Hora opcional, Momento del día y Proyecto */}
+                            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', paddingTop: '4px' }}>
+                                <div style={{ flex: 1, minWidth: '120px' }}>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
+                                        Hora (Alarma):
+                                    </label>
+                                    <input
+                                        type="time"
+                                        value={targetTime}
+                                        onChange={e => setTargetTime(e.target.value)}
+                                        placeholder="--:--"
+                                        style={{
+                                            width: '100%', boxSizing: 'border-box',
+                                            padding: '8px 12px', borderRadius: '8px',
+                                            border: `1px solid ${C.outlineVariant}`, background: C.surface,
+                                            color: C.onSurface, fontFamily: MONO, fontSize: '0.85rem',
+                                        }}
+                                    />
+                                </div>
+
+                                <div style={{ flex: 1, minWidth: '120px' }}>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
+                                        Momento del día:
+                                    </label>
+                                    <select
+                                        value={period}
+                                        onChange={e => setPeriod(e.target.value as any)}
+                                        style={{
+                                            width: '100%', boxSizing: 'border-box',
+                                            padding: '8px 12px', borderRadius: '8px',
+                                            border: `1px solid ${C.outlineVariant}`, background: C.surface,
+                                            color: C.onSurface, fontFamily: 'inherit', fontSize: '0.85rem',
+                                        }}
+                                    >
+                                        <option value="Mañana">Mañana</option>
+                                        <option value="Tarde">Tarde</option>
+                                        <option value="Noche">Noche</option>
+                                        <option value="Otro">Otro</option>
+                                    </select>
+                                </div>
+
+                                <div style={{ width: '100%' }}>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
+                                        Proyecto (Opcional):
+                                    </label>
+                                    <select
+                                        value={projectId || ''}
+                                        onChange={e => setProjectId(e.target.value ? Number(e.target.value) : undefined)}
+                                        style={{
+                                            width: '100%', boxSizing: 'border-box',
+                                            padding: '8px 12px', borderRadius: '8px',
+                                            border: `1px solid ${C.outlineVariant}`, background: C.surface,
+                                            color: C.onSurface, fontFamily: 'inherit', fontSize: '0.85rem',
+                                        }}
+                                    >
+                                        <option value="">(Ninguno / General)</option>
+                                        {projects.map(p => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
 
-                            <div>
-                                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
-                                    Proyecto (Opcional):
-                                </label>
-                                <select
-                                    value={projectId || ''}
-                                    onChange={e => setProjectId(e.target.value ? Number(e.target.value) : undefined)}
+                            {/* Botones Footer */}
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsFormOpen(false)}
                                     style={{
-                                        padding: '8px 12px', borderRadius: '8px',
-                                        border: `1px solid ${C.outlineVariant}`, background: C.surface,
-                                        color: C.onSurface, fontFamily: 'inherit', fontSize: '0.85rem',
+                                        padding: '9px 18px', borderRadius: '10px',
+                                        border: 'none', background: C.surfaceContainerHigh,
+                                        color: C.onSurfaceVariant, fontWeight: 700, fontSize: '0.88rem',
+                                        cursor: 'pointer',
                                     }}
                                 >
-                                    <option value="">(Ninguno / General)</option>
-                                    {projects.map(p => (
-                                        <option key={p.id} value={p.id}>{p.name}</option>
-                                    ))}
-                                </select>
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    style={{
+                                        background: C.primary, color: '#fff', border: 'none',
+                                        borderRadius: '10px', padding: '9px 22px',
+                                        fontSize: '0.88rem', fontWeight: 700, cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                        boxShadow: '0 4px 12px rgba(15, 169, 122, 0.25)',
+                                    }}
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>check</span>
+                                    Guardar Tarea
+                                </button>
                             </div>
-
-                            <button
-                                type="submit"
-                                style={{
-                                    marginLeft: 'auto',
-                                    alignSelf: 'flex-end',
-                                    background: C.primary, color: '#fff', border: 'none',
-                                    borderRadius: '10px', padding: '10px 22px',
-                                    fontSize: '0.88rem', fontWeight: 700, cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', gap: '6px',
-                                }}
-                            >
-                                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>check</span>
-                                Guardar Tarea
-                            </button>
-                        </div>
-                    </motion.form>
+                        </motion.form>
+                    </div>
                 )}
             </AnimatePresence>
 
