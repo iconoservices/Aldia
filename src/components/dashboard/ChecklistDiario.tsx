@@ -526,11 +526,12 @@ export const ChecklistDiario = ({
                     if (!ex.projectId && b.projectId) ex.projectId = b.projectId;
                     if ((!ex.repeatDays?.length) && b.repeatDays?.length) ex.repeatDays = b.repeatDays;
                     if (!ex.time && b.time) ex.time = b.time;
+                    if (b.date === todayStr) ex.date = todayStr;
                 }
             }
         });
         return list;
-    }, [dailyBlocks]);
+    }, [dailyBlocks, todayStr]);
 
     /* ── Tasks active today ── */
     const todayTemplates = useMemo(() =>
@@ -538,7 +539,7 @@ export const ChecklistDiario = ({
             if (t.repeatDays && t.repeatDays.length > 0) {
                 return t.repeatDays.includes(todayIndex);
             }
-            return !t.date || t.date === todayStr;
+            return t.date === todayStr;
         }),
     [uniqueTemplates, todayIndex, todayStr]);
 

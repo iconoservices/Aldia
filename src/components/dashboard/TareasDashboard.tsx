@@ -78,7 +78,8 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     const [textoTarea, setTextoTarea] = useState('');
     const [tipo, setTipo] = useState<'repetitiva' | 'suelta'>('suelta');
     const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // default Lun-Vie
-    const [targetDate, setTargetDate] = useState(todayStr);
+    const [targetDate, setTargetDate] = useState('');
+    const [paraHoy, setParaHoy] = useState(false);
     const [targetTime, setTargetTime] = useState('');
     const [projectId, setProjectId] = useState<number | undefined>(undefined);
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -97,7 +98,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
         setEditingTask(b);
         setEditLabel(b.label);
         setEditDays(b.repeatDays || [0, 1, 2, 3, 4, 5, 6]);
-        setEditDate(b.date || todayStr);
+        setEditDate(b.date || '');
         setEditTime(b.time || '');
         setEditProjectId(b.projectId);
     };
@@ -130,7 +131,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
         } else {
             updateDailyBlock(editingTask.id, {
                 label: editLabel.trim(),
-                date: editDate || todayStr,
+                date: editDate || undefined,
                 time: editTime || undefined,
                 period: editingTask.period || 'Otro',
                 projectId: editProjectId,
@@ -141,7 +142,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     };
 
     // ── Filter / View State ──
-    const [filtroSueltas, setFiltroSueltas] = useState<'todas' | 'pendientes' | 'hoy'>('pendientes');
+    const [filtroSueltas, setFiltroSueltas] = useState<'todas' | 'pendientes' | 'hoy'>('todas');
 
     // ── Clasificación Automática ──
     // Tareas repetitivas: aquellas con repeatDays definido y no vacío
@@ -177,10 +178,17 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
         } else if (filtroSueltas === 'hoy') {
             list = list.filter(b => b.date === todayStr);
         }
-        // Orden: pendientes primero, luego fecha más cercana
+        // Orden:
+        // 1. Tareas no completadas primero
+        // 2. Tareas marcadas como "Hoy" ARRIBA (en la cima)
+        // 3. Tareas pendientes generales / futuras
+        // 4. Tareas completadas al final
         return list.sort((a, b) => {
             if (a.completed !== b.completed) return Number(a.completed) - Number(b.completed);
-            return (b.date || '').localeCompare(a.date || '');
+            const aEsHoy = a.date === todayStr ? 1 : 0;
+            const bEsHoy = b.date === todayStr ? 1 : 0;
+            if (aEsHoy !== bEsHoy) return bEsHoy - aEsHoy;
+            return (b.date || '').localeCompare(a.date || '') || (b.id - a.id);
         });
     }, [sueltas, filtroSueltas, todayStr]);
 
@@ -203,10 +211,11 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                     true // activa por defecto como una alarma
                 );
             } else {
+                const finalDate = paraHoy ? todayStr : (targetDate || undefined);
                 addDailyBlock(
                     itemText,
                     'Otro',
-                    targetDate || todayStr,
+                    finalDate,
                     false,
                     projectId,
                     undefined, // sin repeatDays = de una sola vez
@@ -218,6 +227,8 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
 
         // Reset form
         setTextoTarea('');
+        setParaHoy(false);
+        setTargetDate('');
         setTargetTime('');
         setIsFormOpen(false);
     };
@@ -457,19 +468,44 @@ Supermercado:
                                     </div>
                                 </div>
                             ) : (
-                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                    <div>
-                                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
-                                            Fecha:
-                                        </label>
+                                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const nextVal = !paraHoy;
+                                            setParaHoy(nextVal);
+                                            if (nextVal) setTargetDate(todayStr);
+                                            else setTargetDate('');
+                                        }}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '6px',
+                                            padding: '8px 14px', borderRadius: '8px',
+                                            border: `1.5px solid ${paraHoy ? C.primary : C.outlineVariant}`,
+                                            background: paraHoy ? 'rgba(15, 169, 122, 0.12)' : C.surfaceLowest,
+                                            color: paraHoy ? C.primary : C.onSurfaceVariant,
+                                            fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
+                                            transition: 'all 0.15s',
+                                        }}
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: paraHoy ? C.primary : 'inherit' }}>
+                                            {paraHoy ? 'wb_sunny' : 'today'}
+                                        </span>
+                                        {paraHoy ? 'Hacer Hoy (En Mi Día)' : 'Marcar para Hoy'}
+                                    </button>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{ fontSize: '0.75rem', color: C.onSurfaceVariant, fontWeight: 600 }}>O fecha:</span>
                                         <input
                                             type="date"
                                             value={targetDate}
-                                            onChange={e => setTargetDate(e.target.value)}
+                                            onChange={e => {
+                                                setTargetDate(e.target.value);
+                                                setParaHoy(e.target.value === todayStr);
+                                            }}
                                             style={{
-                                                padding: '8px 12px', borderRadius: '8px',
+                                                padding: '7px 10px', borderRadius: '8px',
                                                 border: `1px solid ${C.outlineVariant}`, background: C.surface,
-                                                color: C.onSurface, fontFamily: 'inherit', fontSize: '0.85rem',
+                                                color: C.onSurface, fontFamily: 'inherit', fontSize: '0.82rem',
                                             }}
                                         />
                                     </div>
@@ -704,37 +740,40 @@ Supermercado:
                         {/* Filtros */}
                         <div style={{ display: 'flex', gap: '4px', background: C.surfaceContainer, padding: '2px', borderRadius: '8px' }}>
                             <button
-                                onClick={() => setFiltroSueltas('pendientes')}
+                                onClick={() => setFiltroSueltas('todas')}
                                 style={{
-                                    border: 'none', borderRadius: '6px', padding: '3px 8px',
-                                    fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer',
-                                    background: filtroSueltas === 'pendientes' ? C.surfaceLowest : 'transparent',
-                                    color: filtroSueltas === 'pendientes' ? C.primary : C.onSurfaceVariant,
+                                    border: 'none', borderRadius: '6px', padding: '4px 10px',
+                                    fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
+                                    background: filtroSueltas === 'todas' ? C.surfaceLowest : 'transparent',
+                                    color: filtroSueltas === 'todas' ? C.primary : C.onSurfaceVariant,
+                                    boxShadow: filtroSueltas === 'todas' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
                                 }}
                             >
-                                Pendientes
+                                Todas
                             </button>
                             <button
                                 onClick={() => setFiltroSueltas('hoy')}
                                 style={{
-                                    border: 'none', borderRadius: '6px', padding: '3px 8px',
-                                    fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer',
+                                    border: 'none', borderRadius: '6px', padding: '4px 10px',
+                                    fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
                                     background: filtroSueltas === 'hoy' ? C.surfaceLowest : 'transparent',
                                     color: filtroSueltas === 'hoy' ? C.primary : C.onSurfaceVariant,
+                                    boxShadow: filtroSueltas === 'hoy' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
                                 }}
                             >
                                 De Hoy
                             </button>
                             <button
-                                onClick={() => setFiltroSueltas('todas')}
+                                onClick={() => setFiltroSueltas('pendientes')}
                                 style={{
-                                    border: 'none', borderRadius: '6px', padding: '3px 8px',
-                                    fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer',
-                                    background: filtroSueltas === 'todas' ? C.surfaceLowest : 'transparent',
-                                    color: filtroSueltas === 'todas' ? C.primary : C.onSurfaceVariant,
+                                    border: 'none', borderRadius: '6px', padding: '4px 10px',
+                                    fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
+                                    background: filtroSueltas === 'pendientes' ? C.surfaceLowest : 'transparent',
+                                    color: filtroSueltas === 'pendientes' ? C.primary : C.onSurfaceVariant,
+                                    boxShadow: filtroSueltas === 'pendientes' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
                                 }}
                             >
-                                Todas
+                                Pendientes
                             </button>
                         </div>
                     </div>
@@ -793,15 +832,42 @@ Supermercado:
                                             </div>
 
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', flexWrap: 'wrap' }}>
-                                                {/* Badge de fecha */}
-                                                <span style={{
-                                                    fontSize: '0.68rem', fontWeight: 700,
-                                                    color: esHoy ? C.primary : C.onSurfaceVariant,
-                                                    background: esHoy ? 'rgba(15, 169, 122, 0.08)' : C.surfaceContainer,
-                                                    borderRadius: '4px', padding: '1px 5px',
-                                                }}>
-                                                    {esHoy ? 'Hoy' : b.date}
-                                                </span>
+                                                {/* Badge de fecha si no es hoy pero tiene fecha asignada */}
+                                                {!esHoy && b.date && (
+                                                    <span style={{
+                                                        fontSize: '0.68rem', fontWeight: 600,
+                                                        color: C.onSurfaceVariant,
+                                                        background: C.surfaceContainer,
+                                                        borderRadius: '4px', padding: '1px 6px',
+                                                    }}>
+                                                        📅 {b.date}
+                                                    </span>
+                                                )}
+
+                                                {/* Botón rápido Hoy / Mi Día */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const nextDate = esHoy ? '' : todayStr;
+                                                        updateDailyBlock(b.id, { date: nextDate });
+                                                    }}
+                                                    title={esHoy ? 'Marcada para Hoy (Clic para quitar de Mi Día)' : 'Clic para marcar para Hoy (aparecerá en Mi Día)'}
+                                                    style={{
+                                                        display: 'inline-flex', alignItems: 'center', gap: '3px',
+                                                        fontSize: '0.68rem', fontWeight: 700,
+                                                        color: esHoy ? C.primary : C.onSurfaceVariant,
+                                                        background: esHoy ? 'rgba(15, 169, 122, 0.12)' : C.surfaceContainerHigh,
+                                                        border: `1px solid ${esHoy ? 'rgba(15, 169, 122, 0.35)' : 'transparent'}`,
+                                                        borderRadius: '6px', padding: '2px 7px',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.15s',
+                                                    }}
+                                                >
+                                                    <span className="material-symbols-outlined" style={{ fontSize: '13px', color: esHoy ? C.primary : 'inherit' }}>
+                                                        {esHoy ? 'wb_sunny' : 'add'}
+                                                    </span>
+                                                    {esHoy ? 'Hoy (En Mi Día)' : '+ Hoy'}
+                                                </button>
 
                                                 {/* Hora si tiene */}
                                                 {b.time && (
