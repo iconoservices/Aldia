@@ -20,7 +20,7 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { DailyBlock, Note, SporadicProject, CalendarEvent, NotionEstado } from '../../hooks/useAlDiaState';
+import type { DailyBlock, Note, SporadicProject, CalendarEvent } from '../../hooks/useAlDiaState';
 
 import { C, bento as bentoCard, useIsMobile, MONO } from '../../theme';
 import { RegistroMovimiento } from '../features/RegistroMovimiento';

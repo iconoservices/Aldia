@@ -52,6 +52,7 @@ const EsporadicosDashboard = named(() => import('./components/dashboard/Esporadi
 const NotionDashboard = named(() => import('./components/dashboard/NotionDashboard'), 'NotionDashboard');
 const AgendaDashboard = named(() => import('./components/dashboard/AgendaDashboard'), 'AgendaDashboard');
 const TranqueoDeVidaDashboard = named(() => import('./components/dashboard/TranqueoDeVidaDashboard'), 'TranqueoDeVidaDashboard');
+const MetasDashboard = named(() => import('./components/dashboard/MetasDashboard'), 'MetasDashboard');
 const RendimientoDashboard = named(() => import('./components/dashboard/RendimientoDashboard'), 'RendimientoDashboard');
 const TareasDashboard = named(() => import('./components/dashboard/TareasDashboard'), 'TareasDashboard');
 

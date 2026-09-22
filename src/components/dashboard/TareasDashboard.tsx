@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { C, MONO, PERIODOS } from '../../theme';
+import { C, MONO } from '../../theme';
 import type { DailyBlock } from '../../hooks/useAlDiaState';
 
 interface Project {
