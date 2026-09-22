@@ -57,6 +57,63 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     const [projectId, setProjectId] = useState<number | undefined>(undefined);
     const [isFormOpen, setIsFormOpen] = useState(false);
 
+    // ── Edit Modal State ──
+    const [editingTask, setEditingTask] = useState<DailyBlock | null>(null);
+    const [editLabel, setEditLabel] = useState('');
+    const [editDays, setEditDays] = useState<number[]>([]);
+    const [editDate, setEditDate] = useState('');
+    const [editTime, setEditTime] = useState('');
+    const [editPeriod, setEditPeriod] = useState<'Mañana' | 'Tarde' | 'Noche' | 'Otro'>('Mañana');
+    const [editProjectId, setEditProjectId] = useState<number | undefined>(undefined);
+
+    const handleStartEdit = (b: DailyBlock) => {
+        setEditingTask(b);
+        setEditLabel(b.label);
+        setEditDays(b.repeatDays || [0, 1, 2, 3, 4, 5, 6]);
+        setEditDate(b.date || todayStr);
+        setEditTime(b.time || '');
+        setEditPeriod(b.period || 'Mañana');
+        setEditProjectId(b.projectId);
+    };
+
+    const toggleEditDia = (diaIdx: number) => {
+        setEditDays(prev =>
+            prev.includes(diaIdx) ? prev.filter(d => d !== diaIdx) : [...prev, diaIdx]
+        );
+    };
+
+    const handleSaveEdit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingTask || !editLabel.trim()) return;
+
+        const isRep = editingTask.repeatDays && editingTask.repeatDays.length > 0;
+        if (isRep) {
+            const oldLabel = editingTask.label.trim().toLowerCase();
+            const oldPeriod = editingTask.period;
+            dailyBlocks
+                .filter(b => b.label.trim().toLowerCase() === oldLabel && b.period === oldPeriod)
+                .forEach(b => {
+                    updateDailyBlock(b.id, {
+                        label: editLabel.trim(),
+                        repeatDays: editDays.length > 0 ? editDays : [0, 1, 2, 3, 4, 5, 6],
+                        time: editTime || undefined,
+                        period: editPeriod,
+                        projectId: editProjectId,
+                    });
+                });
+        } else {
+            updateDailyBlock(editingTask.id, {
+                label: editLabel.trim(),
+                date: editDate || todayStr,
+                time: editTime || undefined,
+                period: editPeriod,
+                projectId: editProjectId,
+            });
+        }
+
+        setEditingTask(null);
+    };
+
     // ── Filter / View State ──
     const [filtroSueltas, setFiltroSueltas] = useState<'todas' | 'pendientes' | 'hoy'>('pendientes');
 
@@ -504,6 +561,15 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                                                 </span>
                                             )}
 
+                                            {/* Botón editar */}
+                                            <button
+                                                onClick={() => handleStartEdit(b)}
+                                                title="Editar tarea repetitiva"
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: C.outline, display: 'flex', alignItems: 'center' }}
+                                            >
+                                                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
+                                            </button>
+
                                             {/* Botón eliminar */}
                                             <button
                                                 onClick={() => handleDeleteRepetitiva(b)}
@@ -682,6 +748,15 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                                             </div>
                                         </div>
 
+                                        {/* Botón editar */}
+                                        <button
+                                            onClick={() => handleStartEdit(b)}
+                                            title="Editar tarea"
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: C.outline, display: 'flex', alignItems: 'center' }}
+                                        >
+                                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
+                                        </button>
+
                                         {/* Botón eliminar */}
                                         <button
                                             onClick={() => removeDailyBlock(b.id)}
@@ -698,6 +773,210 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                 </div>
 
             </div>
+
+            {/* ── Modal de Edición de Tarea ── */}
+            <AnimatePresence>
+                {editingTask && (
+                    <div style={{
+                        position: 'fixed', inset: 0,
+                        background: 'rgba(0,0,0,0.5)',
+                        backdropFilter: 'blur(4px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        zIndex: 9999, padding: '1rem',
+                    }}>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            style={{
+                                background: C.surfaceLowest,
+                                borderRadius: '16px',
+                                border: `1px solid ${C.outlineVariant}`,
+                                width: '100%', maxWidth: '480px',
+                                padding: '1.25rem 1.5rem',
+                                boxShadow: '0 16px 40px rgba(0,0,0,0.18)',
+                                display: 'flex', flexDirection: 'column', gap: '1rem',
+                            }}
+                        >
+                            {/* Modal Header */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: '22px', color: C.primary }}>edit_note</span>
+                                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: C.onSurface }}>
+                                        Editar Tarea
+                                    </h3>
+                                </div>
+                                <button
+                                    onClick={() => setEditingTask(null)}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, padding: '4px', display: 'flex' }}
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>close</span>
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                {/* Nombre */}
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
+                                        Nombre de la tarea:
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={editLabel}
+                                        onChange={e => setEditLabel(e.target.value)}
+                                        required
+                                        autoFocus
+                                        style={{
+                                            width: '100%', boxSizing: 'border-box',
+                                            padding: '10px 12px', borderRadius: '10px',
+                                            border: `1.5px solid ${C.outlineVariant}`, background: C.surface,
+                                            color: C.onSurface, fontFamily: 'inherit', fontSize: '0.9rem',
+                                            outline: 'none',
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Días (si es repetitiva) o Fecha (si es suelta) */}
+                                {editingTask.repeatDays && editingTask.repeatDays.length > 0 ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, textTransform: 'uppercase' }}>
+                                            Días en que se repite:
+                                        </label>
+                                        <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                            {DIAS_SEMANA.map(d => {
+                                                const activo = editDays.includes(d.idx);
+                                                return (
+                                                    <button
+                                                        key={d.idx}
+                                                        type="button"
+                                                        onClick={() => toggleEditDia(d.idx)}
+                                                        style={{
+                                                            width: '34px', height: '34px', borderRadius: '8px',
+                                                            border: `1.5px solid ${activo ? C.primary : C.outlineVariant}`,
+                                                            background: activo ? 'rgba(15, 169, 122, 0.12)' : C.surfaceLowest,
+                                                            color: activo ? C.primary : C.onSurfaceVariant,
+                                                            fontWeight: 800, fontSize: '0.82rem', cursor: 'pointer',
+                                                        }}
+                                                    >
+                                                        {d.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
+                                            Fecha:
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={editDate}
+                                            onChange={e => setEditDate(e.target.value)}
+                                            style={{
+                                                padding: '8px 12px', borderRadius: '8px',
+                                                border: `1px solid ${C.outlineVariant}`, background: C.surface,
+                                                color: C.onSurface, fontFamily: 'inherit', fontSize: '0.85rem',
+                                            }}
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Hora y Momento */}
+                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                    <div style={{ flex: 1, minWidth: '120px' }}>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
+                                            Hora (Alarma):
+                                        </label>
+                                        <input
+                                            type="time"
+                                            value={editTime}
+                                            onChange={e => setEditTime(e.target.value)}
+                                            style={{
+                                                width: '100%', boxSizing: 'border-box',
+                                                padding: '8px 10px', borderRadius: '8px',
+                                                border: `1px solid ${C.outlineVariant}`, background: C.surface,
+                                                color: C.onSurface, fontFamily: MONO, fontSize: '0.85rem',
+                                            }}
+                                        />
+                                    </div>
+
+                                    <div style={{ flex: 1, minWidth: '120px' }}>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
+                                            Momento:
+                                        </label>
+                                        <select
+                                            value={editPeriod}
+                                            onChange={e => setEditPeriod(e.target.value as any)}
+                                            style={{
+                                                width: '100%', boxSizing: 'border-box',
+                                                padding: '8px 10px', borderRadius: '8px',
+                                                border: `1px solid ${C.outlineVariant}`, background: C.surface,
+                                                color: C.onSurface, fontFamily: 'inherit', fontSize: '0.85rem',
+                                            }}
+                                        >
+                                            <option value="Mañana">Mañana</option>
+                                            <option value="Tarde">Tarde</option>
+                                            <option value="Noche">Noche</option>
+                                            <option value="Otro">Otro</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Proyecto */}
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>
+                                        Proyecto:
+                                    </label>
+                                    <select
+                                        value={editProjectId || ''}
+                                        onChange={e => setEditProjectId(e.target.value ? Number(e.target.value) : undefined)}
+                                        style={{
+                                            width: '100%', boxSizing: 'border-box',
+                                            padding: '8px 10px', borderRadius: '8px',
+                                            border: `1px solid ${C.outlineVariant}`, background: C.surface,
+                                            color: C.onSurface, fontFamily: 'inherit', fontSize: '0.85rem',
+                                        }}
+                                    >
+                                        <option value="">(Ninguno / General)</option>
+                                        {projects.map(p => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Botones Footer */}
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditingTask(null)}
+                                        style={{
+                                            padding: '8px 16px', borderRadius: '8px',
+                                            border: 'none', background: C.surfaceContainerHigh,
+                                            color: C.onSurfaceVariant, fontWeight: 700, fontSize: '0.85rem',
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        style={{
+                                            padding: '8px 20px', borderRadius: '8px',
+                                            border: 'none', background: C.primary,
+                                            color: '#fff', fontWeight: 700, fontSize: '0.85rem',
+                                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
+                                        }}
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>check</span>
+                                        Guardar Cambios
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
