@@ -52,8 +52,8 @@ const EsporadicosDashboard = named(() => import('./components/dashboard/Esporadi
 const NotionDashboard = named(() => import('./components/dashboard/NotionDashboard'), 'NotionDashboard');
 const AgendaDashboard = named(() => import('./components/dashboard/AgendaDashboard'), 'AgendaDashboard');
 const TranqueoDeVidaDashboard = named(() => import('./components/dashboard/TranqueoDeVidaDashboard'), 'TranqueoDeVidaDashboard');
-const MetasDashboard = named(() => import('./components/dashboard/MetasDashboard'), 'MetasDashboard');
 const RendimientoDashboard = named(() => import('./components/dashboard/RendimientoDashboard'), 'RendimientoDashboard');
+const TareasDashboard = named(() => import('./components/dashboard/TareasDashboard'), 'TareasDashboard');
 
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -65,6 +65,7 @@ function App() {
     if (path.includes('/stats')) return 'Stats';
     if (path.includes('/finanzas')) return 'Finanzas';
     if (path.includes('/proyectos')) return 'Proyectos';
+    if (path.includes('/tareas')) return 'Tareas';
     if (path.includes('/entregas')) return 'Entregas';
     if (path.includes('/agenda')) return 'Agenda';
     if (path.includes('/notion')) return 'Notion';
@@ -141,6 +142,7 @@ function App() {
       else if (path.includes('/bandeja')) setActiveTab('Bandeja');
       else if (path.includes('/compras')) setActiveTab('Compras');
       else if (path.includes('/comidas')) setActiveTab('Comidas');
+      else if (path.includes('/tareas')) setActiveTab('Tareas');
       else if (path.includes('/tablero')) setActiveTab('Tablero');
       else if (path.includes('/vida')) setActiveTab('Vida');
       else if (path.includes('/cerebro')) setActiveTab('Cerebro');
@@ -316,6 +318,18 @@ function App() {
                 onOpenBandeja={() => setActiveTab('Bandeja')}
                 notes={state.notes}
                 updateNote={state.updateNote}
+                sporadicProjects={state.sporadicProjects}
+                calendarEvents={state.agenda}
+                onOpenEntregas={() => setActiveTab('Esporadicos')}
+              />
+            ) : activeTab === 'Tareas' ? (
+              <TareasDashboard
+                dailyBlocks={state.dailyBlocks}
+                addDailyBlock={state.addDailyBlock}
+                toggleDailyBlock={state.toggleDailyBlock}
+                removeDailyBlock={state.removeDailyBlock}
+                updateDailyBlock={state.updateDailyBlock}
+                projects={state.projects}
               />
             ) : activeTab === 'Plan' ? (
               <PlanDashboard

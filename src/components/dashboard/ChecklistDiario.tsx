@@ -20,7 +20,7 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { DailyBlock, Note } from '../../hooks/useAlDiaState';
+import type { DailyBlock, Note, SporadicProject, CalendarEvent, NotionEstado } from '../../hooks/useAlDiaState';
 
 import { C, bento as bentoCard, useIsMobile, MONO } from '../../theme';
 import { RegistroMovimiento } from '../features/RegistroMovimiento';
@@ -230,6 +230,122 @@ const NotasDelDia = ({ notes, updateNote }: { notes: Note[]; updateNote?: (id: n
 };
 
 /* ══════════════════════════════════════════════════════════════
+   EntregasEnDesarrollo — mini-sección dentro de Mi Día que muestra
+   las entregas que ya están en desarrollo (tienen trabajo encima o
+   status 'en-progreso'). Las puramente pendientes sin iniciar no
+   aparecen, y las completadas tampoco.
+══════════════════════════════════════════════════════════════ */
+const ESTADO_COLOR_MINI: Record<string, string> = {
+    'Agendado': '#3ED9A0',
+    'Realizado': '#8B5CF6',
+    'En Edición': '#B9760A',
+    'Terminado': '#2563EB',
+    'Entregado': '#0FA97A',
+};
+
+const daysBetween = (a: string, b: string) =>
+    Math.round((new Date(b + 'T00:00:00').getTime() - new Date(a + 'T00:00:00').getTime()) / 86400000);
+
+const semaforoColor = (dias: number) =>
+    dias < 0 ? '#C63C3C' : dias <= 2 ? '#B9760A' : '#0FA97A';
+
+const EntregasEnDesarrollo = ({ sporadicProjects, calendarEvents, todayStr, onOpenEntregas }: {
+    sporadicProjects: SporadicProject[];
+    calendarEvents: CalendarEvent[];
+    todayStr: string;
+    onOpenEntregas?: () => void;
+}) => {
+    const [abierto, setAbierto] = useState(true);
+
+    const activas = useMemo(() =>
+        sporadicProjects.filter(p =>
+            p.status !== 'completado' &&
+            (p.status === 'en-progreso' || p.workedHours > 0 || !!p.activeSince || !!p.pinned)
+        ).sort((a, b) => {
+            // Prioridad: pinned/corriendo primero, luego por urgencia (días restantes ASC)
+            const pinA = Number(!!a.pinned || !!a.activeSince);
+            const pinB = Number(!!b.pinned || !!b.activeSince);
+            if (pinA !== pinB) return pinB - pinA;
+            return daysBetween(todayStr, a.dueDate) - daysBetween(todayStr, b.dueDate);
+        }),
+    [sporadicProjects, todayStr]);
+
+    if (activas.length === 0) return null;
+
+    return (
+        <div style={{ ...bentoCard, padding: '0.5rem 0.85rem' }}>
+            <button
+                onClick={() => setAbierto(v => !v)}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', fontFamily: 'inherit', color: C.onSurface }}
+            >
+                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#B9760A' }}>local_fire_department</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, textAlign: 'left' }}>Entregas en desarrollo</span>
+                <span style={{ fontSize: '0.68rem', fontWeight: 800, background: 'rgba(185, 118, 10, 0.10)', color: '#B9760A', borderRadius: '999px', padding: '1px 8px' }}>{activas.length}</span>
+                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.outline, marginLeft: 'auto', transform: abierto ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>expand_more</span>
+            </button>
+            {abierto && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '4px' }}>
+                    {activas.map(p => {
+                        const dias = daysBetween(todayStr, p.dueDate);
+                        const ev = p.notionId ? calendarEvents.find(e => e.notionId === p.notionId) : undefined;
+                        const estado = ev?.notionEstado;
+                        const color = semaforoColor(dias);
+                        const diasLabel = dias < 0
+                            ? `${Math.abs(dias)}d atraso`
+                            : dias === 0 ? 'Hoy' : dias === 1 ? 'Mañana' : `${dias}d`;
+                        return (
+                            <div
+                                key={p.id}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '8px',
+                                    padding: '6px 8px', borderRadius: '10px',
+                                    background: dias < 0 ? 'rgba(198, 60, 60, 0.04)' : 'transparent',
+                                    cursor: onOpenEntregas ? 'pointer' : 'default',
+                                    transition: 'background 0.15s',
+                                }}
+                                onClick={onOpenEntregas}
+                                title={`Ir a Entregas — ${p.title}`}
+                            >
+                                {/* Semáforo dot */}
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, flexShrink: 0 }} />
+                                {/* Título */}
+                                <span style={{
+                                    flex: 1, minWidth: 0, fontSize: '0.83rem', fontWeight: 600,
+                                    color: C.onSurface, lineHeight: 1.3,
+                                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                }}>{p.title}</span>
+                                {/* Estado Notion badge */}
+                                {estado && (
+                                    <span style={{
+                                        fontSize: '0.62rem', fontWeight: 700,
+                                        color: ESTADO_COLOR_MINI[estado] || C.onSurfaceVariant,
+                                        background: `${ESTADO_COLOR_MINI[estado] || C.outline}14`,
+                                        borderRadius: '6px', padding: '1px 6px',
+                                        whiteSpace: 'nowrap', flexShrink: 0,
+                                    }}>{estado}</span>
+                                )}
+                                {/* Días restantes */}
+                                <span style={{
+                                    fontSize: '0.68rem', fontWeight: 800, color,
+                                    whiteSpace: 'nowrap', flexShrink: 0,
+                                }}>{diasLabel}</span>
+                                {/* Indicadores extra */}
+                                {!!p.activeSince && (
+                                    <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#C63C3C', animation: 'pulse 1.5s infinite', flexShrink: 0 }}>timer</span>
+                                )}
+                                {!!p.pinned && !p.activeSince && (
+                                    <span className="material-symbols-outlined" style={{ fontSize: '13px', color: '#B9760A', flexShrink: 0 }}>push_pin</span>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+};
+
+/* ══════════════════════════════════════════════════════════════
    Main Component
 ══════════════════════════════════════════════════════════════ */
 interface ChecklistDiarioProps {
@@ -249,6 +365,9 @@ interface ChecklistDiarioProps {
     onOpenBandeja?: () => void;
     notes?: Note[];
     updateNote?: (id: number, updates: Partial<Note>) => void;
+    sporadicProjects?: SporadicProject[];
+    calendarEvents?: CalendarEvent[];
+    onOpenEntregas?: () => void;
 }
 
 const SORT_STORAGE_KEY = 'aldia-checklist-custom-order';
@@ -258,6 +377,7 @@ export const ChecklistDiario = ({
     addTransaction, accounts = [],
     incomeCategories, expenseCategories, categoryAccountScope, categoryGroups, groupAccountScope,
     onOpenBandeja, notes = [], updateNote,
+    sporadicProjects = [], calendarEvents = [], onOpenEntregas,
 }: ChecklistDiarioProps) => {
     /* La fecha se recalcula sola: si la app queda abierta y pasa medianoche,
        el checklist salta al día nuevo sin necesidad de recargar. */
@@ -307,17 +427,19 @@ export const ChecklistDiario = ({
     /* ── Derive unique task templates ── */
     const uniqueTemplates = useMemo(() => {
         const keys = new Set<string>();
-        const list: { label: string; period: Period; projectId?: number; repeatDays?: number[] }[] = [];
+        const list: { label: string; period: Period; projectId?: number; repeatDays?: number[]; date?: string; isActive?: boolean; time?: string }[] = [];
         dailyBlocks.forEach(b => {
+            if (b.isActive === false) return; // Si está desactivada tipo alarma, no aparece
             const k = taskKey(b.label, b.period);
             if (!keys.has(k)) {
                 keys.add(k);
-                list.push({ label: b.label, period: b.period as Period, projectId: b.projectId, repeatDays: b.repeatDays });
+                list.push({ label: b.label, period: b.period as Period, projectId: b.projectId, repeatDays: b.repeatDays, date: b.date, isActive: b.isActive, time: b.time });
             } else {
                 const ex = list.find(l => taskKey(l.label, l.period) === k);
                 if (ex) {
                     if (!ex.projectId && b.projectId) ex.projectId = b.projectId;
                     if ((!ex.repeatDays?.length) && b.repeatDays?.length) ex.repeatDays = b.repeatDays;
+                    if (!ex.time && b.time) ex.time = b.time;
                 }
             }
         });
@@ -326,8 +448,13 @@ export const ChecklistDiario = ({
 
     /* ── Tasks active today ── */
     const todayTemplates = useMemo(() =>
-        uniqueTemplates.filter(t => t.repeatDays ? t.repeatDays.includes(todayIndex) : true),
-    [uniqueTemplates, todayIndex]);
+        uniqueTemplates.filter(t => {
+            if (t.repeatDays && t.repeatDays.length > 0) {
+                return t.repeatDays.includes(todayIndex);
+            }
+            return !t.date || t.date === todayStr;
+        }),
+    [uniqueTemplates, todayIndex, todayStr]);
 
     /* ── Progress ── */
     const totalToday = todayTemplates.length;
@@ -947,39 +1074,36 @@ export const ChecklistDiario = ({
             {/* ── Contenido ── */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-                {/* Progreso Diario — banda superior */}
+                {/* Progreso Diario — compacto */}
                 <section style={{
                     ...bentoTarea, border: 'none',
                     background: 'rgba(15, 169, 122,0.06)',
-                    padding: '1.25rem 1.5rem', position: 'relative', overflow: 'hidden',
-                    display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap',
+                    padding: '0.45rem 0.85rem', position: 'relative', overflow: 'hidden',
+                    display: 'flex', alignItems: 'center', gap: '0.75rem',
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', position: 'relative', zIndex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', flexShrink: 0 }}>
                         <motion.span
                             key={progressPct}
-                            initial={{ scale: 0.8 }}
+                            initial={{ scale: 0.9 }}
                             animate={{ scale: 1 }}
-                            style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1, color: C.primary }}
+                            style={{ fontSize: '1.2rem', fontWeight: 800, lineHeight: 1, color: C.primary }}
                         >{progressPct}</motion.span>
-                        <span style={{ fontSize: '1.25rem', fontWeight: 700, color: C.primary }}>%</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: C.primary }}>%</span>
                     </div>
-                    <div style={{ flex: 1, minWidth: '180px', position: 'relative', zIndex: 1 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: C.primary }}>Progreso Diario</h3>
-                            <span style={{ fontSize: '0.78rem', color: C.onSurfaceVariant }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                            <span style={{ margin: 0, fontSize: '0.78rem', fontWeight: 700, color: C.primary }}>Progreso Diario</span>
+                            <span style={{ fontSize: '0.7rem', color: C.onSurfaceVariant, fontWeight: 500 }}>
                                 {completedToday} de {totalToday} completadas
                             </span>
                         </div>
-                        <div style={{ width: '100%', height: '10px', background: C.surfaceContainerHighest, borderRadius: '999px', overflow: 'hidden' }}>
+                        <div style={{ width: '100%', height: '5px', background: C.surfaceContainerHighest, borderRadius: '999px', overflow: 'hidden' }}>
                             <motion.div
                                 animate={{ width: `${progressPct}%` }}
                                 transition={{ duration: 0.7, ease: 'easeOut' }}
                                 style={{ height: '100%', background: C.primary, borderRadius: '999px' }}
                             />
                         </div>
-                    </div>
-                    <div style={{ position: 'absolute', right: '-16px', bottom: '-16px', opacity: 0.08, pointerEvents: 'none' }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: '120px', color: C.primary }}>analytics</span>
                     </div>
                 </section>
 
@@ -1074,6 +1198,14 @@ export const ChecklistDiario = ({
                     </div>
 
                     <NotasDelDia notes={notes} updateNote={updateNote} />
+
+                    {/* ── Entregas en desarrollo ── */}
+                    <EntregasEnDesarrollo
+                        sporadicProjects={sporadicProjects}
+                        calendarEvents={calendarEvents}
+                        todayStr={todayStr}
+                        onOpenEntregas={onOpenEntregas}
+                    />
 
                     {/* DnD List */}
                     <DndContext

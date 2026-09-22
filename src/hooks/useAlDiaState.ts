@@ -183,6 +183,8 @@ export interface DailyBlock {
     date: string; // YYYY-MM-DD
     projectId?: number;
     repeatDays?: number[];
+    time?: string;      // HH:mm opcional (como alarma)
+    isActive?: boolean; // Para tareas repetitivas/alarmas: activa o pausada
 }
 
 // Check-in diario de salud, uno por día -- alimenta el score de Salud/Sueño
@@ -683,9 +685,52 @@ export const useAlDiaState = () => {
         const userId = user.uid;
         const docRef = doc(db, 'users', userId);
 
+        // Lo anotado SIN sesión vive solo en este dispositivo. Al iniciar sesión, el
+        // primer snapshot de la nube reemplazaba todo el estado local y ese trabajo se
+        // perdía. Ahora, si hay ítems locales que la nube no tiene, se hace copia de
+        // seguridad y se pregunta si combinar o descartar. Solo aplica la primera vez.
+        let anonChecked = false;
+        const MERGE_KEYS = ['missions', 'transactions', 'habits', 'agenda', 'notes', 'rutinas',
+            'fixedExpenses', 'timeBlocks', 'contacts', 'shoppingList', 'recipes',
+            'mealPlanEntries', 'ritaEntries', 'goals', 'dailyCheckins'] as const;
+        const itemKey = (it: any) => (it && it.id !== undefined ? `id:${it.id}` : JSON.stringify(it));
+        const mergeAnonWork = (cloudData: any) => {
+            if (anonChecked) return cloudData;
+            anonChecked = true;
+            try {
+                if (localStorage.getItem('aldia_local_owner') !== 'anon') return cloudData;
+                const local: any = latestStateRef.current;
+                const extras: Record<string, any[]> = {};
+                let total = 0;
+                for (const k of MERGE_KEYS) {
+                    const cloudArr: any[] = Array.isArray(cloudData[k]) ? cloudData[k] : [];
+                    const have = new Set(cloudArr.map(itemKey));
+                    const add = (Array.isArray(local[k]) ? local[k] : []).filter((it: any) => !have.has(itemKey(it)));
+                    if (add.length) { extras[k] = add; total += add.length; }
+                }
+                if (total === 0) return cloudData;
+                localStorage.setItem('aldia_backup_anon', JSON.stringify({ at: new Date().toISOString(), extras }));
+                const combinar = window.confirm(
+                    `Tienes ${total} elemento(s) anotados sin sesión en este dispositivo que no están en tu cuenta.\n\n` +
+                    `Aceptar = COMBINAR con tu cuenta.\nCancelar = DESCARTAR (queda una copia de seguridad en este navegador).`
+                );
+                if (!combinar) return cloudData;
+                const merged = { ...cloudData };
+                for (const k of Object.keys(extras)) {
+                    merged[k] = [...(Array.isArray(cloudData[k]) ? cloudData[k] : []), ...extras[k]];
+                }
+                // Forzar el guardado del resultado combinado hacia la nube.
+                setTimeout(() => { localWriteTimestampRef.current = Date.now() + 1; }, 0);
+                return merged;
+            } catch (e) {
+                console.error('Error combinando datos locales:', e);
+                return cloudData;
+            }
+        };
+
         const unsubSnap = onSnapshot(docRef, (docSnap) => {
             if (docSnap.exists()) {
-                const cloud = docSnap.data();
+                const cloud = mergeAnonWork(docSnap.data());
 
                 // NOTA: antes había un chequeo aca que comparaba cloud.lastSync contra
                 // localWriteTimestampRef y, si la nube "parecia" mas vieja, se saltaba
@@ -779,6 +824,7 @@ export const useAlDiaState = () => {
         if (isInitialLoad || !hasLoadedFromCloud) return;
 
         // Guardado Local inmediato
+        localStorage.setItem('aldia_local_owner', user ? user.uid : 'anon');
         localStorage.setItem('aldia_missions', JSON.stringify(misionesState));
         localStorage.setItem('aldia_transactions', JSON.stringify(transactions));
         localStorage.setItem('aldia_habits', JSON.stringify(habits));
@@ -1363,7 +1409,16 @@ export const useAlDiaState = () => {
         if (opciones.gastosFijos) setFixedExpenses([]);
     };
 
-    const addDailyBlock = (label: string, period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro', date: string, completed: boolean = false, projectId?: number, repeatDays?: number[]) => {
+    const addDailyBlock = (
+        label: string,
+        period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro' = 'Mañana',
+        date: string,
+        completed: boolean = false,
+        projectId?: number,
+        repeatDays?: number[],
+        time?: string,
+        isActive: boolean = true
+    ) => {
         const newBlock: DailyBlock = {
             id: nextBlockId(),
             label,
@@ -1371,7 +1426,9 @@ export const useAlDiaState = () => {
             period,
             date,
             projectId,
-            repeatDays
+            repeatDays,
+            time,
+            isActive
         };
         setDailyBlocks(prev => [...prev, newBlock]);
     };

@@ -50,6 +50,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     // ── Primary sidebar items ─────────────────────────────────────────
     const PRIMARY_ITEMS = [
         { label: 'Mi Día', tab: 'Checklist', icon: 'task_alt' },
+        { label: 'Tareas', tab: 'Tareas', icon: 'alarm_on' },
         { label: 'Bandeja', tab: 'Bandeja', icon: 'inbox' },
         { label: 'Agenda', tab: 'Agenda', icon: 'event' },
         { label: 'Entregas', tab: 'Entregas', icon: 'local_fire_department' },
