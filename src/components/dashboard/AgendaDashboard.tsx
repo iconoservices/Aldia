@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { RefreshCw, Plus, Trash2, ChevronDown, Loader2, ExternalLink, X, History, CalendarClock, AlertTriangle, Wallet, ListTodo, Check, Info, Pencil, MapPin, Phone, Briefcase, PackageCheck, Clock } from "lucide-react";
 import type { CalendarEvent, UserPreferences, NotionEstado, Note } from "../../hooks/useAlDiaState";
 import { NOTION_ESTADOS } from "../../hooks/useAlDiaState";
-import { C, bento, useIsMobile, paddingPagina, money, campo, etiqueta, RADIO, TOQUE_MINIMO, MONO } from "../../theme";
+import { C, bento, useIsMobile, paddingPagina, money, campo, etiqueta, RADIO, TOQUE_MINIMO } from "../../theme";
 
 /* ══════════════════════════════════════════════════════════════════
    AgendaDashboard — vista rápida de "qué sigue": próxima sesión de
@@ -799,7 +799,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                         ) : (
                             <>
                                 <div style={{ fontSize: '0.58rem', fontWeight: 800, letterSpacing: '0.06em', color: acento }}>{ficha!.dia}</div>
-                                <div style={{ fontSize: '1.3rem', fontWeight: 900, fontFamily: MONO }}>{ficha!.num}</div>
+                                <div style={{ fontSize: '1.3rem', fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>{ficha!.num}</div>
                                 <div style={{ fontSize: '0.58rem', fontWeight: 700, color: C.outline, letterSpacing: '0.06em' }}>{ficha!.mes}</div>
                             </>
                         )}
@@ -852,10 +852,10 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                     <div onClick={e => e.stopPropagation()} style={{ marginTop: '0.7rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                             <div style={{ fontSize: '0.78rem', color: C.onSurfaceVariant, fontWeight: 700 }}>
-                                <span style={{ fontFamily: MONO, color: C.onSurface, fontWeight: 800 }}>{money(item.notionCobrado || 0)}</span>
-                                {' '}de <span style={{ fontFamily: MONO }}>{money(item.notionPrecio)}</span>
+                                <span style={{ fontVariantNumeric: 'tabular-nums', color: C.onSurface, fontWeight: 800 }}>{money(item.notionCobrado || 0)}</span>
+                                {' '}de <span style={{ fontVariantNumeric: 'tabular-nums' }}>{money(item.notionPrecio)}</span>
                                 {(item.notionSaldoPorCobrar ?? 0) > 0 ? (
-                                    <span style={{ color: C.rojo, fontWeight: 800 }}> · falta <span style={{ fontFamily: MONO }}>{money(item.notionSaldoPorCobrar!)}</span></span>
+                                    <span style={{ color: C.rojo, fontWeight: 800 }}> · falta <span style={{ fontVariantNumeric: 'tabular-nums' }}>{money(item.notionSaldoPorCobrar!)}</span></span>
                                 ) : (
                                     <span style={{ color: C.verde, fontWeight: 800 }}> · pagado completo</span>
                                 )}
@@ -981,7 +981,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                         {item.notionProyecto && <Dato icono={<Briefcase size={14} />} titulo="Proyecto" valor={item.notionProyecto} />}
                         {item.notionUbicacion && <Dato icono={<MapPin size={14} />} titulo="Ubicación" valor={item.notionUbicacion} />}
                         {item.notionCelular && (
-                            <Dato icono={<Phone size={14} />} titulo="Celular" valor={<a href={`tel:${item.notionCelular}`} onClick={e => e.stopPropagation()} style={{ color: C.primary, fontWeight: 800, textDecoration: 'none', fontFamily: MONO }}>{item.notionCelular}</a>} />
+                            <Dato icono={<Phone size={14} />} titulo="Celular" valor={<a href={`tel:${item.notionCelular}`} onClick={e => e.stopPropagation()} style={{ color: C.primary, fontWeight: 800, textDecoration: 'none', fontVariantNumeric: 'tabular-nums' }}>{item.notionCelular}</a>} />
                         )}
                         {item.notionEntregaFecha && <Dato icono={<PackageCheck size={14} />} titulo="Entrega" valor={formatFecha(item.notionEntregaFecha)} />}
                         {item.notionDiasRestantes && <Dato icono={<Clock size={14} />} titulo="Días restantes" valor={item.notionDiasRestantes} />}

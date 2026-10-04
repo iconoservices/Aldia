@@ -10,7 +10,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { CalendarEvent, NotionEstado, SporadicProject, FaseTemplate, ProjectFase } from "../../hooks/useAlDiaState";
 import { NOTION_ESTADOS } from "../../hooks/useAlDiaState";
-import { C, RADIO, bento, campo, botonPrimario, etiqueta, useIsMobile, paddingPagina, MONO } from "../../theme";
+import { C, RADIO, bento, campo, botonPrimario, etiqueta, useIsMobile, paddingPagina } from "../../theme";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 
 const ORDER_STORAGE_KEY = "aldia_esporadicos_custom_order";
@@ -1018,11 +1018,11 @@ const Metrica = ({ titulo, valor, sub, color, pct, parpadeo }: { titulo: string;
     <div style={{ minWidth: 0 }}>
         <div style={{ ...etiqueta, fontSize: "0.6rem" }}>{titulo}</div>
         <div style={{ display: "flex", alignItems: "baseline", gap: "5px", marginTop: "2px" }}>
-            <span style={{ fontFamily: MONO, fontSize: "1.15rem", fontWeight: 800, color, lineHeight: 1.1 }}>{valor}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: "0.98rem", fontWeight: 800, color, lineHeight: 1.1 }}>{valor}</span>
             {sub && <span style={{ fontSize: "0.7rem", fontWeight: 600, color: C.outline }}>{sub}</span>}
         </div>
         {pct !== undefined && (
-            <div style={{ height: "4px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden", marginTop: "6px" }}>
+            <div style={{ height: "3px", borderRadius: "999px", background: C.surfaceContainer, overflow: "hidden", marginTop: "4px" }}>
                 <div style={{ height: "100%", borderRadius: "999px", width: `${Math.min(Math.max(pct, 0), 100)}%`, background: color, transition: "width 0.3s", animation: parpadeo ? "esporadico-blink 1.1s ease-in-out infinite" : undefined }} />
             </div>
         )}
@@ -1097,7 +1097,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
     const [photoDetailsOpen, setPhotoDetailsOpen] = useState(!!p.photoActiveSince);
     const [etapaOpen, setEtapaOpen] = useState(false);
     const allFasesDone = !!p.fases?.length && p.fases.every(f => f.done);
-    const [fasesDetailsOpen, setFasesDetailsOpen] = useState(!p.fases?.length || !allFasesDone);
+    const [fasesDetailsOpen, setFasesDetailsOpen] = useState(false);
     // Se cierra sola justo cuando se tilda el último paso pendiente (7/7 con
     // strikethrough ocupaba media tarjeta sin aportar nada ya) — pero solo en
     // esa transición, para no pelear si el usuario la vuelve a abrir a mano.
@@ -1259,7 +1259,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
     return (
         <div style={{
             background: C.surfaceLowest, borderRadius: RADIO.tarjeta, boxShadow: "0 2px 14px rgba(25,28,29,0.07)",
-            padding: "1.1rem", display: "flex", flexDirection: "column", gap: "0.95rem",
+            padding: "0.8rem 0.9rem", display: "flex", flexDirection: "column", gap: "0.55rem",
             opacity: p.status === 'completado' ? 0.7 : 1, position: "relative",
             // Fijado: contorno dorado grueso + apenas un toque de tinte adentro (mucho
             // más leve que el mostaza de antes, que se sentía muy cargado) -- ni blanco
@@ -1662,7 +1662,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                 ritmo/ETA se fusiona acá abajo como bajada, en vez de un párrafo
                 aparte más abajo en la tarjeta. */}
             <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: (p.complexityHours > 0 || (!inSession && effectiveWorkedHours > 0)) ? "1fr 1fr" : "1fr", gap: "1rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: (p.complexityHours > 0 || (!inSession && effectiveWorkedHours > 0)) ? "1fr 1fr" : "1fr", gap: "0.8rem" }}>
                     <Metrica
                         titulo="Entrega"
                         valor={daysUntilDue < 0 ? `${Math.abs(daysUntilDue)}d tarde` : daysUntilDue === 0 ? "hoy" : `en ${daysUntilDue}d`}
@@ -1708,7 +1708,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
             {(inSession || p.status !== 'completado') && (
                 <div style={{
                     display: "flex", flexDirection: "column", gap: "8px",
-                    padding: inSession ? "14px" : 0,
+                    padding: inSession ? "10px" : 0,
                     background: inSession ? (running ? "rgba(239,68,68,0.06)" : "rgba(230,168,23,0.06)") : "transparent",
                     borderRadius: "14px",
                 }}>
@@ -1716,7 +1716,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                         <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", fontWeight: 800, color: running ? C.rojo : C.ambar }}>
                                 <Timer size={13} />
-                                <span style={{ fontFamily: MONO, fontSize: "1.2rem" }}>{formatElapsed(effectiveWorkedHours * 60 * 60 * 1000)}</span> total del proyecto
+                                <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: "1rem" }}>{formatElapsed(effectiveWorkedHours * 60 * 60 * 1000)}</span> total del proyecto
                                 {p.activeStage && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en {p.activeStage}</span>}
                                 {paused && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en pausa</span>}
                                 {running && !pomodoroMuted && (
@@ -1740,7 +1740,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                             {!inSession && (
                                 <button
                                     onClick={() => { startSporadicTimer(p.id, linkedEvent?.notionEstado); setNotionEstado('En Edición'); }}
-                                    style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: C.primary, color: "white", border: "none", borderRadius: "12px", padding: "12px", cursor: "pointer", fontSize: "0.88rem", fontWeight: 800 }}
+                                    style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: C.primary, color: "white", border: "none", borderRadius: "10px", padding: "9px", cursor: "pointer", fontSize: "0.8rem", fontWeight: 800 }}
                                 >
                                     <Play size={15} /> Empezar a trabajar
                                 </button>
@@ -1790,9 +1790,9 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                 entre el timer y los botones de sesión, aportando poco cuando no se
                 está usando. Se reabre sola en cuanto arranca una foto. */}
             {p.status !== 'completado' && (
-                <details open={photoDetailsOpen} onToggle={e => setPhotoDetailsOpen(e.currentTarget.open)} style={{ borderTop: `1px solid ${C.surfaceContainer}`, paddingTop: "12px" }}>
+                <details open={photoDetailsOpen} onToggle={e => setPhotoDetailsOpen(e.currentTarget.open)} style={{ borderTop: `1px solid ${C.surfaceContainer}`, paddingTop: "8px" }}>
                     <summary style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "4px", cursor: "pointer", listStyle: "none" }}>
-                        <span style={{ flex: 1, fontSize: "0.84rem", fontWeight: 800, color: C.onSurface, display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ flex: 1, fontSize: "0.78rem", fontWeight: 800, color: C.onSurface, display: "flex", alignItems: "center", gap: "8px" }}>
                             <ImageIcon size={12} /> Tiempo por foto
                         </span>
                         <span style={{ fontSize: "0.68rem", fontWeight: 700, color: C.onSurfaceVariant, textAlign: "right" }}>
@@ -1928,9 +1928,9 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                 todavía no se aplicó ninguna plantilla, cerrada si ya están todas
                 hechas. El usuario puede abrir/cerrar a mano en cualquier momento. */}
             {p.status !== 'completado' && (
-                <details open={fasesDetailsOpen} onToggle={e => setFasesDetailsOpen(e.currentTarget.open)} style={{ borderTop: `1px solid ${C.surfaceContainer}`, paddingTop: "12px" }}>
+                <details open={fasesDetailsOpen} onToggle={e => setFasesDetailsOpen(e.currentTarget.open)} style={{ borderTop: `1px solid ${C.surfaceContainer}`, paddingTop: "8px" }}>
                     <summary style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "4px", cursor: "pointer", listStyle: "none" }}>
-                        <span style={{ flex: 1, fontSize: "0.84rem", fontWeight: 800, color: C.onSurface, display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ flex: 1, fontSize: "0.78rem", fontWeight: 800, color: C.onSurface, display: "flex", alignItems: "center", gap: "8px" }}>
                             <ListChecks size={12} /> Fases
                         </span>
                         {!!p.fases?.length && (
@@ -1987,8 +1987,8 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
             )}
 
             {stageBreakdown.length > 0 && (
-                <details open={etapaOpen} onToggle={e => setEtapaOpen(e.currentTarget.open)} style={{ fontSize: "0.72rem", borderTop: `1px solid ${C.surfaceContainer}`, paddingTop: "12px" }}>
-                    <summary style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", listStyle: "none", fontSize: "0.84rem", fontWeight: 800, color: C.onSurface }}>
+                <details open={etapaOpen} onToggle={e => setEtapaOpen(e.currentTarget.open)} style={{ fontSize: "0.72rem", borderTop: `1px solid ${C.surfaceContainer}`, paddingTop: "8px" }}>
+                    <summary style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", listStyle: "none", fontSize: "0.78rem", fontWeight: 800, color: C.onSurface }}>
                         <PieChart size={12} /> <span style={{ flex: 1 }}>Tiempo por etapa</span>
                         <ChevronDown size={16} color={C.outline} style={{ transform: etapaOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
                     </summary>
