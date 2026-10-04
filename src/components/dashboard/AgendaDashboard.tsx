@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { RefreshCw, Plus, Trash2, ChevronDown, Loader2, ExternalLink, X, History, CalendarClock, AlertTriangle, Wallet, ListTodo, Check, Info } from "lucide-react";
+import { RefreshCw, Plus, Trash2, ChevronDown, Loader2, ExternalLink, X, History, CalendarClock, AlertTriangle, Wallet, ListTodo, Check, Info, Pencil } from "lucide-react";
 import type { CalendarEvent, UserPreferences, NotionEstado, Note } from "../../hooks/useAlDiaState";
 import { NOTION_ESTADOS } from "../../hooks/useAlDiaState";
 import { C, bento, useIsMobile, paddingPagina, money, campo, etiqueta, RADIO, TOQUE_MINIMO } from "../../theme";
@@ -192,30 +192,46 @@ const diasRestantes = (iso: string) => {
 // Fila de botones para elegir un valor ya existente en Notion (Proyecto,
 // Ubicación) sin tener que escribirlo — como el selector de Notion, pero
 // sigue siendo posible escribir uno nuevo a mano en el input de al lado.
-const ChipsSelector = ({ options, value, onSelect }: { options: string[]; value: string; onSelect: (v: string) => void }) => {
-    if (!options.length) return null;
+const OpcionesEditor = ({ options, value, onSelect, onAdd, onRemove, placeholder }: {
+    options: string[]; value: string; onSelect: (v: string) => void;
+    onAdd: (n: string) => Promise<boolean>; onRemove: (n: string) => Promise<boolean>; placeholder: string;
+}) => {
+    const [nuevo, setNuevo] = useState('');
+    const [adding, setAdding] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const agregar = async () => {
+        const n = nuevo.trim();
+        if (!n) return;
+        setBusy(true);
+        if (await onAdd(n)) { onSelect(n); setNuevo(''); setAdding(false); }
+        setBusy(false);
+    };
+    const quitar = async (o: string) => {
+        if (!window.confirm(`¿Borrar "${o}" de Notion? Las sesiones que lo usan quedarán sin este valor.`)) return;
+        setBusy(true);
+        if (await onRemove(o) && value === o) onSelect('');
+        setBusy(false);
+    };
     return (
-        <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', width: '100%' }}>
-            {options.map(opt => (
-                <button
-                    key={opt}
-                    type="button"
-                    onClick={() => onSelect(opt === value ? '' : opt)}
-                    style={{
-                        border: `1px solid ${opt === value ? C.primary : C.outlineVariant}`,
-                        background: opt === value ? C.primaryContainer : 'none',
-                        color: opt === value ? C.onPrimaryContainer : C.onSurfaceVariant,
-                        borderRadius: RADIO.chip,
-                        padding: '4px 10px',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                    }}
-                >
-                    {opt}
-                </button>
-            ))}
+        <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', width: '100%', alignItems: 'center', opacity: busy ? 0.6 : 1 }}>
+            {options.map(opt => {
+                const act = opt === value;
+                return (
+                    <span key={opt} style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${act ? C.primary : C.outlineVariant}`, background: act ? C.primaryContainer : 'none', borderRadius: RADIO.chip, overflow: 'hidden' }}>
+                        <button type="button" onClick={() => onSelect(act ? '' : opt)} style={{ border: 'none', background: 'none', color: act ? C.onPrimaryContainer : C.onSurfaceVariant, padding: '4px 4px 4px 10px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{opt}</button>
+                        <button type="button" disabled={busy} onClick={() => quitar(opt)} title={`Borrar ${opt}`} style={{ border: 'none', background: 'none', color: C.outline, padding: '4px 7px 4px 2px', cursor: 'pointer', display: 'flex' }}><X size={11} /></button>
+                    </span>
+                );
+            })}
+            {adding ? (
+                <span style={{ display: 'inline-flex', gap: '4px', alignItems: 'center' }}>
+                    <input autoFocus value={nuevo} placeholder={placeholder} onChange={e => setNuevo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') agregar(); if (e.key === 'Escape') setAdding(false); }} style={{ border: `1px solid ${C.outlineVariant}`, borderRadius: RADIO.chip, padding: '4px 10px', fontSize: '0.72rem', fontFamily: 'inherit', width: '130px', background: 'none', color: C.onSurface }} />
+                    <button type="button" disabled={busy} onClick={agregar} style={{ border: 'none', background: 'none', color: C.primary, cursor: 'pointer', display: 'flex' }}><Check size={15} /></button>
+                    <button type="button" onClick={() => { setAdding(false); setNuevo(''); }} style={{ border: 'none', background: 'none', color: C.outline, cursor: 'pointer', display: 'flex' }}><X size={14} /></button>
+                </span>
+            ) : (
+                <button type="button" onClick={() => setAdding(true)} style={{ border: `1px dashed ${C.outlineVariant}`, background: 'none', color: C.primary, borderRadius: RADIO.chip, padding: '4px 10px', fontSize: '0.72rem', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Plus size={11} /> Nuevo</button>
+            )}
         </div>
     );
 };
@@ -238,6 +254,11 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
     const [dateForm, setDateForm] = useState({ date: '', startTime: '', endTime: '' });
     const [savingDateId, setSavingDateId] = useState<number | null>(null);
     const [dateErrorId, setDateErrorId] = useState<number | null>(null);
+    const [editingAllId, setEditingAllId] = useState<number | null>(null);
+    const [editForm, setEditForm] = useState({ title: '', date: '', startTime: '', endTime: '', description: '', proyecto: '', ubicacion: '', precio: '', cobrado: '', celular: '' });
+    const [savingAllId, setSavingAllId] = useState<number | null>(null);
+    const [editErrorId, setEditErrorId] = useState<number | null>(null);
+    const [opcionError, setOpcionError] = useState(false);
     const [abonandoId, setAbonandoId] = useState<number | null>(null);
     const [abonoMonto, setAbonoMonto] = useState('');
     const [savingAbonoId, setSavingAbonoId] = useState<number | null>(null);
@@ -259,13 +280,39 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
     // primera vez que se abre el formulario con creación en Notion activa,
     // para poder mostrarlas como botones en vez de que se escriban a mano.
     useEffect(() => {
-        if (!showAddForm || !crearEnNotion || !notionActive || notionOptions) return;
+        const quiereOpciones = (showAddForm && crearEnNotion) || editingAllId !== null;
+        if (!quiereOpciones || !notionActive || notionOptions) return;
         setOpcionesFallo(false);
         fetch('/api/get-notion-options')
             .then(res => res.ok ? res.json() : null)
             .then(data => { if (data) setNotionOptions(data); else setOpcionesFallo(true); })
             .catch(() => setOpcionesFallo(true));
-    }, [showAddForm, crearEnNotion, notionActive, notionOptions]);
+    }, [showAddForm, crearEnNotion, editingAllId, notionActive, notionOptions]);
+
+    // Agrega/quita una opción de los selects de Notion y refleja el resultado local.
+    const gestionarOpcion = async (campo: 'proyecto' | 'ubicacion', accion: 'add' | 'remove', nombre: string) => {
+        setOpcionError(false);
+        try {
+            const res = await fetch('/api/manage-notion-option', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ campo, accion, nombre })
+            });
+            if (!res.ok) throw new Error('respuesta no ok');
+            const data = await res.json();
+            setNotionOptions(o => ({ proyecto: o?.proyecto ?? [], ubicacion: o?.ubicacion ?? [], [campo]: data.opciones }));
+            return true;
+        } catch (err) {
+            console.error('No se pudo actualizar las opciones en Notion:', err);
+            setOpcionError(true);
+            return false;
+        }
+    };
+    const opcionesProps = (campo: 'proyecto' | 'ubicacion') => ({
+        options: notionOptions?.[campo] ?? [],
+        onAdd: (n: string) => gestionarOpcion(campo, 'add', n),
+        onRemove: (n: string) => gestionarOpcion(campo, 'remove', n),
+    });
 
     const items = useMemo(
         () => [...(calendarEvents || [])].sort((a, b) => {
@@ -457,6 +504,67 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
         }
     };
 
+    const openEditar = (item: CalendarEvent) => {
+        setEditErrorId(null);
+        setEditForm({
+            title: item.notionId ? (item.notionTitulo ?? item.title) : item.title,
+            date: item.date, startTime: item.startTime, endTime: item.endTime,
+            description: item.description ?? '',
+            proyecto: item.notionProyecto ?? '', ubicacion: item.notionUbicacion ?? '',
+            precio: item.notionPrecio !== undefined ? String(item.notionPrecio) : '',
+            cobrado: item.notionCobrado !== undefined ? String(item.notionCobrado) : '',
+            celular: item.notionCelular ?? '',
+        });
+        setEditingAllId(item.id);
+    };
+
+    const handleGuardarEdicion = async (item: CalendarEvent) => {
+        const f = editForm;
+        const titulo = f.title.trim();
+        if (!titulo) return;
+        const startTime = f.date ? f.startTime || '09:00' : '';
+        const endTime = f.date ? f.endTime || '10:30' : '';
+        if (!item.notionId) {
+            updateCalendarEvent(item.id, { title: titulo, date: f.date, startTime, endTime, description: f.description.trim() });
+            setEditingAllId(null);
+            return;
+        }
+        setSavingAllId(item.id);
+        setEditErrorId(null);
+        try {
+            const res = await fetch('/api/update-notion-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    notionId: item.notionId, title: titulo, date: f.date, startTime, endTime,
+                    proyecto: f.proyecto.trim(), ubicacion: f.ubicacion.trim(),
+                    precio: f.precio, cobrado: f.cobrado, celular: f.celular,
+                })
+            });
+            if (!res.ok) throw new Error('respuesta no ok');
+            const precio = f.precio === '' ? undefined : Number(f.precio);
+            const cobrado = f.cobrado === '' ? undefined : Number(f.cobrado);
+            const ubic = f.ubicacion.trim();
+            const cambioFecha = !!item.date && !!f.date && item.date !== f.date;
+            updateCalendarEvent(item.id, {
+                title: ubic ? `${titulo} (${ubic})` : titulo,
+                notionTitulo: titulo, notionUbicacion: ubic || undefined,
+                date: f.date, startTime, endTime,
+                notionProyecto: f.proyecto.trim() || undefined,
+                notionPrecio: precio, notionCobrado: cobrado,
+                notionSaldoPorCobrar: precio !== undefined ? Math.max(0, precio - (cobrado || 0)) : undefined,
+                notionCelular: f.celular.replace(/\D/g, '') || undefined,
+                ...(cambioFecha && !item.notionFechaOriginal ? { notionFechaOriginal: item.date } : {}),
+            });
+            setEditingAllId(null);
+        } catch (err) {
+            console.error('No se pudo guardar la edición en Notion:', err);
+            setEditErrorId(item.id);
+        } finally {
+            setSavingAllId(null);
+        }
+    };
+
     const openAbonar = (item: CalendarEvent) => {
         setAbonoErrorId(null);
         setAbonoMonto('');
@@ -503,6 +611,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
         const isExpanded = expandedId === item.id;
         const isAtrasada = isPast && !yaSucedio(item);
         const isEditingDate = editingDateId === item.id;
+        const isEditingAll = editingAllId === item.id;
         return (
             <div key={item.id} style={{ ...bento, padding: '0.85rem 1rem', opacity: isPast && !isAtrasada ? 0.7 : 1, ...(isAtrasada ? { borderColor: C.rojo } : sinFecha ? { borderColor: C.ambar } : {}) }}>
                 <div
@@ -537,6 +646,13 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: isAtrasada ? C.rojo : sinFecha ? C.ambar : C.outline, padding: '4px', display: 'flex' }}
                         >
                             <CalendarClock size={15} />
+                        </button>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); isEditingAll ? setEditingAllId(null) : openEditar(item); }}
+                            title="Editar"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, padding: '4px', display: 'flex' }}
+                        >
+                            <Pencil size={15} />
                         </button>
                         {!item.notionId && (
                             <button
@@ -612,6 +728,49 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                         )}
                         {abonoErrorId === item.id && (
                             <div style={{ fontSize: '0.7rem', color: C.rojo, fontWeight: 700, marginTop: '0.35rem' }}>No se pudo registrar el abono en Notion. Intenta de nuevo.</div>
+                        )}
+                    </div>
+                )}
+
+                {isEditingAll && (
+                    <div onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.6rem', paddingTop: '0.6rem', borderTop: `1px solid ${C.surfaceContainer}` }}>
+                        <input placeholder="Título" value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} style={campo(movil)} />
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} style={{ ...campo(movil), flex: '1 1 130px' }} />
+                            <input type="time" value={editForm.startTime} onChange={e => setEditForm(f => ({ ...f, startTime: e.target.value, endTime: finAlMoverInicio(f.startTime, f.endTime, e.target.value) }))} style={{ ...campo(movil), flex: '1 1 90px' }} />
+                            <input type="time" value={editForm.endTime} onChange={e => setEditForm(f => ({ ...f, endTime: e.target.value }))} style={{ ...campo(movil), flex: '1 1 90px' }} />
+                        </div>
+                        {item.notionId ? (
+                            <>
+                                <div style={{ fontSize: '0.68rem', fontWeight: 800, color: C.outline, letterSpacing: '0.04em' }}>PROYECTO</div>
+                                {notionOptions
+                                    ? <OpcionesEditor {...opcionesProps('proyecto')} value={editForm.proyecto} onSelect={v => setEditForm(f => ({ ...f, proyecto: v }))} placeholder="Nuevo proyecto" />
+                                    : <div style={{ fontSize: '0.72rem', color: opcionesFallo ? C.rojo : C.outline }}>{opcionesFallo ? 'No se pudieron traer las opciones de Notion.' : 'Cargando…'}</div>}
+                                <div style={{ fontSize: '0.68rem', fontWeight: 800, color: C.outline, letterSpacing: '0.04em' }}>UBICACIÓN</div>
+                                {notionOptions && <OpcionesEditor {...opcionesProps('ubicacion')} value={editForm.ubicacion} onSelect={v => setEditForm(f => ({ ...f, ubicacion: v }))} placeholder="Nueva ubicación" />}
+                                {opcionError && <div style={{ fontSize: '0.7rem', color: C.rojo, fontWeight: 700 }}>No se pudo actualizar la lista en Notion.</div>}
+                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    <input type="number" placeholder="Precio" value={editForm.precio} onChange={e => setEditForm(f => ({ ...f, precio: e.target.value }))} style={{ ...campo(movil), flex: '1 1 110px' }} />
+                                    <input type="number" placeholder="Cobrado" value={editForm.cobrado} onChange={e => setEditForm(f => ({ ...f, cobrado: e.target.value }))} style={{ ...campo(movil), flex: '1 1 110px' }} />
+                                    <input type="tel" placeholder="Celular" value={editForm.celular} onChange={e => setEditForm(f => ({ ...f, celular: e.target.value }))} style={{ ...campo(movil), flex: '1 1 140px' }} />
+                                </div>
+                            </>
+                        ) : (
+                            <input placeholder="Descripción" value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} style={campo(movil)} />
+                        )}
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button
+                                onClick={() => handleGuardarEdicion(item)}
+                                disabled={savingAllId === item.id || !editForm.title.trim()}
+                                style={{ ...botonCompactoPrimario(movil), opacity: savingAllId === item.id ? 0.7 : 1 }}
+                            >
+                                {savingAllId === item.id ? <Loader2 size={14} className="agenda-spin" /> : <Check size={14} />}
+                                Guardar cambios
+                            </button>
+                            <button onClick={() => setEditingAllId(null)} style={botonCompactoSecundario(movil)}>Cancelar</button>
+                        </div>
+                        {editErrorId === item.id && (
+                            <div style={{ fontSize: '0.7rem', color: C.rojo, fontWeight: 700 }}>No se pudo guardar en Notion. Intenta de nuevo.</div>
                         )}
                     </div>
                 )}
@@ -765,17 +924,11 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                         <>
                             <div style={{ fontSize: '0.68rem', fontWeight: 800, color: C.outline, letterSpacing: '0.04em' }}>PROYECTO</div>
                             {notionOptions
-                                ? <ChipsSelector options={notionOptions.proyecto} value={form.proyecto} onSelect={v => setForm(f => ({ ...f, proyecto: v }))} />
+                                ? <OpcionesEditor {...opcionesProps('proyecto')} value={form.proyecto} onSelect={v => setForm(f => ({ ...f, proyecto: v }))} placeholder="Nuevo proyecto" />
                                 : <div style={{ fontSize: '0.72rem', color: opcionesFallo ? C.rojo : C.outline }}>{opcionesFallo ? 'No se pudieron traer los proyectos de Notion.' : 'Cargando proyectos…'}</div>}
-                            <select
-                                value={form.ubicacion}
-                                onChange={e => setForm(f => ({ ...f, ubicacion: e.target.value }))}
-                                disabled={!notionOptions}
-                                style={{ ...campo(movil), color: form.ubicacion ? C.onSurface : C.outline }}
-                            >
-                                <option value="">Ubicación (opcional)</option>
-                                {(notionOptions?.ubicacion ?? []).map(u => <option key={u} value={u}>{u}</option>)}
-                            </select>
+                            <div style={{ fontSize: '0.68rem', fontWeight: 800, color: C.outline, letterSpacing: '0.04em' }}>UBICACIÓN (OPCIONAL)</div>
+                            {notionOptions && <OpcionesEditor {...opcionesProps('ubicacion')} value={form.ubicacion} onSelect={v => setForm(f => ({ ...f, ubicacion: v }))} placeholder="Nueva ubicación" />}
+                            {opcionError && <div style={{ fontSize: '0.7rem', color: C.rojo, fontWeight: 700 }}>No se pudo actualizar la lista en Notion.</div>}
                             <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
                                 <input type="tel" placeholder="Celular del cliente (opcional)" value={form.celular} onChange={e => setForm(f => ({ ...f, celular: e.target.value }))} style={{ ...campo(movil), flex: '1 1 160px' }} />
                             </div>

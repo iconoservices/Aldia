@@ -101,6 +101,8 @@ function toCalendarEvent(page) {
         startTime,
         endTime,
         description: status ? `Importado de Notion — ${status}` : 'Importado de Notion',
+        notionTitulo: title,
+        notionUbicacion: location,
         notionProyecto: props['Proyecto']?.select?.name,
         notionEstado: status,
         notionPrecio: props['Precio']?.number,

@@ -147,6 +147,8 @@ export interface CalendarEvent {
     notionId?: string; // ID de la pagina de Notion de origen, si vino importado
     // Campos extra de la base "Agenda" de Notion (solo presentes si notionId existe).
     notionProyecto?: string;         // Proyecto (select): "JuanMa Producer" | "Personal"
+    notionTitulo?: string;           // Título sin el sufijo "(Ubicación)"
+    notionUbicacion?: string;        // Ubicación (select)
     notionEstado?: NotionEstado;     // Estado (status): flujo de 5 pasos
     notionPrecio?: number;
     notionCobrado?: number;
