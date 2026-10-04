@@ -977,6 +977,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
  *  cambia cómo se ve -- mismo patrón visual "de una pastilla de color a un
  *  indicador de progreso" que se usó en el resto de la tarjeta. */
 const EstadoStepper = ({ current, onSelect }: { current: NotionEstado | undefined; onSelect: (estado: NotionEstado) => void }) => {
+    const movil = useIsMobile();
     const idx = current ? NOTION_ESTADOS.indexOf(current) : -1;
     const pctDone = idx <= 0 ? 0 : (idx / (NOTION_ESTADOS.length - 1)) * 100;
     return (
@@ -993,7 +994,7 @@ const EstadoStepper = ({ current, onSelect }: { current: NotionEstado | undefine
                             key={estado}
                             onClick={() => onSelect(estado)}
                             title={estado}
-                            style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                            style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", background: "none", border: "none", cursor: "pointer", padding: movil ? "6px" : 0, margin: movil ? "-6px" : 0 }}
                         >
                             <span style={{
                                 width: "18px", height: "18px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box",
@@ -1003,13 +1004,18 @@ const EstadoStepper = ({ current, onSelect }: { current: NotionEstado | undefine
                                 {done && <Check size={11} color="white" strokeWidth={3} />}
                                 {active && <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: C.secondary }} />}
                             </span>
-                            <span style={{ fontSize: "0.58rem", fontWeight: active ? 800 : 600, color: active ? C.secondary : done ? C.onSurfaceVariant : C.outlineVariant, whiteSpace: "nowrap" }}>
-                                {estado}
-                            </span>
+                            {!movil && (
+                                <span style={{ fontSize: "0.58rem", fontWeight: active ? 800 : 600, color: active ? C.secondary : done ? C.onSurfaceVariant : C.outlineVariant, whiteSpace: "nowrap" }}>
+                                    {estado}
+                                </span>
+                            )}
                         </button>
                     );
                 })}
             </div>
+            {movil && current && (
+                <div style={{ textAlign: "center", marginTop: "6px", fontSize: "0.72rem", fontWeight: 800, color: C.secondary }}>{current}</div>
+            )}
         </div>
     );
 };
@@ -1381,10 +1387,12 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                     </div>
                     <details open={plazosOpen} onToggle={e => setPlazosOpen(e.currentTarget.open)} style={{ marginTop: "8px" }}>
                     <summary style={{ cursor: "pointer", listStyle: "none", display: "flex", alignItems: "center", gap: "6px", fontSize: "0.72rem", fontWeight: 700, color: C.outline }}>
-                        <Camera size={12} /> Plazos
-                        <span style={{ color: plazoResumen.c, fontWeight: 800 }}>· {plazoResumen.t}</span>
-                        {trackingSinceFirstStart && sinceFirstStartMs >= 86400000 && <span>· llevas {Math.floor(sinceFirstStartMs / 86400000)}d</span>}
-                        <ChevronDown size={14} color={C.outline} style={{ marginLeft: "auto", transform: plazosOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+                        <Camera size={12} style={{ flexShrink: 0 }} />
+                        <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            Plazos <span style={{ color: plazoResumen.c, fontWeight: 800 }}>· {plazoResumen.t}</span>
+                            {trackingSinceFirstStart && sinceFirstStartMs >= 86400000 && <span> · llevas {Math.floor(sinceFirstStartMs / 86400000)}d</span>}
+                        </span>
+                        <ChevronDown size={14} color={C.outline} style={{ flexShrink: 0, transform: plazosOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
                     </summary>
                     <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px", fontSize: "0.72rem", color: C.onSurfaceVariant, fontWeight: 700, alignItems: "center" }}>
                         {/* Fecha para tener la sesión terminada (fotos tomadas, lista para

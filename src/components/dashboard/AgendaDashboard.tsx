@@ -805,9 +805,9 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                         )}
                     </div>
                     <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontWeight: 800, fontSize: '0.95rem', color: C.onSurface, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
+                        <div style={{ fontWeight: 800, fontSize: '0.95rem', color: C.onSurface, overflow: 'hidden', textOverflow: 'ellipsis', ...(movil ? { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, whiteSpace: 'normal', lineHeight: 1.25 } : { whiteSpace: 'nowrap' }) }}>{item.title}</div>
                         <div style={{ display: 'flex', gap: '4px 12px', flexWrap: 'wrap', marginTop: 4, fontSize: '0.75rem', color: C.onSurfaceVariant, fontWeight: 600, alignItems: 'center' }}>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
                                 <Clock size={12} />
                                 {sinFecha ? 'Sin fecha asignada' : `${hora12(item.startTime)} – ${hora12(item.endTime)}`}
                             </span>
@@ -831,14 +831,14 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                         )}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-                        <button onClick={(e) => { e.stopPropagation(); isEditingDate ? setEditingDateId(null) : openReagendar(item); }} title={sinFecha ? 'Agendar' : 'Reagendar'} style={{ ...{ width: 30, height: 30, borderRadius: '50%', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isAtrasada ? C.rojo : sinFecha ? C.ambar : C.outline }}}>
+                        <button onClick={(e) => { e.stopPropagation(); isEditingDate ? setEditingDateId(null) : openReagendar(item); }} title={sinFecha ? 'Agendar' : 'Reagendar'} style={{ ...{ width: movil ? 28 : 30, height: movil ? 28 : 30, borderRadius: '50%', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isAtrasada ? C.rojo : sinFecha ? C.ambar : C.outline }}}>
                             <CalendarClock size={16} />
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); openEditar(item); }} title="Editar" style={{ ...{ width: 30, height: 30, borderRadius: '50%', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.outline }}}>
+                        <button onClick={(e) => { e.stopPropagation(); openEditar(item); }} title="Editar" style={{ ...{ width: movil ? 28 : 30, height: movil ? 28 : 30, borderRadius: '50%', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.outline }}}>
                             <Pencil size={16} />
                         </button>
                         {!item.notionId && (
-                            <button onClick={(e) => { e.stopPropagation(); removeCalendarEvent(item.id); }} title="Eliminar" style={{ ...{ width: 30, height: 30, borderRadius: '50%', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.outline }}}>
+                            <button onClick={(e) => { e.stopPropagation(); removeCalendarEvent(item.id); }} title="Eliminar" style={{ ...{ width: movil ? 28 : 30, height: movil ? 28 : 30, borderRadius: '50%', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.outline }}}>
                                 <Trash2 size={16} />
                             </button>
                         )}
@@ -952,7 +952,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                         {item.notionId && (
                             <div style={{ gridColumn: '1 / -1' }}>
                                 <div style={{ ...etiqueta, fontSize: '0.6rem', marginBottom: 6 }}>Estado</div>
-                                <div onClick={e => e.stopPropagation()} style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 3, padding: 3, background: C.surfaceContainerLow, borderRadius: 999 }}>
+                                <div onClick={e => e.stopPropagation()} style={{ display: 'grid', gridTemplateColumns: movil ? 'repeat(3, minmax(0, 1fr))' : 'repeat(5, minmax(0, 1fr))', gap: 3, padding: 3, background: C.surfaceContainerLow, borderRadius: movil ? 18 : 999 }}>
                         {NOTION_ESTADOS.map(estado => {
                             const active = item.notionEstado === estado;
                             return (
@@ -965,7 +965,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                                         background: active ? ESTADO_COLOR[estado] : 'none',
                                         color: active ? 'white' : C.onSurfaceVariant,
                                         border: 'none', borderRadius: 999, padding: movil ? '8px 2px' : '7px 4px',
-                                        fontSize: movil ? '0.64rem' : '0.72rem', fontWeight: active ? 800 : 700, whiteSpace: 'nowrap',
+                                        fontSize: movil ? '0.74rem' : '0.72rem', fontWeight: active ? 800 : 700, whiteSpace: 'nowrap',
                                         cursor: savingId === item.id ? 'wait' : 'pointer',
                                         opacity: savingId === item.id && !active ? 0.5 : 1,
                                     }}
