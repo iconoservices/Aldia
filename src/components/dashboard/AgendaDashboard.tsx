@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { RefreshCw, Plus, Trash2, ChevronDown, Loader2, ExternalLink, X, History, CalendarClock, AlertTriangle, Wallet, ListTodo, Check, Info, Pencil } from "lucide-react";
+import { RefreshCw, Plus, Trash2, ChevronDown, Loader2, ExternalLink, X, History, CalendarClock, AlertTriangle, Wallet, ListTodo, Check, Info, Pencil, MapPin, Phone, Briefcase, PackageCheck, Clock } from "lucide-react";
 import type { CalendarEvent, UserPreferences, NotionEstado, Note } from "../../hooks/useAlDiaState";
 import { NOTION_ESTADOS } from "../../hooks/useAlDiaState";
-import { C, bento, useIsMobile, paddingPagina, money, campo, etiqueta, RADIO, TOQUE_MINIMO } from "../../theme";
+import { C, bento, useIsMobile, paddingPagina, money, campo, etiqueta, RADIO, TOQUE_MINIMO, MONO } from "../../theme";
 
 /* ══════════════════════════════════════════════════════════════════
    AgendaDashboard — vista rápida de "qué sigue": próxima sesión de
@@ -172,6 +172,15 @@ const finAlMoverInicio = (inicioViejo: string, finViejo: string, inicioNuevo: st
     let dur = inicioViejo && finViejo ? aMinutos(finViejo) - aMinutos(inicioViejo) : 0;
     if (!(dur > 0)) dur = 90;
     return deMinutos(Math.min(aMinutos(inicioNuevo) + dur, 23 * 60 + 59));
+};
+
+const fechaFicha = (iso: string) => {
+    const d = new Date(`${iso}T12:00:00`);
+    return {
+        dia: d.toLocaleDateString('es-PE', { weekday: 'short' }).replace('.', '').toUpperCase(),
+        num: String(d.getDate()),
+        mes: d.toLocaleDateString('es-PE', { month: 'short' }).replace('.', '').toUpperCase(),
+    };
 };
 
 const hora12 = (t: string) => {
@@ -378,6 +387,16 @@ const Seccion = ({ titulo, children }: { titulo: string; children: React.ReactNo
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
         <div style={{ ...etiqueta }}>{titulo}</div>
         {children}
+    </div>
+);
+
+const Dato = ({ icono, titulo, valor }: { icono: React.ReactNode; titulo: string; valor: React.ReactNode }) => (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', minWidth: 0 }}>
+        <div style={{ width: 28, height: 28, borderRadius: 8, background: C.surfaceContainerLow, color: C.outline, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{icono}</div>
+        <div style={{ minWidth: 0 }}>
+            <div style={{ ...etiqueta, fontSize: '0.6rem' }}>{titulo}</div>
+            <div style={{ fontSize: '0.85rem', color: C.onSurface, fontWeight: 700, marginTop: 1, wordBreak: 'break-word' }}>{valor}</div>
+        </div>
     </div>
 );
 
@@ -764,84 +783,90 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
         const isExpanded = expandedId === item.id;
         const isAtrasada = isPast && !yaSucedio(item);
         const isEditingDate = editingDateId === item.id;
+        const ficha = sinFecha ? null : fechaFicha(item.date);
+        const acento = isAtrasada ? C.rojo : sinFecha ? C.ambar : item.notionEstado ? ESTADO_COLOR[item.notionEstado] : C.primary;
+        const insignia: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 800 };
         return (
-            <div key={item.id} style={{ ...bento, padding: '0.85rem 1rem', opacity: isPast && !isAtrasada ? 0.7 : 1, ...(isAtrasada ? { borderColor: C.rojo } : sinFecha ? { borderColor: C.ambar } : {}) }}>
+            <div key={item.id} style={{ ...bento, position: 'relative', overflow: 'hidden', padding: '0.9rem 1rem 0.9rem 1.2rem', opacity: isPast && !isAtrasada ? 0.72 : 1 }}>
+                {/* Franja de color a la izquierda: de un vistazo se ve el estado. */}
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5, background: acento }} />
                 <div
                     onClick={() => setExpandedId(isExpanded ? null : item.id)}
-                    style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', cursor: 'pointer' }}
+                    style={{ display: 'flex', gap: '12px', alignItems: 'center', cursor: 'pointer' }}
                 >
-                    <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 800, fontSize: '0.88rem', color: C.onSurface, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
-                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '3px', fontSize: '0.72rem', color: C.onSurfaceVariant, fontWeight: 700 }}>
-                            <span>{sinFecha ? 'Sin fecha asignada' : `${formatFecha(item.date)} · ${hora12(item.startTime)}`}</span>
-                            {sinFecha && (
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: C.ambar, fontWeight: 800 }}>
-                                    <CalendarClock size={11} /> Por agendar
-                                </span>
-                            )}
-                            {isAtrasada && (
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: C.rojo, fontWeight: 800 }}>
-                                    <AlertTriangle size={11} /> Atrasada — no se hizo, reagéndala
-                                </span>
-                            )}
-                            {!sinFecha && item.notionFechaOriginal && item.notionFechaOriginal !== item.date && (
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: C.ambar, fontWeight: 800 }}>
-                                    <CalendarClock size={11} /> Reagendada · era {formatFecha(item.notionFechaOriginal)}
-                                </span>
+                    {/* Ficha de fecha tipo calendario */}
+                    <div style={{ width: 50, flexShrink: 0, borderRadius: 12, background: sinFecha ? 'rgba(185,118,10,0.12)' : C.surfaceContainerLow, color: sinFecha ? C.ambar : C.onSurface, textAlign: 'center', padding: '5px 0 6px', lineHeight: 1.1 }}>
+                        {sinFecha ? (
+                            <div style={{ height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CalendarClock size={22} /></div>
+                        ) : (
+                            <>
+                                <div style={{ fontSize: '0.58rem', fontWeight: 800, letterSpacing: '0.06em', color: acento }}>{ficha!.dia}</div>
+                                <div style={{ fontSize: '1.3rem', fontWeight: 900, fontFamily: MONO }}>{ficha!.num}</div>
+                                <div style={{ fontSize: '0.58rem', fontWeight: 700, color: C.outline, letterSpacing: '0.06em' }}>{ficha!.mes}</div>
+                            </>
+                        )}
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontWeight: 800, fontSize: '0.95rem', color: C.onSurface, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
+                        <div style={{ display: 'flex', gap: '4px 12px', flexWrap: 'wrap', marginTop: 4, fontSize: '0.75rem', color: C.onSurfaceVariant, fontWeight: 600, alignItems: 'center' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <Clock size={12} />
+                                {sinFecha ? 'Sin fecha asignada' : `${hora12(item.startTime)} – ${hora12(item.endTime)}`}
+                            </span>
+                            {item.notionUbicacion && (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><MapPin size={12} />{item.notionUbicacion}</span>
                             )}
                         </div>
+                        {(sinFecha || isAtrasada || (!sinFecha && item.notionFechaOriginal && item.notionFechaOriginal !== item.date)) && (
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                                {sinFecha && <span style={{ ...insignia, color: C.ambar, background: 'rgba(185,118,10,0.12)' }}><CalendarClock size={11} /> Por agendar</span>}
+                                {isAtrasada && <span style={{ ...insignia, color: C.rojo, background: 'rgba(198,60,60,0.1)' }}><AlertTriangle size={11} /> Atrasada, reagéndala</span>}
+                                {!sinFecha && item.notionFechaOriginal && item.notionFechaOriginal !== item.date && (
+                                    <span style={{ ...insignia, color: C.ambar, background: 'rgba(185,118,10,0.12)' }}><CalendarClock size={11} /> Reagendada · era {formatFecha(item.notionFechaOriginal)}</span>
+                                )}
+                            </div>
+                        )}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                        <button
-                            onClick={(e) => { e.stopPropagation(); isEditingDate ? setEditingDateId(null) : openReagendar(item); }}
-                            title={sinFecha ? 'Agendar' : 'Reagendar'}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: isAtrasada ? C.rojo : sinFecha ? C.ambar : C.outline, padding: '4px', display: 'flex' }}
-                        >
-                            <CalendarClock size={15} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                        <button onClick={(e) => { e.stopPropagation(); isEditingDate ? setEditingDateId(null) : openReagendar(item); }} title={sinFecha ? 'Agendar' : 'Reagendar'} style={{ ...{ width: 30, height: 30, borderRadius: '50%', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isAtrasada ? C.rojo : sinFecha ? C.ambar : C.outline }}}>
+                            <CalendarClock size={16} />
                         </button>
-                        <button
-                            onClick={(e) => { e.stopPropagation(); openEditar(item); }}
-                            title="Editar"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, padding: '4px', display: 'flex' }}
-                        >
-                            <Pencil size={15} />
+                        <button onClick={(e) => { e.stopPropagation(); openEditar(item); }} title="Editar" style={{ ...{ width: 30, height: 30, borderRadius: '50%', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.outline }}}>
+                            <Pencil size={16} />
                         </button>
                         {!item.notionId && (
-                            <button
-                                onClick={(e) => { e.stopPropagation(); removeCalendarEvent(item.id); }}
-                                title="Eliminar"
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, padding: '4px', display: 'flex' }}
-                            >
-                                <Trash2 size={15} />
+                            <button onClick={(e) => { e.stopPropagation(); removeCalendarEvent(item.id); }} title="Eliminar" style={{ ...{ width: 30, height: 30, borderRadius: '50%', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.outline }}}>
+                                <Trash2 size={16} />
                             </button>
                         )}
-                        <ChevronDown size={16} color={C.outline} style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+                        <ChevronDown size={18} color={C.outline} style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', margin: '0 2px' }} />
                     </div>
                 </div>
 
                 {/* Cobro — siempre visible (no hace falta expandir la tarjeta) para
                     ver de un vistazo cuánto ya pagaron y cuánto falta, con abono directo. */}
                 {item.notionPrecio !== undefined && (
-                    <div onClick={e => e.stopPropagation()} style={{ marginTop: '0.6rem', paddingTop: '0.6rem', borderTop: `1px solid ${C.surfaceContainer}` }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
-                            <div style={{ fontSize: '0.72rem', color: C.onSurfaceVariant, fontWeight: 700 }}>
-                                Cobrado {money(item.notionCobrado || 0)} de {money(item.notionPrecio)}
+                    <div onClick={e => e.stopPropagation()} style={{ marginTop: '0.8rem', padding: '0.65rem 0.8rem', background: C.surfaceContainerLow, borderRadius: 12 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <div style={{ fontSize: '0.78rem', color: C.onSurfaceVariant, fontWeight: 700 }}>
+                                <span style={{ fontFamily: MONO, color: C.onSurface, fontWeight: 800 }}>{money(item.notionCobrado || 0)}</span>
+                                {' '}de <span style={{ fontFamily: MONO }}>{money(item.notionPrecio)}</span>
                                 {(item.notionSaldoPorCobrar ?? 0) > 0 ? (
-                                    <span style={{ color: C.rojo }}> · falta {money(item.notionSaldoPorCobrar!)}</span>
+                                    <span style={{ color: C.rojo, fontWeight: 800 }}> · falta <span style={{ fontFamily: MONO }}>{money(item.notionSaldoPorCobrar!)}</span></span>
                                 ) : (
-                                    <span style={{ color: C.verde }}> · pagado completo</span>
+                                    <span style={{ color: C.verde, fontWeight: 800 }}> · pagado completo</span>
                                 )}
                             </div>
                             {abonandoId !== item.id && (item.notionSaldoPorCobrar ?? 0) > 0 && (
                                 <button
                                     onClick={() => openAbonar(item)}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: C.primary, fontSize: '0.72rem', fontWeight: 800 }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '5px', background: C.primaryContainer, border: 'none', padding: '5px 12px', borderRadius: 999, cursor: 'pointer', color: C.onPrimaryContainer, fontSize: '0.74rem', fontWeight: 800 }}
                                 >
                                     <Wallet size={13} /> Abonar
                                 </button>
                             )}
                         </div>
-                        <div style={{ height: '5px', borderRadius: '999px', background: C.surfaceContainer, overflow: 'hidden', marginTop: '5px' }}>
+                        <div style={{ height: '6px', borderRadius: '999px', background: C.surfaceContainerHigh, overflow: 'hidden', marginTop: '8px' }}>
                             <div style={{
                                 height: '100%',
                                 width: `${item.notionPrecio > 0 ? Math.min(100, ((item.notionCobrado || 0) / item.notionPrecio) * 100) : 0}%`,
@@ -916,20 +941,21 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                 {/* Estado editable — el mismo flujo de 5 pasos que la pestaña Notion, para
                     marcar "aún no he ido" -> Realizado -> ... -> Entregado sin salir de Agenda. */}
                 {item.notionId && (
-                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center", marginTop: "0.6rem" }}>
+                    <div onClick={e => e.stopPropagation()} style={{ marginTop: '0.8rem', display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 3, padding: 3, background: C.surfaceContainerLow, borderRadius: 999 }}>
                         {NOTION_ESTADOS.map(estado => {
                             const active = item.notionEstado === estado;
                             return (
                                 <button
                                     key={estado}
-                                    onClick={(e) => { e.stopPropagation(); setEstado(item, estado); }}
+                                    onClick={() => setEstado(item, estado)}
                                     disabled={savingId === item.id}
                                     style={{
-                                        display: "flex", alignItems: "center", gap: "5px",
-                                        background: active ? ESTADO_COLOR[estado] : C.surfaceContainerLow,
-                                        color: active ? "white" : C.onSurfaceVariant,
-                                        border: "none", borderRadius: "999px", padding: "6px 12px",
-                                        fontSize: "0.7rem", fontWeight: 700, cursor: savingId === item.id ? "wait" : "pointer",
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                                        background: active ? ESTADO_COLOR[estado] : 'none',
+                                        color: active ? 'white' : C.onSurfaceVariant,
+                                        border: 'none', borderRadius: 999, padding: movil ? '8px 2px' : '7px 4px',
+                                        fontSize: movil ? '0.64rem' : '0.72rem', fontWeight: active ? 800 : 700, whiteSpace: 'nowrap',
+                                        cursor: savingId === item.id ? 'wait' : 'pointer',
                                         opacity: savingId === item.id && !active ? 0.5 : 1,
                                     }}
                                 >
@@ -945,15 +971,17 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                 )}
 
                 {isExpanded && (
-                    <div style={{ marginTop: '0.7rem', paddingTop: '0.7rem', borderTop: `1px solid ${C.surfaceContainer}`, display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.78rem', color: C.onSurfaceVariant, fontWeight: 600 }}>
-                        {item.description && <div>{item.description}</div>}
-                        {item.notionProyecto && <div><b>Proyecto:</b> {item.notionProyecto}</div>}
+                    <div style={{ marginTop: '0.8rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '0.7rem 1rem' }}>
+                        {item.notionProyecto && <Dato icono={<Briefcase size={14} />} titulo="Proyecto" valor={item.notionProyecto} />}
+                        {item.notionUbicacion && <Dato icono={<MapPin size={14} />} titulo="Ubicación" valor={item.notionUbicacion} />}
                         {item.notionCelular && (
-                            <div><b>Celular:</b> <a href={`tel:${item.notionCelular}`} onClick={e => e.stopPropagation()} style={{ color: C.primary, fontWeight: 700 }}>{item.notionCelular}</a></div>
+                            <Dato icono={<Phone size={14} />} titulo="Celular" valor={<a href={`tel:${item.notionCelular}`} onClick={e => e.stopPropagation()} style={{ color: C.primary, fontWeight: 800, textDecoration: 'none', fontFamily: MONO }}>{item.notionCelular}</a>} />
                         )}
-                        {item.notionEntregaFecha && <div><b>Entrega:</b> {formatFecha(item.notionEntregaFecha)}</div>}
-                        {item.notionDiasRestantes && <div><b>Días restantes:</b> {item.notionDiasRestantes}</div>}
-                        {!sinFecha && <div>{hora12(item.startTime)} – {hora12(item.endTime)}</div>}
+                        {item.notionEntregaFecha && <Dato icono={<PackageCheck size={14} />} titulo="Entrega" valor={formatFecha(item.notionEntregaFecha)} />}
+                        {item.notionDiasRestantes && <Dato icono={<Clock size={14} />} titulo="Días restantes" valor={item.notionDiasRestantes} />}
+                        {item.description && !item.description.startsWith('Importado de Notion') && (
+                            <div style={{ gridColumn: '1 / -1', fontSize: '0.8rem', color: C.onSurfaceVariant, fontWeight: 600 }}>{item.description}</div>
+                        )}
                     </div>
                 )}
             </div>
