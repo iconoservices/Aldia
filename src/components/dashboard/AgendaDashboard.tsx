@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { RefreshCw, Plus, Trash2, ChevronDown, Loader2, ExternalLink, X, History, CalendarClock, AlertTriangle, Wallet, ListTodo, Check, Info, Pencil } from "lucide-react";
 import type { CalendarEvent, UserPreferences, NotionEstado, Note } from "../../hooks/useAlDiaState";
 import { NOTION_ESTADOS } from "../../hooks/useAlDiaState";
@@ -180,29 +180,60 @@ const hora12 = (t: string) => {
     return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
 };
 
+// Una sola lista como Google Calendar: "9:00am", "9:15am"… de 15 en 15 minutos.
+// El valor sigue siendo "HH:mm" de 24 h.
+const hora12corta = (t: string) => hora12(t).replace(' AM', 'am').replace(' PM', 'pm');
+const OPCIONES_HORA = Array.from({ length: 96 }, (_, i) => deMinutos(i * 15));
+
+// Interpreta lo que se escribe: "9:20am", "930 pm", "14:05", "9". Sin am/pm y con
+// hora <= 12 conserva el periodo (AM/PM) que ya tenía la hora anterior.
+const parsearHora = (texto: string, previa: string): string | null => {
+    const m = texto.trim().toLowerCase().replace(/\s+/g, '').replace(/\./g, '').match(/^(\d{1,2})(?::?(\d{2}))?(a|p)?m?$/);
+    if (!m) return null;
+    let h = parseInt(m[1], 10);
+    const min = m[2] ? parseInt(m[2], 10) : 0;
+    if (min > 59 || h > 23) return null;
+    if (m[3]) {
+        if (h < 1 || h > 12) return null;
+        h = (h % 12) + (m[3] === 'p' ? 12 : 0);
+    } else if (h >= 1 && h <= 12) {
+        const eraPM = Number((previa || '09:00').split(':')[0]) >= 12;
+        h = (h % 12) + (eraPM ? 12 : 0);
+    }
+    return deMinutos(h * 60 + min);
+};
+
 const CampoHora = ({ value, onChange, movil }: { value: string; onChange: (v: string) => void; movil: boolean }) => {
-    const [h24, m] = (value || '09:00').split(':').map(Number);
-    const esPM = h24 >= 12;
-    const h12 = h24 % 12 || 12;
-    const emitir = (h: number, min: number, pm: boolean) =>
-        onChange(`${String((h % 12) + (pm ? 12 : 0)).padStart(2, '0')}:${String(min).padStart(2, '0')}`);
-    const sel: React.CSSProperties = { ...campo(movil), padding: movil ? '12px 6px' : '8px 6px', flex: 1, minWidth: 0, textAlign: 'center', cursor: 'pointer' };
-    // Si los minutos no son múltiplo de 5 (viene de Notion), se agrega tal cual para no perderlos.
-    const minutos = Array.from({ length: 12 }, (_, i) => i * 5);
-    if (!minutos.includes(m)) minutos.push(m), minutos.sort((a, b) => a - b);
+    const id = useId();
+    const actual = value || '09:00';
+    const [borrador, setBorrador] = useState<string | null>(null);
+    const confirmar = (texto: string) => {
+        const t = parsearHora(texto, actual);
+        if (t) onChange(t);
+        setBorrador(null);
+    };
     return (
-        <div style={{ display: 'flex', gap: '4px', flex: 1, minWidth: 0 }}>
-            <select value={h12} onChange={e => emitir(Number(e.target.value), m, esPM)} style={sel}>
-                {Array.from({ length: 12 }, (_, i) => i + 1).map(h => <option key={h} value={h}>{h}</option>)}
-            </select>
-            <select value={m} onChange={e => emitir(h12, Number(e.target.value), esPM)} style={sel}>
-                {minutos.map(x => <option key={x} value={x}>{String(x).padStart(2, '0')}</option>)}
-            </select>
-            <select value={esPM ? 'PM' : 'AM'} onChange={e => emitir(h12, m, e.target.value === 'PM')} style={sel}>
-                <option value="AM">AM</option>
-                <option value="PM">PM</option>
-            </select>
-        </div>
+        <>
+            <input
+                list={id}
+                value={borrador ?? hora12corta(actual)}
+                placeholder={hora12corta(actual)}
+                // Al enfocar se vacía para que la lista muestre todas las horas
+                // (el navegador filtra por lo escrito); si no se escribe nada, se conserva la actual.
+                onFocus={() => setBorrador('')}
+                onChange={e => {
+                    setBorrador(e.target.value);
+                    // elegir una opción de la lista confirma al instante
+                    if (OPCIONES_HORA.some(t => hora12corta(t) === e.target.value)) confirmar(e.target.value);
+                }}
+                onBlur={e => { if (borrador) confirmar(e.target.value); else setBorrador(null); }}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); confirmar((e.target as HTMLInputElement).value); (e.target as HTMLInputElement).blur(); } }}
+                style={{ ...campo(movil), flex: 1, minWidth: 0, textAlign: 'center' }}
+            />
+            <datalist id={id}>
+                {OPCIONES_HORA.map(t => <option key={t} value={hora12corta(t)} />)}
+            </datalist>
+        </>
     );
 };
 
@@ -981,11 +1012,8 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                     <Seccion titulo="Cuándo">
                         <input type="date" value={formPanel.date} onChange={e => setFormPanel(f => ({ ...f, date: e.target.value }))} style={campo(movil)} />
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            <span style={{ width: 44, fontSize: '0.72rem', fontWeight: 700, color: C.onSurfaceVariant }}>Inicio</span>
                             <CampoHora movil={movil} value={formPanel.startTime} onChange={v => setFormPanel(f => ({ ...f, startTime: v, endTime: finAlMoverInicio(f.startTime, f.endTime, v) }))} />
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            <span style={{ width: 44, fontSize: '0.72rem', fontWeight: 700, color: C.onSurfaceVariant }}>Fin</span>
+                            <span style={{ color: C.outline, fontWeight: 700 }}>–</span>
                             <CampoHora movil={movil} value={formPanel.endTime} onChange={v => setFormPanel(f => ({ ...f, endTime: v }))} />
                         </div>
                     </Seccion>
