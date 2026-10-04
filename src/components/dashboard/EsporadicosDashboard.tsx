@@ -10,7 +10,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { CalendarEvent, NotionEstado, SporadicProject, FaseTemplate, ProjectFase } from "../../hooks/useAlDiaState";
 import { NOTION_ESTADOS } from "../../hooks/useAlDiaState";
-import { C, RADIO, bento, campo, botonPrimario, etiqueta, useIsMobile, paddingPagina } from "../../theme";
+import { C, RADIO, bento, campo, botonPrimario, etiqueta, useIsMobile, paddingPagina, MONO } from "../../theme";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 
 const ORDER_STORAGE_KEY = "aldia_esporadicos_custom_order";
@@ -1018,7 +1018,7 @@ const Metrica = ({ titulo, valor, sub, color, pct, parpadeo }: { titulo: string;
     <div style={{ minWidth: 0 }}>
         <div style={{ ...etiqueta, fontSize: "0.6rem" }}>{titulo}</div>
         <div style={{ display: "flex", alignItems: "baseline", gap: "5px", marginTop: "2px" }}>
-            <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: "0.98rem", fontWeight: 800, color, lineHeight: 1.1 }}>{valor}</span>
+            <span style={{ fontFamily: MONO, fontSize: "0.98rem", fontWeight: 800, color, lineHeight: 1.1 }}>{valor}</span>
             {sub && <span style={{ fontSize: "0.7rem", fontWeight: 600, color: C.outline }}>{sub}</span>}
         </div>
         {pct !== undefined && (
@@ -1096,6 +1096,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
     // abiertas a mano.
     const [photoDetailsOpen, setPhotoDetailsOpen] = useState(!!p.photoActiveSince);
     const [etapaOpen, setEtapaOpen] = useState(false);
+    const [plazosOpen, setPlazosOpen] = useState(false);
     const allFasesDone = !!p.fases?.length && p.fases.every(f => f.done);
     const [fasesDetailsOpen, setFasesDetailsOpen] = useState(false);
     // Se cierra sola justo cuando se tilda el último paso pendiente (7/7 con
@@ -1256,10 +1257,16 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
     const sessionEndDate = dateMinusDays(p.dueDate, sessionDaysBefore);
     const sessionDaysLeft = daysBetween(todayStr(), sessionEndDate);
 
+    const plazoResumen = sessionDaysLeft < 0
+        ? { t: `Sesión atrasada ${Math.abs(sessionDaysLeft)}d`, c: C.rojo }
+        : sessionDaysLeft <= 1
+            ? { t: sessionDaysLeft === 0 ? 'Sesión hoy' : 'Sesión mañana', c: C.ambar }
+            : { t: `Sesión en ${sessionDaysLeft}d`, c: C.outline };
+
     return (
         <div style={{
             background: C.surfaceLowest, borderRadius: RADIO.tarjeta, boxShadow: "0 2px 14px rgba(25,28,29,0.07)",
-            padding: "0.8rem 0.9rem", display: "flex", flexDirection: "column", gap: "0.55rem",
+            padding: "0.95rem 1rem", display: "flex", flexDirection: "column", gap: "0.75rem",
             opacity: p.status === 'completado' ? 0.7 : 1, position: "relative",
             // Fijado: contorno dorado grueso + apenas un toque de tinte adentro (mucho
             // más leve que el mostaza de antes, que se sentía muy cargado) -- ni blanco
@@ -1372,7 +1379,14 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                             </span>
                         )}
                     </div>
-                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "7px", fontSize: "0.72rem", color: C.onSurfaceVariant, fontWeight: 700, alignItems: "center" }}>
+                    <details open={plazosOpen} onToggle={e => setPlazosOpen(e.currentTarget.open)} style={{ marginTop: "8px" }}>
+                    <summary style={{ cursor: "pointer", listStyle: "none", display: "flex", alignItems: "center", gap: "6px", fontSize: "0.72rem", fontWeight: 700, color: C.outline }}>
+                        <Camera size={12} /> Plazos
+                        <span style={{ color: plazoResumen.c, fontWeight: 800 }}>· {plazoResumen.t}</span>
+                        {trackingSinceFirstStart && sinceFirstStartMs >= 86400000 && <span>· llevas {Math.floor(sinceFirstStartMs / 86400000)}d</span>}
+                        <ChevronDown size={14} color={C.outline} style={{ marginLeft: "auto", transform: plazosOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+                    </summary>
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px", fontSize: "0.72rem", color: C.onSurfaceVariant, fontWeight: 700, alignItems: "center" }}>
                         {/* Fecha para tener la sesión terminada (fotos tomadas, lista para
                             editar) -- a diferencia del adelanto, esto SIEMPRE se muestra,
                             con un valor sugerido (5d antes) si no se configuró nada, porque
@@ -1536,6 +1550,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                             </button>
                         )}
                     </div>
+                    </details>
                 </div>
                 <button
                     onClick={() => updateSporadicProject(p.id, { pinned: !p.pinned })}
@@ -1716,7 +1731,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                         <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", fontWeight: 800, color: running ? C.rojo : C.ambar }}>
                                 <Timer size={13} />
-                                <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: "1rem" }}>{formatElapsed(effectiveWorkedHours * 60 * 60 * 1000)}</span> total del proyecto
+                                <span style={{ fontFamily: MONO, fontSize: "1rem" }}>{formatElapsed(effectiveWorkedHours * 60 * 60 * 1000)}</span> total del proyecto
                                 {p.activeStage && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en {p.activeStage}</span>}
                                 {paused && <span style={{ fontWeight: 600, color: C.onSurfaceVariant }}>· en pausa</span>}
                                 {running && !pomodoroMuted && (
