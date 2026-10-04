@@ -787,9 +787,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
         const acento = isAtrasada ? C.rojo : sinFecha ? C.ambar : item.notionEstado ? ESTADO_COLOR[item.notionEstado] : C.primary;
         const insignia: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 800 };
         return (
-            <div key={item.id} style={{ ...bento, position: 'relative', overflow: 'hidden', padding: '0.9rem 1rem 0.9rem 1.2rem', opacity: isPast && !isAtrasada ? 0.72 : 1 }}>
-                {/* Franja de color a la izquierda: de un vistazo se ve el estado. */}
-                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5, background: acento }} />
+            <div key={item.id} style={{ ...bento, position: 'relative', overflow: 'hidden', padding: '0.9rem 1rem', opacity: isPast && !isAtrasada ? 0.72 : 1 }}>
                 <div
                     onClick={() => setExpandedId(isExpanded ? null : item.id)}
                     style={{ display: 'flex', gap: '12px', alignItems: 'center', cursor: 'pointer' }}
