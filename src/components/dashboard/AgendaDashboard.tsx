@@ -174,6 +174,38 @@ const finAlMoverInicio = (inicioViejo: string, finViejo: string, inicioNuevo: st
     return deMinutos(Math.min(aMinutos(inicioNuevo) + dur, 23 * 60 + 59));
 };
 
+const hora12 = (t: string) => {
+    if (!t) return '';
+    const [h, m] = t.split(':').map(Number);
+    return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+};
+
+const CampoHora = ({ value, onChange, movil }: { value: string; onChange: (v: string) => void; movil: boolean }) => {
+    const [h24, m] = (value || '09:00').split(':').map(Number);
+    const esPM = h24 >= 12;
+    const h12 = h24 % 12 || 12;
+    const emitir = (h: number, min: number, pm: boolean) =>
+        onChange(`${String((h % 12) + (pm ? 12 : 0)).padStart(2, '0')}:${String(min).padStart(2, '0')}`);
+    const sel: React.CSSProperties = { ...campo(movil), padding: movil ? '12px 6px' : '8px 6px', flex: 1, minWidth: 0, textAlign: 'center', cursor: 'pointer' };
+    // Si los minutos no son múltiplo de 5 (viene de Notion), se agrega tal cual para no perderlos.
+    const minutos = Array.from({ length: 12 }, (_, i) => i * 5);
+    if (!minutos.includes(m)) minutos.push(m), minutos.sort((a, b) => a - b);
+    return (
+        <div style={{ display: 'flex', gap: '4px', flex: 1, minWidth: 0 }}>
+            <select value={h12} onChange={e => emitir(Number(e.target.value), m, esPM)} style={sel}>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(h => <option key={h} value={h}>{h}</option>)}
+            </select>
+            <select value={m} onChange={e => emitir(h12, Number(e.target.value), esPM)} style={sel}>
+                {minutos.map(x => <option key={x} value={x}>{String(x).padStart(2, '0')}</option>)}
+            </select>
+            <select value={esPM ? 'PM' : 'AM'} onChange={e => emitir(h12, m, e.target.value === 'PM')} style={sel}>
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+            </select>
+        </div>
+    );
+};
+
 const formatFecha = (iso: string) => {
     if (!iso) return 'Sin fecha';
     const [y, m, d] = iso.split('-').map(Number);
@@ -198,6 +230,7 @@ const OpcionesEditor = ({ options, value, onSelect, onAdd, onRemove, placeholder
 }) => {
     const [nuevo, setNuevo] = useState('');
     const [adding, setAdding] = useState(false);
+    const [gestionar, setGestionar] = useState(false);
     const [busy, setBusy] = useState(false);
     const agregar = async () => {
         const n = nuevo.trim();
@@ -218,23 +251,71 @@ const OpcionesEditor = ({ options, value, onSelect, onAdd, onRemove, placeholder
                 const act = opt === value;
                 return (
                     <span key={opt} style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${act ? C.primary : C.outlineVariant}`, background: act ? C.primaryContainer : 'none', borderRadius: RADIO.chip, overflow: 'hidden' }}>
-                        <button type="button" onClick={() => onSelect(act ? '' : opt)} style={{ border: 'none', background: 'none', color: act ? C.onPrimaryContainer : C.onSurfaceVariant, padding: '4px 4px 4px 10px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{opt}</button>
-                        <button type="button" disabled={busy} onClick={() => quitar(opt)} title={`Borrar ${opt}`} style={{ border: 'none', background: 'none', color: C.outline, padding: '4px 7px 4px 2px', cursor: 'pointer', display: 'flex' }}><X size={11} /></button>
+                        <button type="button" onClick={() => onSelect(act ? '' : opt)} style={{ border: 'none', background: 'none', color: act ? C.onPrimaryContainer : C.onSurfaceVariant, padding: gestionar ? '5px 4px 5px 11px' : '5px 11px', fontSize: '0.74rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{opt}</button>
+                        {gestionar && <button type="button" disabled={busy} onClick={() => quitar(opt)} title={`Borrar ${opt}`} style={{ border: 'none', background: 'none', color: C.rojo, padding: '4px 7px 4px 2px', cursor: 'pointer', display: 'flex' }}><X size={12} /></button>}
                     </span>
                 );
             })}
-            {adding ? (
+            {gestionar && (adding ? (
                 <span style={{ display: 'inline-flex', gap: '4px', alignItems: 'center' }}>
                     <input autoFocus value={nuevo} placeholder={placeholder} onChange={e => setNuevo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') agregar(); if (e.key === 'Escape') setAdding(false); }} style={{ border: `1px solid ${C.outlineVariant}`, borderRadius: RADIO.chip, padding: '4px 10px', fontSize: '0.72rem', fontFamily: 'inherit', width: '130px', background: 'none', color: C.onSurface }} />
                     <button type="button" disabled={busy} onClick={agregar} style={{ border: 'none', background: 'none', color: C.primary, cursor: 'pointer', display: 'flex' }}><Check size={15} /></button>
                     <button type="button" onClick={() => { setAdding(false); setNuevo(''); }} style={{ border: 'none', background: 'none', color: C.outline, cursor: 'pointer', display: 'flex' }}><X size={14} /></button>
                 </span>
             ) : (
-                <button type="button" onClick={() => setAdding(true)} style={{ border: `1px dashed ${C.outlineVariant}`, background: 'none', color: C.primary, borderRadius: RADIO.chip, padding: '4px 10px', fontSize: '0.72rem', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Plus size={11} /> Nuevo</button>
-            )}
+                <button type="button" onClick={() => setAdding(true)} style={{ border: `1px dashed ${C.primary}`, background: 'none', color: C.primary, borderRadius: RADIO.chip, padding: '4px 10px', fontSize: '0.72rem', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Plus size={11} /> Nuevo</button>
+            ))}
+            <button type="button" onClick={() => { setGestionar(g => !g); setAdding(false); }} style={{ border: 'none', background: 'none', color: gestionar ? C.primary : C.outline, fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', padding: '4px 2px', marginLeft: 'auto' }}>
+                {gestionar ? 'Listo' : 'Editar lista'}
+            </button>
         </div>
     );
 };
+
+const PanelLateral = ({ titulo, onClose, pie, children, movil }: { titulo: string; onClose: () => void; pie: React.ReactNode; children: React.ReactNode; movil: boolean }) => {
+    useEffect(() => {
+        const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', h);
+        return () => window.removeEventListener('keydown', h);
+    }, [onClose]);
+    return (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }}>
+            <style>{`
+                @keyframes agenda-fade { from { opacity: 0 } to { opacity: 1 } }
+                @keyframes agenda-slide-x { from { transform: translateX(100%) } to { transform: none } }
+                @keyframes agenda-slide-y { from { transform: translateY(100%) } to { transform: none } }
+            `}</style>
+            <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(15,30,25,0.38)', animation: 'agenda-fade 0.18s ease-out' }} />
+            <div
+                role="dialog"
+                aria-label={titulo}
+                style={{
+                    position: 'absolute', background: C.surfaceLowest, display: 'flex', flexDirection: 'column',
+                    boxShadow: '0 0 40px rgba(0,0,0,0.18)',
+                    ...(movil
+                        ? { left: 0, right: 0, bottom: 0, maxHeight: '92vh', borderRadius: `${RADIO.modal} ${RADIO.modal} 0 0`, animation: 'agenda-slide-y 0.22s ease-out' }
+                        : { top: 0, right: 0, bottom: 0, width: 'min(460px, 100vw)', borderRadius: `${RADIO.modal} 0 0 ${RADIO.modal}`, animation: 'agenda-slide-x 0.22s ease-out' }),
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.2rem', borderBottom: `1px solid ${C.surfaceContainer}` }}>
+                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: C.onSurface }}>{titulo}</h3>
+                    <button onClick={onClose} aria-label="Cerrar" style={{ background: C.surfaceContainerLow, border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: C.onSurfaceVariant }}>
+                        <X size={16} />
+                    </button>
+                </div>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '1rem 1.2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>{children}</div>
+                <div style={{ padding: '0.8rem 1.2rem', borderTop: `1px solid ${C.surfaceContainer}`, display: 'flex', gap: '0.5rem', flexDirection: movil ? 'column-reverse' : 'row', justifyContent: 'flex-end' }}>{pie}</div>
+            </div>
+        </div>
+    );
+};
+
+const Seccion = ({ titulo, children }: { titulo: string; children: React.ReactNode }) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+        <div style={{ ...etiqueta }}>{titulo}</div>
+        {children}
+    </div>
+);
 
 export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalendarEvent, updateCalendarEvent, preferences, updatePreference, notes, addNote, toggleNoteItem, updateNote }: AgendaProps) => {
     const movil = useIsMobile();
@@ -259,6 +340,13 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
     const [savingAllId, setSavingAllId] = useState<number | null>(null);
     const [editErrorId, setEditErrorId] = useState<number | null>(null);
     const [opcionError, setOpcionError] = useState(false);
+    const itemEditando = editingAllId !== null ? (calendarEvents || []).find(e => e.id === editingAllId) : undefined;
+    const panelAbierto = showAddForm || !!itemEditando;
+    const formPanel = itemEditando ? editForm : form;
+    const setFormPanel = itemEditando ? setEditForm : setForm;
+    const guardandoPanel = itemEditando ? savingAllId === itemEditando.id : creating;
+    const panelConNotion = itemEditando ? !!itemEditando.notionId : crearEnNotion;
+    const cerrarPanel = () => { setShowAddForm(false); setEditingAllId(null); setCreateError(false); setEditErrorId(null); };
     const [abonandoId, setAbonandoId] = useState<number | null>(null);
     const [abonoMonto, setAbonoMonto] = useState('');
     const [savingAbonoId, setSavingAbonoId] = useState<number | null>(null);
@@ -515,6 +603,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
             cobrado: item.notionCobrado !== undefined ? String(item.notionCobrado) : '',
             celular: item.notionCelular ?? '',
         });
+        setShowAddForm(false);
         setEditingAllId(item.id);
     };
 
@@ -611,7 +700,6 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
         const isExpanded = expandedId === item.id;
         const isAtrasada = isPast && !yaSucedio(item);
         const isEditingDate = editingDateId === item.id;
-        const isEditingAll = editingAllId === item.id;
         return (
             <div key={item.id} style={{ ...bento, padding: '0.85rem 1rem', opacity: isPast && !isAtrasada ? 0.7 : 1, ...(isAtrasada ? { borderColor: C.rojo } : sinFecha ? { borderColor: C.ambar } : {}) }}>
                 <div
@@ -621,7 +709,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                     <div style={{ minWidth: 0 }}>
                         <div style={{ fontWeight: 800, fontSize: '0.88rem', color: C.onSurface, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
                         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '3px', fontSize: '0.72rem', color: C.onSurfaceVariant, fontWeight: 700 }}>
-                            <span>{sinFecha ? 'Sin fecha asignada' : `${formatFecha(item.date)} · ${item.startTime}`}</span>
+                            <span>{sinFecha ? 'Sin fecha asignada' : `${formatFecha(item.date)} · ${hora12(item.startTime)}`}</span>
                             {sinFecha && (
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: C.ambar, fontWeight: 800 }}>
                                     <CalendarClock size={11} /> Por agendar
@@ -648,7 +736,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                             <CalendarClock size={15} />
                         </button>
                         <button
-                            onClick={(e) => { e.stopPropagation(); isEditingAll ? setEditingAllId(null) : openEditar(item); }}
+                            onClick={(e) => { e.stopPropagation(); openEditar(item); }}
                             title="Editar"
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, padding: '4px', display: 'flex' }}
                         >
@@ -732,55 +820,12 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                     </div>
                 )}
 
-                {isEditingAll && (
-                    <div onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.6rem', paddingTop: '0.6rem', borderTop: `1px solid ${C.surfaceContainer}` }}>
-                        <input placeholder="Título" value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} style={campo(movil)} />
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} style={{ ...campo(movil), flex: '1 1 130px' }} />
-                            <input type="time" value={editForm.startTime} onChange={e => setEditForm(f => ({ ...f, startTime: e.target.value, endTime: finAlMoverInicio(f.startTime, f.endTime, e.target.value) }))} style={{ ...campo(movil), flex: '1 1 90px' }} />
-                            <input type="time" value={editForm.endTime} onChange={e => setEditForm(f => ({ ...f, endTime: e.target.value }))} style={{ ...campo(movil), flex: '1 1 90px' }} />
-                        </div>
-                        {item.notionId ? (
-                            <>
-                                <div style={{ fontSize: '0.68rem', fontWeight: 800, color: C.outline, letterSpacing: '0.04em' }}>PROYECTO</div>
-                                {notionOptions
-                                    ? <OpcionesEditor {...opcionesProps('proyecto')} value={editForm.proyecto} onSelect={v => setEditForm(f => ({ ...f, proyecto: v }))} placeholder="Nuevo proyecto" />
-                                    : <div style={{ fontSize: '0.72rem', color: opcionesFallo ? C.rojo : C.outline }}>{opcionesFallo ? 'No se pudieron traer las opciones de Notion.' : 'Cargando…'}</div>}
-                                <div style={{ fontSize: '0.68rem', fontWeight: 800, color: C.outline, letterSpacing: '0.04em' }}>UBICACIÓN</div>
-                                {notionOptions && <OpcionesEditor {...opcionesProps('ubicacion')} value={editForm.ubicacion} onSelect={v => setEditForm(f => ({ ...f, ubicacion: v }))} placeholder="Nueva ubicación" />}
-                                {opcionError && <div style={{ fontSize: '0.7rem', color: C.rojo, fontWeight: 700 }}>No se pudo actualizar la lista en Notion.</div>}
-                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                    <input type="number" placeholder="Precio" value={editForm.precio} onChange={e => setEditForm(f => ({ ...f, precio: e.target.value }))} style={{ ...campo(movil), flex: '1 1 110px' }} />
-                                    <input type="number" placeholder="Cobrado" value={editForm.cobrado} onChange={e => setEditForm(f => ({ ...f, cobrado: e.target.value }))} style={{ ...campo(movil), flex: '1 1 110px' }} />
-                                    <input type="tel" placeholder="Celular" value={editForm.celular} onChange={e => setEditForm(f => ({ ...f, celular: e.target.value }))} style={{ ...campo(movil), flex: '1 1 140px' }} />
-                                </div>
-                            </>
-                        ) : (
-                            <input placeholder="Descripción" value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} style={campo(movil)} />
-                        )}
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <button
-                                onClick={() => handleGuardarEdicion(item)}
-                                disabled={savingAllId === item.id || !editForm.title.trim()}
-                                style={{ ...botonCompactoPrimario(movil), opacity: savingAllId === item.id ? 0.7 : 1 }}
-                            >
-                                {savingAllId === item.id ? <Loader2 size={14} className="agenda-spin" /> : <Check size={14} />}
-                                Guardar cambios
-                            </button>
-                            <button onClick={() => setEditingAllId(null)} style={botonCompactoSecundario(movil)}>Cancelar</button>
-                        </div>
-                        {editErrorId === item.id && (
-                            <div style={{ fontSize: '0.7rem', color: C.rojo, fontWeight: 700 }}>No se pudo guardar en Notion. Intenta de nuevo.</div>
-                        )}
-                    </div>
-                )}
-
                 {isEditingDate && (
                     <div onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.6rem', paddingTop: '0.6rem', borderTop: `1px solid ${C.surfaceContainer}` }}>
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                             <input type="date" value={dateForm.date} onChange={e => setDateForm(f => ({ ...f, date: e.target.value }))} style={{ ...campo(movil), flex: '1 1 130px' }} />
-                            <input type="time" value={dateForm.startTime} onChange={e => setDateForm(f => ({ ...f, startTime: e.target.value, endTime: finAlMoverInicio(f.startTime, f.endTime, e.target.value) }))} style={{ ...campo(movil), flex: '1 1 90px' }} />
-                            <input type="time" value={dateForm.endTime} onChange={e => setDateForm(f => ({ ...f, endTime: e.target.value }))} style={{ ...campo(movil), flex: '1 1 90px' }} />
+                            <CampoHora movil={movil} value={dateForm.startTime} onChange={v => setDateForm(f => ({ ...f, startTime: v, endTime: finAlMoverInicio(f.startTime, f.endTime, v) }))} />
+                            <CampoHora movil={movil} value={dateForm.endTime} onChange={v => setDateForm(f => ({ ...f, endTime: v }))} />
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <button
@@ -844,7 +889,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                         )}
                         {item.notionEntregaFecha && <div><b>Entrega:</b> {formatFecha(item.notionEntregaFecha)}</div>}
                         {item.notionDiasRestantes && <div><b>Días restantes:</b> {item.notionDiasRestantes}</div>}
-                        {!sinFecha && <div>{item.startTime} – {item.endTime}</div>}
+                        {!sinFecha && <div>{hora12(item.startTime)} – {hora12(item.endTime)}</div>}
                     </div>
                 )}
             </div>
@@ -876,9 +921,9 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                             
                         </button>
                     )}
-                    <button onClick={() => setShowAddForm(s => !s)} style={{ ...botonCompactoPrimario(movil), ...botonChico }}>
-                        {showAddForm ? <X size={15} /> : <Plus size={15} />}
-                        {showAddForm ? 'Cerrar' : 'Agregar'}
+                    <button onClick={() => { setEditingAllId(null); setShowAddForm(true); }} style={{ ...botonCompactoPrimario(movil), ...botonChico }}>
+                        <Plus size={15} />
+                        Agregar
                     </button>
                     {(
                         <button onClick={() => setVerNotas(v => !v)} style={{ ...botonCompacto(movil), ...botonChico, background: verNotas ? C.primaryContainer : C.surfaceContainerHigh, color: verNotas ? C.onPrimaryContainer : C.onSurfaceVariant }}>
@@ -892,69 +937,93 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                 <div style={{ fontSize: '0.72rem', color: syncError ? C.rojo : C.outline, fontWeight: 600, marginTop: '-0.6rem' }}>{syncMsg}</div>
             )}
 
-            {/* Alta manual */}
-            {showAddForm && (
-                <div style={{ ...bento, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                    <div
-                        onClick={() => setCrearEnNotion(v => !v)}
-                        style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '0.4rem 0.6rem', background: crearEnNotion ? 'rgba(16,185,129,0.08)' : C.surfaceContainerLow, borderRadius: '10px' }}
-                    >
-                        <div style={{
-                            width: 34, height: 20, borderRadius: '10px', flexShrink: 0, position: 'relative',
-                            background: crearEnNotion ? C.verde : '#D1D5DB', transition: 'background 0.2s'
-                        }}>
-                            <div style={{ width: 16, height: 16, borderRadius: '50%', background: 'white', position: 'absolute', top: 2, left: crearEnNotion ? 16 : 2, transition: 'left 0.2s' }} />
-                        </div>
-                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: C.onSurfaceVariant }}>
-                            {crearEnNotion ? 'Se crea también en Notion' : 'Solo en esta Agenda (no toca Notion)'}
-                        </span>
-                    </div>
-                    <input
-                        placeholder="Título (ej. Sesión de fotos — Boda Ana & Luis)"
-                        value={form.title}
-                        onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                        style={campo(movil)}
-                    />
-                    <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-                        <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} style={{ ...campo(movil), flex: '1 1 140px' }} />
-                        <input type="time" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value, endTime: finAlMoverInicio(f.startTime, f.endTime, e.target.value) }))} style={{ ...campo(movil), flex: '1 1 100px' }} />
-                        <input type="time" value={form.endTime} onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} style={{ ...campo(movil), flex: '1 1 100px' }} />
-                    </div>
-                    {crearEnNotion ? (
+
+
+            {panelAbierto && (
+                <PanelLateral
+                    movil={movil}
+                    titulo={itemEditando ? 'Editar sesión' : 'Nueva sesión'}
+                    onClose={cerrarPanel}
+                    pie={
                         <>
-                            <div style={{ fontSize: '0.68rem', fontWeight: 800, color: C.outline, letterSpacing: '0.04em' }}>PROYECTO</div>
-                            {notionOptions
-                                ? <OpcionesEditor {...opcionesProps('proyecto')} value={form.proyecto} onSelect={v => setForm(f => ({ ...f, proyecto: v }))} placeholder="Nuevo proyecto" />
-                                : <div style={{ fontSize: '0.72rem', color: opcionesFallo ? C.rojo : C.outline }}>{opcionesFallo ? 'No se pudieron traer los proyectos de Notion.' : 'Cargando proyectos…'}</div>}
-                            <div style={{ fontSize: '0.68rem', fontWeight: 800, color: C.outline, letterSpacing: '0.04em' }}>UBICACIÓN (OPCIONAL)</div>
-                            {notionOptions && <OpcionesEditor {...opcionesProps('ubicacion')} value={form.ubicacion} onSelect={v => setForm(f => ({ ...f, ubicacion: v }))} placeholder="Nueva ubicación" />}
+                            <button onClick={cerrarPanel} style={{ ...botonCompactoSecundario(movil), justifyContent: 'center' }}>Cancelar</button>
+                            <button
+                                onClick={() => itemEditando ? handleGuardarEdicion(itemEditando) : handleAdd()}
+                                disabled={guardandoPanel || !formPanel.title.trim()}
+                                style={{ ...botonCompactoPrimario(movil), justifyContent: 'center', opacity: guardandoPanel || !formPanel.title.trim() ? 0.6 : 1 }}
+                            >
+                                {guardandoPanel ? <Loader2 size={16} className="agenda-spin" /> : itemEditando ? <Check size={16} /> : <Plus size={16} />}
+                                {itemEditando ? 'Guardar cambios' : crearEnNotion ? 'Crear en Notion' : 'Guardar solo en la agenda'}
+                            </button>
+                        </>
+                    }
+                >
+                    {!itemEditando && (
+                        <div
+                            onClick={() => setCrearEnNotion(v => !v)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '0.5rem 0.7rem', background: crearEnNotion ? 'rgba(16,185,129,0.08)' : C.surfaceContainerLow, borderRadius: '10px' }}
+                        >
+                            <div style={{ width: 34, height: 20, borderRadius: '10px', flexShrink: 0, position: 'relative', background: crearEnNotion ? C.verde : '#D1D5DB', transition: 'background 0.2s' }}>
+                                <div style={{ width: 16, height: 16, borderRadius: '50%', background: 'white', position: 'absolute', top: 2, left: crearEnNotion ? 16 : 2, transition: 'left 0.2s' }} />
+                            </div>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: C.onSurfaceVariant }}>
+                                {crearEnNotion ? 'Se crea también en Notion' : 'Solo en esta Agenda (no toca Notion)'}
+                            </span>
+                        </div>
+                    )}
+                    <input
+                        autoFocus
+                        placeholder="Título (ej. Sesión de fotos — Boda Ana & Luis)"
+                        value={formPanel.title}
+                        onChange={e => setFormPanel(f => ({ ...f, title: e.target.value }))}
+                        style={{ ...campo(movil), fontWeight: 700 }}
+                    />
+                    <Seccion titulo="Cuándo">
+                        <input type="date" value={formPanel.date} onChange={e => setFormPanel(f => ({ ...f, date: e.target.value }))} style={campo(movil)} />
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <span style={{ width: 44, fontSize: '0.72rem', fontWeight: 700, color: C.onSurfaceVariant }}>Inicio</span>
+                            <CampoHora movil={movil} value={formPanel.startTime} onChange={v => setFormPanel(f => ({ ...f, startTime: v, endTime: finAlMoverInicio(f.startTime, f.endTime, v) }))} />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <span style={{ width: 44, fontSize: '0.72rem', fontWeight: 700, color: C.onSurfaceVariant }}>Fin</span>
+                            <CampoHora movil={movil} value={formPanel.endTime} onChange={v => setFormPanel(f => ({ ...f, endTime: v }))} />
+                        </div>
+                    </Seccion>
+                    {panelConNotion ? (
+                        <>
+                            <Seccion titulo="Proyecto">
+                                {notionOptions
+                                    ? <OpcionesEditor {...opcionesProps('proyecto')} value={formPanel.proyecto} onSelect={v => setFormPanel(f => ({ ...f, proyecto: v }))} placeholder="Nuevo proyecto" />
+                                    : <div style={{ fontSize: '0.72rem', color: opcionesFallo ? C.rojo : C.outline }}>{opcionesFallo ? 'No se pudieron traer las opciones de Notion.' : 'Cargando…'}</div>}
+                            </Seccion>
+                            <Seccion titulo="Ubicación">
+                                {notionOptions && <OpcionesEditor {...opcionesProps('ubicacion')} value={formPanel.ubicacion} onSelect={v => setFormPanel(f => ({ ...f, ubicacion: v }))} placeholder="Nueva ubicación" />}
+                            </Seccion>
                             {opcionError && <div style={{ fontSize: '0.7rem', color: C.rojo, fontWeight: 700 }}>No se pudo actualizar la lista en Notion.</div>}
-                            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-                                <input type="tel" placeholder="Celular del cliente (opcional)" value={form.celular} onChange={e => setForm(f => ({ ...f, celular: e.target.value }))} style={{ ...campo(movil), flex: '1 1 160px' }} />
-                            </div>
-                            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-                                <input type="number" placeholder="Precio (opcional)" value={form.precio} onChange={e => setForm(f => ({ ...f, precio: e.target.value }))} style={{ ...campo(movil), flex: '1 1 140px' }} />
-                                <input type="number" placeholder="Cobrado (opcional)" value={form.cobrado} onChange={e => setForm(f => ({ ...f, cobrado: e.target.value }))} style={{ ...campo(movil), flex: '1 1 140px' }} />
-                            </div>
+                            <Seccion titulo="Cliente y cobro">
+                                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: C.onSurfaceVariant }}>Celular
+                                    <input type="tel" placeholder="Opcional" value={formPanel.celular} onChange={e => setFormPanel(f => ({ ...f, celular: e.target.value }))} style={{ ...campo(movil), width: '100%', boxSizing: 'border-box', marginTop: 3 }} />
+                                </label>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <label style={{ flex: 1, minWidth: 0, fontSize: '0.72rem', fontWeight: 700, color: C.onSurfaceVariant }}>Precio (S/)
+                                        <input type="number" placeholder="0" value={formPanel.precio} onChange={e => setFormPanel(f => ({ ...f, precio: e.target.value }))} style={{ ...campo(movil), width: '100%', boxSizing: 'border-box', marginTop: 3 }} />
+                                    </label>
+                                    <label style={{ flex: 1, minWidth: 0, fontSize: '0.72rem', fontWeight: 700, color: C.onSurfaceVariant }}>Cobrado (S/)
+                                        <input type="number" placeholder="0" value={formPanel.cobrado} onChange={e => setFormPanel(f => ({ ...f, cobrado: e.target.value }))} style={{ ...campo(movil), width: '100%', boxSizing: 'border-box', marginTop: 3 }} />
+                                    </label>
+                                </div>
+                            </Seccion>
                         </>
                     ) : (
-                        <input
-                            placeholder="Notas (opcional)"
-                            value={form.description}
-                            onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                            style={campo(movil)}
-                        />
+                        <Seccion titulo="Notas">
+                            <input placeholder="Descripción (opcional)" value={formPanel.description} onChange={e => setFormPanel(f => ({ ...f, description: e.target.value }))} style={campo(movil)} />
+                        </Seccion>
                     )}
-                    <button onClick={handleAdd} disabled={creating} style={{ ...botonCompactoPrimario(movil), alignSelf: movil ? 'stretch' : 'flex-start', opacity: creating ? 0.7 : 1 }}>
-                        {creating ? <Loader2 size={16} className="agenda-spin" /> : <Plus size={16} />}
-                        {crearEnNotion ? 'Crear en Notion' : 'Guardar solo en la agenda'}
-                    </button>
-                    {createError && (
-                        <div style={{ fontSize: '0.72rem', color: C.rojo, fontWeight: 700 }}>No se pudo crear en Notion. Intenta de nuevo.</div>
+                    {(createError || editErrorId !== null) && (
+                        <div style={{ fontSize: '0.72rem', color: C.rojo, fontWeight: 700 }}>No se pudo guardar en Notion. Intenta de nuevo.</div>
                     )}
-                </div>
+                </PanelLateral>
             )}
-
 
             {/* Por agendar — sesiones que ya están en Notion pero sin "Fecha y hora".
                 Van arriba de todo para que no se olviden: hay que ponerles fecha para
@@ -984,7 +1053,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                             <>
                                 <div style={{ fontWeight: 800, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{proximaSesion.title}</div>
                                 <div style={{ fontSize: '0.7rem', color: C.onSurfaceVariant, fontWeight: 700 }}>
-                                    {formatFecha(proximaSesion.date)} · {proximaSesion.startTime}
+                                    {formatFecha(proximaSesion.date)} · {hora12(proximaSesion.startTime)}
                                     {' '}({diasRestantes(proximaSesion.date) === 0 ? 'hoy' : `en ${diasRestantes(proximaSesion.date)}d`})
                                 </div>
                             </>
