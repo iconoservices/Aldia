@@ -393,6 +393,7 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
     const [statFilter, setStatFilter] = useState<'atrasados' | 'enEdicion' | 'prioridad' | 'usbGeneral' | 'usbUrgente' | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [addingOpen, setAddingOpen] = useState(false);
+    const [panelTop, setPanelTop] = useState<null | 'etapa' | 'plantillas' | 'spec'>(null);
     const [title, setTitle] = useState("");
     const [dueDate, setDueDate] = useState(todayStr());
     const [complexityHours, setComplexityHours] = useState("");
@@ -698,6 +699,17 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
             )}
         </div>
     );
+    const pillTop = (id: 'etapa' | 'plantillas' | 'spec', icono: React.ReactNode, texto: string) => {
+        const activo = panelTop === id;
+        return (
+            <button
+                onClick={() => setPanelTop(activo ? null : id)}
+                style={{ display: "flex", alignItems: "center", gap: "5px", background: activo ? C.primaryContainer : C.surfaceContainerLow, color: activo ? C.onPrimaryContainer : C.onSurfaceVariant, border: "none", borderRadius: "999px", padding: movil ? "7px 9px" : "7px 12px", cursor: "pointer", fontWeight: 800, fontSize: "0.72rem", whiteSpace: "nowrap" }}
+            >
+                {!movil && icono} {texto}
+            </button>
+        );
+    };
     const searchBox = (
         <div style={{ display: "flex", alignItems: "center", gap: "6px", background: C.surfaceContainerLow, borderRadius: "999px", padding: "5px 10px", flex: movil ? "1 1 auto" : "0 0 auto", minWidth: 0, width: movil ? undefined : "170px" }}>
             <Search size={13} color={C.outline} style={{ flexShrink: 0 }} />
@@ -763,10 +775,23 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
             </div>
             )}
 
-            <div style={{ display: "flex", flexDirection: movil ? "column" : "row", flexWrap: "wrap", gap: movil ? "0.8rem" : "0.75rem", alignItems: "flex-start" }}>
-            <details style={{ ...bento, padding: "0.9rem 1rem", flex: movil ? undefined : "1 1 260px", minWidth: 0, width: movil ? "100%" : undefined }}>
-                <summary style={{ ...etiqueta, cursor: "pointer" }}>Spec original de este módulo</summary>
-                <div style={{ marginTop: "0.8rem", display: "flex", flexDirection: "column", gap: "0.7rem", fontSize: "0.8rem", color: C.onSurfaceVariant, lineHeight: 1.5 }}>
+            {/* Barra de herramientas: una sola fila de botones chicos; cada uno
+                despliega su panel debajo (uno a la vez) en vez de apilar 4 tarjetas. */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
+                {timeByStage.length > 0 && pillTop('etapa', <PieChart size={13} />, `Etapas · ${totalHoursLogged.toFixed(0)}h`)}
+                {pillTop('plantillas', <ListChecks size={13} />, `Plantillas (${phaseTemplates.length})`)}
+                {pillTop('spec', <Target size={13} />, 'Spec')}
+                {!addingOpen && (
+                    <button onClick={() => { setAddingOpen(true); setPanelTop(null); }} style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "5px", background: C.primary, color: "white", border: "none", borderRadius: "999px", padding: movil ? "7px 11px" : "7px 14px", cursor: "pointer", fontWeight: 800, fontSize: "0.74rem", whiteSpace: "nowrap" }}>
+                        <Plus size={14} /> {movil ? 'Nuevo' : 'Nuevo proyecto'}
+                    </button>
+                )}
+            </div>
+
+            {panelTop && (
+                <div style={{ ...bento, padding: "0.9rem 1rem" }}>
+                    {panelTop === 'spec' && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem", fontSize: "0.8rem", color: C.onSurfaceVariant, lineHeight: 1.5 }}>
                     <SpecItem
                         n={1} title="Contador de racha" done
                         body="Igual que Duolingo/GitHub: cuántos días seguidos trabajaste. Ver una racha activa duele romperla, así que empuja a trabajar aunque sean 15 min."
@@ -824,14 +849,9 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                         body="Aparte del cronómetro de sesión: Iniciar/Foto lista marca cuánto tarda cada foto individual, y va sumando conteo, promedio y total — para saber el ritmo real por foto, no solo cuánto duró la sesión."
                     />
                 </div>
-            </details>
-
-            {timeByStage.length > 0 && (
-                <details style={{ ...bento, padding: "0.9rem 1rem", flex: movil ? undefined : "1 1 260px", minWidth: 0, width: movil ? "100%" : undefined }}>
-                    <summary style={{ ...etiqueta, cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
-                        <PieChart size={13} /> Tiempo por etapa ({totalHoursLogged.toFixed(1)}h en total)
-                    </summary>
-                    <div style={{ marginTop: "0.7rem", display: "flex", flexDirection: "column", gap: "8px" }}>
+                    )}
+                    {panelTop === 'etapa' && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                         {timeByStage.map(({ stage, hours }) => (
                             <div key={stage} style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem" }}>
@@ -844,14 +864,9 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                             </div>
                         ))}
                     </div>
-                </details>
-            )}
-
-            <details style={{ ...bento, padding: "0.9rem 1rem", flex: movil ? undefined : "1 1 260px", minWidth: 0, width: movil ? "100%" : undefined }}>
-                <summary style={{ ...etiqueta, cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <ListChecks size={13} /> Plantillas de fases ({phaseTemplates.length})
-                </summary>
-                <div style={{ marginTop: "0.7rem", display: "flex", flexDirection: "column", gap: "0.7rem" }}>
+                    )}
+                    {panelTop === 'plantillas' && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
                     {phaseTemplates.map(t => (
                         <div key={t.id} style={{ display: "flex", flexDirection: "column", gap: "5px", padding: "8px", background: C.surfaceContainerLow, borderRadius: "10px" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -878,14 +893,9 @@ export const EsporadicosDashboard = ({ sporadicProjects, addSporadicProject, upd
                     ))}
                     <AddInline placeholder="Nueva plantilla (ej. Video, Diseño)..." onAdd={name => addFaseTemplate(name)} />
                 </div>
-            </details>
-
-            {!addingOpen && (
-                <button onClick={() => setAddingOpen(true)} style={{ flex: movil ? undefined : "1 1 260px", width: movil ? "100%" : undefined, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "none", border: `2px dashed ${C.outlineVariant}`, borderRadius: "12px", padding: "12px", cursor: "pointer", color: C.outline, fontWeight: 700, fontSize: "0.85rem" }}>
-                    <Plus size={16} /> Nuevo proyecto esporádico
-                </button>
+                    )}
+                </div>
             )}
-            </div>
 
             {addingOpen && (
                 <div style={{ ...bento, padding: "1rem", display: "flex", flexDirection: movil ? "column" : "row", gap: "8px", alignItems: movil ? "stretch" : "center" }}>
