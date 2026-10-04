@@ -99,6 +99,12 @@ const dateMinusDays = (dateStr: string, days: number) => {
     d.setDate(d.getDate() - days);
     return d.toLocaleDateString('en-CA');
 };
+const fechaCorta = (iso: string) => {
+    const d = new Date(`${iso}T12:00:00`);
+    const base = d.toLocaleDateString('es-PE', { day: 'numeric', month: 'short' }).replace('.', '');
+    return d.getFullYear() === new Date().getFullYear() ? base : `${base} ${d.getFullYear()}`;
+};
+
 const DIAS_ADELANTO_SUGERIDO = 5;
 const DIAS_SESION_SUGERIDO = 5;
 
@@ -1308,11 +1314,6 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                             así que van en gris neutro -- el color de verdad (rojo/ámbar/verde) se
                             reserva para la pastilla de arriba y los estados completado/pendiente,
                             para no competir por atención con demasiados colores a la vez. */}
-                        {p.pinned && (
-                            <span style={{ display: "flex", alignItems: "center", gap: "3px", background: C.surfaceContainerLow, color: C.onSurfaceVariant, borderRadius: "999px", padding: "2px 8px", fontSize: "0.6rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.02em" }}>
-                                <Pin size={9} fill={C.onSurfaceVariant} /> Prioritario
-                            </span>
-                        )}
                         {running && (
                             <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(239,68,68,0.1)", color: C.rojo, borderRadius: "999px", padding: "2px 8px", fontSize: "0.6rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.02em" }}>
                                 <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: C.rojo, animation: "esporadico-blink 1.1s ease-in-out infinite" }} />
@@ -1327,7 +1328,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                     </div>
                     <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "3px", fontSize: "0.72rem", color: C.onSurfaceVariant, fontWeight: 700, alignItems: "center" }}>
                         <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                            <span>Entrega: {p.dueDate}</span>
+                            <span>Entrega: <b style={{ color: C.onSurface }}>{fechaCorta(p.dueDate)}</b></span>
                             {/* Reagendar NUNCA toca esta fecha ni la de Notion -- solo pone
                                 myDueDateOverride por encima. El atraso de acá arriba sigue
                                 midiéndose contra esto tal cual, siempre. */}
@@ -1358,6 +1359,8 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                                 ><X size={13} /></button>
                             </span>
                         )}
+                    </div>
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "7px", fontSize: "0.72rem", color: C.onSurfaceVariant, fontWeight: 700, alignItems: "center" }}>
                         {/* Fecha para tener la sesión terminada (fotos tomadas, lista para
                             editar) -- a diferencia del adelanto, esto SIEMPRE se muestra,
                             con un valor sugerido (5d antes) si no se configuró nada, porque
@@ -1400,7 +1403,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                                 }}
                             >
                                 <Camera size={10} />
-                                Terminar sesión: {sessionEndDate} ({sessionDaysBefore}d antes)
+                                Sesión {fechaCorta(sessionEndDate)}
                                 <span> · {sessionDaysLeft < 0 ? `atrasada ${Math.abs(sessionDaysLeft)}d` : sessionDaysLeft === 0 ? 'hoy' : `faltan ${sessionDaysLeft}d`}</span>
                             </button>
                         )}
@@ -1410,7 +1413,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                             dice cuánto falta para la fecha a la que me comprometí yo. */}
                         {!!p.rescheduleCount && (
                             <span style={{ display: "flex", alignItems: "center", gap: "4px", background: C.surfaceContainerLow, color: C.onSurfaceVariant, borderRadius: "999px", padding: "2px 8px", fontSize: "0.68rem", fontWeight: 700 }}>
-                                Mi fecha: {p.myDueDateOverride}
+                                Mi fecha: {p.myDueDateOverride ? fechaCorta(p.myDueDateOverride) : ''}
                                 {daysUntilOverride !== undefined && (
                                     <span style={{ fontWeight: 800 }}>
                                         · {daysUntilOverride < 0 ? `${Math.abs(daysUntilOverride)}d atrasada` : daysUntilOverride === 0 ? "hoy" : `faltan ${daysUntilOverride}d`}
@@ -1419,7 +1422,7 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                             </span>
                         )}
                         {trackingSinceFirstStart && (
-                            <span style={{ color: C.outline, fontWeight: 600 }}>· llevas {formatElapsedWithDays(sinceFirstStartMs)} sin entregarlo</span>
+                            <span style={{ color: C.outline, fontWeight: 600 }}>llevas {formatElapsedWithDays(sinceFirstStartMs)} sin entregarlo</span>
                         )}
                         {/* Solo aparece si el proyecto está marcado como "pide adelanto" (botón Send
                             de al lado). Clickeable: pasa de pendiente a enviado y viceversa, sin
@@ -1523,34 +1526,6 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                     </div>
                 </div>
                 <button
-                    onClick={() => updateSporadicProject(p.id, {
-                        requiresPreview: !p.requiresPreview,
-                        previewSent: p.requiresPreview ? undefined : p.previewSent,
-                        // Al activarlo, ya arranca con un plazo por defecto (5d antes de la
-                        // entrega) en vez de forzar a configurarlo a mano cada vez — se puede
-                        // seguir editando igual desde el pill de abajo.
-                        previewDaysBefore: !p.requiresPreview && p.previewDaysBefore == null ? DIAS_ADELANTO_SUGERIDO : p.previewDaysBefore,
-                    })}
-                    title={p.requiresPreview ? "El cliente pidió adelanto de fotos — tocar para quitarlo" : "Marcar que el cliente pidió un adelanto de fotos antes de la entrega"}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: p.requiresPreview ? C.secondary : C.outlineVariant, padding: "3px", display: "flex" }}
-                >
-                    <Send size={15} fill={p.requiresPreview ? C.secondary : "none"} />
-                </button>
-                <button
-                    onClick={() => updateSporadicProject(p.id, { requiresUsb: !p.requiresUsb, usbDelivered: p.requiresUsb ? undefined : p.usbDelivered })}
-                    title={p.requiresUsb ? "La entrega lleva USB físico — tocar para quitarlo" : "Marcar que la entrega final incluye un USB físico"}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: p.requiresUsb ? C.secondary : C.outlineVariant, padding: "3px", display: "flex" }}
-                >
-                    <Usb size={15} />
-                </button>
-                <button
-                    onClick={() => { setNotaDraft(p.note ?? ''); setEditandoNota(v => !v); }}
-                    title={p.note ? "Tiene una nota — tocar para editarla" : "Dejar una nota (algo que falta, no está claro, etc.)"}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: p.note ? C.ambar : C.outlineVariant, padding: "3px", display: "flex" }}
-                >
-                    <StickyNote size={15} fill={p.note ? "rgba(230,168,23,0.25)" : "none"} />
-                </button>
-                <button
                     onClick={() => updateSporadicProject(p.id, { pinned: !p.pinned })}
                     title={p.pinned ? "Quitar prioridad" : "Marcar como prioritario (sube arriba de su columna)"}
                     style={{ background: "none", border: "none", cursor: "pointer", color: p.pinned ? C.ambar : C.outlineVariant, padding: "3px", display: "flex", transform: p.pinned ? "rotate(0deg)" : "rotate(35deg)" }}
@@ -1560,7 +1535,14 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                 <div style={{ position: "relative" }}>
                     <button onClick={() => setMenuOpen(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "3px", display: "flex" }}><MoreVertical size={16} /></button>
                     {menuOpen && (
-                        <div style={{ position: "absolute", top: "100%", right: 0, zIndex: 5, background: "white", border: `1px solid ${C.outlineVariant}`, borderRadius: "9px", boxShadow: "0 4px 14px rgba(0,0,0,0.1)", overflow: "hidden", minWidth: "160px" }}>
+                        <div style={{ position: "absolute", top: "100%", right: 0, zIndex: 5, background: "white", border: `1px solid ${C.outlineVariant}`, borderRadius: "9px", boxShadow: "0 4px 14px rgba(0,0,0,0.1)", overflow: "hidden", minWidth: "210px" }}>
+                            <button onClick={() => { updateSporadicProject(p.id, {
+                                requiresPreview: !p.requiresPreview,
+                                previewSent: p.requiresPreview ? undefined : p.previewSent,
+                                previewDaysBefore: !p.requiresPreview && p.previewDaysBefore == null ? DIAS_ADELANTO_SUGERIDO : p.previewDaysBefore,
+                            }); setMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 600, textAlign: "left", color: p.requiresPreview ? C.secondary : C.onSurface }}><Send size={13} /> Pide adelanto de fotos{p.requiresPreview && <Check size={13} style={{ marginLeft: "auto" }} />}</button>
+                            <button onClick={() => { updateSporadicProject(p.id, { requiresUsb: !p.requiresUsb, usbDelivered: p.requiresUsb ? undefined : p.usbDelivered }); setMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 600, textAlign: "left", color: p.requiresUsb ? C.secondary : C.onSurface }}><Usb size={13} /> Lleva USB físico{p.requiresUsb && <Check size={13} style={{ marginLeft: "auto" }} />}</button>
+                            <button onClick={() => { setNotaDraft(p.note ?? ''); setEditandoNota(true); setMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 600, textAlign: "left", color: p.note ? C.ambar : C.onSurface }}><StickyNote size={13} /> {p.note ? 'Editar nota' : 'Agregar nota'}</button>
                             {p.status !== 'completado' ? (
                                 <button onClick={() => { updateSporadicProject(p.id, { status: 'completado' }); setNotionEstado('Entregado'); setMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "7px", width: "100%", background: "none", border: "none", padding: "9px 12px", cursor: "pointer", color: C.onSurface, fontSize: "0.78rem", fontWeight: 600, textAlign: "left" }}><CheckCircle2 size={13} /> Marcar completado</button>
                             ) : (
