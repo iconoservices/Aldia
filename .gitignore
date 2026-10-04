@@ -39,3 +39,7 @@ backups/*.json
 # Copias manuales de codigo previas a cambios grandes.
 # El historial de git ya cumple esa funcion, no hace falta duplicarlo en el repo.
 backups/pre-*/
+
+# Copias locales de seguridad (datos personales)
+backups/
+scratchpad-recovered-doc.json
