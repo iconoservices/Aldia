@@ -814,6 +814,11 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                             {item.notionUbicacion && (
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><MapPin size={12} />{item.notionUbicacion}</span>
                             )}
+                            {item.notionEstado && (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 700 }}>
+                                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: ESTADO_COLOR[item.notionEstado] }} />{item.notionEstado}
+                                </span>
+                            )}
                         </div>
                         {(sinFecha || isAtrasada || (!sinFecha && item.notionFechaOriginal && item.notionFechaOriginal !== item.date)) && (
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
@@ -844,7 +849,7 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                 {/* Cobro — siempre visible (no hace falta expandir la tarjeta) para
                     ver de un vistazo cuánto ya pagaron y cuánto falta, con abono directo. */}
                 {item.notionPrecio !== undefined && (
-                    <div onClick={e => e.stopPropagation()} style={{ marginTop: '0.8rem', padding: '0.65rem 0.8rem', background: C.surfaceContainerLow, borderRadius: 12 }}>
+                    <div onClick={e => e.stopPropagation()} style={{ marginTop: '0.7rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                             <div style={{ fontSize: '0.78rem', color: C.onSurfaceVariant, fontWeight: 700 }}>
                                 <span style={{ fontFamily: MONO, color: C.onSurface, fontWeight: 800 }}>{money(item.notionCobrado || 0)}</span>
@@ -858,13 +863,13 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                             {abonandoId !== item.id && (item.notionSaldoPorCobrar ?? 0) > 0 && (
                                 <button
                                     onClick={() => openAbonar(item)}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '5px', background: C.primaryContainer, border: 'none', padding: '5px 12px', borderRadius: 999, cursor: 'pointer', color: C.onPrimaryContainer, fontSize: '0.74rem', fontWeight: 800 }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: C.primary, fontSize: '0.76rem', fontWeight: 800 }}
                                 >
                                     <Wallet size={13} /> Abonar
                                 </button>
                             )}
                         </div>
-                        <div style={{ height: '6px', borderRadius: '999px', background: C.surfaceContainerHigh, overflow: 'hidden', marginTop: '8px' }}>
+                        <div style={{ height: '4px', borderRadius: '999px', background: C.surfaceContainer, overflow: 'hidden', marginTop: '6px' }}>
                             <div style={{
                                 height: '100%',
                                 width: `${item.notionPrecio > 0 ? Math.min(100, ((item.notionCobrado || 0) / item.notionPrecio) * 100) : 0}%`,
@@ -938,8 +943,16 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
 
                 {/* Estado editable — el mismo flujo de 5 pasos que la pestaña Notion, para
                     marcar "aún no he ido" -> Realizado -> ... -> Entregado sin salir de Agenda. */}
-                {item.notionId && (
-                    <div onClick={e => e.stopPropagation()} style={{ marginTop: '0.8rem', display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 3, padding: 3, background: C.surfaceContainerLow, borderRadius: 999 }}>
+                {errorId === item.id && (
+                    <div style={{ fontSize: "0.7rem", color: C.rojo, fontWeight: 700, marginTop: "0.4rem" }}>No se pudo guardar en Notion. Intenta de nuevo.</div>
+                )}
+
+                {isExpanded && (
+                    <div style={{ marginTop: '0.8rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '0.7rem 1rem' }}>
+                        {item.notionId && (
+                            <div style={{ gridColumn: '1 / -1' }}>
+                                <div style={{ ...etiqueta, fontSize: '0.6rem', marginBottom: 6 }}>Estado</div>
+                                <div onClick={e => e.stopPropagation()} style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 3, padding: 3, background: C.surfaceContainerLow, borderRadius: 999 }}>
                         {NOTION_ESTADOS.map(estado => {
                             const active = item.notionEstado === estado;
                             return (
@@ -963,13 +976,8 @@ export const AgendaDashboard = ({ calendarEvents, addCalendarEvent, removeCalend
                             );
                         })}
                     </div>
-                )}
-                {errorId === item.id && (
-                    <div style={{ fontSize: "0.7rem", color: C.rojo, fontWeight: 700, marginTop: "0.4rem" }}>No se pudo guardar en Notion. Intenta de nuevo.</div>
-                )}
-
-                {isExpanded && (
-                    <div style={{ marginTop: '0.8rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '0.7rem 1rem' }}>
+                            </div>
+                        )}
                         {item.notionProyecto && <Dato icono={<Briefcase size={14} />} titulo="Proyecto" valor={item.notionProyecto} />}
                         {item.notionUbicacion && <Dato icono={<MapPin size={14} />} titulo="Ubicación" valor={item.notionUbicacion} />}
                         {item.notionCelular && (
