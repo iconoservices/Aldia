@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RefreshCw, Plus, Trash2, ChevronDown, Loader2, ExternalLink, X, History, CalendarClock, AlertTriangle, Wallet, ListTodo, Check, Info, Pencil } from "lucide-react";
 import type { CalendarEvent, UserPreferences, NotionEstado, Note } from "../../hooks/useAlDiaState";
 import { NOTION_ESTADOS } from "../../hooks/useAlDiaState";
@@ -204,35 +204,68 @@ const parsearHora = (texto: string, previa: string): string | null => {
 };
 
 const CampoHora = ({ value, onChange, movil }: { value: string; onChange: (v: string) => void; movil: boolean }) => {
-    const id = useId();
     const actual = value || '09:00';
+    const inputRef = useRef<HTMLInputElement>(null);
+    const listaRef = useRef<HTMLDivElement>(null);
     const [borrador, setBorrador] = useState<string | null>(null);
+    const [pos, setPos] = useState<{ left: number; width: number; top?: number; bottom?: number } | null>(null);
+
+    const abrir = () => {
+        const r = inputRef.current?.getBoundingClientRect();
+        if (!r) return;
+        const ancho = Math.max(r.width, 120);
+        const abajo = window.innerHeight - r.bottom;
+        setPos(abajo < 250 && r.top > abajo
+            ? { left: r.left, width: ancho, bottom: window.innerHeight - r.top + 4 }
+            : { left: r.left, width: ancho, top: r.bottom + 4 });
+    };
+    const cerrar = () => { setPos(null); setBorrador(null); };
     const confirmar = (texto: string) => {
         const t = parsearHora(texto, actual);
         if (t) onChange(t);
-        setBorrador(null);
+        cerrar();
     };
+
+    // Al abrir la lista, deja a la vista la hora actual.
+    useEffect(() => {
+        if (pos) listaRef.current?.querySelector('[data-actual="1"]')?.scrollIntoView({ block: 'center' });
+    }, [pos !== null]);
+
+    const opciones = OPCIONES_HORA.includes(actual) ? OPCIONES_HORA : [...OPCIONES_HORA, actual].sort();
     return (
         <>
             <input
-                list={id}
+                ref={inputRef}
                 value={borrador ?? hora12corta(actual)}
-                placeholder={hora12corta(actual)}
-                // Al enfocar se vacía para que la lista muestre todas las horas
-                // (el navegador filtra por lo escrito); si no se escribe nada, se conserva la actual.
-                onFocus={() => setBorrador('')}
-                onChange={e => {
-                    setBorrador(e.target.value);
-                    // elegir una opción de la lista confirma al instante
-                    if (OPCIONES_HORA.some(t => hora12corta(t) === e.target.value)) confirmar(e.target.value);
+                onFocus={abrir}
+                onClick={abrir}
+                onChange={e => setBorrador(e.target.value)}
+                onBlur={e => { if (borrador !== null) confirmar(e.target.value); else cerrar(); }}
+                onKeyDown={e => {
+                    if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLInputElement).blur(); }
+                    if (e.key === 'Escape') { e.stopPropagation(); setBorrador(null); (e.target as HTMLInputElement).blur(); }
                 }}
-                onBlur={e => { if (borrador) confirmar(e.target.value); else setBorrador(null); }}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); confirmar((e.target as HTMLInputElement).value); (e.target as HTMLInputElement).blur(); } }}
                 style={{ ...campo(movil), flex: 1, minWidth: 0, textAlign: 'center' }}
             />
-            <datalist id={id}>
-                {OPCIONES_HORA.map(t => <option key={t} value={hora12corta(t)} />)}
-            </datalist>
+            {pos && (
+                <div
+                    ref={listaRef}
+                    // mouseDown con preventDefault: el campo no pierde el foco antes de elegir
+                    onMouseDown={e => e.preventDefault()}
+                    style={{ position: 'fixed', zIndex: 1100, left: pos.left, width: pos.width, top: pos.top, bottom: pos.bottom, maxHeight: 240, overflowY: 'auto', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: RADIO.campo, boxShadow: '0 8px 24px rgba(0,0,0,0.16)', padding: '4px 0' }}
+                >
+                    {opciones.map(t => (
+                        <div
+                            key={t}
+                            data-actual={t === actual ? '1' : undefined}
+                            onClick={() => { onChange(t); cerrar(); inputRef.current?.blur(); }}
+                            style={{ padding: '8px 14px', fontSize: '0.85rem', cursor: 'pointer', textAlign: 'center', background: t === actual ? C.primaryContainer : 'none', color: t === actual ? C.onPrimaryContainer : C.onSurface, fontWeight: t === actual ? 800 : 500 }}
+                        >
+                            {hora12corta(t)}
+                        </div>
+                    ))}
+                </div>
+            )}
         </>
     );
 };
