@@ -1,9 +1,11 @@
 import { useState, Fragment } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { NuevaMetaModal } from './NuevaMetaModal';
+import type { NuevaMeta } from './NuevaMetaModal';
 import type { Goal, GoalHorizon, GoalMilestone, GoalStatus, Project } from '../../hooks/useAlDiaState';
 import {
     C, bento, useIsMobile,
-    paddingPagina, cabecera, tituloPagina, subtituloPagina, campo, botonPrimario, TOQUE_MINIMO,
+    paddingPagina, cabecera, tituloPagina, subtituloPagina, campo, TOQUE_MINIMO,
 } from '../../theme';
 
 interface MetasDashboardProps {
@@ -17,9 +19,6 @@ interface MetasDashboardProps {
     removeGoalMilestone: (goalId: number, milestoneId: number) => void;
 }
 
-const ICONOS = ['🎯', '💰', '🏠', '💻', '🌱', '❤️', '📚', '✈️', '🏆', '🛠️'];
-const COLORES = ['#0FA97A', '#4858ab', '#0E9F6E', '#B9760A', '#C77DFF', '#C63C3C', '#4D96FF', '#06D6A0'];
-const AREAS_SUGERIDAS = ['Negocio', 'Finanzas', 'Salud', 'Personal', 'Aprendizaje', 'Familia'];
 
 const STATUS_INFO: Record<GoalStatus, { label: string; color: string; bg: string }> = {
     'pendiente':    { label: 'Pendiente',    color: C.outline, bg: C.surfaceContainerLow },
@@ -51,24 +50,36 @@ export const MetasDashboard = ({
 }: MetasDashboardProps) => {
     const movil = useIsMobile();
     const [adding, setAdding] = useState(false);
-    const [masOpciones, setMasOpciones] = useState(false);
     const [expandedId, setExpandedId] = useState<number | null>(null);
+    const [seleccionadaId, setSeleccionadaId] = useState<number | null>(null);
+    const seleccionada = goals.find(g => g.id === seleccionadaId) ?? goals[0] ?? null;
     const [nuevaSub, setNuevaSub] = useState<Record<string, string>>({});
-    const [form, setForm] = useState({ title: '', area: '', icon: ICONOS[0], color: COLORES[0], targetDate: '', corto: '', mediano: '', largo: '' });
 
 
-    const resetForm = () => setForm({ title: '', area: '', icon: ICONOS[0], color: COLORES[0], targetDate: '', corto: '', mediano: '', largo: '' });
 
-    const submitGoal = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!form.title.trim()) return;
-        const pasosIniciales: GoalMilestone[] = PLAZOS
-            .filter(pl => form[pl.k].trim())
-            .map((pl, i) => ({ id: Date.now() + i, text: form[pl.k].trim(), completed: false, plazo: pl.k }));
-        addGoal(form.title.trim(), 'mediano', form.area.trim() || 'Personal', form.color, form.icon, form.targetDate || undefined, undefined, pasosIniciales);
-        resetForm();
+    // Props que comparten la tarjeta de la lista y el panel de detalle.
+    const propsMeta = (goal: Goal) => ({
+        goal, projects, movil,
+        nuevaSub,
+        onNuevaSubChange: (plazo: GoalHorizon, txt: string) => setNuevaSub(v => ({ ...v, [`${goal.id}:${plazo}`]: txt })),
+        onAddSub: (plazo: GoalHorizon) => {
+            const texto = (nuevaSub[`${goal.id}:${plazo}`] || '').trim();
+            if (!texto) return;
+            addGoalMilestone(goal.id, texto, plazo);
+            setNuevaSub(v => ({ ...v, [`${goal.id}:${plazo}`]: '' }));
+        },
+        onToggleSub: (mid: number) => toggleGoalMilestone(goal.id, mid),
+        onRemoveSub: (mid: number) => removeGoalMilestone(goal.id, mid),
+        onUpdate: (updates: Partial<Goal>) => updateGoal(goal.id, updates),
+        onCycleStatus: () => updateGoal(goal.id, { status: NEXT_STATUS[goal.status] }),
+        onRemove: () => removeGoal(goal.id),
+    });
+
+    const guardarMeta = (m: NuevaMeta) => {
+        const pasosIniciales: GoalMilestone[] = PLAZOS.flatMap((pl, i) =>
+            m[pl.k].map((texto, j) => ({ id: Date.now() + i * 1000 + j, text: texto, completed: false, plazo: pl.k })));
+        addGoal(m.title, 'mediano', m.area || 'Personal', m.color, m.icon, m.targetDate || undefined, undefined, pasosIniciales);
         setAdding(false);
-        setMasOpciones(false);
     };
 
 
@@ -84,118 +95,13 @@ export const MetasDashboard = ({
             </div>
 
             <div>
-                <section style={{ ...bento, padding: '1.25rem' }}>
+                <section>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.onSurface }}>Mis metas</h3>
                             <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: C.outline }}>Corto, mediano y largo plazo</p>
                         </div>
-                        <button
-                            onClick={() => { setAdding(a => !a); resetForm(); }}
-                            style={{
-                                display: 'flex', alignItems: 'center', gap: '4px',
-                                background: adding ? C.surfaceContainerHigh : C.primary,
-                                color: adding ? C.onSurfaceVariant : '#fff',
-                                border: 'none', borderRadius: '999px', padding: '6px 12px',
-                                fontSize: '0.75rem', fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-                            }}
-                        >
-                            <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>
-                                {adding ? 'close' : 'add'}
-                            </span>
-                            Meta
-                        </button>
                     </div>
-
-                        <AnimatePresence initial={false}>
-                            {adding && (
-                                <motion.form
-                                    initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                                    onSubmit={submitGoal}
-                                    style={{ overflow: 'hidden' }}
-                                >
-                                    <div style={{
-                                        display: 'flex', flexDirection: 'column', gap: '8px', margin: '10px 0 14px',
-                                        padding: '12px', background: C.surfaceContainerLow,
-                                        border: `1.5px dashed ${C.outlineVariant}`, borderRadius: '12px',
-                                    }}>
-                                        <input
-                                            autoFocus
-                                            value={form.title}
-                                            onChange={e => setForm(v => ({ ...v, title: e.target.value }))}
-                                            placeholder="¿Qué quieres lograr?"
-                                            enterKeyHint="done"
-                                            style={{ ...campo(movil), background: C.surfaceLowest }}
-                                        />
-                                        <div style={{ display: 'flex', flexDirection: movil ? 'column' : 'row', gap: '8px' }}>
-                                            {PLAZOS.map(pl => (
-                                                <input
-                                                    key={pl.k}
-                                                    value={form[pl.k]}
-                                                    onChange={e => setForm(v => ({ ...v, [pl.k]: e.target.value }))}
-                                                    placeholder={`${pl.titulo} (${pl.sub})`}
-                                                    enterKeyHint="done"
-                                                    style={{ ...campo(movil), background: C.surfaceLowest, flex: 1, minWidth: 0 }}
-                                                />
-                                            ))}
-                                        </div>
-                                        {masOpciones && (<>
-                                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                            <input
-                                                value={form.area}
-                                                onChange={e => setForm(v => ({ ...v, area: e.target.value }))}
-                                                placeholder="Área (ej. Salud)"
-                                                list="areas-metas"
-                                                style={{ ...campo(movil), background: C.surfaceLowest, flex: '1 1 130px' }}
-                                            />
-                                            <datalist id="areas-metas">
-                                                {AREAS_SUGERIDAS.map(a => <option key={a} value={a} />)}
-                                            </datalist>
-                                            <input
-                                                type="date"
-                                                value={form.targetDate}
-                                                onChange={e => setForm(v => ({ ...v, targetDate: e.target.value }))}
-                                                style={{ ...campo(movil), background: C.surfaceLowest, flex: '1 1 140px' }}
-                                            />
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                            {ICONOS.map(ic => (
-                                                <button type="button" key={ic} onClick={() => setForm(v => ({ ...v, icon: ic }))}
-                                                    style={{
-                                                        width: '28px', height: '28px', borderRadius: '8px', cursor: 'pointer',
-                                                        border: form.icon === ic ? `2px solid ${C.primary}` : `1px solid ${C.outlineVariant}`,
-                                                        background: C.surfaceLowest, fontSize: '0.9rem',
-                                                    }}
-                                                >{ic}</button>
-                                            ))}
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                            {COLORES.map(c => (
-                                                <button type="button" key={c} onClick={() => setForm(v => ({ ...v, color: c }))}
-                                                    style={{
-                                                        width: '20px', height: '20px', borderRadius: '50%', cursor: 'pointer', background: c,
-                                                        border: form.color === c ? `2px solid ${C.onSurface}` : '2px solid transparent',
-                                                        padding: 0,
-                                                    }}
-                                                />
-                                            ))}
-                                        </div>
-                                        </>)}
-                                        <button type="button" onClick={() => setMasOpciones(v => !v)} style={{ alignSelf: 'flex-start', background: 'none', border: 'none', color: C.primary, fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', padding: '2px 0', fontFamily: 'inherit' }}>
-                                            {masOpciones ? 'Menos opciones' : 'Más opciones (área, fecha, ícono, color)'}
-                                        </button>
-                                        <button type="submit" disabled={!form.title.trim()} style={{
-                                            ...botonPrimario(movil), alignSelf: 'flex-start',
-                                            background: form.title.trim() ? C.primary : C.surfaceContainerHigh,
-                                            color: form.title.trim() ? '#fff' : C.onSurfaceVariant,
-                                            cursor: form.title.trim() ? 'pointer' : 'default',
-                                        }}>
-                                            Guardar meta
-                                        </button>
-                                    </div>
-                                </motion.form>
-                            )}
-                        </AnimatePresence>
 
                         {goals.length === 0 && !adding && (
                             <div style={{ padding: '2rem 1rem', textAlign: 'center', color: C.onSurfaceVariant }}>
@@ -206,35 +112,49 @@ export const MetasDashboard = ({
                             </div>
                         )}
 
-                        <div style={{ display: 'grid', gridTemplateColumns: movil ? '1fr' : 'repeat(auto-fill, minmax(340px, 1fr))', gap: '12px', alignItems: 'start' }}>
-                        <AnimatePresence initial={false}>
-                            {goals.map(goal => (
-                                <TarjetaMeta
-                                    key={goal.id}
-                                    goal={goal}
-                                    projects={projects}
-                                    movil={movil}
-                                    expandido={expandedId === goal.id}
-                                    onToggleExpand={() => setExpandedId(expandedId === goal.id ? null : goal.id)}
-                                    onCycleStatus={() => updateGoal(goal.id, { status: NEXT_STATUS[goal.status] })}
-                                    onRemove={() => removeGoal(goal.id)}
-                                    onUpdate={updates => updateGoal(goal.id, updates)}
-                                    nuevaSub={nuevaSub}
-                                    onNuevaSubChange={(plazo, txt) => setNuevaSub(v => ({ ...v, [`${goal.id}:${plazo}`]: txt }))}
-                                    onAddSub={plazo => {
-                                        const texto = (nuevaSub[`${goal.id}:${plazo}`] || '').trim();
-                                        if (!texto) return;
-                                        addGoalMilestone(goal.id, texto, plazo);
-                                        setNuevaSub(v => ({ ...v, [`${goal.id}:${plazo}`]: '' }));
+                        <div style={{ display: 'grid', gridTemplateColumns: movil || goals.length === 0 ? '1fr' : 'minmax(280px, 360px) 1fr', gap: '16px', alignItems: 'start' }}>
+                            <div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    <AnimatePresence initial={false}>
+                                        {goals.map(goal => (
+                                            <TarjetaMeta
+                                                key={goal.id}
+                                                {...propsMeta(goal)}
+                                                expandido={expandedId === goal.id}
+                                                modoLista={!movil}
+                                                seleccionada={!movil && seleccionada?.id === goal.id}
+                                                onToggleExpand={() => movil
+                                                    ? setExpandedId(expandedId === goal.id ? null : goal.id)
+                                                    : setSeleccionadaId(goal.id)}
+                                            />
+                                        ))}
+                                    </AnimatePresence>
+                                </div>
+                                <button
+                                    onClick={() => setAdding(true)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', minHeight: '52px', width: '100%', marginTop: goals.length ? '10px' : 0,
+                                        background: 'transparent', border: `2px dashed ${C.outlineVariant}`, borderRadius: '12px',
+                                        color: C.onSurfaceVariant, fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', fontFamily: 'inherit',
                                     }}
-                                    onToggleSub={mid => toggleGoalMilestone(goal.id, mid)}
-                                    onRemoveSub={mid => removeGoalMilestone(goal.id, mid)}
-                                />
-                            ))}
-                        </AnimatePresence>
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>add</span> Nueva meta
+                                </button>
+                            </div>
+
+                            {!movil && seleccionada && (
+                                <div style={{ ...bento, padding: '16px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                                        <span style={{ fontSize: '1.5rem' }}>{seleccionada.icon}</span>
+                                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: C.onSurface }}>{seleccionada.title}</h3>
+                                    </div>
+                                    <CuerpoMeta {...propsMeta(seleccionada)} />
+                                </div>
+                            )}
                         </div>
                 </section>
             </div>
+            <NuevaMetaModal open={adding} movil={movil} onClose={() => setAdding(false)} onSave={guardarMeta} />
         </div>
     );
 };
@@ -253,13 +173,16 @@ interface TarjetaMetaProps {
     onAddSub: (plazo: GoalHorizon) => void;
     onToggleSub: (milestoneId: number) => void;
     onRemoveSub: (milestoneId: number) => void;
+    modoLista?: boolean;      // escritorio: la tarjeta solo se selecciona, el detalle va a la derecha
+    seleccionada?: boolean;
 }
 
 const TarjetaMeta = ({
     goal, projects, movil, expandido, onToggleExpand, onCycleStatus, onRemove, onUpdate,
-    nuevaSub, onNuevaSubChange, onAddSub, onToggleSub, onRemoveSub,
+    nuevaSub, onNuevaSubChange, onAddSub, onToggleSub, onRemoveSub, modoLista = false, seleccionada = false,
 }: TarjetaMetaProps) => {
     const [editando, setEditando] = useState(false);
+    const [menu, setMenu] = useState(false);
     const [titulo, setTitulo] = useState(goal.title);
 
     const proyecto = projects.find(p => p.id === goal.projectId);
@@ -282,10 +205,10 @@ const TarjetaMeta = ({
             layout
             initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}
             style={{
-                gridColumn: expandido ? '1 / -1' : undefined,
-                borderRadius: '12px', overflow: 'hidden',
-                border: `1px solid ${C.outlineVariant}`,
-                background: goal.status === 'completado' ? 'rgba(16,185,129,0.04)' : C.surfaceContainerLow,
+                gridColumn: expandido && !modoLista ? '1 / -1' : undefined,
+                borderRadius: '12px',
+                border: seleccionada ? `2px solid ${goal.color}` : `1px solid ${C.outlineVariant}`,
+                background: seleccionada ? C.surfaceLowest : goal.status === 'completado' ? 'rgba(16,185,129,0.04)' : C.surfaceContainerLow,
             }}
         >
             <div style={{ padding: '10px 12px', cursor: 'pointer' }} onClick={() => !editando && onToggleExpand()}>
@@ -356,50 +279,67 @@ const TarjetaMeta = ({
                             </div>
                         )}
                     </div>
-                    <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
-                        <button onClick={e => { e.stopPropagation(); setEditando(true); }} title="Editar título" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, padding: '2px', display: 'flex' }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>edit</span>
+                    <div style={{ position: 'relative', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setMenu(m => !m)} title="Opciones" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>more_vert</span>
                         </button>
-                        <button onClick={e => { e.stopPropagation(); onRemove(); }} title="Eliminar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, padding: '2px', display: 'flex' }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>close</span>
-                        </button>
+                        {menu && (
+                            <>
+                                <div onClick={() => setMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 20 }} />
+                                <div style={{ position: 'absolute', right: 0, top: '34px', zIndex: 21, minWidth: '150px', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px' }}>
+                                    <button onClick={() => { setMenu(false); setEditando(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 12px', background: 'none', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: C.onSurface, fontFamily: 'inherit' }}>
+                                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span> Editar título
+                                    </button>
+                                    <button onClick={() => { setMenu(false); onRemove(); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 12px', background: 'none', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: C.rojo, fontFamily: 'inherit' }}>
+                                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete</span> Eliminar
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
 
             <AnimatePresence>
-                {expandido && (
+                {expandido && !modoLista && (
                     <motion.div
                         initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                         style={{ overflow: 'hidden' }}
                     >
-                        <div style={{ padding: '0 12px 12px', borderTop: `1px solid ${C.outlineVariant}`, paddingTop: '10px' }} onClick={e => e.stopPropagation()}>
-                            <textarea
-                                value={goal.description || ''}
-                                onChange={e => onUpdate({ description: e.target.value })}
-                                placeholder="Notas / plan..."
-                                rows={2}
-                                style={{ ...campo(movil), width: '100%', resize: 'vertical', marginBottom: '10px', boxSizing: 'border-box' }}
-                            />
+                        <CuerpoMeta
+                            goal={goal} projects={projects} movil={movil} conBorde
+                            nuevaSub={nuevaSub} onNuevaSubChange={onNuevaSubChange} onAddSub={onAddSub}
+                            onToggleSub={onToggleSub} onRemoveSub={onRemoveSub} onUpdate={onUpdate}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.div>
+    );
+};
 
-                            <div style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.outline, marginBottom: '6px' }}>
-                                Proyecto vinculado
-                            </div>
-                            <select
-                                value={goal.projectId ?? ''}
-                                onChange={e => onUpdate({ projectId: e.target.value ? Number(e.target.value) : undefined })}
-                                style={{ ...campo(movil), width: '100%', marginBottom: '10px', boxSizing: 'border-box' }}
-                            >
-                                <option value="">Ninguno</option>
-                                {projects.filter(p => p.status !== 'completado' || p.id === goal.projectId).map(p => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                            </select>
-                            {pasosProyecto.length > 0 && (
-                                <p style={{ margin: '-4px 0 10px', fontSize: '0.72rem', color: C.outline }}>
-                                    El avance cuenta también los {pasosProyecto.length} pasos del checklist del proyecto.
-                                </p>
-                            )}
+interface CuerpoMetaProps {
+    goal: Goal;
+    projects: Project[];
+    movil: boolean;
+    conBorde?: boolean;
+    nuevaSub: Record<string, string>;
+    onNuevaSubChange: (plazo: GoalHorizon, texto: string) => void;
+    onAddSub: (plazo: GoalHorizon) => void;
+    onToggleSub: (milestoneId: number) => void;
+    onRemoveSub: (milestoneId: number) => void;
+    onUpdate: (updates: Partial<Goal>) => void;
+}
+
+// Contenido de una meta: notas, proyecto vinculado y sus tres plazos con tareas.
+const CuerpoMeta = ({
+    goal, projects, movil, conBorde = false, nuevaSub, onNuevaSubChange, onAddSub, onToggleSub, onRemoveSub, onUpdate,
+}: CuerpoMetaProps) => {
+    const proyecto = projects.find(p => p.id === goal.projectId);
+    const pasosProyecto = proyecto?.checklist ?? [];
+    const [detalles, setDetalles] = useState(false);
+    return (
+                        <div style={{ padding: conBorde ? '10px 12px 12px' : '0', borderTop: conBorde ? `1px solid ${C.outlineVariant}` : 'none' }} onClick={e => e.stopPropagation()}>
 
                             <div style={{ display: 'flex', flexDirection: movil ? 'column' : 'row', alignItems: 'stretch', gap: movil ? '4px' : '0', marginBottom: '10px' }}>
                             {PLAZOS.map((pl, idx) => {
@@ -466,10 +406,42 @@ const TarjetaMeta = ({
                                 );
                             })}
                             </div>
+                            <button
+                                onClick={() => setDetalles(v => !v)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.primary, fontSize: '0.78rem', fontWeight: 700, padding: '2px 0', fontFamily: 'inherit' }}
+                            >
+                                {detalles ? 'Ocultar detalles' : 'Detalles (notas, proyecto vinculado)'}
+                            </button>
+                            {detalles && (
+                                <div style={{ marginTop: '8px' }}>
+                            <textarea
+                                value={goal.description || ''}
+                                onChange={e => onUpdate({ description: e.target.value })}
+                                placeholder="Notas / plan..."
+                                rows={2}
+                                style={{ ...campo(movil), width: '100%', resize: 'vertical', marginBottom: '10px', boxSizing: 'border-box' }}
+                            />
+
+                            <div style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.outline, marginBottom: '6px' }}>
+                                Proyecto vinculado
+                            </div>
+                            <select
+                                value={goal.projectId ?? ''}
+                                onChange={e => onUpdate({ projectId: e.target.value ? Number(e.target.value) : undefined })}
+                                style={{ ...campo(movil), width: '100%', marginBottom: '10px', boxSizing: 'border-box' }}
+                            >
+                                <option value="">Ninguno</option>
+                                {projects.filter(p => p.status !== 'completado' || p.id === goal.projectId).map(p => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                            </select>
+                            {pasosProyecto.length > 0 && (
+                                <p style={{ margin: '-4px 0 10px', fontSize: '0.72rem', color: C.outline }}>
+                                    El avance cuenta también los {pasosProyecto.length} pasos del checklist del proyecto.
+                                </p>
+                            )}
+                                </div>
+                            )}
                         </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </motion.div>
     );
 };
