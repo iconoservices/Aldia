@@ -324,6 +324,11 @@ const TarjetaMeta = ({
                                 <span style={{ fontSize: '0.68rem', color: C.outline, fontWeight: 600 }}>{hechos}/{total}</span>
                             )}
                         </div>
+                        {(['corto', 'mediano', 'largo'] as const).filter(k => goal.plazos?.[k]?.trim()).map(k => (
+                            <div key={k} style={{ fontSize: '0.72rem', color: C.onSurfaceVariant, marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                <b style={{ color: C.outline }}>{k === 'corto' ? 'Corto' : k === 'mediano' ? 'Mediano' : 'Largo'}:</b> {goal.plazos?.[k]}
+                            </div>
+                        ))}
                         {total > 0 && (
                             <div style={{ height: '4px', background: C.surfaceContainerHigh, borderRadius: '999px', marginTop: '8px', overflow: 'hidden' }}>
                                 <div style={{ height: '100%', width: `${progreso}%`, background: goal.color, borderRadius: '999px', transition: 'width 0.25s' }} />
@@ -348,6 +353,20 @@ const TarjetaMeta = ({
                         style={{ overflow: 'hidden' }}
                     >
                         <div style={{ padding: '0 12px 12px', borderTop: `1px solid ${C.outlineVariant}`, paddingTop: '10px' }} onClick={e => e.stopPropagation()}>
+                            {([['corto', 'Corto plazo', 'Este mes…'], ['mediano', 'Mediano plazo', 'Próximos meses…'], ['largo', 'Largo plazo', '1+ años…']] as const).map(([k, titulo, ph]) => (
+                                <div key={k} style={{ marginBottom: '8px' }}>
+                                    <div style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.outline, marginBottom: '4px' }}>
+                                        {titulo}
+                                    </div>
+                                    <textarea
+                                        value={goal.plazos?.[k] || ''}
+                                        onChange={e => onUpdate({ plazos: { ...goal.plazos, [k]: e.target.value } })}
+                                        placeholder={ph}
+                                        rows={2}
+                                        style={{ ...campo(movil), width: '100%', resize: 'vertical', boxSizing: 'border-box' }}
+                                    />
+                                </div>
+                            ))}
                             <textarea
                                 value={goal.description || ''}
                                 onChange={e => onUpdate({ description: e.target.value })}

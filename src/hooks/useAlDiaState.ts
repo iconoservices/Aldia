@@ -486,6 +486,7 @@ export interface Goal {
     targetDate?: string;  // YYYY-MM-DD, para cuándo se quiere lograr
     milestones: GoalMilestone[];
     projectId?: number;   // vínculo opcional a un proyecto existente
+    plazos?: { corto?: string; mediano?: string; largo?: string }; // plan en texto por plazo, dentro de la misma meta
     order: number;
 }
 
