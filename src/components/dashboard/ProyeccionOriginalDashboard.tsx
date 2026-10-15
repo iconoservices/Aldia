@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Plus, Trash2, RotateCcw, FlaskConical, Calculator as CalculatorIcon, Delete } from 'lucide-react';
 import type { FixedExpense, UserPreferences } from '../../hooks/useAlDiaState';
+import { MONO } from '../../theme';
 
 interface Props {
     fixedExpenses: FixedExpense[];
@@ -11,19 +12,31 @@ interface Props {
     updatePreference: (key: keyof UserPreferences, value: any) => void;
 }
 
-const CARD: React.CSSProperties = {
-    background: "#FFFFFF",
-    borderRadius: "16px",
-    padding: "1.5rem",
-    border: "1px solid #DCE7E1",
-    boxShadow: "0px 4px 12px rgba(15,23,42,0.04)",
-};
 const LABEL: React.CSSProperties = {
     fontSize: "0.68rem",
     fontWeight: 800,
     color: "#6C8079",
     textTransform: "uppercase" as const,
     letterSpacing: "0.06em",
+};
+
+// Monto que se edita tocándolo: se selecciona al entrar y se guarda al salir o con Enter.
+const MontoEditable = ({ value, onChange }: { value: number; onChange: (n: number) => void }) => {
+    const [txt, setTxt] = useState<string | null>(null);
+    return (
+        <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontFamily: MONO, fontSize: '0.82rem', fontWeight: 700, color: '#0C2A20', background: txt !== null ? '#FFFFFF' : 'transparent', border: `1px ${txt !== null ? 'solid #0FA97A' : 'dashed #DCE7E1'}`, borderRadius: '8px', padding: '3px 6px', cursor: 'text' }}>
+            <span style={{ color: '#6C8079', fontWeight: 500 }}>S/</span>
+            <input
+                inputMode="decimal"
+                value={txt ?? String(value)}
+                onFocus={e => { setTxt(String(value)); e.target.select(); }}
+                onChange={e => setTxt(e.target.value)}
+                onBlur={() => { const n = parseFloat((txt ?? '').replace(',', '.')); if (!isNaN(n) && n >= 0) onChange(n); setTxt(null); }}
+                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                style={{ width: '70px', textAlign: 'right', border: 'none', outline: 'none', background: 'transparent', fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', color: 'inherit', padding: 0 }}
+            />
+        </label>
+    );
 };
 
 const CALC_KEYS: Array<{ label: string; kind: 'digit' | 'op' | 'dot' | 'clear' | 'back' | 'equals' }> = [
@@ -35,8 +48,9 @@ const CALC_KEYS: Array<{ label: string; kind: 'digit' | 'op' | 'dot' | 'clear' |
 ];
 
 // Calculadora suelta, sin relación con el plan — solo para sacar cuentas al vuelo.
-const MiniCalculator = () => {
+const MiniCalculator = ({ onUsar }: { onUsar: (tipo: 'gasto' | 'ingreso', monto: number) => void }) => {
     const [expr, setExpr] = useState('');
+    const resultado = /^\d+(\.\d+)?$/.test(expr) && Number(expr) > 0 ? Number(expr) : null;
 
     const press = (key: typeof CALC_KEYS[number]) => {
         if (key.kind === 'clear') { setExpr(''); return; }
@@ -56,7 +70,7 @@ const MiniCalculator = () => {
     };
 
     return (
-        <div style={{ ...CARD, width: '260px', flexShrink: 0, alignSelf: 'flex-start' }}>
+        <div style={{ width: '260px', flexShrink: 0, alignSelf: 'flex-start', background: '#F7FAF8', borderRadius: '12px', padding: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
                 <CalculatorIcon size={15} color="#F59E0B" />
                 <span style={LABEL}>Calculadora</span>
@@ -64,6 +78,12 @@ const MiniCalculator = () => {
             <div style={{ background: '#F7FAF8', borderRadius: '10px', padding: '10px 12px', marginBottom: '10px', minHeight: '2.4rem', fontSize: '1.3rem', fontWeight: 700, color: '#0C2A20', textAlign: 'right', overflowX: 'auto', whiteSpace: 'nowrap' }}>
                 {expr || '0'}
             </div>
+            {resultado !== null && (
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                    <button onClick={() => onUsar('gasto', resultado)} style={{ flex: 1, padding: '8px 4px', borderRadius: '8px', border: '1px solid #DCE7E1', background: '#FFFFFF', color: '#C63C3C', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer' }}>Usar como gasto</button>
+                    <button onClick={() => onUsar('ingreso', resultado)} style={{ flex: 1, padding: '8px 4px', borderRadius: '8px', border: '1px solid #DCE7E1', background: '#FFFFFF', color: '#0E9F6E', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer' }}>Usar como ingreso</button>
+                </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
                 {CALC_KEYS.map((k, i) => (
                     <button key={i} onClick={() => press(k)} style={{
@@ -173,7 +193,7 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
         <div style={{ paddingBottom: '5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
 
             {/* ── Plan del mes: tu propio plan, con tus datos — no toca nada real ── */}
-            <div style={{ ...CARD, borderLeft: "4px solid #F59E0B", flex: '1 1 480px', minWidth: 0 }}>
+            <div style={{ flex: '1 1 480px', minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem", flexWrap: "wrap", gap: "8px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                         <FlaskConical size={15} color="#F59E0B" />
@@ -183,24 +203,31 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                         <RotateCcw size={12} /> Reiniciar
                     </button>
                 </div>
-                <p style={{ margin: "0 0 1rem", fontSize: "0.72rem", color: "#6C8079" }}>
+                <p style={{ margin: "0 0 0.6rem", fontSize: "0.72rem", color: "#6C8079" }}>
                     Se guarda solo, no toca tus gastos/ingresos fijos reales. Sumá, borrá o destildá cosas acá para probar "¿y si...?".
                 </p>
 
-                <div style={{ background: simQueda < 0 ? "rgba(239,68,68,0.06)" : "rgba(16,185,129,0.06)", borderRadius: "12px", padding: "1rem 1.1rem", marginBottom: "1.1rem" }}>
+                <div style={{ padding: "0", marginBottom: "0.8rem" }}>
                     <span style={{ ...LABEL, color: simQueda < 0 ? "#C63C3C" : "#0E9F6E" }}>Te quedaría</span>
-                    <div style={{ fontSize: "2rem", fontWeight: 900, color: simQueda < 0 ? "#C63C3C" : "#0C2A20", lineHeight: 1, margin: "4px 0 8px" }}>
+                    <div style={{ fontFamily: MONO, fontSize: "2rem", fontWeight: 900, color: simQueda < 0 ? "#C63C3C" : "#0C2A20", lineHeight: 1, margin: "4px 0 8px" }}>
                         {simQueda < 0 ? "−" : ""}{money(Math.abs(simQueda))}
                     </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px", fontSize: "0.72rem", color: "#6C8079" }}>
-                        {plan.usarSaldo && <span>Saldo: <b style={{ color: "#0C2A20" }}>{money(currentBalance)}</b></span>}
-                        <span>Ingresos: <b style={{ color: "#0C2A20" }}>+{money(simIngresoPrevisto)}</b></span>
-                        <span>Gastos: <b style={{ color: "#0C2A20" }}>−{money(simFijosTotal)}</b></span>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: "8px" }}>
+                        {([
+                            plan.usarSaldo ? { t: 'Saldo', v: money(currentBalance), c: '#0C2A20' } : null,
+                            { t: 'Ingresos', v: `+${money(simIngresoPrevisto)}`, c: '#0E9F6E' },
+                            { t: 'Gastos', v: `−${money(simFijosTotal)}`, c: '#C63C3C' },
+                        ].filter(Boolean) as { t: string; v: string; c: string }[]).map(x => (
+                            <div key={x.t}>
+                                <div style={{ fontSize: "0.62rem", fontWeight: 700, color: "#6C8079", textTransform: "uppercase", letterSpacing: "0.06em" }}>{x.t}</div>
+                                <div style={{ fontFamily: MONO, fontSize: "0.95rem", fontWeight: 800, color: x.c }}>{x.v}</div>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
                 {/* Qué se aplica a la proyección */}
-                <div style={{ marginBottom: "1.1rem" }}>
+                <div style={{ marginBottom: "0.8rem" }}>
                     <span style={{ ...LABEL, display: "block", marginBottom: "6px" }}>Qué aplicar a la proyección</span>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                         {([
@@ -218,7 +245,7 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                 </div>
 
                 {hayCustom && (
-                    <div style={{ background: "rgba(245,158,11,0.08)", borderRadius: "12px", padding: "0.8rem 1.1rem", marginBottom: "1.1rem" }}>
+                    <div style={{ padding: "0", marginBottom: "0.8rem" }}>
                         <span style={{ ...LABEL, color: "#B45309" }}>Resultado de solo lo que agregaste vos</span>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px", fontSize: "0.78rem", color: "#6C8079", marginTop: "4px" }}>
                             <span>Ingresos: <b style={{ color: "#0E9F6E" }}>+{money(customIngresos)}</b></span>
@@ -228,7 +255,7 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                     </div>
                 )}
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.25rem" }}>
 
                     {/* Gastos fijos simulados */}
                     <div>
@@ -244,10 +271,10 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                         {plan.fixedExpenses.length === 0 && <p style={{ fontSize: "0.72rem", color: "#6C8079", margin: 0 }}>Sin gastos fijos activos.</p>}
                         {plan.fixedExpenses.map(f => {
                             return (
-                                <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 9px", marginBottom: "4px", borderRadius: "8px", background: "#F7FAF8", opacity: f.excluido ? 0.4 : 1 }}>
+                                <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 2px", borderBottom: "1px solid #EDF3F0", opacity: f.excluido ? 0.4 : 1 }}>
                                     <input type="checkbox" checked={!f.excluido} title="Contar en la proyección" onChange={e => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, excluido: !e.target.checked } : x) })} style={{ accentColor: "#0FA97A", flexShrink: 0 }} />
                                     <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0C2A20", textDecoration: f.excluido ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.text}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
-                                    <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0C2A20" }}>{money(f.amount)}</span>
+                                    <MontoEditable value={f.amount} onChange={n => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, amount: n } : x) })} />
                                     <button onClick={() => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.filter(x => x.id !== f.id) })} style={{ background: "none", border: "none", color: "#6C8079", cursor: "pointer", display: "flex", flexShrink: 0 }}><Trash2 size={13} /></button>
                                 </div>
                             );
@@ -259,18 +286,18 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                             savePlan({ ...plan, fixedExpenses: [...plan.fixedExpenses, { id: Date.now(), text: nuevoGasto.text.trim(), amount: monto, active: true, custom: true }] });
                             setNuevoGasto({ text: "", amount: "", cantidad: "" });
                         }} style={{ display: "flex", gap: "6px", marginTop: "6px", flexWrap: "wrap", alignItems: "center" }}>
-                            <input value={nuevoGasto.text} onChange={e => setNuevoGasto(v => ({ ...v, text: e.target.value }))} placeholder="Nuevo gasto fijo…" style={{ flex: 1, minWidth: 0, padding: "6px 8px", borderRadius: "7px", border: "1px solid #DCE7E1", fontSize: "0.78rem", outline: "none" }} />
+                            <input value={nuevoGasto.text} onChange={e => setNuevoGasto(v => ({ ...v, text: e.target.value }))} placeholder="Nuevo gasto fijo…" style={{ flex: 1, minWidth: 0, padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
                             {usarCantidadGasto ? (
                                 <>
-                                    <input value={nuevoGasto.cantidad} onChange={e => setNuevoGasto(v => ({ ...v, cantidad: e.target.value }))} type="number" placeholder="Cant." style={{ width: "55px", padding: "6px 8px", borderRadius: "7px", border: "1px solid #DCE7E1", fontSize: "0.78rem", outline: "none" }} />
+                                    <input value={nuevoGasto.cantidad} onChange={e => setNuevoGasto(v => ({ ...v, cantidad: e.target.value }))} type="number" placeholder="Cant." style={{ width: "70px", padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
                                     <span style={{ fontSize: "0.72rem", color: "#6C8079" }}>×</span>
-                                    <input value={nuevoGasto.amount} onChange={e => setNuevoGasto(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="S/ c/u" style={{ width: "65px", padding: "6px 8px", borderRadius: "7px", border: "1px solid #DCE7E1", fontSize: "0.78rem", outline: "none" }} />
+                                    <input value={nuevoGasto.amount} onChange={e => setNuevoGasto(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="S/ c/u" style={{ width: "90px", padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
                                     <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#0C2A20" }}>= {money(nuevoGastoTotal)}</span>
                                 </>
                             ) : (
-                                <input value={nuevoGasto.amount} onChange={e => setNuevoGasto(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="S/" style={{ width: "70px", padding: "6px 8px", borderRadius: "7px", border: "1px solid #DCE7E1", fontSize: "0.78rem", outline: "none" }} />
+                                <input value={nuevoGasto.amount} onChange={e => setNuevoGasto(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="Monto" inputMode="decimal" style={{ width: "100px", padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
                             )}
-                            <button type="submit" style={{ background: "#F59E0B", color: "#fff", border: "none", borderRadius: "7px", padding: "0 10px", cursor: "pointer", display: "flex", alignItems: "center", flexShrink: 0 }}><Plus size={14} /></button>
+                            <button type="submit" style={{ background: "#F59E0B", color: "#fff", border: "none", borderRadius: "10px", padding: "0 16px", minHeight: "44px", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", flexShrink: 0, fontSize: "0.8rem", fontWeight: 800 }}><Plus size={16} /> Agregar</button>
                         </form>
                     </div>
 
@@ -288,10 +315,10 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                         {plan.fixedIncomes.length === 0 && <p style={{ fontSize: "0.72rem", color: "#6C8079", margin: 0 }}>Sin ingresos fijos activos.</p>}
                         {plan.fixedIncomes.map(f => {
                             return (
-                                <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 9px", marginBottom: "4px", borderRadius: "8px", background: "#F7FAF8", opacity: f.excluido ? 0.4 : 1 }}>
+                                <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 2px", borderBottom: "1px solid #EDF3F0", opacity: f.excluido ? 0.4 : 1 }}>
                                     <input type="checkbox" checked={!f.excluido} title="Contar en la proyección" onChange={e => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, excluido: !e.target.checked } : x) })} style={{ accentColor: "#0FA97A", flexShrink: 0 }} />
                                     <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0C2A20", textDecoration: f.excluido ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
-                                    <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0C2A20" }}>{money(f.amount)}</span>
+                                    <MontoEditable value={f.amount} onChange={n => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, amount: n } : x) })} />
                                     <button onClick={() => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.filter(x => x.id !== f.id) })} style={{ background: "none", border: "none", color: "#6C8079", cursor: "pointer", display: "flex", flexShrink: 0 }}><Trash2 size={13} /></button>
                                 </div>
                             );
@@ -303,24 +330,27 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                             savePlan({ ...plan, fixedIncomes: [...plan.fixedIncomes, { id: Date.now(), name: nuevoIngresoFijo.name.trim(), amount: monto, active: true, custom: true }] });
                             setNuevoIngresoFijo({ name: "", amount: "", cantidad: "" });
                         }} style={{ display: "flex", gap: "6px", marginTop: "6px", flexWrap: "wrap", alignItems: "center" }}>
-                            <input value={nuevoIngresoFijo.name} onChange={e => setNuevoIngresoFijo(v => ({ ...v, name: e.target.value }))} placeholder="Nuevo ingreso fijo…" style={{ flex: 1, minWidth: 0, padding: "6px 8px", borderRadius: "7px", border: "1px solid #DCE7E1", fontSize: "0.78rem", outline: "none" }} />
+                            <input value={nuevoIngresoFijo.name} onChange={e => setNuevoIngresoFijo(v => ({ ...v, name: e.target.value }))} placeholder="Nuevo ingreso fijo…" style={{ flex: 1, minWidth: 0, padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
                             {usarCantidadIngreso ? (
                                 <>
-                                    <input value={nuevoIngresoFijo.cantidad} onChange={e => setNuevoIngresoFijo(v => ({ ...v, cantidad: e.target.value }))} type="number" placeholder="Cant." style={{ width: "55px", padding: "6px 8px", borderRadius: "7px", border: "1px solid #DCE7E1", fontSize: "0.78rem", outline: "none" }} />
+                                    <input value={nuevoIngresoFijo.cantidad} onChange={e => setNuevoIngresoFijo(v => ({ ...v, cantidad: e.target.value }))} type="number" placeholder="Cant." style={{ width: "70px", padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
                                     <span style={{ fontSize: "0.72rem", color: "#6C8079" }}>×</span>
-                                    <input value={nuevoIngresoFijo.amount} onChange={e => setNuevoIngresoFijo(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="S/ c/u" style={{ width: "65px", padding: "6px 8px", borderRadius: "7px", border: "1px solid #DCE7E1", fontSize: "0.78rem", outline: "none" }} />
+                                    <input value={nuevoIngresoFijo.amount} onChange={e => setNuevoIngresoFijo(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="S/ c/u" style={{ width: "90px", padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
                                     <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#0C2A20" }}>= {money(nuevoIngresoTotal)}</span>
                                 </>
                             ) : (
-                                <input value={nuevoIngresoFijo.amount} onChange={e => setNuevoIngresoFijo(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="S/" style={{ width: "70px", padding: "6px 8px", borderRadius: "7px", border: "1px solid #DCE7E1", fontSize: "0.78rem", outline: "none" }} />
+                                <input value={nuevoIngresoFijo.amount} onChange={e => setNuevoIngresoFijo(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="Monto" inputMode="decimal" style={{ width: "100px", padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
                             )}
-                            <button type="submit" style={{ background: "#F59E0B", color: "#fff", border: "none", borderRadius: "7px", padding: "0 10px", cursor: "pointer", display: "flex", alignItems: "center", flexShrink: 0 }}><Plus size={14} /></button>
+                            <button type="submit" style={{ background: "#F59E0B", color: "#fff", border: "none", borderRadius: "10px", padding: "0 16px", minHeight: "44px", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", flexShrink: 0, fontSize: "0.8rem", fontWeight: 800 }}><Plus size={16} /> Agregar</button>
                         </form>
                     </div>
                 </div>
             </div>
 
-            <MiniCalculator />
+            <MiniCalculator onUsar={(tipo, n) => {
+                if (tipo === 'gasto') { setUsarCantidadGasto(false); setNuevoGasto(v => ({ ...v, amount: String(n) })); }
+                else { setUsarCantidadIngreso(false); setNuevoIngresoFijo(v => ({ ...v, amount: String(n) })); }
+            }} />
 
         </div>
     );
