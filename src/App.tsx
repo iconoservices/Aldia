@@ -20,7 +20,7 @@ import { ActionBanner } from './components/dashboard/ActionBanner';
 // toda la página (el selector se queda quieto, solo cambia el contenido).
 const GRUPOS_VISTA: string[][] = [
   ['Listas', 'Quiero hacer', 'Bandeja'],
-  ['Agenda', 'Calendario', 'Entregas'],
+  ['Resumen', 'Agenda', 'Calendario', 'Entregas'],
   ['Vida', 'Comidas', 'Bienestar'],
   ['Tareas', 'Pendientes'],
   ['Metas', 'Proyectos', 'Compras'],
@@ -59,6 +59,7 @@ const MovimientosDashboard = named(() => import('./components/dashboard/Movimien
 const ListasDashboard = named(() => import('./components/dashboard/ListasDashboard'), 'ListasDashboard');
 const PendientesDashboard = named(() => import('./components/dashboard/PendientesDashboard'), 'PendientesDashboard');
 const BandejaDashboard = named(() => import('./components/dashboard/BandejaDashboard'), 'BandejaDashboard');
+const ResumenAgendaDashboard = named(() => import('./components/dashboard/ResumenAgendaDashboard'), 'ResumenAgendaDashboard');
 const QuieroHacerDashboard = named(() => import('./components/dashboard/QuieroHacerDashboard'), 'QuieroHacerDashboard');
 const ComprasDashboard = named(() => import('./components/dashboard/ComprasDashboard'), 'ComprasDashboard');
 const ComidasDashboard = named(() => import('./components/dashboard/ComidasDashboard'), 'ComidasDashboard');
@@ -88,6 +89,7 @@ function App() {
     if (path.includes('/movimientos')) return 'Movimientos';
     if (path.includes('/listas')) return 'Listas';
     if (path.includes('/pendientes')) return 'Pendientes';
+    if (path.includes('/resumen')) return 'Resumen';
     if (path.includes('/bandeja')) return 'Bandeja';
     if (path.includes('/quiero')) return 'Quiero hacer';
     if (path.includes('/compras')) return 'Compras';
@@ -159,6 +161,7 @@ function App() {
       else if (path.includes('/movimientos')) setActiveTab('Movimientos');
       else if (path.includes('/listas')) setActiveTab('Listas');
       else if (path.includes('/pendientes')) setActiveTab('Pendientes');
+      else if (path.includes('/resumen')) setActiveTab('Resumen');
       else if (path.includes('/bandeja')) setActiveTab('Bandeja');
       else if (path.includes('/quiero')) setActiveTab('Quiero hacer');
       else if (path.includes('/compras')) setActiveTab('Compras');
@@ -639,6 +642,12 @@ function App() {
               <NotionDashboard
                 calendarEvents={state.agenda}
                 updateCalendarEvent={state.updateCalendarEvent}
+              />
+            ) : activeTab === 'Resumen' ? (
+              <ResumenAgendaDashboard
+                calendarEvents={state.agenda}
+                sporadicProjects={state.sporadicProjects}
+                setActiveTab={setActiveTab}
               />
             ) : activeTab === 'Agenda' ? (
               <AgendaDashboard

@@ -56,7 +56,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Mi Día', tab: 'Checklist', icon: 'task_alt' },
         { label: 'Tareas', tab: 'Tareas', icon: 'alarm_on' },
         { label: 'Bandeja', tab: 'Bandeja', icon: 'inbox' },
-        { label: 'Agenda', tab: 'Agenda', icon: 'event' },
+        { label: 'Agenda', tab: 'Resumen', icon: 'event' },
         { label: 'Entregas', tab: 'Entregas', icon: 'local_fire_department' },
         { label: 'Calendario', tab: 'Calendario',  icon: 'calendar_today'},
         { label: 'Finanzas',  tab: 'Finanzas',  icon: 'payments'      },
@@ -98,7 +98,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         || (tab === 'Listas' && (activeTab === 'Bandeja' || activeTab === 'Quiero hacer'))
         || (tab === 'Tareas' && activeTab === 'Pendientes')
         || (tab === 'Finanzas' && ['Movimientos', 'Plan', 'Deudas', 'Proyección'].includes(activeTab))
-        || (tab === 'Agenda' && ['Calendario', 'Entregas'].includes(activeTab))
+        || (tab === 'Resumen' && ['Agenda', 'Calendario', 'Entregas'].includes(activeTab))
         || (tab === 'Vida' && ['Comidas', 'Bienestar'].includes(activeTab))
         || (tab === 'Metas' && (activeTab === 'Proyectos' || activeTab === 'Compras'));
 
@@ -180,6 +180,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         switch (tab) {
             case 'Checklist': return 'Mi Día';
             case 'Bandeja': return 'Bandeja';
+            case 'Resumen': return 'Agenda';
             case 'Quiero hacer': return 'Quiero hacer';
             case 'Pendientes': return 'Pendientes';
             case 'Plan': return 'Fijos';
