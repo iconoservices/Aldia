@@ -49,7 +49,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
 
 
     // Pestañas que viven dentro de otra (selector de vistas) y no van en el menú.
-    const OCULTAS = ['Bandeja', 'Pendientes'];
+    const OCULTAS = ['Bandeja', 'Pendientes', 'Proyectos'];
 
     // ── Primary sidebar items ─────────────────────────────────────────
     const PRIMARY_ITEMS = [
@@ -96,7 +96,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     const esActiva = (tab: string) =>
         activeTab === tab
         || (tab === 'Listas' && (activeTab === 'Bandeja' || activeTab === 'Quiero hacer'))
-        || (tab === 'Tareas' && activeTab === 'Pendientes');
+        || (tab === 'Tareas' && activeTab === 'Pendientes')
+        || (tab === 'Metas' && activeTab === 'Proyectos');
 
     // Herramientas: grupo plegado por defecto (se abre solo si estás en una).
     const enHerramienta = SECONDARY_ITEMS.some(i => i.tab === activeTab);

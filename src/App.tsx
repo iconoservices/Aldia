@@ -3,7 +3,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 import { Header } from './components/layout/Header';
-import { VistasListas, VISTAS_PENDIENTES } from './components/ui/VistasListas';
+import { VistasListas, VISTAS_PENDIENTES, VISTAS_METAS } from './components/ui/VistasListas';
 import { useAlDiaState } from './hooks/useAlDiaState';
 import type { Mission, Note } from './hooks/useAlDiaState';
 import { ProfileOverlay } from './components/layout/ProfileOverlay';
@@ -375,15 +375,18 @@ function App() {
                 habits={state.habits}
               />
             ) : activeTab === 'Metas' ? (
-              <MetasDashboard
-                goals={state.goals}
-                addGoal={state.addGoal}
-                updateGoal={state.updateGoal}
-                removeGoal={state.removeGoal}
-                addGoalMilestone={state.addGoalMilestone}
-                toggleGoalMilestone={state.toggleGoalMilestone}
-                removeGoalMilestone={state.removeGoalMilestone}
-              />
+              <>
+                <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_METAS} />
+                <MetasDashboard
+                  goals={state.goals}
+                  addGoal={state.addGoal}
+                  updateGoal={state.updateGoal}
+                  removeGoal={state.removeGoal}
+                  addGoalMilestone={state.addGoalMilestone}
+                  toggleGoalMilestone={state.toggleGoalMilestone}
+                  removeGoalMilestone={state.removeGoalMilestone}
+                />
+              </>
             ) : activeTab === 'Rendimiento' ? (
               <RendimientoDashboard
                 sporadicProjects={state.sporadicProjects}
@@ -558,14 +561,17 @@ function App() {
                 addShoppingItem={state.addShoppingItem}
               />
             ) : activeTab === 'Proyectos' ? (
-              <ProyectosDashboard
-                projects={state.projects}
-                addProject={state.addProject}
-                deleteProject={state.deleteProject}
-                updateProject={state.updateProject}
-                onOpenDetail={(id: number) => setSelectedProjectDetailId(id)}
-                reorderProjects={state.reorderProjects}
-              />
+              <>
+                <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_METAS} />
+                <ProyectosDashboard
+                  projects={state.projects}
+                  addProject={state.addProject}
+                  deleteProject={state.deleteProject}
+                  updateProject={state.updateProject}
+                  onOpenDetail={(id: number) => setSelectedProjectDetailId(id)}
+                  reorderProjects={state.reorderProjects}
+                />
+              </>
             ) : activeTab === 'Entregas' ? (
               <EsporadicosDashboard
                 sporadicProjects={state.sporadicProjects}
