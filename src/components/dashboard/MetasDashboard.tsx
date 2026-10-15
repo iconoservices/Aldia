@@ -51,6 +51,7 @@ export const MetasDashboard = ({
 }: MetasDashboardProps) => {
     const movil = useIsMobile();
     const [adding, setAdding] = useState(false);
+    const [masOpciones, setMasOpciones] = useState(false);
     const [expandedId, setExpandedId] = useState<number | null>(null);
     const [nuevaSub, setNuevaSub] = useState<Record<string, string>>({});
     const [form, setForm] = useState({ title: '', area: '', icon: ICONOS[0], color: COLORES[0], targetDate: '' });
@@ -64,6 +65,7 @@ export const MetasDashboard = ({
         addGoal(form.title.trim(), 'mediano', form.area.trim() || 'Personal', form.color, form.icon, form.targetDate || undefined);
         resetForm();
         setAdding(false);
+        setMasOpciones(false);
     };
 
 
@@ -83,7 +85,7 @@ export const MetasDashboard = ({
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.onSurface }}>Mis metas</h3>
-                            <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: C.outline }}>Cada una con su corto, mediano y largo plazo</p>
+                            <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: C.outline }}>Corto, mediano y largo plazo</p>
                         </div>
                         <button
                             onClick={() => { setAdding(a => !a); resetForm(); }}
@@ -119,8 +121,10 @@ export const MetasDashboard = ({
                                             value={form.title}
                                             onChange={e => setForm(v => ({ ...v, title: e.target.value }))}
                                             placeholder="¿Qué quieres lograr?"
+                                            enterKeyHint="done"
                                             style={{ ...campo(movil), background: C.surfaceLowest }}
                                         />
+                                        {masOpciones && (<>
                                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                             <input
                                                 value={form.area}
@@ -161,6 +165,10 @@ export const MetasDashboard = ({
                                                 />
                                             ))}
                                         </div>
+                                        </>)}
+                                        <button type="button" onClick={() => setMasOpciones(v => !v)} style={{ alignSelf: 'flex-start', background: 'none', border: 'none', color: C.primary, fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', padding: '2px 0', fontFamily: 'inherit' }}>
+                                            {masOpciones ? 'Menos opciones' : 'Más opciones (área, fecha, ícono, color)'}
+                                        </button>
                                         <button type="submit" disabled={!form.title.trim()} style={{
                                             ...botonPrimario(movil), alignSelf: 'flex-start',
                                             background: form.title.trim() ? C.primary : C.surfaceContainerHigh,
