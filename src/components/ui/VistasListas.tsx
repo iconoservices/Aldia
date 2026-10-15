@@ -34,6 +34,12 @@ export const VISTAS_AGENDA = [
     { tab: "Entregas", label: "Entregas" },
 ] as const;
 
+export const VISTAS_VIDA = [
+    { tab: "Vida", label: "Vida" },
+    { tab: "Comidas", label: "Comidas" },
+    { tab: "Bienestar", label: "Bienestar" },
+] as const;
+
 type Vista = { readonly tab: string; readonly label: string };
 
 export const VistasListas = ({ activeTab, setActiveTab, vistas = VISTAS_LISTAS }: { activeTab: string; setActiveTab: (t: string) => void; vistas?: readonly Vista[] }) => (

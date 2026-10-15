@@ -3,7 +3,7 @@ import { useState, useEffect, lazy, Suspense, startTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 import { Header } from './components/layout/Header';
-import { VistasListas, VISTAS_PENDIENTES, VISTAS_METAS, VISTAS_DINERO, VISTAS_AGENDA } from './components/ui/VistasListas';
+import { VistasListas, VISTAS_PENDIENTES, VISTAS_METAS, VISTAS_DINERO, VISTAS_AGENDA, VISTAS_VIDA } from './components/ui/VistasListas';
 import { useAlDiaState } from './hooks/useAlDiaState';
 import type { Mission, Note } from './hooks/useAlDiaState';
 import { ProfileOverlay } from './components/layout/ProfileOverlay';
@@ -21,6 +21,7 @@ import { ActionBanner } from './components/dashboard/ActionBanner';
 const GRUPOS_VISTA: string[][] = [
   ['Listas', 'Quiero hacer', 'Bandeja'],
   ['Agenda', 'Calendario', 'Entregas'],
+  ['Vida', 'Comidas', 'Bienestar'],
   ['Tareas', 'Pendientes'],
   ['Metas', 'Proyectos', 'Compras'],
   ['Finanzas', 'Fijos', 'Plan', 'Deudas', 'Proyección', 'Movimientos'],
@@ -236,6 +237,9 @@ function App() {
             )}
             {VISTAS_AGENDA.some(v => v.tab === activeTab) && (
               <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_AGENDA} />
+            )}
+            {VISTAS_VIDA.some(v => v.tab === activeTab) && (
+              <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_VIDA} />
             )}
             {activeTab === 'Acción' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
