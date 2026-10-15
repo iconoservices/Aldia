@@ -69,6 +69,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Notas',     tab: 'Cerebro',   icon: 'psychology'    },        { label: 'Compras',   tab: 'Compras',   icon: 'shopping_cart' },
         { label: 'Comidas',   tab: 'Comidas',   icon: 'restaurant'    },
         { label: 'Metas',     tab: 'Metas',     icon: 'flag'          },
+        { label: 'Resumen',   tab: 'Rendimiento', icon: 'monitoring'    },
         { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
         { label: 'Notion', tab: 'Notion', icon: 'sync_alt' },
     ];
@@ -85,8 +86,6 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Lienzo',     tab: 'Lienzo',      icon: 'palette'       },
         { label: 'Lienzo Ops', tab: 'Lienzo Ops',  icon: 'dashboard'     },
         { label: 'Negocio',    tab: 'Negocio',      icon: 'storefront'    },
-        { label: 'Rendimiento', tab: 'Rendimiento', icon: 'monitoring'   },
-        { label: 'Datos',      tab: 'Stats',       icon: 'analytics'     },
         { label: 'Bienestar',  tab: 'Bienestar',   icon: 'favorite'      },
     ];
 
@@ -98,7 +97,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                 || (tab === 'Finanzas' && ['Movimientos', 'Plan', 'Deudas', 'Proyección'].includes(activeTab))
         || (tab === 'Resumen' && ['Agenda', 'Calendario', 'Entregas', 'Tareas', 'Pendientes', 'Rutina', 'Horario', 'Vida', 'Bloques'].includes(activeTab))
         || (tab === 'Listas' && ['Comidas', 'Bienestar'].includes(activeTab))
-        || (tab === 'Metas' && (activeTab === 'Proyectos' || activeTab === 'Compras'));
+        || (tab === 'Metas' && (activeTab === 'Proyectos' || activeTab === 'Compras'))
+        || (tab === 'Rendimiento' && activeTab === 'Stats'); // Datos se unió a Resumen
 
     // Herramientas: grupo plegado por defecto (se abre solo si estás en una).
     const enHerramienta = SECONDARY_ITEMS.some(i => i.tab === activeTab);

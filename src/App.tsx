@@ -34,7 +34,6 @@ const named = <M extends Record<string, unknown>, K extends keyof M>(
 const VidaBloquesDashboard = named(() => import('./components/dashboard/VidaBloquesDashboard'), 'VidaBloquesDashboard');
 const CerebroDashboard = named(() => import('./components/dashboard/CerebroDashboard'), 'CerebroDashboard');
 const FinanzasDashboard = named(() => import('./components/dashboard/FinanzasDashboard'), 'FinanzasDashboard');
-const StatsDashboard = named(() => import('./components/dashboard/StatsDashboard'), 'StatsDashboard');
 const ProyectosDashboard = named(() => import('./components/dashboard/ProyectosDashboard'), 'ProyectosDashboard');
 const ProjectDetailView = named(() => import('./components/dashboard/ProjectDetailView'), 'ProjectDetailView');
 const ProjectsKanbanView = named(() => import('./components/dashboard/ProjectsKanbanView'), 'ProjectsKanbanView');
@@ -67,7 +66,7 @@ const NotionDashboard = named(() => import('./components/dashboard/NotionDashboa
 const AgendaDashboard = named(() => import('./components/dashboard/AgendaDashboard'), 'AgendaDashboard');
 const TranqueoDeVidaDashboard = named(() => import('./components/dashboard/TranqueoDeVidaDashboard'), 'TranqueoDeVidaDashboard');
 const MetasDashboard = named(() => import('./components/dashboard/MetasDashboard'), 'MetasDashboard');
-const RendimientoDashboard = named(() => import('./components/dashboard/RendimientoDashboard'), 'RendimientoDashboard');
+const ResumenDashboard = named(() => import('./components/dashboard/ResumenDashboard'), 'ResumenDashboard');
 const TareasDashboard = named(() => import('./components/dashboard/TareasDashboard'), 'TareasDashboard');
 
 function App() {
@@ -457,8 +456,10 @@ function App() {
                   removeGoalMilestone={state.removeGoalMilestone}
                 />
               </>
-            ) : activeTab === 'Rendimiento' ? (
-              <RendimientoDashboard
+            ) : activeTab === 'Rendimiento' || activeTab === 'Stats' ? (
+              <ResumenDashboard
+                dailyBlocks={state.dailyBlocks}
+                missions={state.missions}
                 sporadicProjects={state.sporadicProjects}
                 transactions={state.transactions}
                 dailyCheckins={state.dailyCheckins}
@@ -721,12 +722,6 @@ function App() {
               />
             ) : activeTab === 'Lienzo' ? (
               <LienzoDashboard />
-            ) : activeTab === 'Stats' ? (
-              <StatsDashboard
-                performanceScore={state.performanceScore}
-                missionFocusScore={state.missionFocusScore}
-                completedMissionsCount={state.completedMissionsCount}
-              />
             ) : activeTab === 'Buscador' ? (
               <BuscadorDashboard />
             ) : (
