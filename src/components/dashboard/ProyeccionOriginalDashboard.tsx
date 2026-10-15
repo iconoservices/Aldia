@@ -92,7 +92,7 @@ const MiniCalculator = ({ onUsar, onMinimizar, flotante }: { onUsar: (tipo: 'gas
         }}
         onPointerUp={() => { arrastre.current = null; }}
         style={flotante
-            ? { cursor: 'grab', touchAction: 'none', userSelect: 'none', position: 'fixed', right: movil ? '12px' : '24px', bottom: movil ? '84px' : '24px', zIndex: 900, width: 'min(232px, calc(100vw - 24px))', background: '#FFFFFF', border: '1px solid #DCE7E1', borderRadius: '16px', padding: '10px', boxShadow: '0 12px 40px rgba(15,23,42,0.22)', transform: `translate(${pos.x}px, ${pos.y}px)` }
+            ? { cursor: 'grab', touchAction: 'none', userSelect: 'none', position: 'fixed', right: movil ? '12px' : '24px', bottom: movil ? '84px' : '24px', zIndex: 900, width: movil ? 'calc(100vw - 24px)' : '232px', background: '#FFFFFF', border: '1px solid #DCE7E1', borderRadius: '16px', padding: '10px', boxShadow: '0 12px 40px rgba(15,23,42,0.22)', transform: `translate(${pos.x}px, ${pos.y}px)` }
             : { width: '260px', flexShrink: 0, alignSelf: 'flex-start', background: '#FFFFFF', border: '1px solid #DCE7E1', borderRadius: '16px', padding: '16px', boxShadow: '0px 4px 12px rgba(15,23,42,0.04)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                 <CalculatorIcon size={15} color="#F59E0B" />
@@ -110,11 +110,11 @@ const MiniCalculator = ({ onUsar, onMinimizar, flotante }: { onUsar: (tipo: 'gas
                     <button onClick={() => onUsar('ingreso', resultado)} style={{ flex: 1, padding: '8px 4px', borderRadius: '8px', border: '1px solid #DCE7E1', background: '#FFFFFF', color: '#0E9F6E', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer' }}>Usar como ingreso</button>
                 </div>
             )}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: movil ? '6px' : '4px' }}>
                 {CALC_KEYS.map((k, i) => (
                     <button key={i} onClick={() => press(k)} style={{
                         gridColumn: k.label === '=' ? 'span 2' : undefined,
-                        padding: '7px 0',
+                        padding: movil ? '11px 0' : '7px 0',
                         borderRadius: '8px',
                         border: 'none',
                         cursor: 'pointer',
