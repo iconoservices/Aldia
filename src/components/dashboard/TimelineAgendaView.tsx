@@ -928,11 +928,12 @@ export const TimelineAgendaView = ({
     // Agenda Central (calendario chico + categorías): abierto por defecto en pantalla grande.
     const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 900);
     // Paneles laterales derechos abiertos, en orden de izquierda a derecha. Al
-    // entrar al Calendario arranca con "En orden". "foco" y "cola" ("En orden")
+    // entrar al Calendario arranca todo cerrado: solo Agenda Central queda a la
+    // vista, para dejarle el ancho al Timeline. "foco" y "cola" ("En orden")
     // pueden estar abiertos A LA VEZ, lado a lado (el usuario lo pidió así); el
     // resto (mision/citas/rutinas/tareas/habitos) es de a uno y reemplaza.
     type RightPanel = 'citas' | 'rutinas' | 'tareas' | 'habitos' | 'mision' | 'foco' | 'cola';
-    const [rightPanels, setRightPanels] = useState<RightPanel[]>(['cola']);
+    const [rightPanels, setRightPanels] = useState<RightPanel[]>([]);
     const rightOpen = rightPanels.length > 0;
     const panelAbierto = (m: RightPanel) => rightPanels.includes(m);
     const esPar = (m: RightPanel) => m === 'foco' || m === 'cola';
@@ -1154,15 +1155,69 @@ export const TimelineAgendaView = ({
 
     const dayIdx = (selectedDate.getDay() + 6) % 7; // 0=Lunes, ..., 6=Domingo
     const isActualToday = todayStr === new Date().toLocaleDateString('en-CA');
-    const hours = Array.from({ length: 24 }, (_, i) => i);
+    // Timeline: solo de 6:00 a 24:00, con el alto de hora ajustado para que
+    // el día entero quepa en pantalla sin scroll (mínimo legible 30px/h).
+    const TL_START_H = 6, TL_END_H = 24;
+    const hours = Array.from({ length: TL_END_H - TL_START_H }, (_, i) => TL_START_H + i);
+    const [hourPx, setHourPx] = useState(40);
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (!el || viewMode !== 'timeline') return;
+        const calc = () => {
+            const header = el.querySelector('[data-tl-header]') as HTMLElement | null;
+            const avail = el.clientHeight - (header?.offsetHeight ?? 0) - 2;
+            setHourPx(Math.max(30, Math.floor(avail / (TL_END_H - TL_START_H))));
+        };
+        calc();
+        const ro = new ResizeObserver(calc);
+        ro.observe(el);
+        return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [viewMode]);
+    const pxPerMin = hourPx / 60;
+    // minutos del día → px dentro de la grilla (recortado al rango visible)
+    const tlY = (min: number) => (Math.min(Math.max(min, TL_START_H * 60), TL_END_H * 60) - TL_START_H * 60) * pxPerMin;
+    // Citas que se cruzan van lado a lado: agrupa las que se solapan y reparte
+    // cada grupo en carriles (col de cols) en vez de apilarlas una encima de otra.
+    const layoutLanes = (items: any[]) => {
+        const sorted = [...items].sort((a, b) => a.startMin - b.startMin || b.endMin - a.endMin);
+        const out: { e: any; col: number; cols: number }[] = [];
+        let group: { e: any; col: number; cols: number }[] = [];
+        let laneEnds: number[] = [];
+        let groupEnd = -1;
+        const flush = () => { group.forEach(g => { g.cols = laneEnds.length; }); out.push(...group); group = []; laneEnds = []; };
+        sorted.forEach(e => {
+            const end = Math.max(e.endMin, e.startMin + 30);
+            if (group.length && e.startMin >= groupEnd) flush();
+            let col = laneEnds.findIndex(le => le <= e.startMin);
+            if (col === -1) { col = laneEnds.length; laneEnds.push(end); } else laneEnds[col] = end;
+            group.push({ e, col, cols: 1 });
+            groupEnd = Math.max(groupEnd, end);
+        });
+        flush();
+        return out;
+    };
 
+    // Hora actual para la línea roja: se refresca cada minuto (alineado al
+    // cambio de minuto) para que la línea baje sola sin recargar.
+    const [currentTime, setCurrentTime] = useState(() => new Date());
+    useEffect(() => {
+        let iv: ReturnType<typeof setInterval> | undefined;
+        const t = setTimeout(() => {
+            setCurrentTime(new Date());
+            iv = setInterval(() => setCurrentTime(new Date()), 60000);
+        }, 60000 - (Date.now() % 60000));
+        return () => { clearTimeout(t); if (iv) clearInterval(iv); };
+    }, []);
+
+    // Solo en celular: en escritorio el día 6:00–24:00 entra entero y el
+    // horario queda fijo (sin scroll); la que se mueve es la línea roja.
     const scrollToNow = () => {
         const container = scrollRef.current;
-        if (!container) return;
+        if (!container || !isMobile) return;
         const now = new Date();
-        // 60px por hora, offset para centrar la línea roja
-        const targetPx = Math.max(0, (now.getHours() * 60 + now.getMinutes()) - 80);
-        container.scrollTop = targetPx;
+        // offset para centrar la línea roja
+        container.scrollTop = Math.max(0, tlY(now.getHours() * 60 + now.getMinutes()) - 80);
     };
 
     // 1. Auto-scroll al momento actual — dispara en mount y al cambiar de vista
@@ -1833,8 +1888,8 @@ export const TimelineAgendaView = ({
         else addDailyBlock?.(t.block.label, t.block.period || 'Otro', t.date, true, t.block.projectId, t.block.repeatDays);
     };
 
-    const currentTime = new Date();
-    const currentPos = (currentTime.getHours() * 60) + currentTime.getMinutes();
+    const currentMin = (currentTime.getHours() * 60) + currentTime.getMinutes();
+    const currentPos = tlY(currentMin);
 
     const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
     const dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -2115,7 +2170,7 @@ export const TimelineAgendaView = ({
                         const visibleDays = isMobile ? [weekDays[dayIdx]] : weekDays;
                         const gridCols = `52px repeat(${visibleDays.length}, 1fr)`;
                         return (
-                        <div style={{ position: 'relative', minHeight: '1440px', minWidth: isMobile ? undefined : '800px' }}>
+                        <div style={{ position: 'relative', minWidth: isMobile ? undefined : '800px' }}>
                            {(() => {
                                // Chips de entregas del día — van pegados al encabezado (sticky),
                                // NO dentro de la columna de horas, para que no se tapen con la
@@ -2151,7 +2206,7 @@ export const TimelineAgendaView = ({
                                };
                                const anyDels = visibleDays.some((wd: any) => wd?.dels?.length);
                                return !isMobile ? (
-                                   <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.97)', borderBottom: '1px solid #DCE7E1' }}>
+                                   <div data-tl-header style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.97)', borderBottom: '1px solid #DCE7E1' }}>
                                        <div style={{ display: 'grid', gridTemplateColumns: gridCols }}>
                                            <div />
                                            {visibleDays.map(wd => (
@@ -2174,79 +2229,104 @@ export const TimelineAgendaView = ({
                                    </div>
                                ) : (
                                    visibleDays[0]?.dels?.length ? (
-                                       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.97)', borderBottom: '1px solid #DCE7E1', padding: '4px 6px' }}>
+                                       <div data-tl-header style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.97)', borderBottom: '1px solid #DCE7E1', padding: '4px 6px' }}>
                                            {renderDels(visibleDays[0])}
                                        </div>
                                    ) : null
                                );
                            })()}
                            <div style={{ flex: 1, position: 'relative', display: 'grid', gridTemplateColumns: gridCols }}>
-                               {visibleDays.some(w => w?.isToday) && (
+                               {visibleDays.some(w => w?.isToday) && currentMin >= TL_START_H * 60 && (
                                    <div style={{ position: 'absolute', top: currentPos, left: 52, right: 0, height: '2px', background: '#ef4444', zIndex: 10 }}>
                                        <div style={{ position: 'absolute', left: '-5px', top: '-4px', width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444' }} />
                                    </div>
                                )}
                                <div style={{ borderRight: '1px solid #DCE7E1' }}>
                                    {hours.map(h => {
-                                        const isQuiet = h < 6 || h >= 22;
+                                        const isQuiet = h < 7 || h >= 22;
                                         return (
-                                            <div key={h} style={{ height: '60px', borderBottom: h % 3 === 2 ? '1px solid #DCE7E1' : '1px solid #F7FAF8', textAlign: 'right', paddingRight: '8px', fontSize: '0.65rem', color: isQuiet ? '#DCE7E1' : '#6C8079', background: isQuiet ? '#F7FAF8' : '#FFFFFF', fontWeight: 700 }}>{String(h).padStart(2, '0')}:00</div>
+                                            <div key={h} style={{ height: hourPx, boxSizing: 'border-box', lineHeight: 1, borderBottom: h % 3 === 2 ? '1px solid #DCE7E1' : '1px solid #F7FAF8', textAlign: 'right', paddingRight: '8px', fontSize: '0.65rem', color: isQuiet ? '#DCE7E1' : '#6C8079', background: isQuiet ? '#F7FAF8' : '#FFFFFF', fontWeight: 700 }}>{String(h).padStart(2, '0')}:00</div>
                                         );
                                    })}
                                </div>
                                {visibleDays.map((wd, i) => wd && (
                                    <div key={i} style={{ position: 'relative', borderRight: '1px solid #F7FAF8', ...(wd.isToday ? { boxShadow: 'inset 0 0 0 1px rgba(15, 169, 122,0.25)' } : wd.isSelected ? { boxShadow: 'inset 0 0 0 1px rgba(15, 169, 122,0.18)' } : {}) }}>
                                        {hours.map(h => {
-                                            const isQuiet = h < 6 || h >= 22;
+                                            const isQuiet = h < 7 || h >= 22;
                                             const bg = wd.isToday
                                                 ? (isQuiet ? '#DFF3E9' : '#F1FAF5')
                                                 : wd.isSelected
                                                     ? (isQuiet ? '#F1F5F3' : '#F7FAF8')
                                                     : (isQuiet ? '#F7FAF8' : '#FFFFFF');
-                                            return <div key={h} style={{ height: '60px', borderBottom: h % 3 === 2 ? '1px solid #DCE7E1' : '1px solid #F7FAF8', background: bg }} />;
+                                            return <div key={h} style={{ height: hourPx, boxSizing: 'border-box', borderBottom: h % 3 === 2 ? '1px solid #DCE7E1' : '1px solid #F7FAF8', background: bg }} />;
                                        })}
-                                       {wd.evs.map((e: any) => (
-                                            <div
-                                                key={e.id} onClick={() => setEditingItem({ type: 'calendar', data: e })}
-                                                style={{
-                                                    position: 'absolute', top: e.startMin, left: 4, right: 4, height: Math.max(e.endMin - e.startMin, 34),
-                                                    background: e.color, borderRadius: '10px', padding: '6px 10px', color: 'white', zIndex: 6,
-                                                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)', cursor: 'pointer', overflow: 'hidden'
-                                                }}
-                                            >
-                                                <div style={{ fontSize: '0.72rem', fontWeight: 800, lineHeight: 1.2 }}>{e.title}</div>
-                                                <div style={{ fontSize: '0.6rem', fontWeight: 600, opacity: 0.85 }}>{e.startTime} – {e.endTime}</div>
-                                            </div>
-                                       ))}
-                                       {wd.rts.map((r: any) => {
-                                            const s = toMin(r.startTime), e = toMin(r.endTime);
+                                       {/* Horario = fondo suave con el color solo en el borde izquierdo. Si un
+                                           bloque empieza dentro de otro (ej. "Operativo" dentro de "Almuerzo")
+                                           va con sangría y encima, así se ve cuál es cuál. Fondo opaco para
+                                           que los cruces no se sumen de color. Las citas van sólidas encima. */}
+                                       {(() => {
+                                            const rs = wd.rts
+                                                .map((r: any) => ({ r, s: toMin(r.startTime), e: toMin(r.endTime) }))
+                                                .filter((x: any) => x.e > TL_START_H * 60)
+                                                .sort((a: any, b: any) => a.s - b.s || b.e - a.e);
+                                            return rs.map((x: any, i: number) => ({
+                                                ...x,
+                                                depth: rs.slice(0, i).filter((p: any) => p.e > x.s && p.s <= x.s).length
+                                            }));
+                                       })().map(({ r, s, e, depth }: any, idx: number) => {
+                                            const h = Math.max(tlY(e) - tlY(s), 20);
                                             return (
                                                 <div
                                                     key={r.id} onClick={() => setEditingItem({ type: 'routine', data: r })}
+                                                    title={`${r.title} · ${r.startTime} – ${r.endTime}`}
                                                     style={{
-                                                        position: 'absolute', top: s, left: 3, right: 3, height: Math.max(e - s, 34),
-                                                        background: r.color, borderRadius: '8px',
-                                                        padding: '5px 8px', zIndex: 5, cursor: 'pointer', overflow: 'hidden',
-                                                        boxShadow: '0 2px 6px rgba(0,0,0,0.18)'
+                                                        position: 'absolute', top: tlY(s) + 1, left: depth * 12, right: 0, height: h - 2,
+                                                        // Fondo neutro igual para todos (alternado apenas para distinguir bloques
+                                                        // seguidos); el color del bloque solo en el borde y el punto del título.
+                                                        background: depth ? '#FFFFFF' : (idx % 2 ? '#F1F6F3' : '#F7FAF8'),
+                                                        borderLeft: `3px solid ${r.color}`, borderRadius: '0 6px 6px 0',
+                                                        boxShadow: depth ? '-2px 0 0 white, 0 1px 3px rgba(12,42,32,0.08)' : 'inset 0 1px 0 #E4ECE8',
+                                                        padding: '3px 6px', zIndex: 2 + depth, cursor: 'pointer', overflow: 'hidden', boxSizing: 'border-box'
                                                     }}
                                                 >
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                        <CalendarDays size={10} color="white" style={{ flexShrink: 0, opacity: 0.9 }} />
-                                                        <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
+                                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', minWidth: 0, lineHeight: 1.15 }}>
+                                                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: r.color, flexShrink: 0, alignSelf: 'center' }} />
+                                                        <span style={{ fontSize: '0.63rem', fontWeight: 700, color: '#0C2A20', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{r.title}</span>
+                                                        {h >= 28 && <span style={{ fontSize: '0.55rem', fontWeight: 600, color: '#8A9B95', whiteSpace: 'nowrap', marginLeft: 'auto', flexShrink: 0 }}>{r.startTime}–{r.endTime}</span>}
                                                     </div>
-                                                    <div style={{ fontSize: '0.58rem', fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>{r.startTime} – {r.endTime}</div>
-                                                    {r.items && r.items.length > 0 && (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '4px' }}>
+                                                    {r.items && r.items.length > 0 && h >= 60 && (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', marginTop: '2px' }}>
                                                             {r.items.map((sub: any) => (
-                                                                <div key={sub.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.6rem', color: 'rgba(255,255,255,0.9)' }}>
-                                                                    <div style={{ width: '9px', height: '9px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                                        {sub.completed && <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'white' }} />}
+                                                                <div key={sub.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.58rem', color: '#4A5F57' }}>
+                                                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', border: `1px solid ${r.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                                        {sub.completed && <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: r.color }} />}
                                                                     </div>
                                                                     <span style={{ textDecoration: sub.completed ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub.text}</span>
                                                                 </div>
                                                             ))}
                                                         </div>
                                                     )}
+                                                </div>
+                                            );
+                                       })}
+                                       {layoutLanes(wd.evs.filter((e: any) => e.endMin > TL_START_H * 60)).map(({ e, col, cols }) => {
+                                            const h = Math.max(tlY(e.endMin) - tlY(e.startMin), 20);
+                                            const compact = h < 34;
+                                            return (
+                                                <div
+                                                    key={e.id} onClick={() => setEditingItem({ type: 'calendar', data: e })}
+                                                    title={`${e.title} · ${e.startTime} – ${e.endTime}`}
+                                                    style={{
+                                                        position: 'absolute', top: tlY(e.startMin) + 1, height: h - 2,
+                                                        left: `calc(10px + (100% - 13px) * ${col / cols})`, width: `calc((100% - 13px) / ${cols} - 2px)`,
+                                                        background: e.color, borderRadius: '6px', padding: compact ? '1px 6px' : '3px 6px', color: 'white', zIndex: 6,
+                                                        boxShadow: '0 1px 4px rgba(0,0,0,0.18)', cursor: 'pointer', overflow: 'hidden', boxSizing: 'border-box'
+                                                    }}
+                                                >
+                                                    <div style={{ fontSize: '0.66rem', fontWeight: 800, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: compact ? 'nowrap' : 'normal' }}>
+                                                        {compact && <span style={{ opacity: 0.85, fontWeight: 700 }}>{e.startTime} </span>}{e.title}
+                                                    </div>
+                                                    {!compact && <div style={{ fontSize: '0.56rem', fontWeight: 600, opacity: 0.85 }}>{e.startTime} – {e.endTime}</div>}
                                                 </div>
                                             );
                                        })}
