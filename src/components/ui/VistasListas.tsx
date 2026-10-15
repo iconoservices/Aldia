@@ -30,19 +30,18 @@ export const VISTAS_AGENDA = [
     { tab: "Agenda", label: "Sesiones" },
     { tab: "Entregas", label: "Entregas" },
     { tab: "Calendario", label: "Calendario" },
-    { tab: "Tareas", label: "Tareas" },
+    { tab: "Tareas", label: "Tareas", alias: ["Rutina", "Vida", "Bloques"] },   // Rutina = la misma lista de tareas en cuadrícula semanal
     { tab: "Pendientes", label: "Por hacer" },
-    { tab: "Rutina", label: "Rutina" },
     { tab: "Horario", label: "Horario" },
 ] as const;
 
-type Vista = { readonly tab: string; readonly label: string };
+type Vista = { readonly tab: string; readonly label: string; readonly alias?: readonly string[] };
 
-export const VistasListas = ({ activeTab, setActiveTab, vistas = VISTAS_LISTAS }: { activeTab: string; setActiveTab: (t: string) => void; vistas?: readonly Vista[] }) => (
-    <div style={{ padding: "12px 12px 0", display: "flex", overflowX: "auto", flexShrink: 0 }}>
+export const VistasListas = ({ activeTab, setActiveTab, vistas = VISTAS_LISTAS, extra }: { activeTab: string; setActiveTab: (t: string) => void; vistas?: readonly Vista[]; extra?: React.ReactNode }) => (
+    <div style={{ padding: "12px 12px 0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", overflowX: "auto", flexShrink: 0 }}>
         <div style={{ display: "inline-flex", gap: "4px", padding: "4px", background: C.surfaceContainer, borderRadius: RADIO.chip }}>
             {vistas.map(v => {
-                const activa = activeTab === v.tab;
+                const activa = activeTab === v.tab || !!v.alias?.includes(activeTab);
                 return (
                     <button
                         key={v.tab}
@@ -59,5 +58,6 @@ export const VistasListas = ({ activeTab, setActiveTab, vistas = VISTAS_LISTAS }
                 );
             })}
         </div>
+        {extra}
     </div>
 );

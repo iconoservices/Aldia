@@ -120,7 +120,7 @@ function App() {
   const setActiveTab = (t: string) => startTransition(() => setActiveTabRaw(t));
   // Todas las vistas de Agenda (Resumen, Sesiones, Calendario, Entregas, Tareas, Por hacer) ocupan
   // todo el ancho y el alto disponibles, como el Calendario; el contenido se desplaza adentro.
-  const enAgenda = VISTAS_AGENDA.some(v => v.tab === activeTab);
+  const enAgenda = VISTAS_AGENDA.some(v => v.tab === activeTab || (v as { alias?: readonly string[] }).alias?.includes(activeTab));
 
 
   useEffect(() => {
@@ -257,7 +257,22 @@ function App() {
               <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} />
             )}
             <div className={enAgenda ? 'agenda-wrapper' : undefined} style={enAgenda ? undefined : { display: 'contents' }}>
-            {enAgenda && <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_AGENDA} />}
+            {enAgenda && (
+              <VistasListas
+                activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_AGENDA}
+                extra={(activeTab === 'Tareas' || activeTab === 'Rutina' || activeTab === 'Vida' || activeTab === 'Bloques') ? (
+                  // Mismas tareas repetitivas, dos formas de verlas: lista o cuadrícula semanal (Rutina)
+                  <div style={{ display: 'inline-flex', gap: '2px', padding: '3px', background: '#F1F5F3', borderRadius: '999px', flexShrink: 0 }}>
+                    {([['Tareas', 'Lista'], ['Rutina', 'Semana']] as const).map(([tab, label]) => {
+                      const on = tab === 'Tareas' ? activeTab === 'Tareas' : activeTab !== 'Tareas';
+                      return (
+                        <button key={tab} onClick={() => setActiveTab(tab)} style={{ border: 'none', cursor: 'pointer', borderRadius: '999px', padding: '5px 12px', fontSize: '0.74rem', fontWeight: 700, fontFamily: 'inherit', background: on ? '#fff' : 'transparent', color: on ? '#0C2A20' : '#6C8079', boxShadow: on ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>{label}</button>
+                      );
+                    })}
+                  </div>
+                ) : undefined}
+              />
+            )}
             <div style={enAgenda ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflowY: activeTab === 'Calendario' ? 'hidden' : 'auto' } : { display: 'contents' }}>
             {activeTab === 'Acción' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
