@@ -81,77 +81,9 @@ export type TxFilter = "all" | "ingreso" | "gasto";
 // se mantiene: es el mismo lenguaje de acento que usa Checklist en sus categorías.
 const CARD: React.CSSProperties = { ...bento, padding: "1.5rem" };
 
-// Tarjeta con un acento de color en el borde izquierdo. Fija los otros tres
-// lados con el mismo valor que bento.border en vez de dejar un `border`
-// shorthand y un `borderLeft` sueltos compitiendo: mezclarlos hace que React
-// avise de conflicto de estilos en cada rerender.
-const cardConAcento = (color: string): React.CSSProperties => ({
-    ...CARD,
-    border: undefined,
-    borderTop: bento.border,
-    borderRight: bento.border,
-    borderBottom: bento.border,
-    borderLeft: `4px solid ${color}`,
-});
-// Mismo estilo de etiqueta que usan Plan y Checklist para encabezar secciones.
-const LABEL: React.CSSProperties = etiqueta;
 
-const CircleCheckbox = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
-    <div
-        onClick={(e) => { e.stopPropagation(); onChange(); }}
-        style={{
-            width: "12px",
-            height: "12px",
-            borderRadius: "50%",
-            border: `1.5px solid ${checked ? C.secondary : C.outline}`,
-            background: checked ? C.secondary : "transparent",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            transition: "all 0.15s ease",
-            flexShrink: 0,
-        }}
-    >
-        {checked && <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "white" }} />}
-    </div>
-);
 
-// Número protagonista de cada bloque (Real/Proyección/Simulador): antes competía
-// en la misma grilla que los otros 10 datos y se perdía. Se saca aparte para que
-// se lea de un vistazo cuál es "el resultado" antes de entrar al detalle. Es el
-// único lugar del bloque donde el color todavía carga significado (positivo/negativo);
-// el detalle de abajo usa un solo color neutro para no competir con él.
-const HeroStat = ({ label, val, color, sub, bg }: { label: string; val: number; color: string; sub?: string; bg: string }) => (
-    <div style={{ flex: "1 1 0", minWidth: 0, background: bg, borderRadius: "14px", padding: "10px 12px" }}>
-        <div style={{ ...etiqueta, color, marginBottom: "3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: "2px", color, fontFamily: MONO }}>
-            <span style={{ fontSize: "clamp(0.65rem, 3vw, 0.8rem)", fontWeight: 700 }}>S/ </span>
-            <span style={{ fontSize: "clamp(1.05rem, 5.5vw, 1.45rem)", fontWeight: 600, lineHeight: 1 }}>{val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-        </div>
-        {sub && <span style={{ fontSize: "0.6rem", color: C.outline, marginTop: "2px", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</span>}
-    </div>
-);
 
-// dotColor es solo un indicador chico de categoría (ingreso/gasto/deuda);
-// el número en sí queda siempre en el mismo tono neutro — así no compite
-// por atención con los HeroStat de arriba, que son los que sí deben saltar a la vista.
-type StatCellData = { label: string; val: number; dotColor?: string; sub?: string; checked?: boolean; onToggle?: () => void; opacity?: number };
-
-const StatCell = ({ label, val, dotColor, sub, checked, onToggle, opacity, bordered }: StatCellData & { bordered?: boolean }) => (
-    <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", opacity: opacity ?? 1, transition: "opacity 0.2s", borderLeft: bordered ? `1px solid ${C.outlineVariant}` : "none", paddingLeft: bordered ? "0.6rem" : 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "0.15rem" }}>
-            {onToggle && <CircleCheckbox checked={checked ?? false} onChange={onToggle} />}
-            {dotColor && <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: dotColor, display: "inline-block", flexShrink: 0 }} />}
-            <span style={etiqueta}>{label}</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: "1px", color: C.onSurface, fontFamily: MONO }}>
-            <span style={{ fontSize: "0.72rem", fontWeight: 600, color: C.onSurfaceVariant }}>S/ </span>
-            <span style={{ fontSize: "1.05rem", fontWeight: 600, lineHeight: 1 }}>{val.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-        </div>
-        {sub && <span style={{ fontSize: "0.56rem", color: C.outline, marginTop: "1px" }}>{sub}</span>}
-    </div>
-);
 
 // Celda chica con label arriba y monto abajo: en fila angosta (celular) tres montos
 // pegados uno al lado del otro se cortaban a la mitad del número. Apilar label+valor
@@ -190,18 +122,6 @@ const CategoryBreakdown = ({ items }: { items: { category: string; amount: numbe
     );
 };
 
-// Antes las 11 métricas vivían en una sola grilla plana, todas con el mismo peso
-// visual: no se distinguía "Ingresos" de "Deudas" de "Balance Neto" a simple vista.
-// Agruparlas por categoría (con su propio título) restaura esa jerarquía sin
-// perder ningún dato ni los toggles de incluir/excluir.
-const StatSection = ({ title, items }: { title: string; items: StatCellData[] }) => (
-    <div>
-        <div style={{ fontSize: "0.6rem", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: C.onSurfaceVariant, marginBottom: "6px" }}>{title}</div>
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${items.length}, 1fr)`, gap: 0 }}>
-            {items.map((it, i) => <StatCell key={i} {...it} bordered={i > 0} />)}
-        </div>
-    </div>
-);
 
 // Antes el ícono de borrar vivía suelto en cada tarjeta de cuenta (un tap
 // accidental la eliminaba sin abrir nada más). Ahora la tarjeta abre este
@@ -417,7 +337,7 @@ export function shiftPeriod(mode: PeriodMode, ref: Date, dir: -1 | 1): Date {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export const FinanzasDashboard = ({
-    balance, transactions,
+    transactions,
     fixedExpenses, rolloverFixedExpenses,
     addTransaction, updateTransaction,
     projects, accounts, setAccounts,
@@ -499,13 +419,6 @@ export const FinanzasDashboard = ({
         try { return JSON.parse(preferences.fixedIncomes || "[]"); } catch { return []; }
     }, [preferences.fixedIncomes]);
 
-    const periodBalance = useMemo(() => {
-        if (topPeriod === "all") return balance;
-        const { start, end } = getPeriodBounds(topPeriod, periodRef);
-        return transactions
-            .filter(tx => !tx.isCashless && tx.fullDate >= start && tx.fullDate <= end)
-            .reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
-    }, [transactions, topPeriod, periodRef, balance]);
 
     // Excluye "Transferencia": mover plata entre cuentas propias no es ingreso
     // ni gasto real a nivel global (aunque sí lo es a nivel de cada cuenta, ver
@@ -544,17 +457,6 @@ export const FinanzasDashboard = ({
 
     const variableExpenseActual = useMemo(() => topExpense - fixedExpenseActual, [topExpense, fixedExpenseActual]);
 
-    const topPeriodDetails = useMemo(() => {
-        const mapping = {
-            day: { label: "Ingresos (Día)", labelExp: "Gastos (Día)", sub: "Recibido hoy", subExp: "Gastado hoy" },
-            week: { label: "Ingresos (Sem.)", labelExp: "Gastos (Sem.)", sub: "Recibido sem.", subExp: "Gastado sem." },
-            month: { label: "Ingresos (Mes)", labelExp: "Gastos (Mes)", sub: "Recibido real", subExp: "Gastado real" },
-            quarter: { label: "Ingresos (Trim.)", labelExp: "Gastos (Trim.)", sub: "Recibido trim.", subExp: "Gastado trim." },
-            year: { label: "Ingresos (Año)", labelExp: "Gastos (Año)", sub: "Recibido año", subExp: "Gastado año" },
-            all: { label: "Ingresos (Total)", labelExp: "Gastos (Total)", sub: "Historial total", subExp: "Historial total" },
-        };
-        return mapping[topPeriod];
-    }, [topPeriod]);
 
     // ── UI state ──────────────────────────────────────────────────────────
     const movil = useIsMobile();
@@ -635,6 +537,7 @@ export const FinanzasDashboard = ({
 
     // ── Transferir entre cuentas ──────────────────────────────────────────
     const [isTransferring, setIsTransferring] = useState(false);
+    const [detalleCuentas, setDetalleCuentas] = useState(false);
     const [ajustando, setAjustando] = useState(false);
     const [ajusteVals, setAjusteVals] = useState<Record<number, string>>({});
     const guardarAjustes = () => {
@@ -800,52 +703,6 @@ export const FinanzasDashboard = ({
 
     // ─────────────────────────────────────────────────────────────────────
     /* ── Las tres lecturas, como variables para poder reutilizarlas ── */
-    const bloqueReal = (
-                <div style={{ ...cardConAcento(C.verde), display: "flex", flexDirection: "column", gap: "0.85rem", padding: movil ? "1rem" : cardConAcento(C.verde).padding }}>
-                    <div>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.15rem", flexWrap: "wrap", gap: "8px" }}>
-                            <span style={LABEL}>Situación Financiera Real</span>
-                            <TrendingUp size={16} color={C.verde} />
-                        </div>
-                        <span style={{ fontSize: "0.65rem", color: C.outline, display: "block" }}>Ingresos y gastos reales + deudas y patrimonio — lo que ya pasó</span>
-                    </div>
-
-                    <div style={{ display: "flex", gap: movil ? "0.5rem" : "0.6rem", flexWrap: "nowrap" }}>
-                        <HeroStat
-                            label="Balance Neto"
-                            val={topIncome - topExpense}
-                            color={(topIncome - topExpense) >= 0 ? C.verde : C.rojo}
-                            sub="Ingresos - Gastos"
-                            bg={(topIncome - topExpense) >= 0 ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)"}
-                        />
-                        <HeroStat
-                            label="Patrimonio Neto"
-                            val={periodBalance - realOwe + realOwed}
-                            color={(periodBalance - realOwe + realOwed) >= 0 ? C.verde : C.rojo}
-                            sub="Balance Neto + Deuda Neta"
-                            bg={(periodBalance - realOwe + realOwed) >= 0 ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)"}
-                        />
-                    </div>
-
-                    <div style={{ display: "grid", gridTemplateColumns: movil ? "1fr" : "repeat(auto-fit, minmax(170px, 1fr))", gap: movil ? "0.85rem" : "0.85rem", paddingTop: "0.7rem", borderTop: `1px solid ${C.outlineVariant}` }}>
-                        <StatSection title={topPeriodDetails.label} items={[
-                            { label: "Total", val: topIncome, dotColor: C.verde, sub: topPeriodDetails.sub },
-                            { label: "Fijo", val: fixedIncomeActual, dotColor: C.verde, sub: "Activos recibidos" },
-                            { label: "Variable", val: variableIncomeActual, dotColor: C.verde, sub: "Ingresos directos" },
-                        ]} />
-                        <StatSection title={topPeriodDetails.labelExp} items={[
-                            { label: "Total", val: topExpense, dotColor: C.rojo, sub: topPeriodDetails.subExp },
-                            { label: "Fijo", val: fixedExpenseActual, dotColor: C.rojo, sub: "Gastos activos" },
-                            { label: "Variable", val: variableExpenseActual, dotColor: C.rojo, sub: "Gastos directos" },
-                        ]} />
-                        <StatSection title="Deudas" items={[
-                            { label: "Debo", val: realOwe, dotColor: C.rojo, sub: realOwe > 0 ? "Deudas pendientes" : "Sin deudas" },
-                            { label: "Me Deben", val: realOwed, dotColor: C.verde, sub: realOwed > 0 ? "Por cobrar" : "Sin cobros" },
-                            { label: "Neta", val: realOwed - realOwe, sub: "Me deben - Debo" },
-                        ]} />
-                    </div>
-                </div>
-    );
 
 
     return (
@@ -1038,34 +895,41 @@ export const FinanzasDashboard = ({
                 groupAccountScope={groupAccountScope}
             />
 
-            {/* ── Lo que PASÓ en el período (gastos e ingresos) — aparte de lo que TENGO (cuentas) ── */}
+            {/* ── Lo que TENGO (cuentas) a la izquierda y lo que PASÓ en el período (gastos e ingresos) a la derecha ── */}
+            <div style={{ display: "grid", gridTemplateColumns: movil ? "1fr" : "minmax(0, 1.5fr) minmax(0, 1fr)", gap: movil ? "0.75rem" : "1rem", alignItems: "start" }}>
             {(() => {
                 const neto = topIncome - topExpense;
                 const fmtS = (n: number) => `S/ ${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-                const item = (titulo: string, texto: string, color: string) => (
-                    <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: "0.62rem", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: C.outline }}>{titulo}</div>
-                        <div style={{ fontSize: movil ? "1.1rem" : "1.3rem", fontWeight: 800, color, lineHeight: 1.2, whiteSpace: "nowrap" }}>{texto}</div>
+                const fila = (titulo: string, texto: string, color: string, fuerte?: boolean) => (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "10px", padding: fuerte ? "8px 0 0" : "5px 0", borderTop: fuerte ? `1px solid ${C.outlineVariant}` : "none", marginTop: fuerte ? "4px" : 0 }}>
+                        <span style={{ fontSize: "0.72rem", fontWeight: 700, color: C.onSurfaceVariant }}>{titulo}</span>
+                        <span style={{ fontSize: fuerte ? "1.25rem" : "1rem", fontWeight: fuerte ? 800 : 700, color, whiteSpace: "nowrap" }}>{texto}</span>
                     </div>
                 );
                 return (
-                    <div style={{ ...CARD, padding: movil ? "1rem" : "1.25rem 1.5rem" }}>
-                        <div style={{ fontSize: "0.85rem", fontWeight: 800, marginBottom: "0.7rem" }}>
+                    <div style={{ ...CARD, padding: movil ? "1rem" : "1.1rem 1.25rem", order: 2 }}>
+                        <div style={{ fontSize: "0.85rem", fontWeight: 800, marginBottom: "0.4rem" }}>
                             Lo que pasó · <span style={{ color: C.outline, fontWeight: 700 }}>{periodLabel(topPeriod, periodRef)}</span>
                         </div>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 32px" }}>
-                            {item("Entró", `+${fmtS(topIncome)}`, C.verde)}
-                            {item("Gasté", `−${fmtS(topExpense)}`, C.rojo)}
-                            {item("Resultado", `${neto < 0 ? "−" : "+"}${fmtS(neto)}`, neto < 0 ? C.rojo : C.verde)}
-                        </div>
+                        {fila("Entró", `+${fmtS(topIncome)}`, C.verde)}
+                        {topIncome > 0 && <div style={{ fontSize: "0.66rem", color: C.outline, textAlign: "right", marginTop: "-3px" }}>fijo {fmtS(fixedIncomeActual)} · variable {fmtS(variableIncomeActual)}</div>}
+                        {fila("Gasté", `−${fmtS(topExpense)}`, C.rojo)}
+                        {topExpense > 0 && <div style={{ fontSize: "0.66rem", color: C.outline, textAlign: "right", marginTop: "-3px" }}>fijo {fmtS(fixedExpenseActual)} · variable {fmtS(variableExpenseActual)}</div>}
+                        {fila("Resultado", `${neto < 0 ? "−" : "+"}${fmtS(neto)}`, neto < 0 ? C.rojo : C.verde, true)}
+                        {accountsWithBalance.length > 0 && (
+                            <button onClick={() => setDetalleCuentas(v => !v)} style={{ marginTop: "8px", background: "none", border: "none", padding: 0, cursor: "pointer", color: C.secondary, fontSize: "0.72rem", fontWeight: 700, fontFamily: "inherit", display: "flex", alignItems: "center", gap: "4px" }}>
+                                {detalleCuentas ? "Ocultar detalle por cuenta" : "Ver detalle por cuenta"}
+                                <span className="material-symbols-outlined" style={{ fontSize: "16px", transform: detalleCuentas ? "rotate(180deg)" : "none", transition: "transform .15s" }}>expand_more</span>
+                            </button>
+                        )}
                     </div>
                 );
             })()}
 
             {/* ── Mis Cuentas: vista directa y siempre visible de cuánto hay en cada
                 cuenta (antes vivía oculta en un acordeón al fondo de la página) ─── */}
-            <div style={{ ...CARD, padding: movil ? "1rem" : "1.5rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: movil ? "0.7rem" : "1rem", flexWrap: "wrap", gap: "8px" }}>
+            <div style={{ ...CARD, padding: movil ? "1rem" : "1.1rem 1.25rem", order: 1 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: movil ? "0.7rem" : "0.8rem", flexWrap: "wrap", gap: "8px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <PiggyBank size={16} color={C.secondary} />
                         <span style={{ fontSize: "0.85rem", fontWeight: 800 }}>Lo que tengo · Mis cuentas</span>
@@ -1243,9 +1107,10 @@ export const FinanzasDashboard = ({
                 )}
             </div>
 
-            {/* ── Ingresos y Gastos por Cuenta: lista directa de cuánto entró (sin
-                transferencias) y cuánto salió de cada cuenta en el período elegido arriba ─── */}
-            {accountsWithBalance.length > 0 && (() => {
+            </div>
+
+            {/* ── Detalle por cuenta (plegado): cuánto entró y salió de cada cuenta en el período ─── */}
+            {detalleCuentas && accountsWithBalance.length > 0 && (() => {
                 const desktopCols = "minmax(150px,1.5fr) repeat(5, minmax(85px,1fr))";
                 const colHeaderStyle: React.CSSProperties = { fontSize: "0.62rem", fontWeight: 800, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.04em" };
                 return (
@@ -1912,8 +1777,6 @@ export const FinanzasDashboard = ({
                     )}
                 </AnimatePresence>
             </div>
-
-            {bloqueReal}
 
             {/* ── Modals ─── */}
             <AnimatePresence>
