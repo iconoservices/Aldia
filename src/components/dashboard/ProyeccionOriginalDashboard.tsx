@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
-import { Plus, Minus, Trash2, RotateCcw, FlaskConical, Calculator as CalculatorIcon, Delete } from 'lucide-react';
+import { Plus, Minus, ChevronDown, Trash2, RotateCcw, FlaskConical, Calculator as CalculatorIcon, Delete } from 'lucide-react';
 import type { FixedExpense, UserPreferences } from '../../hooks/useAlDiaState';
 import { MONO, useIsMobile } from '../../theme';
 
@@ -8,6 +8,8 @@ interface Props {
     fixedIncomeItems: { id: number; name: string; amount: number; active: boolean; lastReceivedMonth?: string }[];
     currentMonthStr: string;
     currentBalance: number;
+    expenseCategories: string[];
+    incomeCategories: string[];
     preferences: UserPreferences;
     updatePreference: (key: keyof UserPreferences, value: any) => void;
 }
@@ -38,6 +40,36 @@ const MontoEditable = ({ value, onChange }: { value: number; onChange: (n: numbe
             />
         </label>
     );
+};
+
+// Los grupos son las CATEGORÍAS del sistema (las mismas de Movimientos). Como los gastos fijos
+// no traen categoría, se deduce del nombre; si no coincide con ninguna, va a "Otros".
+const PISTAS_GASTO: Record<string, string[]> = {
+    'Servicios': ['luz', 'agua', 'internet', 'celular', 'línea', 'linea', 'movistar', 'claro', 'entel', 'bitel', 'gas', 'cable', 'wifi', 'teléfono', 'telefono', 'alquiler', 'cuarto', 'renta', 'depa', 'casa', 'mantenimiento'],
+    'Suscripciones': ['claude', 'chat gpt', 'chatgpt', 'gemini', 'adobe', 'netflix', 'spotify', 'youtube', 'canva', 'disney', 'hbo', 'prime', 'icloud', 'google one', 'notion', 'dropbox', 'suscrip'],
+    'Comida': ['almuerzo', 'comida', 'mercado', 'super', 'menú', 'menu', 'desayuno', 'cena'],
+    'Transporte': ['pasaje', 'taxi', 'bus', 'gasolina', 'combustible', 'movilidad', 'metro', 'uber'],
+    'Salud': ['seguro', 'médico', 'medico', 'farmacia', 'salud', 'gym', 'gimnasio', 'dentista'],
+    'Ocio': ['cine', 'salida', 'juego', 'ocio', 'viaje'],
+};
+const PISTAS_INGRESO: Record<string, string[]> = {
+    'Sueldo': ['sueldo', 'salario', 'honorario', 'pago', 'freelance', 'comisión', 'comision'],
+    'Venta': ['venta', 'cliente', 'sesión', 'sesion', 'foto'],
+    'Inversión': ['inversión', 'inversion', 'interés', 'interes', 'dividendo'],
+};
+const inferirGrupo = (texto: string, tipo: 'gasto' | 'ingreso', categorias: string[]) => {
+    const t = texto.toLowerCase();
+    const otros = categorias.find(c => c.toLowerCase() === 'otros') ?? 'Otros';
+    // 1) el nombre menciona una categoría tal cual
+    const directa = categorias.find(c => c.toLowerCase() !== 'otros' && t.includes(c.toLowerCase()));
+    if (directa) return directa;
+    // 2) pistas por palabras clave, solo si esa categoría existe en tu lista
+    const pistas = tipo === 'gasto' ? PISTAS_GASTO : PISTAS_INGRESO;
+    for (const [g, claves] of Object.entries(pistas)) {
+        const cat = categorias.find(c => c.toLowerCase() === g.toLowerCase());
+        if (cat && claves.some(c => t.includes(c))) return cat;
+    }
+    return otros;
 };
 
 const CALC_KEYS: Array<{ label: string; kind: 'digit' | 'op' | 'dot' | 'clear' | 'back' | 'equals' }> = [
@@ -132,8 +164,10 @@ const MiniCalculator = ({ onUsar, onMinimizar, flotante }: { onUsar: (tipo: 'gas
     );
 };
 
-export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, currentBalance, preferences, updatePreference }: Props) => {
+export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, currentBalance, expenseCategories, incomeCategories, preferences, updatePreference }: Props) => {
     const movil = useIsMobile();
+    const catsGasto = expenseCategories.length ? expenseCategories : ['Otros'];
+    const catsIngreso = incomeCategories.length ? incomeCategories : ['Otros'];
     const [calcAbierta, setCalcAbiertaRaw] = useState<boolean>(() => {
         try { const v = localStorage.getItem('aldia_calc_abierta'); if (v !== null) return v === '1'; } catch { /* sin almacenamiento */ }
         return false;
@@ -149,8 +183,8 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
        marques se conserva entre sesiones. "Reiniciar" vuelve a sembrar desde
        los datos reales de hoy. Nada de esto toca transacciones ni gastos/
        ingresos fijos reales: es una copia aparte. ── */
-    type SimFixedExpense = { id: number; text: string; amount: number; active: boolean; dueDay?: number; lastPaidMonth?: string; custom?: boolean; excluido?: boolean };
-    type SimFixedIncome = { id: number; name: string; amount: number; active: boolean; lastReceivedMonth?: string; custom?: boolean; excluido?: boolean };
+    type SimFixedExpense = { id: number; text: string; amount: number; active: boolean; dueDay?: number; lastPaidMonth?: string; custom?: boolean; excluido?: boolean; grupo?: string };
+    type SimFixedIncome = { id: number; name: string; amount: number; active: boolean; lastReceivedMonth?: string; custom?: boolean; excluido?: boolean; grupo?: string };
     type Plan = { fixedExpenses: SimFixedExpense[]; fixedIncomes: SimFixedIncome[]; usarSaldo?: boolean };
 
     const seedPlan = (): Plan => ({
@@ -183,6 +217,11 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
 
     const [nuevoGasto, setNuevoGasto] = useState({ text: '', amount: '', cantidad: '' });
     const [usarCantidadGasto, setUsarCantidadGasto] = useState(false);
+    const [nuevoGrupoGasto, setNuevoGrupoGasto] = useState('');
+    const [nuevoGrupoIngreso, setNuevoGrupoIngreso] = useState('');
+    // Grupos: cerrados salvo que los abras. Listas: abiertas salvo que las contraigas.
+    const [abiertos, setAbiertos] = useState<Record<string, boolean>>({});
+    const [listaCerrada, setListaCerrada] = useState<{ gastos: boolean; ingresos: boolean }>({ gastos: false, ingresos: false });
     const nuevoGastoTotal = usarCantidadGasto ? (parseFloat(nuevoGasto.cantidad) || 0) * (parseFloat(nuevoGasto.amount) || 0) : (parseFloat(nuevoGasto.amount) || 0);
 
     const [nuevoIngresoFijo, setNuevoIngresoFijo] = useState({ name: '', amount: '', cantidad: '' });
@@ -224,28 +263,77 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
 
     const money = (n: number) => `S/ ${n.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
 
+
+    const filaGasto = (f: SimFixedExpense) => (
+        <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 2px", borderBottom: "1px solid #EDF3F0", opacity: f.excluido ? 0.4 : 1 }}>
+                                    <input type="checkbox" checked={!f.excluido} title="Contar en la proyección" onChange={e => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, excluido: !e.target.checked } : x) })} style={{ accentColor: "#0FA97A", flexShrink: 0 }} />
+                                    <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0C2A20", textDecoration: f.excluido ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.text}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
+                                    <MontoEditable value={f.amount} onChange={n => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, amount: n } : x) })} />
+                                    <select value={f.grupo || inferirGrupo(f.text, 'gasto', catsGasto)} onChange={e => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, grupo: e.target.value } : x) })} title="Cambiar de grupo" style={{ maxWidth: "92px", border: "none", background: "transparent", fontSize: "0.66rem", fontWeight: 700, color: "#6C8079", cursor: "pointer", outline: "none" }}>{catsGasto.map(g => <option key={g} value={g}>{g}</option>)}</select>
+                                    <button onClick={() => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.filter(x => x.id !== f.id) })} style={{ background: "none", border: "none", color: "#6C8079", cursor: "pointer", display: "flex", flexShrink: 0 }}><Trash2 size={13} /></button>
+                                </div>
+    );
+    const filaIngreso = (f: SimFixedIncome) => (
+        <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 2px", borderBottom: "1px solid #EDF3F0", opacity: f.excluido ? 0.4 : 1 }}>
+                                    <input type="checkbox" checked={!f.excluido} title="Contar en la proyección" onChange={e => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, excluido: !e.target.checked } : x) })} style={{ accentColor: "#0FA97A", flexShrink: 0 }} />
+                                    <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0C2A20", textDecoration: f.excluido ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
+                                    <MontoEditable value={f.amount} onChange={n => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, amount: n } : x) })} />
+                                    <select value={f.grupo || inferirGrupo(f.name, 'ingreso', catsIngreso)} onChange={e => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, grupo: e.target.value } : x) })} title="Cambiar de grupo" style={{ maxWidth: "92px", border: "none", background: "transparent", fontSize: "0.66rem", fontWeight: 700, color: "#6C8079", cursor: "pointer", outline: "none" }}>{catsIngreso.map(g => <option key={g} value={g}>{g}</option>)}</select>
+                                    <button onClick={() => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.filter(x => x.id !== f.id) })} style={{ background: "none", border: "none", color: "#6C8079", cursor: "pointer", display: "flex", flexShrink: 0 }}><Trash2 size={13} /></button>
+                                </div>
+    );
+
+    // Lista agrupada: cada grupo muestra su subtotal y se abre/cierra al tocarlo.
+    const renderGrupos = (tipo: 'gasto' | 'ingreso') => {
+        const items: (SimFixedExpense | SimFixedIncome)[] = tipo === 'gasto' ? plan.fixedExpenses : plan.fixedIncomes;
+        const nombreDe = (f: SimFixedExpense | SimFixedIncome) => 'text' in f ? f.text : f.name;
+        const orden = tipo === 'gasto' ? catsGasto : catsIngreso;
+        const mapa = new Map<string, (SimFixedExpense | SimFixedIncome)[]>();
+        for (const f of items) {
+            const g = f.grupo || inferirGrupo(nombreDe(f), tipo, orden);
+            mapa.set(g, [...(mapa.get(g) ?? []), f]);
+        }
+        const grupos = [...mapa.entries()].sort((a, b) => (orden.indexOf(a[0]) === -1 ? 99 : orden.indexOf(a[0])) - (orden.indexOf(b[0]) === -1 ? 99 : orden.indexOf(b[0])));
+        return grupos.map(([nombre, lista]) => {
+            const clave = tipo + ':' + nombre;
+            const abierto = !!abiertos[clave];
+            const incluidos = lista.filter(f => !f.excluido);
+            const subtotal = incluidos.reduce((t, f) => t + (Number(f.amount) || 0), 0);
+            const ids = new Set(lista.map(f => f.id));
+            const todosOn = incluidos.length === lista.length;
+            const marcarGrupo = (on: boolean) => savePlan(tipo === 'gasto'
+                ? { ...plan, fixedExpenses: plan.fixedExpenses.map(f => ids.has(f.id) ? { ...f, excluido: !on } : f) }
+                : { ...plan, fixedIncomes: plan.fixedIncomes.map(f => ids.has(f.id) ? { ...f, excluido: !on } : f) });
+            return (
+                <div key={clave}>
+                    <div
+                        onClick={() => setAbiertos(a => ({ ...a, [clave]: !a[clave] }))}
+                        style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 2px", borderBottom: "1px solid #EDF3F0", cursor: "pointer", opacity: incluidos.length === 0 ? 0.45 : 1 }}
+                    >
+                        <input type="checkbox" checked={todosOn} ref={el => { if (el) el.indeterminate = incluidos.length > 0 && !todosOn; }} title="Contar todo el grupo" onClick={e => e.stopPropagation()} onChange={e => marcarGrupo(e.target.checked)} style={{ accentColor: "#0FA97A", flexShrink: 0 }} />
+                        <ChevronDown size={15} color="#6C8079" style={{ transform: abierto ? "none" : "rotate(-90deg)", transition: "transform .15s", flexShrink: 0 }} />
+                        <span style={{ flex: 1, fontSize: "0.82rem", fontWeight: 800, color: "#0C2A20" }}>{nombre} <span style={{ fontWeight: 600, color: "#6C8079", fontSize: "0.7rem" }}>· {lista.length}</span></span>
+                        <span style={{ fontFamily: MONO, fontSize: "0.85rem", fontWeight: 800, color: "#0C2A20" }}>{money(subtotal)}</span>
+                    </div>
+                    {abierto && (
+                        <div style={{ paddingLeft: "22px" }}>
+                            {lista.map(f => 'text' in f ? filaGasto(f) : filaIngreso(f))}
+                        </div>
+                    )}
+                </div>
+            );
+        });
+    };
+
     return (
         <div style={{ paddingBottom: '5rem', display: 'flex', gap: '1.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
 
             {/* ── Plan del mes: tu propio plan, con tus datos — no toca nada real ── */}
             <div style={{ flex: '1 1 480px', minWidth: 0 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem", flexWrap: "wrap", gap: "8px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <FlaskConical size={15} color="#F59E0B" />
-                        <span style={LABEL}>Plan del Mes</span>
-                    </div>
-                    <button onClick={reiniciarSimulacion} title="Reiniciar plan (vuelve a partir de tus gastos/ingresos fijos reales)" style={{ display: "flex", alignItems: "center", gap: "4px", background: "transparent", border: "1px solid #DCE7E1", borderRadius: "8px", padding: "4px 9px", fontSize: "0.68rem", fontWeight: 700, color: "#6C8079", cursor: "pointer" }}>
-                        <RotateCcw size={12} /> Reiniciar
-                    </button>
-                </div>
-                <p style={{ margin: "0 0 0.6rem", fontSize: "0.72rem", color: "#6C8079" }}>
-                    Se guarda solo, no toca tus gastos/ingresos fijos reales. Sumá, borrá o destildá cosas acá para probar "¿y si...?".
-                </p>
-
-                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: "14px 28px", background: simQueda < 0 ? "rgba(198,60,60,0.07)" : "rgba(15,169,122,0.08)", borderRadius: "16px", padding: "18px 22px", marginBottom: "1rem" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: "8px 28px", background: simQueda < 0 ? "rgba(198,60,60,0.07)" : "rgba(15,169,122,0.08)", borderRadius: "14px", padding: "12px 18px", marginBottom: "0.6rem" }}>
                     <div>
-                        <span style={{ ...LABEL, color: simQueda < 0 ? "#C63C3C" : "#0E9F6E" }}>Te quedaría</span>
-                        <div style={{ fontFamily: MONO, fontSize: "2.2rem", fontWeight: 800, letterSpacing: "-0.03em", color: simQueda < 0 ? "#C63C3C" : "#0C2A20", lineHeight: 1.1, marginTop: "4px" }}>
+                        <span style={{ ...LABEL, color: simQueda < 0 ? "#C63C3C" : "#0E9F6E", display: "flex", alignItems: "center", gap: "6px" }}><FlaskConical size={13} /> Plan de fin de mes · te quedaría</span>
+                        <div style={{ fontFamily: MONO, fontSize: "1.9rem", fontWeight: 800, letterSpacing: "-0.03em", color: simQueda < 0 ? "#C63C3C" : "#0C2A20", lineHeight: 1.1, marginTop: "4px" }}>
                             {simQueda < 0 ? "−" : ""}{money(Math.abs(simQueda))}
                         </div>
                     </div>
@@ -264,21 +352,24 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                 </div>
 
                 {/* Qué se aplica a la proyección */}
-                <div style={{ marginBottom: "0.8rem" }}>
-                    <span style={{ ...LABEL, display: "block", marginBottom: "6px" }}>Qué aplicar a la proyección</span>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                <div style={{ marginBottom: "0.6rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 10px" }}>
+                    <span style={{ ...LABEL }}>Aplicar</span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", flex: 1 }}>
                         {([
                             { key: 'saldo', texto: `Mi saldo actual (${money(currentBalance)})`, on: !!plan.usarSaldo, disabled: false, set: (v: boolean) => savePlan({ ...plan, usarSaldo: v }) },
                             { key: 'gastos', texto: 'Mis gastos fijos', on: gastosRealesOn, disabled: gastosReales.length === 0, set: (v: boolean) => toggleReales('gastos', v) },
                             { key: 'ingresos', texto: 'Mis ingresos fijos', on: ingresosRealesOn, disabled: ingresosReales.length === 0, set: (v: boolean) => toggleReales('ingresos', v) },
                             { key: 'propios', texto: 'Lo que agregué yo', on: propiosOn, disabled: propios.length === 0, set: (v: boolean) => toggleGrupo(true, v) },
                         ]).map(o => (
-                            <label key={o.key} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 10px", borderRadius: "999px", cursor: o.disabled ? "default" : "pointer", opacity: o.disabled ? 0.45 : 1, background: o.on ? "rgba(15,169,122,0.10)" : "#F7FAF8", border: `1px solid ${o.on ? "#0FA97A" : "#DCE7E1"}`, fontSize: "0.74rem", fontWeight: 700, color: "#0C2A20" }}>
+                            <label key={o.key} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 10px", borderRadius: "999px", cursor: o.disabled ? "default" : "pointer", opacity: o.disabled ? 0.45 : 1, background: o.on ? "rgba(15,169,122,0.10)" : "#F7FAF8", border: `1px solid ${o.on ? "#0FA97A" : "#DCE7E1"}`, fontSize: "0.74rem", fontWeight: 700, color: "#0C2A20" }}>
                                 <input type="checkbox" checked={o.on} disabled={o.disabled} onChange={e => o.set(e.target.checked)} style={{ accentColor: "#0FA97A" }} />
                                 {o.texto}
                             </label>
                         ))}
                     </div>
+                    <button onClick={reiniciarSimulacion} title="Reiniciar plan (vuelve a partir de tus gastos/ingresos fijos reales)" style={{ display: "flex", alignItems: "center", gap: "4px", background: "transparent", border: "1px solid #DCE7E1", borderRadius: "8px", padding: "4px 9px", fontSize: "0.68rem", fontWeight: 700, color: "#6C8079", cursor: "pointer" }}>
+                        <RotateCcw size={12} /> Reiniciar
+                    </button>
                 </div>
 
                 {hayCustom && (
@@ -292,12 +383,17 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                     </div>
                 )}
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.25rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "0.75rem" }}>
 
                     {/* Gastos fijos simulados */}
-                    <div style={{ background: "#FFFFFF", border: "1px solid #DCE7E1", borderRadius: "14px", padding: "14px 16px" }}>
+                    <div style={{ background: "#FFFFFF", border: "1px solid #DCE7E1", borderRadius: "14px", padding: "10px 14px" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px", flexWrap: "wrap", gap: "4px" }}>
-                            <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0C2A20" }}>Gastos fijos</span>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <input type="checkbox" checked={plan.fixedExpenses.length > 0 && plan.fixedExpenses.every(f => !f.excluido)} ref={el => { if (el) el.indeterminate = plan.fixedExpenses.some(f => !f.excluido) && plan.fixedExpenses.some(f => f.excluido); }} disabled={plan.fixedExpenses.length === 0} title="Contar toda la lista en la proyección" onChange={e => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(f => ({ ...f, excluido: !e.target.checked })) })} style={{ accentColor: "#0FA97A", flexShrink: 0 }} />
+                            <button type="button" onClick={() => setListaCerrada(v => ({ ...v, gastos: !v.gastos }))} title="Contraer / expandir" style={{ display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: "0.78rem", fontWeight: 700, color: "#0C2A20", fontFamily: "inherit" }}>
+                                <ChevronDown size={15} style={{ transform: listaCerrada.gastos ? "rotate(-90deg)" : "none", transition: "transform .15s" }} /> Gastos fijos
+                            </button>
+                            </div>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                                 <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#6C8079" }}>{plan.fixedExpenses.filter(f => !f.excluido).length}/{plan.fixedExpenses.length} en cuenta</span>
                                 <button type="button" onClick={() => setUsarCantidadGasto(v => !v)} title="Cargar por cantidad × precio unitario (ej: 5 × S/10)" style={{ display: "flex", alignItems: "center", gap: "3px", background: usarCantidadGasto ? "#F59E0B" : "transparent", color: usarCantidadGasto ? "#fff" : "#6C8079", border: usarCantidadGasto ? "none" : "1px solid #DCE7E1", borderRadius: "6px", padding: "2px 6px", fontSize: "0.62rem", fontWeight: 700, cursor: "pointer" }}>
@@ -306,26 +402,17 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                             </div>
                         </div>
                         {plan.fixedExpenses.length === 0 && <p style={{ fontSize: "0.72rem", color: "#6C8079", margin: 0 }}>Sin gastos fijos activos.</p>}
-                        {plan.fixedExpenses.map(f => {
-                            return (
-                                <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 2px", borderBottom: "1px solid #EDF3F0", opacity: f.excluido ? 0.4 : 1 }}>
-                                    <input type="checkbox" checked={!f.excluido} title="Contar en la proyección" onChange={e => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, excluido: !e.target.checked } : x) })} style={{ accentColor: "#0FA97A", flexShrink: 0 }} />
-                                    <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0C2A20", textDecoration: f.excluido ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.text}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
-                                    <MontoEditable value={f.amount} onChange={n => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, amount: n } : x) })} />
-                                    <button onClick={() => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.filter(x => x.id !== f.id) })} style={{ background: "none", border: "none", color: "#6C8079", cursor: "pointer", display: "flex", flexShrink: 0 }}><Trash2 size={13} /></button>
-                                </div>
-                            );
-                        })}
+                        {!listaCerrada.gastos && renderGrupos('gasto')}
                         {plan.fixedExpenses.length > 0 && (
                             <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 2px 4px", fontSize: "0.78rem", fontWeight: 800, color: "#0C2A20" }}>
                                 <span>Total en cuenta</span><span style={{ fontFamily: MONO, color: "#C63C3C" }}>−{money(simFijosTotal)}</span>
                             </div>
                         )}
-                        <form onSubmit={e => {
+                        {!listaCerrada.gastos && <form onSubmit={e => {
                             e.preventDefault();
                             const monto = nuevoGastoTotal;
                             if (!nuevoGasto.text.trim() || !monto) return;
-                            savePlan({ ...plan, fixedExpenses: [...plan.fixedExpenses, { id: Date.now(), text: nuevoGasto.text.trim(), amount: monto, active: true, custom: true }] });
+                            savePlan({ ...plan, fixedExpenses: [...plan.fixedExpenses, { id: Date.now(), text: nuevoGasto.text.trim(), amount: monto, active: true, custom: true, grupo: nuevoGrupoGasto || undefined }] });
                             setNuevoGasto({ text: "", amount: "", cantidad: "" });
                         }} style={{ display: "flex", gap: "6px", marginTop: "6px", flexWrap: "wrap", alignItems: "center" }}>
                             <input value={nuevoGasto.text} onChange={e => setNuevoGasto(v => ({ ...v, text: e.target.value }))} placeholder="Nuevo gasto fijo…" style={{ flex: 1, minWidth: 0, padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
@@ -339,14 +426,20 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                             ) : (
                                 <input value={nuevoGasto.amount} onChange={e => setNuevoGasto(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="Monto" inputMode="decimal" style={{ width: "100px", padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
                             )}
+                            <select value={nuevoGrupoGasto} onChange={e => setNuevoGrupoGasto(e.target.value)} title="Grupo" style={{ padding: "11px 8px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "0.8rem", background: "#FFFFFF", color: "#0C2A20" }}><option value="">Grupo: auto</option>{catsGasto.map(g => <option key={g} value={g}>{g}</option>)}</select>
                             <button type="submit" style={{ background: "#F59E0B", color: "#fff", border: "none", borderRadius: "10px", padding: "0 16px", minHeight: "44px", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", flexShrink: 0, fontSize: "0.8rem", fontWeight: 800 }}><Plus size={16} /> Agregar</button>
-                        </form>
+                        </form>}
                     </div>
 
                     {/* Ingresos fijos simulados */}
-                    <div style={{ background: "#FFFFFF", border: "1px solid #DCE7E1", borderRadius: "14px", padding: "14px 16px" }}>
+                    <div style={{ background: "#FFFFFF", border: "1px solid #DCE7E1", borderRadius: "14px", padding: "10px 14px" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px", flexWrap: "wrap", gap: "4px" }}>
-                            <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0C2A20" }}>Ingresos fijos</span>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <input type="checkbox" checked={plan.fixedIncomes.length > 0 && plan.fixedIncomes.every(f => !f.excluido)} ref={el => { if (el) el.indeterminate = plan.fixedIncomes.some(f => !f.excluido) && plan.fixedIncomes.some(f => f.excluido); }} disabled={plan.fixedIncomes.length === 0} title="Contar toda la lista en la proyección" onChange={e => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(f => ({ ...f, excluido: !e.target.checked })) })} style={{ accentColor: "#0FA97A", flexShrink: 0 }} />
+                            <button type="button" onClick={() => setListaCerrada(v => ({ ...v, ingresos: !v.ingresos }))} title="Contraer / expandir" style={{ display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: "0.78rem", fontWeight: 700, color: "#0C2A20", fontFamily: "inherit" }}>
+                                <ChevronDown size={15} style={{ transform: listaCerrada.ingresos ? "rotate(-90deg)" : "none", transition: "transform .15s" }} /> Ingresos fijos
+                            </button>
+                            </div>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                                 <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#6C8079" }}>{plan.fixedIncomes.filter(f => !f.excluido).length}/{plan.fixedIncomes.length} en cuenta</span>
                                 <button type="button" onClick={() => setUsarCantidadIngreso(v => !v)} title="Cargar por cantidad × precio unitario (ej: 5 × S/10)" style={{ display: "flex", alignItems: "center", gap: "3px", background: usarCantidadIngreso ? "#F59E0B" : "transparent", color: usarCantidadIngreso ? "#fff" : "#6C8079", border: usarCantidadIngreso ? "none" : "1px solid #DCE7E1", borderRadius: "6px", padding: "2px 6px", fontSize: "0.62rem", fontWeight: 700, cursor: "pointer" }}>
@@ -355,26 +448,17 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                             </div>
                         </div>
                         {plan.fixedIncomes.length === 0 && <p style={{ fontSize: "0.72rem", color: "#6C8079", margin: 0 }}>Sin ingresos fijos activos.</p>}
-                        {plan.fixedIncomes.map(f => {
-                            return (
-                                <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 2px", borderBottom: "1px solid #EDF3F0", opacity: f.excluido ? 0.4 : 1 }}>
-                                    <input type="checkbox" checked={!f.excluido} title="Contar en la proyección" onChange={e => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, excluido: !e.target.checked } : x) })} style={{ accentColor: "#0FA97A", flexShrink: 0 }} />
-                                    <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0C2A20", textDecoration: f.excluido ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
-                                    <MontoEditable value={f.amount} onChange={n => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, amount: n } : x) })} />
-                                    <button onClick={() => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.filter(x => x.id !== f.id) })} style={{ background: "none", border: "none", color: "#6C8079", cursor: "pointer", display: "flex", flexShrink: 0 }}><Trash2 size={13} /></button>
-                                </div>
-                            );
-                        })}
+                        {!listaCerrada.ingresos && renderGrupos('ingreso')}
                         {plan.fixedIncomes.length > 0 && (
                             <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 2px 4px", fontSize: "0.78rem", fontWeight: 800, color: "#0C2A20" }}>
                                 <span>Total en cuenta</span><span style={{ fontFamily: MONO, color: "#0E9F6E" }}>+{money(simIngresoPrevisto)}</span>
                             </div>
                         )}
-                        <form onSubmit={e => {
+                        {!listaCerrada.ingresos && <form onSubmit={e => {
                             e.preventDefault();
                             const monto = nuevoIngresoTotal;
                             if (!nuevoIngresoFijo.name.trim() || !monto) return;
-                            savePlan({ ...plan, fixedIncomes: [...plan.fixedIncomes, { id: Date.now(), name: nuevoIngresoFijo.name.trim(), amount: monto, active: true, custom: true }] });
+                            savePlan({ ...plan, fixedIncomes: [...plan.fixedIncomes, { id: Date.now(), name: nuevoIngresoFijo.name.trim(), amount: monto, active: true, custom: true, grupo: nuevoGrupoIngreso || undefined }] });
                             setNuevoIngresoFijo({ name: "", amount: "", cantidad: "" });
                         }} style={{ display: "flex", gap: "6px", marginTop: "6px", flexWrap: "wrap", alignItems: "center" }}>
                             <input value={nuevoIngresoFijo.name} onChange={e => setNuevoIngresoFijo(v => ({ ...v, name: e.target.value }))} placeholder="Nuevo ingreso fijo…" style={{ flex: 1, minWidth: 0, padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
@@ -388,8 +472,9 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                             ) : (
                                 <input value={nuevoIngresoFijo.amount} onChange={e => setNuevoIngresoFijo(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="Monto" inputMode="decimal" style={{ width: "100px", padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
                             )}
+                            <select value={nuevoGrupoIngreso} onChange={e => setNuevoGrupoIngreso(e.target.value)} title="Grupo" style={{ padding: "11px 8px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "0.8rem", background: "#FFFFFF", color: "#0C2A20" }}><option value="">Grupo: auto</option>{catsIngreso.map(g => <option key={g} value={g}>{g}</option>)}</select>
                             <button type="submit" style={{ background: "#F59E0B", color: "#fff", border: "none", borderRadius: "10px", padding: "0 16px", minHeight: "44px", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", flexShrink: 0, fontSize: "0.8rem", fontWeight: 800 }}><Plus size={16} /> Agregar</button>
-                        </form>
+                        </form>}
                     </div>
                 </div>
             </div>

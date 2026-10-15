@@ -281,6 +281,8 @@ function App() {
                 fixedIncomeItems={(() => { try { return JSON.parse(state.preferences.fixedIncomes || '[]'); } catch { return []; }})()}
                 currentMonthStr={new Date().toLocaleDateString('en-CA').substring(0, 7)}
                 currentBalance={state.balance}
+                expenseCategories={state.expenseCategories}
+                incomeCategories={state.incomeCategories}
                 preferences={state.preferences}
                 updatePreference={state.updatePreference}
               />
