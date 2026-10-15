@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Goal, GoalHorizon } from '../useAlDiaState';
+import type { Goal, GoalHorizon, GoalMilestone } from '../useAlDiaState';
 
 export const useMetasState = () => {
     const [goals, setGoals] = useState<Goal[]>([]);
@@ -12,6 +12,7 @@ export const useMetasState = () => {
         icon: string = '🎯',
         targetDate?: string,
         projectId?: number,
+        milestones: GoalMilestone[] = [],
     ) => {
         const newGoal: Goal = {
             id: Date.now() + Math.random(),
@@ -22,7 +23,7 @@ export const useMetasState = () => {
             icon,
             status: 'pendiente',
             targetDate,
-            milestones: [],
+            milestones,
             projectId,
             order: goals.length,
         };

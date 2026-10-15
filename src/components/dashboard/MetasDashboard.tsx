@@ -1,6 +1,6 @@
 import { useState, Fragment } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Goal, GoalHorizon, GoalStatus, Project } from '../../hooks/useAlDiaState';
+import type { Goal, GoalHorizon, GoalMilestone, GoalStatus, Project } from '../../hooks/useAlDiaState';
 import {
     C, bento, useIsMobile,
     paddingPagina, cabecera, tituloPagina, subtituloPagina, campo, botonPrimario, TOQUE_MINIMO,
@@ -9,7 +9,7 @@ import {
 interface MetasDashboardProps {
     goals: Goal[];
     projects?: Project[];
-    addGoal: (title: string, horizon: GoalHorizon, area: string, color: string, icon?: string, targetDate?: string) => void;
+    addGoal: (title: string, horizon: GoalHorizon, area: string, color: string, icon?: string, targetDate?: string, projectId?: number, milestones?: GoalMilestone[]) => void;
     updateGoal: (id: number, updates: Partial<Goal>) => void;
     removeGoal: (id: number) => void;
     addGoalMilestone: (goalId: number, text: string, plazo?: GoalHorizon) => void;
@@ -54,15 +54,18 @@ export const MetasDashboard = ({
     const [masOpciones, setMasOpciones] = useState(false);
     const [expandedId, setExpandedId] = useState<number | null>(null);
     const [nuevaSub, setNuevaSub] = useState<Record<string, string>>({});
-    const [form, setForm] = useState({ title: '', area: '', icon: ICONOS[0], color: COLORES[0], targetDate: '' });
+    const [form, setForm] = useState({ title: '', area: '', icon: ICONOS[0], color: COLORES[0], targetDate: '', corto: '', mediano: '', largo: '' });
 
 
-    const resetForm = () => setForm({ title: '', area: '', icon: ICONOS[0], color: COLORES[0], targetDate: '' });
+    const resetForm = () => setForm({ title: '', area: '', icon: ICONOS[0], color: COLORES[0], targetDate: '', corto: '', mediano: '', largo: '' });
 
     const submitGoal = (e: React.FormEvent) => {
         e.preventDefault();
         if (!form.title.trim()) return;
-        addGoal(form.title.trim(), 'mediano', form.area.trim() || 'Personal', form.color, form.icon, form.targetDate || undefined);
+        const pasosIniciales: GoalMilestone[] = PLAZOS
+            .filter(pl => form[pl.k].trim())
+            .map((pl, i) => ({ id: Date.now() + i, text: form[pl.k].trim(), completed: false, plazo: pl.k }));
+        addGoal(form.title.trim(), 'mediano', form.area.trim() || 'Personal', form.color, form.icon, form.targetDate || undefined, undefined, pasosIniciales);
         resetForm();
         setAdding(false);
         setMasOpciones(false);
@@ -124,6 +127,18 @@ export const MetasDashboard = ({
                                             enterKeyHint="done"
                                             style={{ ...campo(movil), background: C.surfaceLowest }}
                                         />
+                                        <div style={{ display: 'flex', flexDirection: movil ? 'column' : 'row', gap: '8px' }}>
+                                            {PLAZOS.map(pl => (
+                                                <input
+                                                    key={pl.k}
+                                                    value={form[pl.k]}
+                                                    onChange={e => setForm(v => ({ ...v, [pl.k]: e.target.value }))}
+                                                    placeholder={`${pl.titulo} (${pl.sub})`}
+                                                    enterKeyHint="done"
+                                                    style={{ ...campo(movil), background: C.surfaceLowest, flex: 1, minWidth: 0 }}
+                                                />
+                                            ))}
+                                        </div>
                                         {masOpciones && (<>
                                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                             <input
