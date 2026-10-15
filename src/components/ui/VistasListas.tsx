@@ -28,6 +28,12 @@ export const VISTAS_DINERO = [
     { tab: "Movimientos", label: "Movimientos" },
 ] as const;
 
+export const VISTAS_AGENDA = [
+    { tab: "Agenda", label: "Agenda" },
+    { tab: "Calendario", label: "Calendario" },
+    { tab: "Entregas", label: "Entregas" },
+] as const;
+
 type Vista = { readonly tab: string; readonly label: string };
 
 export const VistasListas = ({ activeTab, setActiveTab, vistas = VISTAS_LISTAS }: { activeTab: string; setActiveTab: (t: string) => void; vistas?: readonly Vista[] }) => (
