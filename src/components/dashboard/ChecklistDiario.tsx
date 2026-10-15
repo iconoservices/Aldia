@@ -20,7 +20,8 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { DailyBlock, Note, SporadicProject, CalendarEvent } from '../../hooks/useAlDiaState';
+import type { DailyBlock, Note, SporadicProject, CalendarEvent, Goal } from '../../hooks/useAlDiaState';
+import { MetasHoy } from './MetasHoy';
 
 import { C, bento as bentoCard, useIsMobile, MONO } from '../../theme';
 import { RegistroMovimiento } from '../features/RegistroMovimiento';
@@ -451,6 +452,8 @@ interface ChecklistDiarioProps {
     onOpenEntregas?: () => void;
     startSporadicTimer?: (id: number) => void;
     pauseSporadicTimer?: (id: number) => void;
+    goals?: Goal[];
+    onOpenMetas?: () => void;
 }
 
 const SORT_STORAGE_KEY = 'aldia-checklist-custom-order';
@@ -459,7 +462,7 @@ export const ChecklistDiario = ({
     dailyBlocks, addDailyBlock, toggleDailyBlock, removeDailyBlock, updateDailyBlock, projects,
     addTransaction, accounts = [],
     incomeCategories, expenseCategories, categoryAccountScope, categoryGroups, groupAccountScope,
-    onOpenBandeja, notes = [], updateNote,
+    onOpenBandeja, notes = [], updateNote, goals = [], onOpenMetas,
     sporadicProjects = [], calendarEvents = [], onOpenEntregas,
     startSporadicTimer, pauseSporadicTimer,
 }: ChecklistDiarioProps) => {
@@ -858,6 +861,7 @@ export const ChecklistDiario = ({
 
                 {/* DnD Tasks List */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <MetasHoy goals={goals} dailyBlocks={dailyBlocks} onOpenMetas={onOpenMetas} />
                     <NotasDelDia notes={notes} updateNote={updateNote} />
 
                     {/* ── Entregas en desarrollo (Móvil) ── */}
@@ -1294,6 +1298,7 @@ export const ChecklistDiario = ({
                         </div>
                     </div>
 
+                    <MetasHoy goals={goals} dailyBlocks={dailyBlocks} onOpenMetas={onOpenMetas} />
                     <NotasDelDia notes={notes} updateNote={updateNote} />
 
                     {/* ── Entregas en desarrollo ── */}

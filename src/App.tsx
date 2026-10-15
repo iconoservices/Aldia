@@ -393,6 +393,8 @@ function App() {
                 onOpenEntregas={() => setActiveTab('Esporadicos')}
                 startSporadicTimer={state.startSporadicTimer}
                 pauseSporadicTimer={state.pauseSporadicTimer}
+                goals={state.goals}
+                onOpenMetas={() => setActiveTab('Metas')}
               />
             ) : activeTab === 'Tareas' ? (
               <>
@@ -403,6 +405,7 @@ function App() {
                   removeDailyBlock={state.removeDailyBlock}
                   updateDailyBlock={state.updateDailyBlock}
                   projects={state.projects}
+                  goals={state.goals}
                 />
               </>
             ) : activeTab === 'Plan' ? (
@@ -442,8 +445,9 @@ function App() {
                 <MetasDashboard
                   goals={state.goals}
                   projects={state.projects}
-                  missions={state.missions}
-                  updateMission={state.updateMission}
+                  dailyBlocks={state.dailyBlocks}
+                  toggleDailyBlock={state.toggleDailyBlock}
+                  linkTaskToGoal={state.linkTaskToGoal}
                   addProject={state.addProject}
                   addGoal={state.addGoal}
                   updateGoal={state.updateGoal}

@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { C, MONO, useIsMobile, paddingPagina } from '../../theme';
-import type { DailyBlock } from '../../hooks/useAlDiaState';
+import type { DailyBlock, Goal } from '../../hooks/useAlDiaState';
+import { opcionesMeta } from './metasAvance';
 
 interface Project {
     id: number;
@@ -20,13 +21,36 @@ interface TareasDashboardProps {
         repeatDays?: number[],
         time?: string,
         isActive?: boolean,
-        isHabit?: boolean
+        isHabit?: boolean,
+        goalId?: number
     ) => void;
     toggleDailyBlock: (id: number) => void;
     removeDailyBlock: (idOrIds: number | number[]) => void;
     updateDailyBlock: (id: number, updates: Partial<DailyBlock>) => void;
     projects: Project[];
+    goals?: Goal[];
 }
+
+// Selector de meta / sub-meta a la que aporta la tarea (se ve en Metas).
+const SelectorMeta = ({ goals, value, onChange, etiqueta }: { goals: Goal[]; value?: number; onChange: (id: number | undefined) => void; etiqueta: string }) => {
+    const opciones = opcionesMeta(goals);
+    const actual = value !== undefined && !opciones.some(o => o.id === value) ? goals.find(g => g.id === value) : undefined;
+    if (opciones.length === 0 && !actual) return null;
+    return (
+        <div style={{ flex: 2, minWidth: '180px' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, display: 'block', marginBottom: '4px' }}>{etiqueta}</label>
+            <select
+                value={value ?? ''}
+                onChange={e => onChange(e.target.value ? Number(e.target.value) : undefined)}
+                style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: '8px', border: `1px solid ${C.outlineVariant}`, background: C.surface, color: C.onSurface, fontFamily: 'inherit', fontSize: '0.85rem' }}
+            >
+                <option value="">(Ninguna)</option>
+                {actual && <option value={actual.id}>{actual.title}</option>}
+                {opciones.map(o => <option key={o.id} value={o.id}>{o.texto}</option>)}
+            </select>
+        </div>
+    );
+};
 
 // Índices de día de la semana de las repetitivas (la referencia para toda la app):
 // lunes = 1 … sábado = 6, domingo = 0 (igual que Date.getDay()).
@@ -74,7 +98,15 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     removeDailyBlock,
     updateDailyBlock,
     projects,
+    goals = [],
 }) => {
+    const metaDe = (b: DailyBlock) => b.goalId !== undefined ? goals.find(g => g.id === b.goalId) : undefined;
+    const chipMeta = (b: DailyBlock) => {
+        const m = metaDe(b);
+        return m ? (
+            <span title="Aporta a esta meta" style={{ fontSize: '0.66rem', fontWeight: 700, padding: '2px 7px', borderRadius: '999px', background: 'rgba(15,169,122,0.10)', color: C.primary, whiteSpace: 'nowrap', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis' }}>🎯 {m.title}</span>
+        ) : null;
+    };
     const todayStr = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
     const movil = useIsMobile();
     const [menuFila, setMenuFila] = useState<number | null>(null);
@@ -157,6 +189,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     const [paraHoy, setParaHoy] = useState(false);
     const [targetTime, setTargetTime] = useState('');
     const [projectId, setProjectId] = useState<number | undefined>(undefined);
+    const [goalId, setGoalId] = useState<number | undefined>(undefined);
     const [isFormOpen, setIsFormOpen] = useState(false);
 
     const parsedTasks = useMemo(() => parseTasksFromText(textoTarea), [textoTarea]);
@@ -169,6 +202,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     const [editDate, setEditDate] = useState('');
     const [editTime, setEditTime] = useState('');
     const [editProjectId, setEditProjectId] = useState<number | undefined>(undefined);
+    const [editGoalId, setEditGoalId] = useState<number | undefined>(undefined);
 
     const handleStartEdit = (b: DailyBlock) => {
         setEditingTask(b);
@@ -178,6 +212,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
         setEditDate(b.date || '');
         setEditTime(b.time || '');
         setEditProjectId(b.projectId);
+        setEditGoalId(b.goalId);
     };
 
     const toggleEditDia = (diaIdx: number) => {
@@ -204,6 +239,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                         period: editingTask.period || 'Otro',
                         projectId: editProjectId,
                         isHabit: editHabito,
+                        goalId: editGoalId,
                     });
                 });
         } else {
@@ -213,6 +249,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                 time: editTime || undefined,
                 period: editingTask.period || 'Otro',
                 projectId: editProjectId,
+                goalId: editGoalId,
             });
         }
 
@@ -290,7 +327,8 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                     selectedDays.length > 0 ? selectedDays : [0, 1, 2, 3, 4, 5, 6],
                     targetTime || undefined,
                     true, // activa por defecto como una alarma
-                    nuevoEsHabito
+                    nuevoEsHabito,
+                    goalId
                 );
             } else {
                 const finalDate = paraHoy ? todayStr : (targetDate || undefined);
@@ -302,7 +340,9 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                     projectId,
                     undefined, // sin repeatDays = de una sola vez
                     targetTime || undefined,
-                    true
+                    true,
+                    undefined,
+                    goalId
                 );
             }
         });
@@ -617,6 +657,7 @@ Supermercado:
                                         ))}
                                     </select>
                                 </div>
+                                <SelectorMeta goals={goals} value={goalId} onChange={setGoalId} etiqueta="Aporta a la meta (opcional):" />
                             </div>
 
                             {/* Botones Footer */}
@@ -730,8 +771,9 @@ Supermercado:
                                             <div style={{ fontSize: '0.9rem', fontWeight: 700, color: hecha ? C.outline : C.onSurface, textDecoration: hecha ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                 {b.label}{!isEncendida && <span style={{ marginLeft: '8px', fontSize: '0.62rem', fontWeight: 800, color: C.outline, border: `1px solid ${C.outlineVariant}`, borderRadius: '999px', padding: '0 6px' }}>pausada</span>}
                                             </div>
-                                            {(project || esHabito(b)) && (
-                                                <div style={{ fontSize: '0.68rem', color: C.onSurfaceVariant, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            {(project || esHabito(b) || metaDe(b)) && (
+                                                <div style={{ fontSize: '0.68rem', color: C.onSurfaceVariant, display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                                                    {chipMeta(b)}
                                                     {project && (
                                                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: project.color }} />
@@ -920,6 +962,7 @@ Supermercado:
                                                         {project.name}
                                                     </span>
                                                 )}
+                                                {chipMeta(b)}
                                             </div>
                                         </div>
 
@@ -1087,6 +1130,8 @@ Supermercado:
                                         ))}
                                     </select>
                                 </div>
+
+                                <SelectorMeta goals={goals} value={editGoalId} onChange={setEditGoalId} etiqueta="Aporta a la meta:" />
 
                                 {/* Botones Footer */}
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>

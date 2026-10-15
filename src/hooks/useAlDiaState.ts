@@ -25,7 +25,6 @@ export interface Mission {
     labels?: string[]; // Etiquetas para categorizar
     habitId?: number; // Si es un hábito, ID de la fábrica
     projectId?: number; // Referencia opcional a un proyecto
-    goalId?: number; // Meta (o sub-meta) a la que aporta esta tarea
     repeatDays?: number[]; // Índices 0-6 (L-D) para repetición personalizada
     isRoutine?: boolean; // Para identificar tareas que vienen de una rutina
     routineId?: number; // Referencia a la rutina de origen
@@ -191,6 +190,7 @@ export interface DailyBlock {
     isHabit?: boolean;  // Tarea repetitiva marcada como hábito (lleva racha). Los hábitos viven acá.
     linkedRoutineId?: number;     // Hábito promovido desde una rutina
     linkedRoutineItemId?: number;
+    goalId?: number;    // Meta o sub-meta a la que aporta. En repetitivas va en todos los bloques de la serie.
 }
 
 // Check-in diario de salud, uno por día -- alimenta el score de Salud/Sueño
@@ -1515,10 +1515,15 @@ export const useAlDiaState = () => {
         repeatDays?: number[],
         time?: string,
         isActive: boolean = true,
-        isHabit?: boolean
+        isHabit?: boolean,
+        goalId?: number
     ) => {
         // Los registros de cada día de un hábito heredan su marca (y su vínculo con la rutina).
         const plantilla = dailyBlocks.find(b => b.isHabit && b.label.trim().toLowerCase() === label.trim().toLowerCase());
+        // Cada registro de una repetitiva hereda la meta de su serie.
+        const metaSerie = goalId ?? (repeatDays?.length
+            ? dailyBlocks.find(b => b.goalId !== undefined && b.repeatDays?.length && b.period === period && b.label.trim().toLowerCase() === label.trim().toLowerCase())?.goalId
+            : undefined);
         const newBlock: DailyBlock = {
             id: nextBlockId(),
             label,
@@ -1532,8 +1537,22 @@ export const useAlDiaState = () => {
             ...((isHabit || plantilla) && { isHabit: true }),
             ...(plantilla?.linkedRoutineId !== undefined && { linkedRoutineId: plantilla.linkedRoutineId }),
             ...(plantilla?.linkedRoutineItemId !== undefined && { linkedRoutineItemId: plantilla.linkedRoutineItemId }),
+            ...(metaSerie !== undefined && { goalId: metaSerie }),
         };
         setDailyBlocks(prev => [...prev, newBlock]);
+    };
+
+    // Enlaza (o desenlaza con undefined) una tarea a una meta. Si es repetitiva,
+    // se enlaza toda la serie (mismo texto y periodo) para que los días nuevos la hereden.
+    const linkTaskToGoal = (blockId: number, goalId: number | undefined) => {
+        setDailyBlocks(prev => {
+            const base = prev.find(b => b.id === blockId);
+            if (!base) return prev;
+            const clave = base.label.trim().toLowerCase();
+            const esSerie = !!base.repeatDays?.length;
+            return prev.map(b => (b.id === blockId || (esSerie && b.repeatDays?.length && b.period === base.period && b.label.trim().toLowerCase() === clave))
+                ? { ...b, goalId } : b);
+        });
     };
 
     const toggleDailyBlock = (id: number) => {
@@ -2046,7 +2065,7 @@ export const useAlDiaState = () => {
     return {
         // Misiones
         missions: misionesState, todayMissions,
-        toggleMission: lw(toggleMission), updateMission: lw(updateMission),
+        toggleMission: lw(toggleMission), updateMission: lw(updateMission), linkTaskToGoal: lw(linkTaskToGoal),
         addMission: lw(addMission), removeMission: lw(removeMission), reorderMissions: lw(reorderMissions),
         habits: habitosUnif, toggleHabit: lw(toggleHabit), addHabit: lw(addHabit), removeHabit: lw(removeHabit),
         agenda, addCalendarEvent: lw(addCalendarEvent), removeCalendarEvent: lw(removeCalendarEvent), updateCalendarEvent: lw(updateCalendarEvent),

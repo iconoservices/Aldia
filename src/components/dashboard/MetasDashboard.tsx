@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NuevaMetaModal, PLAZOS_INFO } from './NuevaMetaModal';
 import type { NuevaMeta } from './NuevaMetaModal';
-import type { Goal, GoalHorizon, GoalStatus, Mission, Project } from '../../hooks/useAlDiaState';
+import type { DailyBlock, Goal, GoalHorizon, GoalStatus, Project } from '../../hooks/useAlDiaState';
+import { avance, tareasDeMeta } from './metasAvance';
 import {
     C, MONO, useIsMobile,
     paddingPagina, cabecera, tituloPagina, subtituloPagina, campo,
@@ -17,8 +18,9 @@ import {
 interface MetasDashboardProps {
     goals: Goal[];
     projects?: Project[];
-    missions?: Mission[];
-    updateMission?: (id: number, updates: Partial<Mission>) => void;
+    dailyBlocks?: DailyBlock[];
+    toggleDailyBlock?: (id: number) => void;
+    linkTaskToGoal?: (blockId: number, goalId: number | undefined) => void;
     addProject?: (name: string, color: string) => number | void;
     addGoal: (title: string, horizon: GoalHorizon, area: string, color: string, icon?: string, targetDate?: string, projectId?: number, milestones?: Goal['milestones'], nombresPlazo?: Goal['nombresPlazo'], extra?: Partial<Goal>) => void;
     updateGoal: (id: number, updates: Partial<Goal>) => void;
@@ -50,24 +52,6 @@ const diasRestantes = (fecha?: string) => {
     return Math.round((objetivo.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
 };
 
-const fmt = (n: number) => n.toLocaleString('es-PE', { maximumFractionDigits: 2 });
-const conUnidad = (n: number, u?: string) => !u ? fmt(n) : u === 'S/' ? `S/ ${fmt(n)}` : u === '%' ? `${fmt(n)}%` : `${fmt(n)} ${u}`;
-
-// Avance de una meta o sub-meta. Con número: actual/objetivo. Si no: sub-metas
-// logradas + tareas propias hechas + tareas enlazadas (no repetitivas) hechas.
-const avance = (g: Goal, subs: Goal[], missions: Mission[]) => {
-    if (g.objetivo && g.objetivo > 0) {
-        const actual = g.actual ?? 0;
-        const texto = g.unidad === 'S/' ? `S/ ${fmt(actual)} / ${fmt(g.objetivo)}` : `${fmt(actual)} / ${conUnidad(g.objetivo, g.unidad)}`;
-        return { pct: Math.max(0, Math.min(100, Math.round((actual / g.objetivo) * 100))), texto };
-    }
-    const enlazadas = missions.filter(m => m.goalId === g.id && m.repeat === 'none');
-    const total = subs.length + g.milestones.length + enlazadas.length;
-    const hechos = subs.filter(s => s.status === 'completado').length + g.milestones.filter(m => m.completed).length + enlazadas.filter(m => m.completed).length;
-    if (total === 0) return { pct: g.status === 'completado' ? 100 : 0, texto: '' };
-    return { pct: Math.round((hechos / total) * 100), texto: `${hechos}/${total}` };
-};
-
 const Barra = ({ pct, color, alto = 4 }: { pct: number; color: string; alto?: number }) => (
     <div style={{ height: `${alto}px`, background: C.surfaceContainerHigh, borderRadius: '999px', overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: '999px', transition: 'width 0.25s' }} />
@@ -87,7 +71,7 @@ const aForm = (g: Goal): Partial<NuevaMeta> => ({
 const num = (s: string) => { const n = parseFloat(s); return isFinite(n) ? n : undefined; };
 
 export const MetasDashboard = ({
-    goals, projects = [], missions = [], updateMission, addProject,
+    goals, projects = [], dailyBlocks = [], toggleDailyBlock, linkTaskToGoal, addProject,
     addGoal, updateGoal, removeGoal, addGoalMilestone, toggleGoalMilestone, removeGoalMilestone,
 }: MetasDashboardProps) => {
     const movil = useIsMobile();
@@ -132,7 +116,7 @@ export const MetasDashboard = ({
         const subs = subsDe(goal.id);
         const columnas = (
             <Columnas
-                goal={goal} subs={subs} missions={missions} movil={movil}
+                goal={goal} subs={subs} dailyBlocks={dailyBlocks} movil={movil}
                 onAbrirSub={id => setSubAbierta(id)}
                 onAbrirPlazo={plazo => setPlazoAbierto({ goalId: goal.id, plazo })}
                 onNuevaSub={plazo => setForm({ tipo: 'sub', padre: goal, inicial: { horizon: plazo } })}
@@ -140,14 +124,14 @@ export const MetasDashboard = ({
         );
         const tarjeta = (
             <TarjetaMeta
-                goal={goal} subs={subs} missions={missions} movil={movil}
+                goal={goal} subs={subs} dailyBlocks={dailyBlocks} movil={movil}
                 expandido={movil && expandedId === goal.id}
                 onToggleExpand={() => movil && setExpandedId(expandedId === goal.id ? null : goal.id)}
                 onCycleStatus={() => updateGoal(goal.id, { status: NEXT_STATUS[goal.status] })}
                 onEditar={() => setForm({ tipo: 'meta', goal })}
                 onRemove={() => { if (subs.length === 0 || window.confirm(`Se borrará "${goal.title}" y sus ${subs.length} sub-meta(s).`)) removeGoal(goal.id); }}
                 onUpdate={u => updateGoal(goal.id, u)}
-                updateMission={updateMission}
+                toggleDailyBlock={toggleDailyBlock} linkTaskToGoal={linkTaskToGoal}
             >
                 {movil && columnas}
             </TarjetaMeta>
@@ -215,7 +199,7 @@ export const MetasDashboard = ({
             />
 
             <SubMetaModal
-                sub={sub} padre={padreDeSub} movil={movil} missions={missions} updateMission={updateMission}
+                sub={sub} padre={padreDeSub} movil={movil} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} linkTaskToGoal={linkTaskToGoal}
                 onClose={() => setSubAbierta(null)}
                 onUpdate={u => sub && updateGoal(sub.id, u)}
                 onEditar={() => sub && padreDeSub && setForm({ tipo: 'sub', padre: padreDeSub, goal: sub })}
@@ -249,7 +233,7 @@ export const MetasDashboard = ({
 interface TarjetaMetaProps {
     goal: Goal;
     subs: Goal[];
-    missions: Mission[];
+    dailyBlocks: DailyBlock[];
     movil: boolean;
     expandido: boolean;
     onToggleExpand: () => void;
@@ -257,14 +241,15 @@ interface TarjetaMetaProps {
     onEditar: () => void;
     onRemove: () => void;
     onUpdate: (updates: Partial<Goal>) => void;
-    updateMission?: (id: number, updates: Partial<Mission>) => void;
+    toggleDailyBlock?: (id: number) => void;
+    linkTaskToGoal?: (blockId: number, goalId: number | undefined) => void;
     children?: React.ReactNode;
 }
 
-const TarjetaMeta = ({ goal, subs, missions, movil, expandido, onToggleExpand, onCycleStatus, onEditar, onRemove, onUpdate, updateMission, children }: TarjetaMetaProps) => {
+const TarjetaMeta = ({ goal, subs, dailyBlocks, movil, expandido, onToggleExpand, onCycleStatus, onEditar, onRemove, onUpdate, toggleDailyBlock, linkTaskToGoal, children }: TarjetaMetaProps) => {
     const [menu, setMenu] = useState(false);
     const [detalles, setDetalles] = useState(false);
-    const av = avance(goal, subs, missions);
+    const av = avance(goal, subs, dailyBlocks);
     const restantes = diasRestantes(goal.targetDate);
     const status = STATUS_INFO[goal.status];
 
@@ -347,7 +332,7 @@ const TarjetaMeta = ({ goal, subs, missions, movil, expandido, onToggleExpand, o
                                 rows={2}
                                 style={{ ...campo(movil), width: '100%', resize: 'vertical', boxSizing: 'border-box' }}
                             />
-                            <TareasEnlazadas goal={goal} missions={missions} updateMission={updateMission} movil={movil} />
+                            <TareasEnlazadas goal={goal} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} linkTaskToGoal={linkTaskToGoal} movil={movil} />
                         </>
                     )}
                 </div>
@@ -392,14 +377,14 @@ const AvanceNumero = ({ goal, onUpdate, movil }: { goal: Goal; onUpdate: (u: Par
 interface ColumnasProps {
     goal: Goal;
     subs: Goal[];
-    missions: Mission[];
+    dailyBlocks: DailyBlock[];
     movil: boolean;
     onAbrirSub: (id: number) => void;
     onAbrirPlazo: (plazo: GoalHorizon) => void;
     onNuevaSub: (plazo: GoalHorizon) => void;
 }
 
-const Columnas = ({ goal, subs, missions, movil, onAbrirSub, onAbrirPlazo, onNuevaSub }: ColumnasProps) => (
+const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, onNuevaSub }: ColumnasProps) => (
     <div style={{ display: 'flex', flexDirection: movil ? 'column' : 'row', alignItems: 'stretch', gap: movil ? '4px' : '0', height: movil ? undefined : '100%' }}>
         {PLAZOS_INFO.map((pl, idx) => {
             const subsPlazo = subs.filter(s => s.horizon === pl.k);
@@ -425,7 +410,7 @@ const Columnas = ({ goal, subs, missions, movil, onAbrirSub, onAbrirPlazo, onNue
                             {tareas.length > 0 && <span style={{ fontSize: '0.68rem', fontWeight: 700, color: C.outline }}>{tareas.length - pendientes.length}/{tareas.length}</span>}
                         </button>
 
-                        {subsPlazo.map(s => <SubMetaChip key={s.id} sub={s} color={goal.color} missions={missions} onClick={() => onAbrirSub(s.id)} />)}
+                        {subsPlazo.map(s => <SubMetaChip key={s.id} sub={s} color={goal.color} dailyBlocks={dailyBlocks} onClick={() => onAbrirSub(s.id)} />)}
 
                         {pendientes.slice(0, 3).map(m => (
                             <div key={m.id} onClick={() => onAbrirPlazo(pl.k)} style={{ fontSize: '0.8rem', color: C.onSurface, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}>
@@ -446,8 +431,8 @@ const Columnas = ({ goal, subs, missions, movil, onAbrirSub, onAbrirPlazo, onNue
     </div>
 );
 
-const SubMetaChip = ({ sub, color, missions, onClick }: { sub: Goal; color: string; missions: Mission[]; onClick: () => void }) => {
-    const av = avance(sub, [], missions);
+const SubMetaChip = ({ sub, color, dailyBlocks, onClick }: { sub: Goal; color: string; dailyBlocks: DailyBlock[]; onClick: () => void }) => {
+    const av = avance(sub, [], dailyBlocks);
     const lograda = sub.status === 'completado';
     const pendientes = sub.milestones.filter(m => !m.completed);
     return (
@@ -474,33 +459,51 @@ const SubMetaChip = ({ sub, color, missions, onClick }: { sub: Goal; color: stri
 
 /* ─── Tareas de Tareas/Mi Día enlazadas a una meta ─── */
 
-const TareasEnlazadas = ({ goal, missions, updateMission, movil }: { goal: Goal; missions: Mission[]; updateMission?: (id: number, u: Partial<Mission>) => void; movil: boolean }) => {
-    if (!updateMission) return null;
-    const enlazadas = missions.filter(m => m.goalId === goal.id);
-    const libres = missions.filter(m => !m.goalId && !m.completed && !m.isHabit);
+const TareasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, linkTaskToGoal, movil }: { goal: Goal; dailyBlocks: DailyBlock[]; toggleDailyBlock?: (id: number) => void; linkTaskToGoal?: (blockId: number, goalId: number | undefined) => void; movil: boolean }) => {
+    if (!linkTaskToGoal) return null;
+    const enlazadas = tareasDeMeta(goal.id, dailyBlocks);
+    // Para enlazar: sueltas pendientes y una fila por cada repetitiva (la serie entera).
+    const vistas = new Set<string>();
+    const libres = dailyBlocks.filter(b => {
+        if (b.goalId !== undefined) return false;
+        if (!b.repeatDays?.length) return !b.completed;
+        const k = `${b.label.trim().toLowerCase()}|${b.period}`;
+        if (vistas.has(k)) return false;
+        vistas.add(k);
+        return b.isActive !== false;
+    }).sort((a, b) => Number(!!b.repeatDays?.length) - Number(!!a.repeatDays?.length));
     return (
         <div>
             <div style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.outline, marginBottom: '6px' }}>
-                Tareas de Mi Día enlazadas
+                Tareas de Mi Día que aportan
             </div>
-            {enlazadas.map(m => (
-                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', borderBottom: `1px solid ${C.surfaceContainerHigh}` }}>
-                    <Check marcado={m.completed} color={goal.color} onClick={() => updateMission(m.id, { completed: !m.completed })} />
-                    <span style={{ flex: 1, minWidth: 0, fontSize: '0.88rem', color: m.completed ? C.outline : C.onSurface, textDecoration: m.completed ? 'line-through' : 'none', wordBreak: 'break-word' }}>
-                        {m.text}{m.repeat !== 'none' && <span style={{ color: C.outline, fontSize: '0.72rem' }}> · se repite</span>}
+            {enlazadas.map(t => (
+                <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', borderBottom: `1px solid ${C.surfaceContainerHigh}` }}>
+                    {t.repetitiva ? (
+                        <span className="material-symbols-outlined" title="Repetitiva" style={{ fontSize: '20px', color: goal.color, width: '22px', flexShrink: 0 }}>repeat</span>
+                    ) : (
+                        <Check marcado={t.hecha} color={goal.color} onClick={() => toggleDailyBlock?.(t.id)} />
+                    )}
+                    <span style={{ flex: 1, minWidth: 0, fontSize: '0.88rem', color: !t.repetitiva && t.hecha ? C.outline : C.onSurface, textDecoration: !t.repetitiva && t.hecha ? 'line-through' : 'none', wordBreak: 'break-word' }}>
+                        {t.label}
+                        {t.repetitiva && t.semana && (
+                            <span style={{ display: 'block', color: C.outline, fontSize: '0.72rem', fontWeight: 600 }}>
+                                {!t.activa ? 'pausada' : `esta semana ${t.semana.hechos}/${t.semana.toca}${t.hecha ? ' · hoy ✓' : ''}`}
+                            </span>
+                        )}
                     </span>
-                    <button onClick={() => updateMission(m.id, { goalId: undefined })} title="Desenlazar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '4px' }}>
+                    <button onClick={() => linkTaskToGoal(t.id, undefined)} title="Desenlazar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '4px' }}>
                         <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>link_off</span>
                     </button>
                 </div>
             ))}
             <select
                 value=""
-                onChange={e => { const id = Number(e.target.value); if (id) updateMission(id, { goalId: goal.id }); }}
+                onChange={e => { const id = Number(e.target.value); if (id) linkTaskToGoal(id, goal.id); }}
                 style={{ ...campo(movil), width: '100%', marginTop: '8px', boxSizing: 'border-box', color: C.onSurfaceVariant }}
             >
-                <option value="">{libres.length ? '+ Enlazar una tarea pendiente…' : 'No hay tareas pendientes para enlazar'}</option>
-                {libres.map(m => <option key={m.id} value={m.id}>{m.text}</option>)}
+                <option value="">{libres.length ? '+ Enlazar una tarea de Mi Día…' : 'No hay tareas para enlazar'}</option>
+                {libres.map(b => <option key={b.id} value={b.id}>{b.repeatDays?.length ? '🔁 ' : ''}{b.label}</option>)}
             </select>
         </div>
     );
@@ -626,8 +629,9 @@ interface SubMetaModalProps {
     sub?: Goal;
     padre?: Goal;
     movil: boolean;
-    missions: Mission[];
-    updateMission?: (id: number, u: Partial<Mission>) => void;
+    dailyBlocks: DailyBlock[];
+    toggleDailyBlock?: (id: number) => void;
+    linkTaskToGoal?: (blockId: number, goalId: number | undefined) => void;
     onClose: () => void;
     onUpdate: (u: Partial<Goal>) => void;
     onEditar: () => void;
@@ -638,10 +642,10 @@ interface SubMetaModalProps {
     onRemoveTarea: (id: number) => void;
 }
 
-const SubMetaModal = ({ sub, padre, movil, missions, updateMission, onClose, onUpdate, onEditar, onSiguiente, onRemove, onAddTarea, onToggleTarea, onRemoveTarea }: SubMetaModalProps) => {
+const SubMetaModal = ({ sub, padre, movil, dailyBlocks, toggleDailyBlock, linkTaskToGoal, onClose, onUpdate, onEditar, onSiguiente, onRemove, onAddTarea, onToggleTarea, onRemoveTarea }: SubMetaModalProps) => {
     const color = padre?.color ?? C.primary;
     const lograda = sub?.status === 'completado';
-    const av = sub ? avance(sub, [], missions) : { pct: 0, texto: '' };
+    const av = sub ? avance(sub, [], dailyBlocks) : { pct: 0, texto: '' };
     return (
         <Hoja abierta={!!sub && !!padre} movil={movil} color={color} onClose={onClose}>
             {sub && padre && (
@@ -698,7 +702,7 @@ const SubMetaModal = ({ sub, padre, movil, missions, updateMission, onClose, onU
                         />
                     </div>
 
-                    <TareasEnlazadas goal={sub} missions={missions} updateMission={updateMission} movil={movil} />
+                    <TareasEnlazadas goal={sub} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} linkTaskToGoal={linkTaskToGoal} movil={movil} />
 
                     <button
                         onClick={() => { if (window.confirm(`¿Borrar la sub-meta "${sub.title}"?`)) onRemove(); }}

@@ -65,7 +65,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Proyección',   tab: 'Proyección',  icon: 'trending_up' },
         { label: 'Movimientos', tab: 'Movimientos', icon: 'list_alt'    },
         { label: 'Pendientes', tab: 'Pendientes', icon: 'checklist' },
-        { label: 'Listas',    tab: 'Listas',    icon: 'fact_check'    },        { label: 'Compras',   tab: 'Compras',   icon: 'shopping_cart' },
+        { label: 'Listas',    tab: 'Listas',    icon: 'fact_check'    },
+        { label: 'Notas',     tab: 'Cerebro',   icon: 'psychology'    },        { label: 'Compras',   tab: 'Compras',   icon: 'shopping_cart' },
         { label: 'Comidas',   tab: 'Comidas',   icon: 'restaurant'    },
         { label: 'Metas',     tab: 'Metas',     icon: 'flag'          },
         { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
@@ -78,7 +79,6 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Buscador',   tab: 'Buscador',   icon: 'travel_explore' },
         { label: 'Acción',     tab: 'Acción',     icon: 'bolt'          },
         { label: 'Base de Datos', tab: 'Base de Datos', icon: 'database' },
-        { label: 'Cerebro',    tab: 'Cerebro',     icon: 'psychology'    },
         { label: 'Ruta',       tab: 'Ruta',        icon: 'route'         },
         { label: 'Mapa',       tab: 'Mapa',        icon: 'map'           },
         { label: 'Tablero',    tab: 'Tablero',     icon: 'view_kanban'   },
@@ -192,7 +192,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             case 'Proyección': return 'Proyección';
             case 'Calendario': return 'Calendario';
             case 'Stats': return 'Datos';
-            case 'Cerebro': return 'Cerebro';
+            case 'Cerebro': return 'Notas';
             case 'Vida': return 'Rutina';
             case 'Rutina': return 'Rutina';
             case 'Horario': return 'Horario';
