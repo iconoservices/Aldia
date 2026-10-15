@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
 
 :root {
@@ -49,10 +49,10 @@ body {
   display: inline-block;
 }
 
-/* Cifras, códigos y fechas van en mono (línea gráfica v1.0). Nunca párrafos. */
+/* Cifras, códigos y fechas: la letra normal de la app, con dígitos del mismo ancho para que alineen. */
 .num, input[type="time"], input[type="date"], input[type="number"] {
-  font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
-  font-feature-settings: 'tnum' 1, 'cv01' 1;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  font-feature-settings: 'tnum' 1;
 }
 
 @keyframes spin-slow {

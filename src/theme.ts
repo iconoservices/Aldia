@@ -35,8 +35,8 @@ export const C = {
     info:                    '#2C7A9E',
 } as const;
 
-/** Tipografía monoespaciada — solo cifras, códigos, fechas y metadatos. Nunca párrafos. */
-export const MONO = "'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace";
+/** Tipografía de las cifras: la misma letra normal de la app (antes era monoespaciada). */
+export const MONO = "'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif"; // cifras con la letra normal de la app (no mono)
 
 /* Franjas del día — compartidas por Checklist y Bloques */
 export const PERIODOS = {
