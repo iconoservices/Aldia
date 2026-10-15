@@ -925,7 +925,8 @@ export const TimelineAgendaView = ({
     const [editingItem, setEditingItem] = useState<{ type: 'calendar' | 'routine' | 'timeblock' | 'new', data: any } | null>(null);
     // Arranca oculto: el usuario todavía no decidió cómo ordenar este panel
     // (mini-calendario + Categorías + Notion). Se abre con el botón de la cabecera.
-    const [sidebarOpen, setSidebarOpen] = useState(false);
+    // Agenda Central (calendario chico + categorías): abierto por defecto en pantalla grande.
+    const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 900);
     // Paneles laterales derechos abiertos, en orden de izquierda a derecha. Al
     // entrar al Calendario arranca con "En orden". "foco" y "cola" ("En orden")
     // pueden estar abiertos A LA VEZ, lado a lado (el usuario lo pidió así); el
@@ -1769,9 +1770,47 @@ export const TimelineAgendaView = ({
                 });
             });
         }
+        // Tareas (las de la pestaña Tareas): repetitivas en los días que tocan (con su hora) y sueltas con fecha.
+        if (activeFilters.tareas) {
+            const y = selectedDate.getFullYear(), m = selectedDate.getMonth();
+            const diasMes = new Date(y, m + 1, 0).getDate();
+            const mismaTarea = (a: any, b: any) => a.label.trim().toLowerCase() === b.label.trim().toLowerCase() && (a.period || 'Otro') === (b.period || 'Otro');
+            const plantillas = new Map<string, any>();
+            (dailyBlocks || []).forEach((b: any) => {
+                if (b.repeatDays?.length && b.isActive !== false) {
+                    const k = `${b.label.trim().toLowerCase()}||${b.period || 'Otro'}`;
+                    const prev = plantillas.get(k);
+                    if (!prev || (!prev.time && b.time)) plantillas.set(k, b);
+                }
+            });
+            for (let d = 1; d <= diasMes; d++) {
+                const fecha = new Date(y, m, d);
+                const ds = fecha.toLocaleDateString('en-CA');
+                const jsDia = fecha.getDay(); // lunes = 1 … domingo = 0, como en Tareas
+                plantillas.forEach(r => {
+                    if (!r.repeatDays.includes(jsDia)) return;
+                    const hecha = (dailyBlocks || []).some((b: any) => mismaTarea(b, r) && b.date === ds && b.completed);
+                    (map[ds] ||= []).push({ id: `tr-${r.id}-${ds}`, title: r.label, startTime: r.time || '', endTime: '', isTask: true, done: hecha, color: '#F59E0B', task: { block: r, date: ds } });
+                });
+            }
+            const prefijo = `${y}-${String(m + 1).padStart(2, '0')}`;
+            (dailyBlocks || []).forEach((b: any) => {
+                if (b.repeatDays?.length || !b.date || !b.date.startsWith(prefijo)) return;
+                if ([...plantillas.values()].some(r => mismaTarea(r, b))) return; // es el registro de un día de una repetitiva
+                (map[b.date] ||= []).push({ id: `ts-${b.id}`, title: b.label, startTime: b.time || '', endTime: '', isTask: true, done: !!b.completed, color: '#F59E0B', task: { block: b, date: b.date, suelta: true } });
+            });
+        }
         Object.values(map).forEach(list => list.sort((a, b) => (a.startTime || '99:99').localeCompare(b.startTime || '99:99')));
         return map;
-    }, [calendarEvents, projects, activeFilters.agenda, activeFilters.entregas, activeFilters.citas, notionOn]);
+    }, [calendarEvents, projects, dailyBlocks, selectedDate, activeFilters.agenda, activeFilters.entregas, activeFilters.citas, activeFilters.tareas, notionOn]);
+
+    // Marcar / desmarcar una tarea desde la celda del mes (igual que en Mi Día y Tareas).
+    const marcarTareaDeCelda = (t: { block: any; date: string; suelta?: boolean }) => {
+        if (t.suelta) { toggleDailyBlock?.(t.block.id); return; }
+        const existente = (dailyBlocks || []).find((b: any) => b.label.trim().toLowerCase() === t.block.label.trim().toLowerCase() && (b.period || 'Otro') === (t.block.period || 'Otro') && b.date === t.date);
+        if (existente) toggleDailyBlock?.(existente.id);
+        else addDailyBlock?.(t.block.label, t.block.period || 'Otro', t.date, true, t.block.projectId, t.block.repeatDays);
+    };
 
     const currentTime = new Date();
     const currentPos = (currentTime.getHours() * 60) + currentTime.getMinutes();
@@ -1858,83 +1897,48 @@ export const TimelineAgendaView = ({
                     )}
                 </div>
                 <div style={{ padding: '0 8px' }}>
-                    {[
-                        { key: 'mision', label: 'Misión Diaria (Timeline)', color: 'var(--domain-orange)', icon: <Star size={14} />, type: 'UNIFICADO' },
-                        { key: 'tareas', label: 'Tareas', color: '#F59E0B', icon: <Filter size={14} />, type: 'MICRO' },
-                        { key: 'citas', label: 'Citas y Eventos', color: '#3ED9A0', icon: <Clock size={14} />, type: 'MACRO' },
-                        { key: 'rutinas', label: 'Horario', color: '#0E9F6E', icon: <CalendarDays size={14} />, type: 'MACRO' },
-                        { key: 'habitos', label: 'Hábitos (Habits)', color: '#EC4899', icon: <CalendarDays size={14} />, type: 'MICRO' },
-                    ].map(f => (
-                        <div
-                            key={f.key}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: '10px 12px',
-                                borderRadius: '12px',
-                                cursor: 'pointer',
-                                background: panelAbierto(f.key as RightPanel) ? `${f.color}15` : 'transparent',
-                                border: panelAbierto(f.key as RightPanel) ? `1px solid ${f.color}30` : '1px solid transparent',
-                                marginBottom: '2px',
-                                opacity: activeFilters[f.key as keyof typeof activeFilters] ? 1 : 0.6,
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            <div
-                                style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}
-                                onClick={() => abrirPanel(f.key as RightPanel)}
-                            >
-                                <div style={{ color: f.color }}>{f.icon}</div>
-                                <span style={{ fontSize: '0.75rem', fontWeight: panelAbierto(f.key as RightPanel) ? 900 : 800, color: '#4A5F58' }}>{f.label}</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); soloFiltro(f.key as keyof typeof activeFilters); }}
-                                    title={`Ver solo ${f.label}`}
-                                    style={{ background: 'none', border: `1px solid ${f.color}55`, color: f.color, borderRadius: '999px', fontSize: '0.55rem', fontWeight: 900, padding: '1px 7px', cursor: 'pointer', fontFamily: 'inherit' }}
-                                >solo</button>
-                                <span style={{ fontSize: '0.55rem', fontWeight: 900, color: f.color, opacity: 0.8 }}>{f.type}</span>
-                                <div
-                                    onClick={(e) => { e.stopPropagation(); setActiveFilters(prev => ({ ...prev, [f.key]: !prev[f.key as keyof typeof prev] })); }}
-                                    style={{ width: '13px', height: '13px', borderRadius: '4px', border: `1px solid ${activeFilters[f.key as keyof typeof activeFilters] ? f.color : '#DCE7E1'}`, background: activeFilters[f.key as keyof typeof activeFilters] ? f.color : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', flexShrink: 0, cursor: 'pointer' }}
-                                >
-                                    {activeFilters[f.key as keyof typeof activeFilters] && <span style={{ color: 'white', fontSize: '9px', fontWeight: 900, lineHeight: 1 }}>✓</span>}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-
-                    {/* Agenda y Entregas — filtros generales: muestran/ocultan sus items
-                        vengan de Notion o creados a mano. El sync de Notion es aparte (abajo). */}
+                    {/* Una sola lista: qué categorías se ven en el calendario. Tocar el nombre abre su panel
+                        (si tiene) o la prende/apaga; "solo" deja únicamente esa; la casilla la prende/apaga. */}
                     {([
-                        { key: 'agenda', label: 'Agenda', color: '#3ED9A0', icon: <Camera size={14} /> },
-                        { key: 'entregas', label: 'Entregas', color: '#0FA97A', icon: <Package size={14} /> },
+                        { key: 'mision', label: 'Misión diaria', color: '#F59E0B', icon: <Star size={15} />, panel: true },
+                        { key: 'tareas', label: 'Tareas', color: '#F59E0B', icon: <Filter size={15} />, panel: true },
+                        { key: 'citas', label: 'Citas y eventos', color: '#3ED9A0', icon: <Clock size={15} />, panel: true },
+                        { key: 'rutinas', label: 'Horario', color: '#0E9F6E', icon: <CalendarDays size={15} />, panel: true },
+                        { key: 'habitos', label: 'Hábitos', color: '#EC4899', icon: <CalendarDays size={15} />, panel: true },
+                        { key: 'agenda', label: 'Sesiones', color: '#3ED9A0', icon: <Camera size={15} />, panel: false },
+                        { key: 'entregas', label: 'Entregas', color: '#0FA97A', icon: <Package size={15} />, panel: false },
                     ] as const).map(f => {
                         const on = activeFilters[f.key];
+                        const abierto = f.panel && panelAbierto(f.key as RightPanel);
                         return (
                             <div
                                 key={f.key}
-                                onClick={() => setActiveFilters(prev => ({ ...prev, [f.key]: !prev[f.key] }))}
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: '12px', cursor: 'pointer', marginBottom: '2px', opacity: on ? 1 : 0.6, border: '1px solid transparent', transition: 'all 0.15s' }}
+                                className="cat-fila"
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 10px', borderRadius: '10px',
+                                    cursor: 'pointer', marginBottom: '1px', background: abierto ? '#F1F5F3' : 'transparent', transition: 'background .15s',
+                                }}
+                                onClick={() => f.panel ? abrirPanel(f.key as RightPanel) : setActiveFilters(prev => ({ ...prev, [f.key]: !prev[f.key] }))}
                             >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <div style={{ color: f.color }}>{f.icon}</div>
-                                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#4A5F58' }}>{f.label}</span>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); soloFiltro(f.key); }}
-                                        title={`Ver solo ${f.label}`}
-                                        style={{ background: 'none', border: `1px solid ${f.color}55`, color: f.color, borderRadius: '999px', fontSize: '0.55rem', fontWeight: 900, padding: '1px 7px', cursor: 'pointer', fontFamily: 'inherit' }}
-                                    >solo</button>
-                                    <div style={{ width: '13px', height: '13px', borderRadius: '4px', border: `1px solid ${on ? f.color : '#DCE7E1'}`, background: on ? f.color : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                        {on && <span style={{ color: 'white', fontSize: '9px', fontWeight: 900, lineHeight: 1 }}>✓</span>}
-                                    </div>
-                                </div>
+                                <span style={{ color: on ? f.color : '#B7C4BE', display: 'flex', flexShrink: 0 }}>{f.icon}</span>
+                                <span style={{ flex: 1, minWidth: 0, fontSize: '0.8rem', fontWeight: abierto ? 800 : 600, color: on ? '#0C2A20' : '#9AAAA3' }}>{f.label}</span>
+                                <button
+                                    className="cat-solo"
+                                    onClick={(e) => { e.stopPropagation(); soloFiltro(f.key); }}
+                                    title={`Ver solo ${f.label}`}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9AAAA3', fontSize: '0.68rem', fontWeight: 700, padding: '2px 4px', fontFamily: 'inherit' }}
+                                >solo</button>
+                                <span
+                                    onClick={(e) => { e.stopPropagation(); setActiveFilters(prev => ({ ...prev, [f.key]: !prev[f.key] })); }}
+                                    title={on ? 'Ocultar' : 'Mostrar'}
+                                    style={{ width: '16px', height: '16px', borderRadius: '5px', border: `1.5px solid ${on ? '#0FA97A' : '#C9D6D0'}`, background: on ? '#0FA97A' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer' }}
+                                >
+                                    {on && <span style={{ color: 'white', fontSize: '10px', fontWeight: 900, lineHeight: 1 }}>✓</span>}
+                                </span>
                             </div>
                         );
                     })}
+                    <style>{`.cat-fila:hover { background: #F7FAF8; } .cat-solo:hover { color: #0FA97A !important; }`}</style>
 
                     {/* NOTION — interruptor general, solito abajo. Apagado: oculta todo lo
                         sincronizado de Notion (sesiones + entregas). Encenderlo lo vuelve a
@@ -2263,7 +2267,22 @@ export const TimelineAgendaView = ({
                                         }}
                                     >
                                         <div style={{ fontSize: '0.72rem', fontWeight: 900, color: isToday ? 'var(--domain-orange)' : '#6C8079', textAlign: 'right', flexShrink: 0 }}>{d}</div>
-                                        {evs.slice(0, 3).map((e: any) => (
+                                        {evs.slice(0, 3).map((e: any) => e.isTask ? (
+                                            <div
+                                                key={e.id}
+                                                title={`${e.startTime ? e.startTime + ' · ' : ''}${e.title} — clic para marcar`}
+                                                onClick={ev => { ev.stopPropagation(); marcarTareaDeCelda(e.task); }}
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.6rem', fontWeight: 700, lineHeight: 1.25,
+                                                    borderRadius: '5px', padding: '2px 4px', background: e.done ? '#F1F5F3' : 'rgba(245,158,11,0.12)',
+                                                    color: e.done ? '#9AAAA3' : '#7A4B06', textDecoration: e.done ? 'line-through' : 'none',
+                                                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                                }}
+                                            >
+                                                <span style={{ width: '9px', height: '9px', borderRadius: '50%', flexShrink: 0, border: `1.5px solid ${e.done ? '#0FA97A' : '#F59E0B'}`, background: e.done ? '#0FA97A' : 'transparent' }} />
+                                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.startTime ? `${e.startTime} ` : ''}{e.title}</span>
+                                            </div>
+                                        ) : (
                                             <div
                                                 key={e.id}
                                                 title={e.raw ? `${e.startTime ? e.startTime + ' · ' : ''}${e.title} — clic para ver detalle` : `${e.startTime ? e.startTime + ' · ' : ''}${e.title}`}

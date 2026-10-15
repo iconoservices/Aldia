@@ -316,24 +316,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     };
 
     return (
-        <div style={{ ...paddingPagina(movil), display: 'flex', flexDirection: 'column', gap: movil ? '1rem' : '1.25rem' }}>
-            {/* ── Header ── */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-
-                <button
-                    onClick={() => setIsFormOpen(true)}
-                    style={{
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        background: C.primary, color: '#fff', border: 'none',
-                        borderRadius: '999px', padding: '8px 16px',
-                        fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
-                        transition: 'transform 0.15s, opacity 0.15s',
-                    }}
-                >
-                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
-                    Nueva tarea
-                </button>
-            </div>
+        <div style={{ ...paddingPagina(movil), paddingTop: movil ? '8px' : '12px', display: 'flex', flexDirection: 'column', gap: movil ? '0.75rem' : '1rem' }}>
 
             {/* ── Modal Flotante: Nueva Tarea ── */}
             <AnimatePresence>
@@ -640,20 +623,27 @@ Supermercado:
             </AnimatePresence>
 
             {/* ── Distribución en 2 Columnas / Secciones ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem', alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: movil ? '1rem' : '1.25rem', alignItems: 'start' }}>
 
                 {/* ═══ Columna 1: Tareas Repetitivas (Alarmas) ═══ */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span className="material-symbols-outlined" style={{ fontSize: '20px', color: C.ambar }}>alarm</span>
-                            <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: C.onSurface }}>
+                            <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: C.onSurface }}>
                                 Repetitivas (Tipo Alarma)
                             </h2>
                             <span style={{ fontSize: '0.72rem', fontWeight: 800, background: 'rgba(15, 169, 122, 0.12)', color: C.primary, borderRadius: '999px', padding: '1px 8px' }} title="Hechas hoy / las que tocan hoy">
                                 {hechasHoy}/{tocanHoy} hoy
                             </span>
                         </div>
+                        <button
+                            onClick={() => setIsFormOpen(true)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '4px', background: C.primary, color: '#fff', border: 'none', borderRadius: '999px', padding: '6px 14px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>add</span>
+                            Nueva tarea
+                        </button>
                     </div>
 
                     <div style={{ background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: '14px' }}>
@@ -745,7 +735,7 @@ Supermercado:
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span className="material-symbols-outlined" style={{ fontSize: '20px', color: C.primary }}>push_pin</span>
-                            <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: C.onSurface }}>
+                            <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: C.onSurface }}>
                                 Tareas de una vez (Sueltas)
                             </h2>
                             <span style={{ fontSize: '0.72rem', fontWeight: 800, background: 'rgba(15, 169, 122, 0.12)', color: C.primary, borderRadius: '999px', padding: '1px 8px' }}>
