@@ -427,7 +427,6 @@ export const FinanzasDashboard = ({
     addInventoryItem, updateInventoryItemQuantity, removeInventoryItem,
     updateProject,
     preferences,
-    onNavigate,
     incomeCategories, expenseCategories, addCategory, removeCategory, renameCategory, mergeCategory,
     categoryAccountScope, setCategoryAccounts,
     categoryGroups, setCategoryGroup, renameCategoryGroup, deleteCategoryGroup,
@@ -456,7 +455,6 @@ export const FinanzasDashboard = ({
     // ── Config ────────────────────────────────────────────────────────────
     const [topPeriod, setTopPeriod] = useState<PeriodMode>("month");
     const [periodRef, setPeriodRef] = useState<Date>(new Date());
-    const [debtActiveMap, setDebtActiveMap] = useState<Record<string, boolean>>({});
 
     // ── Debt groups (corrected: subtracts payments) ───────────────────────
     const activeDebtsAndCollections = useMemo(() => {
@@ -501,23 +499,6 @@ export const FinanzasDashboard = ({
         try { return JSON.parse(preferences.fixedIncomes || "[]"); } catch { return []; }
     }, [preferences.fixedIncomes]);
 
-    const toggleDebtActive = (key: string) => setDebtActiveMap(m => ({ ...m, [key]: !(m[key] ?? true) }));
-    const [payInputs, setPayInputs] = useState<Record<string, string>>({});
-    const [payOpen, setPayOpen] = useState<Record<string, boolean>>({});
-    const handlePay = (key: string, amount: number, d: typeof activeDebtsAndCollections[0]) => {
-        if (amount <= 0) return;
-        const payAccountId = d.originalTx.accountId ?? accounts[0]?.id;
-        // Transacción REAL: aparece en topTxs (finanzas) y en periodBalance
-        addTransaction(`Pago: ${d.name}`, d.isOwe ? -amount : amount, d.isOwe ? 'gasto' : 'ingreso', false, undefined, payAccountId, false, 'Deudas', d.contact);
-        // Transacción de seguimiento: reduce la deuda en el grouping, sin afectar balance (isCashless: true).
-        // El tipo va INVERTIDO a propósito — activeDebtsAndCollections agrupa transacciones sin garantía
-        // de orden (el array es más-reciente-primero) y deduce isOwe tanto desde el original como desde
-        // el pago; para que ambos caminos den el mismo resultado, el pago debe tener el tipo opuesto al
-        // original. Si aquí usa el mismo tipo, la deuda salta de "Debo" a "Me deben" al abonar.
-        addTransaction(`Pago: ${d.name}`, d.isOwe ? -amount : amount, d.isOwe ? 'ingreso' : 'gasto', true, undefined, undefined, true, 'Deudas', d.contact);
-        setPayInputs(m => ({ ...m, [key]: '' }));
-        setPayOpen(m => ({ ...m, [key]: false }));
-    };
     const periodBalance = useMemo(() => {
         if (topPeriod === "all") return balance;
         const { start, end } = getPeriodBounds(topPeriod, periodRef);
@@ -1836,95 +1817,6 @@ export const FinanzasDashboard = ({
             </div>
 
             {bloqueReal}
-
-            {/* ── Row 4: Deudas ─── */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem" }}>
-
-                {/* Debts card */}
-                <div style={{ ...bento, padding: "1.1rem", display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: 0 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={LABEL}>Deudas</span>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <span style={{ fontSize: "0.72rem", fontWeight: 700, color: C.rojo }}>Debo: S/ {realOwe.toFixed(2)}</span>
-                            <TrendingDown size={14} color={C.rojo} />
-                        </div>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", flex: 1, overflowY: "auto", maxHeight: "160px" }}>
-                        {activeDebtsAndCollections.filter(d => d.isOwe).length === 0 ? (
-                            <p style={{ fontSize: "0.75rem", color: C.outline, margin: 0 }}>Sin deudas pendientes.</p>
-                        ) : activeDebtsAndCollections.filter(d => d.isOwe).map(d => {
-                            const dk = d.name + "::" + (d.contact || "");
-                            const isActive = debtActiveMap[dk] ?? true;
-                            const isPaying = payOpen[dk] ?? false;
-                            return (
-                            <div key={dk} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 0", borderBottom: `1px solid ${C.surfaceContainerLow}`, opacity: isActive ? 1 : 0.45 }}>
-                                <div onClick={() => toggleDebtActive(dk)} style={{ width: "28px", height: "16px", borderRadius: "8px", background: isActive ? C.secondary : C.outlineVariant, position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
-                                    <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: isActive ? "14px" : "2px", transition: "left 0.15s" }} />
-                                </div>
-                                <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-carbon)" }}>
-                                    {d.name}{d.contact ? ` (${d.contact})` : ""}
-                                </span>
-                                <span style={{ fontSize: "0.8rem", fontWeight: 800, color: C.rojo }}>
-                                    S/ {d.amount.toFixed(2)}
-                                </span>
-                                {isPaying ? (
-                                    <div style={{ display: "flex", gap: "3px", alignItems: "center" }}>
-                                        <input type="number" value={payInputs[dk] ?? d.amount.toFixed(2)} onChange={e => setPayInputs(m => ({ ...m, [dk]: e.target.value }))}
-                                            style={{ width: "55px", padding: "2px 4px", borderRadius: "4px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.65rem", fontWeight: 700, outline: "none" }} />
-                                        <button onClick={() => handlePay(dk, parseFloat(payInputs[dk]) || 0, d)} style={{ background: C.verde, color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Abonar</button>
-                                        <button onClick={() => { setPayInputs(m => ({ ...m, [dk]: String(d.amount) })); handlePay(dk, d.amount, d); }} style={{ background: C.verde, color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Todo</button>
-                                        <button onClick={() => setPayOpen(m => ({ ...m, [dk]: false }))} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "2px", fontSize: "0.7rem", fontWeight: 800 }}>X</button>
-                                    </div>
-                                ) : (
-                                    <button onClick={() => { setPayInputs(m => ({ ...m, [dk]: String(d.amount) })); setPayOpen(m => ({ ...m, [dk]: true })); }} style={{ background: C.outlineVariant, border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: C.onSurfaceVariant, flexShrink: 0 }}>Abonar</button>
-                                )}
-                            </div>
-                            );
-                        })}
-                    </div>
-                    {onNavigate && (
-                        <button onClick={() => onNavigate('Deudas')} style={{ background: "none", border: "none", padding: "2px 0", cursor: "pointer", color: C.secondary, fontSize: "0.72rem", fontWeight: 700, textAlign: "left" }}>
-                            Ver más →
-                        </button>
-                    )}
-                    <div style={{ borderTop: `1px solid ${C.outlineVariant}`, paddingTop: "0.35rem", marginTop: "0.2rem" }}>
-                        <span style={{ fontSize: "0.72rem", fontWeight: 700, color: C.verde }}>Me deben: S/ {realOwed.toFixed(2)}</span>
-                        {activeDebtsAndCollections.filter(d => !d.isOwe).length === 0 ? (
-                            <p style={{ fontSize: "0.72rem", color: C.outline, margin: "4px 0 0 0" }}>Sin cobros pendientes.</p>
-                        ) : activeDebtsAndCollections.filter(d => !d.isOwe).map(d => {
-                            const dk = d.name + "::" + (d.contact || "");
-                            const isActive = debtActiveMap[dk] ?? true;
-                            const isPaying = payOpen[dk] ?? false;
-                            return (
-                                <div key={dk} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 0", opacity: isActive ? 1 : 0.45 }}>
-                                    <div onClick={() => toggleDebtActive(dk)} style={{ width: "28px", height: "16px", borderRadius: "8px", background: isActive ? C.verde : C.outlineVariant, position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
-                                        <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: isActive ? "14px" : "2px", transition: "left 0.15s" }} />
-                                    </div>
-                                    <span style={{ flex: 1, fontSize: "0.78rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-carbon)" }}>
-                                        {d.name}{d.contact ? ` (${d.contact})` : ""}
-                                    </span>
-                                    <span style={{ fontSize: "0.78rem", fontWeight: 800, color: C.verde }}>
-                                        S/ {d.amount.toFixed(2)}
-                                    </span>
-                                    {isPaying ? (
-                                        <div style={{ display: "flex", gap: "3px", alignItems: "center" }}>
-                                            <input type="number" value={payInputs[dk] ?? d.amount.toFixed(2)} onChange={e => setPayInputs(m => ({ ...m, [dk]: e.target.value }))}
-                                                style={{ width: "55px", padding: "2px 4px", borderRadius: "4px", border: `1px solid ${C.outlineVariant}`, fontSize: "0.65rem", fontWeight: 700, outline: "none" }} />
-                                            <button onClick={() => handlePay(dk, parseFloat(payInputs[dk]) || 0, d)} style={{ background: C.verde, color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Abonar</button>
-                                            <button onClick={() => { setPayInputs(m => ({ ...m, [dk]: String(d.amount) })); handlePay(dk, d.amount, d); }} style={{ background: C.verde, color: "white", border: "none", borderRadius: "4px", padding: "2px 5px", fontWeight: 800, fontSize: "0.6rem", cursor: "pointer" }}>Todo</button>
-                                            <button onClick={() => setPayOpen(m => ({ ...m, [dk]: false }))} style={{ background: "none", border: "none", cursor: "pointer", color: C.outlineVariant, padding: "2px", fontSize: "0.7rem", fontWeight: 800 }}>X</button>
-                                        </div>
-                                    ) : (
-                                        <button onClick={() => { setPayInputs(m => ({ ...m, [dk]: String(d.amount) })); setPayOpen(m => ({ ...m, [dk]: true })); }} style={{ background: C.outlineVariant, border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: C.onSurfaceVariant, flexShrink: 0 }}>Abonar</button>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-
-            </div>
-
 
             {/* ── Modals ─── */}
             <AnimatePresence>

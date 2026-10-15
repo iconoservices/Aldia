@@ -74,6 +74,7 @@ export const PlanDashboard = ({
     const diaHoy = hoy.getDate();
     const diasRestantes = diasDelMes - diaHoy + 1;
     const nombreMes = hoy.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    const soloMes = hoy.toLocaleDateString('es-ES', { month: 'long' });
 
     /* ── Ingresos fijos (viven como JSON dentro de preferences) ── */
     const ingresosFijos: FixedIncome[] = useMemo(() => {
@@ -262,7 +263,7 @@ export const PlanDashboard = ({
                 {/* ── 2. Calendario de pagos (gastos fijos) ── */}
                 <section style={{ ...bento, padding: '1.25rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.onSurface }}>Pagos del mes</h3>
+                        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.onSurface }}>Pagos de {soloMes}</h3>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{
                                 background: n.montoPend > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.12)',
@@ -364,6 +365,40 @@ export const PlanDashboard = ({
                             onVolverADeuda={f.totalAmount != null ? () => volverADeuda(f) : undefined}
                         />
                     ))}
+
+                    {fixedExpenses.filter(f => !f.active).length > 0 && (
+                        <details style={{ marginTop: '10px' }}>
+                            <summary style={{ cursor: 'pointer', fontSize: '0.75rem', color: C.outline, fontWeight: 600 }}>
+                                Desactivados ({fixedExpenses.filter(f => !f.active).length}) · no cuentan en el mes
+                            </summary>
+                            <div style={{ marginTop: '8px' }}>
+                                {fixedExpenses.filter(f => !f.active).map(f => (
+                                    <div key={f.id} style={{
+                                        display: 'flex', alignItems: 'center', gap: '10px',
+                                        padding: '7px 4px', borderBottom: `1px solid ${C.surfaceContainerHigh}`,
+                                        fontSize: '0.82rem', color: C.onSurfaceVariant,
+                                    }}>
+                                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.text}</span>
+                                        <span style={{ fontWeight: 600 }}>{money(f.amount)}</span>
+                                        <button
+                                            onClick={() => toggleFixedExpense(f.id)}
+                                            title="Volver a contarlo en el mes"
+                                            style={{ background: C.surfaceContainer, border: 'none', borderRadius: '999px', padding: '4px 12px', cursor: 'pointer', color: C.primary, fontWeight: 700, fontSize: '0.72rem', fontFamily: 'inherit' }}
+                                        >
+                                            Reactivar
+                                        </button>
+                                        <button
+                                            onClick={() => { if (window.confirm(`¿Eliminar "${f.text}" para siempre?`)) removeFixedExpense(f.id); }}
+                                            title="Eliminar"
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex' }}
+                                        >
+                                            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>delete</span>
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </details>
+                    )}
                 </section>
 
                 {/* ── 3. Ingresos fijos ── */}

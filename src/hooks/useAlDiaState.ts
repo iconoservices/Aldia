@@ -523,7 +523,7 @@ export const useAlDiaState = () => {
         transactions, setTransactions, balance,
         monthlyBudget, setMonthlyBudget, fixedExpenses, setFixedExpenses,
         addTransaction, addFixedExpense, removeFixedExpense, toggleFixedExpense,
-        updateFixedExpense, markFixedExpensePaid, payFixedExpensePartial, unmarkFixedExpensePaid,
+        updateFixedExpense, markFixedExpensePaid, payFixedExpensePartial, unmarkFixedExpensePaid, undoFixedExpensePayment,
         rolloverFixedExpenses, payPendingPeriod, unmarkPendingPeriod, repayDebt: repayDebtBase,
         todayIncome, todayExpense, todayNet, todayIncomeReal, todayExpenseReal,
         totalIncomeReal, totalExpenseReal, totalNetReal, debtsOwe, debtsOwed,
@@ -1906,7 +1906,7 @@ export const useAlDiaState = () => {
         monthlyBudget, updateMonthlyBudget: lw((a: number) => setMonthlyBudget(a)),
         fixedExpenses, addFixedExpense: lw(addFixedExpense), removeFixedExpense: lw(removeFixedExpense),
         toggleFixedExpense: lw(toggleFixedExpense), updateFixedExpense: lw(updateFixedExpense),
-        markFixedExpensePaid: lw(markFixedExpensePaid), payFixedExpensePartial: lw(payFixedExpensePartial), unmarkFixedExpensePaid: lw(unmarkFixedExpensePaid),
+        markFixedExpensePaid: lw(markFixedExpensePaid), payFixedExpensePartial: lw(payFixedExpensePartial), unmarkFixedExpensePaid: lw(unmarkFixedExpensePaid), undoFixedExpensePayment: lw(undoFixedExpensePayment),
         rolloverFixedExpenses: lw(rolloverFixedExpenses), payPendingPeriod: lw(payPendingPeriod), unmarkPendingPeriod: lw(unmarkPendingPeriod),
         repayDebt: lw(repayDebtBase),
         addTransaction: lw((text: string, amount: number, type: 'ingreso' | 'gasto', isDebt: boolean, projId?: number, accId?: number, isCashless?: boolean, cat?: string, contact?: string, dueDate?: string, notes?: string) => {

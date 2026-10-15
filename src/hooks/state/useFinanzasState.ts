@@ -245,6 +245,46 @@ export const useFinanzasState = () => {
         });
     };
 
+    // Deshace UN pago concreto de un gasto fijo a partir de su movimiento ("Pago: X" o
+    // "Pago: X (período)"): borra ese movimiento (la plata vuelve a la cuenta) y deja el
+    // gasto fijo como estaba antes: pendiente o con el abono que quedaba. Si el período
+    // ya estaba saldado y había salido de "pendientes", lo vuelve a poner.
+    const undoFixedExpensePayment = (txId: number) => {
+        const tx = txArr.find(t => t.id === txId);
+        if (!tx) return;
+        const m = /^Pago: (.+?)(?: \((\d{4}-(?:\d{2}|W\d{2}))\))?$/.exec(tx.text);
+        const expense = m ? fixedExpenses.find(e => e.text === m[1]) : undefined;
+        const value = Math.abs(Number(tx.amount) || 0);
+
+        setTransactions((prev: Transaction[]) => prev.filter(t => t.id !== txId));
+        if (!m || !expense) return;
+
+        const periodoPendiente = m[2];
+        const period = periodoPendiente ?? getPeriodKey(expense.frequency, tx.fullDate);
+        // Lo que sigue pagado de ese período sin contar este movimiento
+        const otros = txArr
+            .filter(t => t.id !== txId && t.text === tx.text && (periodoPendiente ? true : getPeriodKey(expense.frequency, t.fullDate) === period))
+            .reduce((acc, t) => acc + Math.abs(Number(t.amount) || 0), 0);
+
+        setFixedExpenses((prev: FixedExpense[]) => prev.map(e => {
+            if (e.id !== expense.id) return e;
+            const cuotas = e.totalAmount != null ? { paidToDate: Math.max(0, (e.paidToDate ?? 0) - value), active: true } : {};
+            if (periodoPendiente) {
+                const pend = e.pendingPeriods ?? [];
+                const lista = pend.some(p => p.period === period)
+                    ? pend.map(p => p.period === period ? { ...p, amountPaid: otros } : p)
+                    : [...pend, { period, amountPaid: otros }].sort((a, b) => a.period.localeCompare(b.period));
+                return { ...e, ...cuotas, pendingPeriods: lista };
+            }
+            const saldado = otros >= e.amount - 0.005;
+            return {
+                ...e, ...cuotas,
+                lastPaidMonth: saldado ? e.lastPaidMonth : (e.lastPaidMonth === period ? undefined : e.lastPaidMonth),
+                partialPaid: saldado ? undefined : (otros > 0 ? { month: period, amount: otros } : (e.partialPaid?.month === period ? undefined : e.partialPaid)),
+            };
+        }));
+    };
+
     // Métricas calculadas (DIARIAS)
     const todayIncome = txArr
         .filter(t => t?.type === 'ingreso' && !t.isCashless && t.fullDate === todayStr)
@@ -330,6 +370,7 @@ export const useFinanzasState = () => {
         markFixedExpensePaid,
         payFixedExpensePartial,
         unmarkFixedExpensePaid,
+        undoFixedExpensePayment,
         rolloverFixedExpenses,
         payPendingPeriod,
         unmarkPendingPeriod,

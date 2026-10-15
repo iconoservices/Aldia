@@ -526,6 +526,7 @@ function App() {
               <MovimientosDashboard
                 transactions={state.transactions}
                 removeTransaction={state.removeTransaction}
+                undoFixedExpensePayment={state.undoFixedExpensePayment}
                 updateTransaction={state.updateTransaction}
                 accounts={state.accounts}
                 incomeCategories={state.incomeCategories}
