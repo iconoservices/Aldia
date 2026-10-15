@@ -469,6 +469,7 @@ export interface GoalMilestone {
     id: number;
     text: string;
     completed: boolean;
+    plazo?: GoalHorizon; // en qué plazo cae este paso dentro de la meta; sin valor = 'corto'
 }
 
 export type GoalHorizon = 'corto' | 'mediano' | 'largo';
@@ -486,7 +487,6 @@ export interface Goal {
     targetDate?: string;  // YYYY-MM-DD, para cuándo se quiere lograr
     milestones: GoalMilestone[];
     projectId?: number;   // vínculo opcional a un proyecto existente
-    plazos?: { corto?: string; mediano?: string; largo?: string }; // plan en texto por plazo, dentro de la misma meta
     order: number;
 }
 

@@ -41,10 +41,10 @@ export const useMetasState = () => {
         setGoals(newOrder);
     };
 
-    const addGoalMilestone = (goalId: number, text: string) => {
+    const addGoalMilestone = (goalId: number, text: string, plazo: GoalHorizon = 'corto') => {
         setGoals(prev => prev.map(g => {
             if (g.id !== goalId) return g;
-            return { ...g, milestones: [...g.milestones, { id: Date.now() + Math.random(), text, completed: false }] };
+            return { ...g, milestones: [...g.milestones, { id: Date.now() + Math.random(), text, completed: false, plazo }] };
         }));
     };
 
