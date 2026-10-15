@@ -407,6 +407,7 @@ function App() {
                 <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_METAS} />
                 <MetasDashboard
                   goals={state.goals}
+                  projects={state.projects}
                   addGoal={state.addGoal}
                   updateGoal={state.updateGoal}
                   removeGoal={state.removeGoal}

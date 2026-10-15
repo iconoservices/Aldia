@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Goal, GoalHorizon, GoalStatus } from '../../hooks/useAlDiaState';
+import type { Goal, GoalHorizon, GoalStatus, Project } from '../../hooks/useAlDiaState';
 import {
     C, bento, useIsMobile,
     paddingPagina, cabecera, tituloPagina, subtituloPagina, campo, botonPrimario, TOQUE_MINIMO,
@@ -8,6 +8,7 @@ import {
 
 interface MetasDashboardProps {
     goals: Goal[];
+    projects?: Project[];
     addGoal: (title: string, horizon: GoalHorizon, area: string, color: string, icon?: string, targetDate?: string) => void;
     updateGoal: (id: number, updates: Partial<Goal>) => void;
     removeGoal: (id: number) => void;
@@ -40,7 +41,7 @@ const diasRestantes = (fecha?: string) => {
 };
 
 export const MetasDashboard = ({
-    goals, addGoal, updateGoal, removeGoal, addGoalMilestone, toggleGoalMilestone, removeGoalMilestone,
+    goals, projects = [], addGoal, updateGoal, removeGoal, addGoalMilestone, toggleGoalMilestone, removeGoalMilestone,
 }: MetasDashboardProps) => {
     const movil = useIsMobile();
     const [addingHorizon, setAddingHorizon] = useState<GoalHorizon | null>(null);
@@ -48,6 +49,7 @@ export const MetasDashboard = ({
     const [nuevaSub, setNuevaSub] = useState<Record<number, string>>({});
     const [form, setForm] = useState({ title: '', area: '', icon: ICONOS[0], color: COLORES[0], targetDate: '' });
 
+    const corto = useMemo(() => goals.filter(g => g.horizon === 'corto'), [goals]);
     const mediano = useMemo(() => goals.filter(g => g.horizon === 'mediano'), [goals]);
     const largo = useMemo(() => goals.filter(g => g.horizon === 'largo'), [goals]);
 
@@ -62,6 +64,7 @@ export const MetasDashboard = ({
     };
 
     const columnas: { horizon: GoalHorizon; titulo: string; subtitulo: string; items: Goal[] }[] = [
+        { horizon: 'corto', titulo: 'Corto plazo', subtitulo: 'Este mes', items: corto },
         { horizon: 'mediano', titulo: 'Mediano plazo', subtitulo: 'Próximos meses', items: mediano },
         { horizon: 'largo', titulo: 'Largo plazo', subtitulo: '1+ años', items: largo },
     ];
@@ -79,7 +82,7 @@ export const MetasDashboard = ({
 
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: movil ? '1fr' : 'repeat(2, minmax(320px, 1fr))',
+                gridTemplateColumns: movil ? '1fr' : 'repeat(auto-fit, minmax(300px, 1fr))',
                 gap: '1.25rem', alignItems: 'start',
             }}>
                 {columnas.map(col => (
@@ -192,6 +195,7 @@ export const MetasDashboard = ({
                                 <TarjetaMeta
                                     key={goal.id}
                                     goal={goal}
+                                    projects={projects}
                                     movil={movil}
                                     expandido={expandedId === goal.id}
                                     onToggleExpand={() => setExpandedId(expandedId === goal.id ? null : goal.id)}
@@ -220,6 +224,7 @@ export const MetasDashboard = ({
 
 interface TarjetaMetaProps {
     goal: Goal;
+    projects: Project[];
     movil: boolean;
     expandido: boolean;
     onToggleExpand: () => void;
@@ -234,14 +239,17 @@ interface TarjetaMetaProps {
 }
 
 const TarjetaMeta = ({
-    goal, movil, expandido, onToggleExpand, onCycleStatus, onRemove, onUpdate,
+    goal, projects, movil, expandido, onToggleExpand, onCycleStatus, onRemove, onUpdate,
     nuevaSubTexto, onNuevaSubTextoChange, onAddSub, onToggleSub, onRemoveSub,
 }: TarjetaMetaProps) => {
     const [editando, setEditando] = useState(false);
     const [titulo, setTitulo] = useState(goal.title);
 
-    const total = goal.milestones.length;
-    const hechos = goal.milestones.filter(m => m.completed).length;
+    const proyecto = projects.find(p => p.id === goal.projectId);
+    const pasosProyecto = proyecto?.checklist ?? [];
+    // Con proyecto vinculado, el avance sale de su checklist (más los pasos propios de la meta).
+    const total = goal.milestones.length + pasosProyecto.length;
+    const hechos = goal.milestones.filter(m => m.completed).length + pasosProyecto.filter(i => i.completed).length;
     const progreso = total > 0 ? Math.round((hechos / total) * 100) : goal.status === 'completado' ? 100 : 0;
     const restantes = diasRestantes(goal.targetDate);
     const status = STATUS_INFO[goal.status];
@@ -300,6 +308,11 @@ const TarjetaMeta = ({
                             >
                                 {status.label}
                             </button>
+                            {proyecto && (
+                                <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '2px 8px', borderRadius: '999px', background: C.surfaceContainer, color: C.onSurfaceVariant }}>
+                                    📁 {proyecto.name}
+                                </span>
+                            )}
                             {goal.targetDate && (
                                 <span style={{ fontSize: '0.68rem', color: restantes !== null && restantes < 0 && goal.status !== 'completado' ? C.rojo : C.outline, fontWeight: 600 }}>
                                     {restantes !== null && goal.status !== 'completado'
@@ -342,6 +355,25 @@ const TarjetaMeta = ({
                                 rows={2}
                                 style={{ ...campo(movil), width: '100%', resize: 'vertical', marginBottom: '10px', boxSizing: 'border-box' }}
                             />
+
+                            <div style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.outline, marginBottom: '6px' }}>
+                                Proyecto vinculado
+                            </div>
+                            <select
+                                value={goal.projectId ?? ''}
+                                onChange={e => onUpdate({ projectId: e.target.value ? Number(e.target.value) : undefined })}
+                                style={{ ...campo(movil), width: '100%', marginBottom: '10px', boxSizing: 'border-box' }}
+                            >
+                                <option value="">Ninguno</option>
+                                {projects.filter(p => p.status !== 'completado' || p.id === goal.projectId).map(p => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                            </select>
+                            {pasosProyecto.length > 0 && (
+                                <p style={{ margin: '-4px 0 10px', fontSize: '0.72rem', color: C.outline }}>
+                                    El avance cuenta también los {pasosProyecto.length} pasos del checklist del proyecto.
+                                </p>
+                            )}
 
                             <div style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.outline, marginBottom: '6px' }}>
                                 Pasos

@@ -471,14 +471,14 @@ export interface GoalMilestone {
     completed: boolean;
 }
 
-export type GoalHorizon = 'mediano' | 'largo';
+export type GoalHorizon = 'corto' | 'mediano' | 'largo';
 export type GoalStatus = 'pendiente' | 'en-progreso' | 'completado';
 
 export interface Goal {
     id: number;
     title: string;
     description?: string;
-    horizon: GoalHorizon; // 'mediano' = próximos meses, 'largo' = 1+ años
+    horizon: GoalHorizon; // 'corto' = este mes, 'mediano' = próximos meses, 'largo' = 1+ años
     area: string;         // categoría de vida libre: Negocio, Salud, Finanzas, Personal...
     icon: string;
     color: string;
