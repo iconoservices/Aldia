@@ -1,19 +1,17 @@
 // Final deployment build - Aldia App
-import { useState, useEffect, lazy, Suspense, startTransition } from 'react';
+import { useState, useEffect, useCallback, useRef, memo, lazy, Suspense, startTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 import { Header } from './components/layout/Header';
-import { PedirCuentaDialog } from './components/ui/PedirCuentaDialog';
-import { VistasListas, VISTAS_METAS, VISTAS_DINERO, VISTAS_AGENDA } from './components/ui/VistasListas';
+import { VistasListas, VISTAS_LISTAS, VISTAS_METAS, VISTAS_DINERO, VISTAS_AGENDA } from './components/ui/VistasListas';
 import { useAlDiaState } from './hooks/useAlDiaState';
 import type { Mission, Note } from './hooks/useAlDiaState';
-import { ProfileOverlay } from './components/layout/ProfileOverlay';
 import { PantallaCarga } from './components/common/PantallaCarga';
-// Eager: lo que se ve al primer render (pestaña por defecto + su banner).
+// Eager: lo que se ve al primer render (pestaña por defecto).
 import { ChecklistDiario } from './components/dashboard/ChecklistDiario';
-import { UpcomingList } from './components/dashboard/UpcomingList';
-import { MissionList } from './components/dashboard/MissionList';
-import { ActionBanner } from './components/dashboard/ActionBanner';
+
+// El Header recibe callbacks estables: memo evita re-pintarlo en cada cambio de datos.
+const HeaderMemo = memo(Header);
 
 /* El resto de pantallas y overlays se cargan solo al abrirlas (code-splitting):
    así el arranque baja el marco + el Checklist, no las ~45 vistas de una. */
@@ -29,7 +27,10 @@ const grupoVista = (tab: string) => GRUPOS_VISTA.find(g => g.includes(tab))?.[0]
 
 const named = <M extends Record<string, unknown>, K extends keyof M>(
     loader: () => Promise<M>, key: K,
-) => lazy(() => loader().then(m => ({ default: m[key] as React.ComponentType<any> })));
+) => Object.assign(
+    lazy(() => loader().then(m => ({ default: m[key] as React.ComponentType<any> }))),
+    { precargar: loader },
+);
 
 const VidaBloquesDashboard = named(() => import('./components/dashboard/VidaBloquesDashboard'), 'VidaBloquesDashboard');
 const CerebroDashboard = named(() => import('./components/dashboard/CerebroDashboard'), 'CerebroDashboard');
@@ -68,6 +69,28 @@ const TranqueoDeVidaDashboard = named(() => import('./components/dashboard/Tranq
 const MetasDashboard = named(() => import('./components/dashboard/MetasDashboard'), 'MetasDashboard');
 const ResumenDashboard = named(() => import('./components/dashboard/ResumenDashboard'), 'ResumenDashboard');
 const TareasDashboard = named(() => import('./components/dashboard/TareasDashboard'), 'TareasDashboard');
+const UpcomingList = named(() => import('./components/dashboard/UpcomingList'), 'UpcomingList');
+const MissionList = named(() => import('./components/dashboard/MissionList'), 'MissionList');
+const ActionBanner = named(() => import('./components/dashboard/ActionBanner'), 'ActionBanner');
+const ProfileOverlay = named(() => import('./components/layout/ProfileOverlay'), 'ProfileOverlay');
+const PedirCuentaDialog = named(() => import('./components/ui/PedirCuentaDialog'), 'PedirCuentaDialog');
+
+// Pestañas principales del menú: se bajan y evalúan en segundo plano cuando el
+// teléfono está ocioso, una por vez, para que el primer toque en ellas sea instantáneo.
+const PRECARGA_OCIOSA = [TareasDashboard, ResumenAgendaDashboard, AgendaDashboard, EsporadicosDashboard,
+  TimelineAgendaView, FinanzasDashboard, PendientesDashboard, BandejaDashboard];
+const precargarEnOcio = () => {
+  const ocio = (cb: () => void) => typeof window.requestIdleCallback === 'function'
+    ? window.requestIdleCallback(cb, { timeout: 4000 })
+    : setTimeout(cb, 1200);
+  let i = 0;
+  const siguiente = () => {
+    const vista = PRECARGA_OCIOSA[i++];
+    if (!vista) return;
+    vista.precargar().catch(() => { /* sin red: se carga al abrirla */ }).finally(() => ocio(siguiente));
+  };
+  ocio(siguiente);
+};
 
 function App() {
   const [activeTab, setActiveTabRaw] = useState(() => {
@@ -116,10 +139,14 @@ function App() {
   });
   // En transición: mientras carga el chunk de la pestaña nueva se mantiene la
   // anterior en pantalla (sin parpadeo de la pantalla de carga).
-  const setActiveTab = (t: string) => startTransition(() => setActiveTabRaw(t));
+  const setActiveTab = useCallback((t: string) => startTransition(() => setActiveTabRaw(t)), []);
   // Todas las vistas de Agenda (Resumen, Sesiones, Calendario, Entregas, Tareas, Por hacer) ocupan
   // todo el ancho y el alto disponibles, como el Calendario; el contenido se desplaza adentro.
   const enAgenda = VISTAS_AGENDA.some(v => v.tab === activeTab || (v as { alias?: readonly string[] }).alias?.includes(activeTab));
+  // Pestañas del menú principal: igual que Agenda, el contenido llega al borde del main y
+  // cada vista pone su propio margen con paddingPagina (barra de vistas a 12px, contenido a 2rem).
+  const paginaEstandar = activeTab === 'Checklist' || activeTab === 'Notion'
+    || [...VISTAS_DINERO, ...VISTAS_LISTAS, ...VISTAS_METAS].some(v => v.tab === activeTab);
 
 
   useEffect(() => {
@@ -201,6 +228,17 @@ function App() {
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [selectedProjectDetailId, setSelectedProjectDetailId] = useState<number | null>(null);
+  const abrirPerfil = useCallback(() => setIsProfileOpen(true), []);
+  const abrirPapelera = useCallback(() => setIsTrashOpen(true), []);
+  // Los overlays (perfil, papelera, edición, línea de tiempo) no se montan hasta la
+  // primera vez que se abren: así no bajan su chunk al arrancar ni se re-renderizan
+  // cerrados con cada cambio de datos. Una vez abiertos quedan montados para que su
+  // animación de salida siga funcionando.
+  const abiertos = useRef(new Set<string>());
+  const yaAbierto = (clave: string, abierto: boolean) => {
+    if (abierto) abiertos.current.add(clave);
+    return abiertos.current.has(clave);
+  };
 
   const state = useAlDiaState();
 
@@ -217,21 +255,25 @@ function App() {
   const viewingNote: Note | null = state.notes.find((n: Note) => n.id === viewingNoteId) || null;
   const selectedProjectDetail = state.projects.find((p: any) => p.id === selectedProjectDetailId);
 
+  useEffect(() => {
+    if (!state.isInitialLoad) precargarEnOcio();
+  }, [state.isInitialLoad]);
+
   if (state.isInitialLoad) {
     return <PantallaCarga completa texto="Sincronizando tu mente…" />;
   }
 
   return (
     <div className={`aldia-container ${activeTab === 'Calendario' || activeTab === 'Lienzo' || activeTab === 'Lienzo Ops' ? 'no-scroll' : ''}`}>
-      <Header
+      <HeaderMemo
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onProfileClick={() => setIsProfileOpen(true)}
-        onTrashClick={() => setIsTrashOpen(true)}
+        onProfileClick={abrirPerfil}
+        onTrashClick={abrirPapelera}
       />
 
       <Suspense fallback={<PantallaCarga />}>
-      <main className={`dashboard ${enAgenda || activeTab === 'Lienzo' || activeTab === 'Lienzo Ops' ? 'full-bleed' : ''}`}>
+      <main className={`dashboard ${enAgenda || activeTab === 'Lienzo' || activeTab === 'Lienzo Ops' ? 'full-bleed' : paginaEstandar ? 'pagina-estandar' : ''}`}>
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={grupoVista(activeTab)}
@@ -735,9 +777,12 @@ function App() {
           </motion.div>
         </AnimatePresence>
       </main>
+      </Suspense>
 
-
-
+      {/* Overlays con su propio Suspense sin pantalla de carga: la primera vez que se
+          abren no tapan la pestaña mientras baja su chunk. */}
+      <Suspense fallback={null}>
+      {yaAbierto('mision', editingMission !== null) && (
       <MissionEditOverlay
         isOpen={editingMission !== null}
         onClose={() => setEditingMission(null)}
@@ -746,7 +791,9 @@ function App() {
         removeMission={state.removeMission}
         projects={state.projects}
       />
+      )}
 
+      {yaAbierto('timeline', isTimelineOpen) && (
       <DayTimelineView
         isOpen={isTimelineOpen}
         onClose={() => setIsTimelineOpen(false)}
@@ -756,6 +803,7 @@ function App() {
         fixedExpenses={state.fixedExpenses}
         habits={state.habits}
       />
+      )}
 
       <AnimatePresence>
         {selectedProjectDetailId && selectedProjectDetail && (
@@ -808,6 +856,7 @@ function App() {
         )}
       </AnimatePresence>
 
+      {yaAbierto('perfil', isProfileOpen) && (
       <ProfileOverlay
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
@@ -816,7 +865,9 @@ function App() {
         preferences={state.preferences}
         updatePreference={state.updatePreference}
       />
+      )}
 
+      {yaAbierto('papelera', isTrashOpen) && (
       <RecycleBinView
         open={isTrashOpen}
         trash={state.trash}
@@ -824,18 +875,21 @@ function App() {
         onClear={state.clearTrash}
         onClose={() => setIsTrashOpen(false)}
       />
-      </Suspense>
+      )}
 
+      {yaAbierto('cuenta', sinCuentaPend !== null) && (
       <PedirCuentaDialog
         open={sinCuentaPend !== null}
         texto={sinCuentaPend?.[0] ?? ''}
         monto={sinCuentaPend?.[1] ?? 0}
         tipo={sinCuentaPend?.[2] ?? 'gasto'}
         accounts={state.accounts}
-        onElegir={id => { if (sinCuentaPend) { const a = [...sinCuentaPend] as typeof sinCuentaPend; a[5] = id; state.addTransaction(...a); } setSinCuentaPend(null); }}
+        onElegir={(id: number) => { if (sinCuentaPend) { const a = [...sinCuentaPend] as typeof sinCuentaPend; a[5] = id; state.addTransaction(...a); } setSinCuentaPend(null); }}
         onSinCuenta={() => { if (sinCuentaPend) state.addTransaction(...sinCuentaPend); setSinCuentaPend(null); }}
         onDescartar={() => setSinCuentaPend(null)}
       />
+      )}
+      </Suspense>
 
     </div>
   );

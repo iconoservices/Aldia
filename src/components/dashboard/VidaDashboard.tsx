@@ -1,6 +1,6 @@
 import { Plus, Check, Trash2, Calendar, LayoutGrid, Clock, Edit2, GripVertical, Leaf, Folder } from 'lucide-react';
 import type { Habit, Routine, Project } from '../../hooks/useAlDiaState';
-import { motion, AnimatePresence, Reorder } from 'framer-motion';
+import { motion, AnimatePresence, Reorder, MotionConfig } from 'framer-motion';
 import { useState } from 'react';
 import { RoutineEditOverlay } from '../features/RoutineEditOverlay';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
@@ -246,15 +246,22 @@ export const VidaDashboard = ({
                                     key={m}
                                     onClick={() => setViewMode(m)}
                                     style={{
-                                        background: viewMode === m ? C.surfaceLowest : 'transparent',
+                                        background: 'transparent', position: 'relative',
                                         border: 'none', padding: '5px 10px', borderRadius: '7px', cursor: 'pointer',
                                         fontSize: '0.68rem', fontWeight: 700, fontFamily: 'inherit',
                                         color: viewMode === m ? C.primary : C.onSurfaceVariant,
                                         display: 'flex', alignItems: 'center', gap: '4px',
-                                        boxShadow: viewMode === m ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                        transition: 'color 0.2s',
                                     }}
                                 >
-                                    <Icon size={12} /> {lbl}
+                                    {viewMode === m && (
+                                        <motion.span
+                                            layoutId="horario-modo-pill"
+                                            transition={{ type: 'spring', stiffness: 500, damping: 36 }}
+                                            style={{ position: 'absolute', inset: 0, borderRadius: '7px', background: C.surfaceLowest, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
+                                        />
+                                    )}
+                                    <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '4px' }}><Icon size={12} /> {lbl}</span>
                                 </button>
                             ))}
                         </div>
@@ -277,6 +284,7 @@ export const VidaDashboard = ({
                     />
                 )}
 
+                <MotionConfig reducedMotion="user">
                 <AnimatePresence mode="wait">
                     {viewMode === 'hoy' ? (
                         <motion.div
@@ -284,6 +292,7 @@ export const VidaDashboard = ({
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2, ease: 'easeOut' }}
                             style={{
                                 display: 'flex',
                                 flexDirection: 'column'
@@ -299,10 +308,13 @@ export const VidaDashboard = ({
                                 if (displayRutinas.length === 0 && !addingBlock) {
                                     return vidaVacio('schedule', 'Aún no tienes bloques. Crea el primero.');
                                 }
-                                return displayRutinas.map((rutina) => (
-                                    <div
+                                return displayRutinas.map((rutina, idx) => (
+                                    <motion.div
                                         key={rutina.id}
-                                        style={{ background: C.surfaceLowest, borderLeft: `4px solid ${rutina.color}`, borderBottom: `1px solid ${C.outlineVariant}`, padding: '0.7rem 0.9rem', opacity: rutina.isActive ? 1 : 0.55, transition: 'all 0.2s ease', position: 'relative' }}
+                                        initial={{ opacity: 0, y: 14 }}
+                                        animate={{ opacity: rutina.isActive ? 1 : 0.55, y: 0 }}
+                                        transition={{ duration: 0.25, ease: 'easeOut', delay: Math.min(idx, 8) * 0.04 }}
+                                        style={{ background: C.surfaceLowest, borderLeft: `4px solid ${rutina.color}`, borderBottom: `1px solid ${C.outlineVariant}`, padding: '0.7rem 0.9rem', position: 'relative' }}
                                     >
                                     <div style={{
                                         display: 'flex',
@@ -397,20 +409,27 @@ export const VidaDashboard = ({
                                                     flexShrink: 0
                                                 }}
                                             >
-                                                <motion.div 
+                                                <motion.div
                                                     animate={{ x: rutina.isActive ? 16 : 2 }}
+                                                    whileTap={{ scale: 0.85 }}
+                                                    transition={{ type: 'spring', stiffness: 600, damping: 30 }}
                                                     style={{ width: '14px', height: '14px', borderRadius: '50%', background: 'white', position: 'absolute', top: '2px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
                                                 />
                                             </div>
                                         </div>
                                     </div>
 
+                                        <AnimatePresence initial={false}>
                                         {rutina.isActive && (
-                                            <Reorder.Group 
-                                                axis="y" 
-                                                values={rutina.items} 
+                                            <Reorder.Group
+                                                axis="y"
+                                                values={rutina.items}
                                                 onReorder={(newItems: any[]) => reorderRoutineItems(rutina.id, newItems)}
-                                                style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '10px', listStyle: 'none', padding: 0 }}
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                transition={{ duration: 0.22, ease: 'easeInOut' }}
+                                                style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '10px', listStyle: 'none', padding: 0, overflow: 'visible' }}
                                             >
                                                 {rutina.items.map(item => {
                                                     const isDone = item.completed;
@@ -439,7 +458,19 @@ export const VidaDashboard = ({
                                                                     cursor: 'pointer'
                                                                 }}
                                                             >
-                                                                {isDone && <Check size={10} color="white" />}
+                                                                <AnimatePresence initial={false}>
+                                                                    {isDone && (
+                                                                        <motion.span
+                                                                            initial={{ scale: 0, rotate: -30 }}
+                                                                            animate={{ scale: 1, rotate: 0 }}
+                                                                            exit={{ scale: 0 }}
+                                                                            transition={{ type: 'spring', stiffness: 600, damping: 22 }}
+                                                                            style={{ display: 'flex' }}
+                                                                        >
+                                                                            <Check size={10} color="white" />
+                                                                        </motion.span>
+                                                                    )}
+                                                                </AnimatePresence>
                                                             </div>
                                                             <input 
                                                                 value={item.text}
@@ -603,7 +634,8 @@ export const VidaDashboard = ({
                                                 </div>
                                             </Reorder.Group>
                                         )}
-                                    </div>
+                                        </AnimatePresence>
+                                    </motion.div>
                                 ));
                             })()}
                         </motion.div>
@@ -613,6 +645,7 @@ export const VidaDashboard = ({
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2, ease: 'easeOut' }}
                             className="vida-main-container"
                             style={{ overflowX: 'auto' }}
                         >
@@ -642,17 +675,22 @@ export const VidaDashboard = ({
                                                 return (
                                                     <div key={day} style={{ height: '40px', background: day === normalizedDay ? 'rgba(15,169,122,0.05)' : '#FBFBFB', borderRadius: '6px', position: 'relative', border: '1px solid #F0F0F0' }}>
                                                         {activeRoutines.map(r => (
-                                                            <div 
+                                                            <motion.div
                                                                 key={r.id}
-                                                                style={{ 
+                                                                initial={{ opacity: 0, scale: 0.8 }}
+                                                                animate={{ opacity: r.isActive ? 0.9 : 0.4, scale: 1 }}
+                                                                whileHover={{ scale: 1.04 }}
+                                                                whileTap={{ scale: 0.96 }}
+                                                                transition={{ duration: 0.2, delay: (h * 7 + day) * 0.004 }}
+                                                                style={{
                                                                     position: 'absolute', inset: '2px', background: r.color, borderRadius: '6px',
-                                                                    opacity: r.isActive ? 0.9 : 0.4, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                                     padding: '4px', cursor: 'pointer'
                                                                 }}
                                                                 onClick={() => updateRoutine(r.id, { isActive: !r.isActive })}
                                                             >
                                                                 <span style={{ fontSize: '0.55rem', fontWeight: 800, color: 'white', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{r.title}</span>
-                                                            </div>
+                                                            </motion.div>
                                                         ))}
                                                     </div>
                                                 );
@@ -664,6 +702,7 @@ export const VidaDashboard = ({
                         </motion.div>
                     )}
                 </AnimatePresence>
+                </MotionConfig>
             </div>
             )}
             </div> {/* FIN DEL LAYOUT GRID */}

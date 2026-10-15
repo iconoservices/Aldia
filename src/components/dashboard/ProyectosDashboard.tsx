@@ -2,6 +2,7 @@ import { Plus, Trash2, ListTodo, Edit2, Archive, Play, GripVertical } from 'luci
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { GlassCard } from '../ui/GlassCard';
+import { useIsMobile, paddingPagina } from '../../theme';
 import type { Project } from '../../hooks/useAlDiaState';
 import { ProjectEditOverlay } from '../features/ProjectEditOverlay';
 
@@ -47,8 +48,9 @@ export const ProyectosDashboard = ({
         return !p.parentId;
     });
     
+    const movil = useIsMobile();
     return (
-        <div style={{ paddingBottom: '5rem' }}>
+        <div style={paddingPagina(movil)}>
             <div className="proyectos-header-container">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

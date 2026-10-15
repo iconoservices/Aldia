@@ -421,6 +421,14 @@ h3 {
   margin: 0 !important;
 }
 
+/* Pestañas del menú: mismo borde que Agenda; el margen lo pone cada vista
+   (paddingPagina). Se conserva el padding-bottom del nav inferior en móvil. */
+.dashboard.pagina-estandar {
+  padding-top: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
 /* Altura calculada para la vista de Calendario evitando scrollbars anidados */
 .agenda-wrapper {
   overflow: hidden;

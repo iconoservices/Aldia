@@ -64,13 +64,14 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Deudas',     tab: 'Deudas',     icon: 'receipt_long'  },
         { label: 'Proyección',   tab: 'Proyección',  icon: 'trending_up' },
         { label: 'Movimientos', tab: 'Movimientos', icon: 'list_alt'    },
-        { label: 'Pendientes', tab: 'Pendientes', icon: 'checklist' },
-        { label: 'Listas',    tab: 'Listas',    icon: 'fact_check'    },
-        { label: 'Notas',     tab: 'Cerebro',   icon: 'psychology'    },        { label: 'Compras',   tab: 'Compras',   icon: 'shopping_cart' },
-        { label: 'Comidas',   tab: 'Comidas',   icon: 'restaurant'    },
         { label: 'Metas',     tab: 'Metas',     icon: 'flag'          },
         { label: 'Resumen',   tab: 'Rendimiento', icon: 'monitoring'    },
         { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
+        { label: 'Pendientes', tab: 'Pendientes', icon: 'checklist' },
+        { label: 'Listas',    tab: 'Listas',    icon: 'fact_check'    },
+        { label: 'Notas',     tab: 'Cerebro',   icon: 'psychology'    },
+        { label: 'Compras',   tab: 'Compras',   icon: 'shopping_cart' },
+        { label: 'Comidas',   tab: 'Comidas',   icon: 'restaurant'    },
         { label: 'Notion', tab: 'Notion', icon: 'sync_alt' },
     ];
 

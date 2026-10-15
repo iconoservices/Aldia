@@ -55,6 +55,15 @@ export const useAuth = () => {
     const logout = async () => {
         try {
             await signOut(auth);
+            // La copia local de los datos pertenece a la cuenta que cerró sesión: se borra para que
+            // no quede visible en este dispositivo ni se mezcle con otra cuenta al volver a entrar.
+            // Todo sigue en la nube. Se recarga en el mismo tick para que el guardado automático no
+            // vuelva a escribir el estado en memoria.
+            const conservar = new Set(['aldia_backup_anon', 'aldia_user_name', 'aldia_user_pic']);
+            Object.keys(localStorage)
+                .filter(k => k.startsWith('aldia_') && !conservar.has(k))
+                .forEach(k => localStorage.removeItem(k));
+            window.location.reload();
         } catch (error) {
             console.error("Error logging out:", error);
             throw error;

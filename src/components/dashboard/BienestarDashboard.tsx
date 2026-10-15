@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { GlassCard } from '../ui/GlassCard';
+import { useIsMobile, paddingPagina } from '../../theme';
 import { Plus, Trash2, Utensils, ShoppingCart, RotateCcw, Heart, ChefHat, Dumbbell, BookOpen } from 'lucide-react';
 
 interface Item {
@@ -173,8 +174,9 @@ export const BienestarDashboard = () => {
 
     const categoriaActual = categoriaActiva ? categorias.find(c => c.id === categoriaActiva) : null;
 
+    const movil = useIsMobile();
     return (
-        <div style={{ paddingBottom: '5rem' }}>
+        <div style={paddingPagina(movil)}>
             {/* MAPA MENTAL - ÁRBOL */}
             <GlassCard style={{ background: 'white', padding: '2rem', marginBottom: '1.5rem' }}>
                 <h2 style={{ margin: '0 0 1.5rem 0', fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-carbon)' }}>

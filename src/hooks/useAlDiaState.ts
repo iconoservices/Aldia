@@ -377,6 +377,9 @@ export interface UserPreferences {
     // Se siembra una vez desde los gastos/ingresos fijos reales y de ahí en más el usuario
     // lo edita libremente; "Reiniciar" vuelve a sembrar desde los datos reales.
     planDelMes?: string;
+    // JSON: Array<{ id, nombre, fecha, plan }> -- copias guardadas del Plan del mes
+    // (presupuestos con nombre). Cargar una reemplaza planDelMes; no toca nada real.
+    proyeccionesGuardadas?: string;
 }
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
@@ -833,40 +836,51 @@ export const useAlDiaState = () => {
         missions: misionesState, transactions, habits, agenda, timeBlocks, notes, projects, rutinas, monthlyBudget, fixedExpenses, accounts, contacts, preferences, incomeCategories, expenseCategories, dailyBlocks, shoppingList, sporadicProjects, phaseTemplates, recipes, mealPlanEntries, nutritionGoals, ritaEntries, negocioProjects, goals, trash, dailyCheckins
     };
 
+    // Última referencia escrita a localStorage por clave (ver guardado local abajo).
+    const localEscritoRef = useRef<Record<string, unknown>>({});
+
     // 3. Persistencia Cloud (Debounced) y Local (Immediate)
     useEffect(() => {
         // SEGURIDAD: No guardar si todavía no hemos cargado de la nube
         if (isInitialLoad || !hasLoadedFromCloud) return;
 
-        // Guardado Local inmediato
+        // Guardado Local inmediato. Solo se serializa lo que cambió desde la última
+        // escritura (misma referencia = mismo contenido): antes cada toque re-escribía
+        // las 27 colecciones enteras y en el celular eso se notaba como tirón.
         localStorage.setItem('aldia_local_owner', user ? user.uid : 'anon');
-        localStorage.setItem('aldia_missions', JSON.stringify(misionesState));
-        localStorage.setItem('aldia_transactions', JSON.stringify(transactions));
-        localStorage.setItem('aldia_habits', JSON.stringify(habits));
-        localStorage.setItem('aldia_agenda', JSON.stringify(agenda));
-        localStorage.setItem('aldia_timeblocks', JSON.stringify(timeBlocks));
-        localStorage.setItem('aldia_notes', JSON.stringify(notes));
-        localStorage.setItem('aldia_projects', JSON.stringify(projects));
-        localStorage.setItem('aldia_rutinas', JSON.stringify(rutinas));
-        localStorage.setItem('aldia_monthly_budget', JSON.stringify(monthlyBudget));
-        localStorage.setItem('aldia_fixed_expenses', JSON.stringify(fixedExpenses));
-        localStorage.setItem('aldia_accounts', JSON.stringify(accounts));
-        localStorage.setItem('aldia_contacts', JSON.stringify(contacts));
-        localStorage.setItem('aldia_preferences', JSON.stringify(preferences));
-        localStorage.setItem('aldia_income_categories', JSON.stringify(incomeCategories));
-        localStorage.setItem('aldia_expense_categories', JSON.stringify(expenseCategories));
-        localStorage.setItem('aldia_dailyblocks', JSON.stringify(dailyBlocks));
-        localStorage.setItem('aldia_shopping_list', JSON.stringify(shoppingList));
-        localStorage.setItem('aldia_sporadic_projects', JSON.stringify(sporadicProjects));
-        localStorage.setItem('aldia_phase_templates', JSON.stringify(phaseTemplates));
-        localStorage.setItem('aldia_recipes', JSON.stringify(recipes));
-        localStorage.setItem('aldia_meal_plan_entries', JSON.stringify(mealPlanEntries));
-        localStorage.setItem('aldia_nutrition_goals', JSON.stringify(nutritionGoals));
-        localStorage.setItem('aldia_rita_entries', JSON.stringify(ritaEntries));
-        localStorage.setItem('aldia_negocio_projects', JSON.stringify(negocioProjects));
-        localStorage.setItem('aldia_goals', JSON.stringify(goals));
-        localStorage.setItem('aldia_trash', JSON.stringify(trash));
-        localStorage.setItem('aldia_daily_checkins', JSON.stringify(dailyCheckins));
+        const escritas = localEscritoRef.current;
+        const guardarLocal = (clave: string, valor: unknown) => {
+            if (escritas[clave] === valor) return;
+            localStorage.setItem(clave, JSON.stringify(valor));
+            escritas[clave] = valor;
+        };
+        guardarLocal('aldia_missions', misionesState);
+        guardarLocal('aldia_transactions', transactions);
+        guardarLocal('aldia_habits', habits);
+        guardarLocal('aldia_agenda', agenda);
+        guardarLocal('aldia_timeblocks', timeBlocks);
+        guardarLocal('aldia_notes', notes);
+        guardarLocal('aldia_projects', projects);
+        guardarLocal('aldia_rutinas', rutinas);
+        guardarLocal('aldia_monthly_budget', monthlyBudget);
+        guardarLocal('aldia_fixed_expenses', fixedExpenses);
+        guardarLocal('aldia_accounts', accounts);
+        guardarLocal('aldia_contacts', contacts);
+        guardarLocal('aldia_preferences', preferences);
+        guardarLocal('aldia_income_categories', incomeCategories);
+        guardarLocal('aldia_expense_categories', expenseCategories);
+        guardarLocal('aldia_dailyblocks', dailyBlocks);
+        guardarLocal('aldia_shopping_list', shoppingList);
+        guardarLocal('aldia_sporadic_projects', sporadicProjects);
+        guardarLocal('aldia_phase_templates', phaseTemplates);
+        guardarLocal('aldia_recipes', recipes);
+        guardarLocal('aldia_meal_plan_entries', mealPlanEntries);
+        guardarLocal('aldia_nutrition_goals', nutritionGoals);
+        guardarLocal('aldia_rita_entries', ritaEntries);
+        guardarLocal('aldia_negocio_projects', negocioProjects);
+        guardarLocal('aldia_goals', goals);
+        guardarLocal('aldia_trash', trash);
+        guardarLocal('aldia_daily_checkins', dailyCheckins);
 
         // Guardado Cloud debounced
         if (user) {
@@ -1480,6 +1494,7 @@ export const useAlDiaState = () => {
         setFixedExpenses([]); setAccounts([]); setDailyBlocks([]); setRitaEntries([]);
         setNegocioProjects([]);
         localStorage.clear();
+        localEscritoRef.current = {};
         if (user) {
             const docRef = doc(db, 'users', user.uid);
             await setDoc(docRef, { lastSync: new Date().toISOString() }, { merge: false });

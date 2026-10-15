@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Transaction, Contact, FixedExpense } from "../../hooks/useAlDiaState";
 import type { FixedIncome } from "./PlanDashboard";
-import { useIsMobile, MONO } from "../../theme";
+import { useIsMobile, MONO, paddingPagina } from "../../theme";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 
 // En iOS Safari, `position: fixed` no se reacomoda cuando aparece el teclado: el
@@ -999,7 +999,7 @@ export const DeudasyCobrosDashboard = ({
     );
 
     return (
-        <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", minHeight: "100%", paddingBottom: "3rem", color: "#0C2A20" }}>
+        <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", ...paddingPagina(movil), color: "#0C2A20" }}>
 
             {/* ── HEADER ──
                 Antes: título+subtítulo en su fila, 3 tarjetas grandes con borde de

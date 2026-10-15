@@ -5,7 +5,18 @@ import { VitePWA } from 'vite-plugin-pwa'
 // https://vite.dev/config/
 export default defineConfig({
   build: {
-    chunkSizeWarningLimit: 1500
+    chunkSizeWarningLimit: 1500,
+    rollupOptions: {
+      output: {
+        // Librerías en chunks propios: cambian poco, así que tras cada deploy el
+        // service worker solo vuelve a bajar el código de la app (no ~600 KB de vendor).
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('/firebase/') || id.includes('/@firebase/') || id.includes('/idb/')) return 'vendor-firebase';
+          if (id.includes('/react-dom/') || id.includes('/react/') || id.includes('/scheduler/')) return 'vendor-react';
+        }
+      }
+    }
   },
   plugins: [
     react(),
@@ -37,6 +48,26 @@ export default defineConfig({
             sizes: '512x512',
             type: 'image/svg+xml',
             purpose: 'any maskable'
+          }
+        ]
+      },
+      workbox: {
+        // Las fuentes de Google (texto + íconos) no entran al precache por ser de otro
+        // dominio: sin esto, cada arranque en frío las vuelve a pedir a la red.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.origin === 'https://fonts.googleapis.com',
+            handler: 'StaleWhileRevalidate',
+            options: { cacheName: 'google-fonts-css' }
+          },
+          {
+            urlPattern: ({ url }) => url.origin === 'https://fonts.gstatic.com',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-files',
+              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] }
+            }
           }
         ]
       },

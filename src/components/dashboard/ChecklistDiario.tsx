@@ -23,7 +23,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { DailyBlock, Note, SporadicProject, CalendarEvent, Goal } from '../../hooks/useAlDiaState';
 import { MetasHoy } from './MetasHoy';
 
-import { C, bento as bentoCard, useIsMobile, MONO } from '../../theme';
+import { C, bento as bentoCard, useIsMobile, MONO, paddingPagina } from '../../theme';
 import { RegistroMovimiento } from '../features/RegistroMovimiento';
 
 /* ─── Period ────────────────────────────────────────────────────
@@ -1071,7 +1071,7 @@ export const ChecklistDiario = ({
 
     /* ── Desktop ── */
     return (
-        <div style={{ padding: '1.5rem 2rem 3rem', minHeight: '100%' }}>
+        <div style={paddingPagina(isMobile)}>
             <AnimatePresence>
                 {editingTask && (
                     <motion.div

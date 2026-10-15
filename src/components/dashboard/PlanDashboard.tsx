@@ -206,30 +206,24 @@ export const PlanDashboard = ({
     return (
         <div style={paddingPagina(movil)}>
 
-            {/* ── Header: misma cápsula compacta que Finanzas/Entregas ── */}
-            <div style={{
-                display: 'flex', alignItems: movil ? 'flex-start' : 'center', gap: '10px',
-                flexWrap: movil ? 'wrap' : 'nowrap', flexDirection: movil ? 'column' : 'row',
-                background: C.surfaceLowest, padding: '10px 14px', borderRadius: '18px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.03)', marginBottom: '1.25rem',
-            }}>
-                <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: C.onSurface, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                    Ingresos y Gastos Fijos
-                </h2>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: C.onSurfaceVariant, textTransform: 'capitalize' }}>
-                    {nombreMes} · quedan {diasRestantes} {diasRestantes === 1 ? 'día' : 'días'}
-                </span>
-            </div>
-
-            {/* ── 1. Cuánto me queda: todo en una sola fila ── */}
+            {/* ── Header + cuánto me queda: una sola franja (en escritorio, una fila) ── */}
             <section style={{
                 ...bento, border: 'none',
                 background: n.queda < 0 ? 'rgba(239,68,68,0.07)' : 'rgba(15, 169, 122,0.06)',
-                padding: '0.7rem 1.1rem', marginBottom: '1.25rem',
+                padding: movil ? '0.8rem 1rem' : '0.75rem 1.25rem', marginBottom: '1.25rem',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                flexWrap: movil ? 'wrap' : 'nowrap', gap: movil ? '8px' : '1.5rem',
+                flexWrap: 'wrap', gap: movil ? '8px 16px' : '10px 2rem',
             }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap', minWidth: 0 }}>
+                <div style={{ minWidth: 0, flex: movil ? '1 1 100%' : '0 0 auto' }}>
+                    <h2 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: C.onSurface, whiteSpace: 'nowrap' }}>
+                        Ingresos y Gastos Fijos
+                    </h2>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 600, color: C.onSurfaceVariant, textTransform: 'capitalize' }}>
+                        {nombreMes} · quedan {diasRestantes} {diasRestantes === 1 ? 'día' : 'días'}
+                    </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px 10px', flexWrap: 'wrap', minWidth: 0, flex: '1 1 auto' }}>
                     <span style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: n.queda < 0 ? C.rojo : C.primary, whiteSpace: 'nowrap' }}>
                         Te queda
                     </span>
@@ -241,13 +235,13 @@ export const PlanDashboard = ({
                     }}>
                         {n.queda < 0 ? '−' : ''}{money(n.queda)}
                     </span>
-                    <span style={{ fontSize: '0.75rem', color: C.onSurfaceVariant, whiteSpace: movil ? 'normal' : 'nowrap' }}>
+                    <span style={{ fontSize: '0.75rem', color: C.onSurfaceVariant }}>
                         {n.queda < 0 ? 'gastos fijos superan tus ingresos' : `unos ${money(n.porDia)} por día`}
                     </span>
                 </div>
 
                 {/* El desglose, en línea: de dónde sale ese número */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: movil ? 'wrap' : 'nowrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px 14px', flexWrap: 'wrap' }}>
                     <LineaInline label="Ingresos" valor={n.ingresoPrevisto} signo="+" />
                     <LineaInline label="Fijos" valor={n.fijosTotal} signo="−" />
                     <LineaInline label="Variables" valor={n.gastoVariable} signo="−" />
@@ -586,6 +580,7 @@ const FilaFijo = ({
 }: FilaFijoProps) => {
     const esGasto = tipo === 'gasto';
     const partial = esGasto ? item.partialPaid : item.partialReceived;
+    const movil = useIsMobile();
 
     const [editandoDia, setEditandoDia] = useState(false);
     const [editando, setEditando] = useState(false);
@@ -642,7 +637,7 @@ const FilaFijo = ({
             background: pagado ? 'transparent' : vencido ? 'rgba(239,68,68,0.06)' : C.surfaceContainerLow,
             opacity: (pagado || item.active) ? (pagado ? 0.6 : 1) : 0.5,
         }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: movil ? '8px' : '10px' }}>
                 {/* Día del mes / de la semana */}
                 {editandoDia ? (
                     esSemanal ? (
@@ -714,7 +709,8 @@ const FilaFijo = ({
                     }}>
                         {(item.text ?? item.name)?.trim()}
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '2px' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '2px 6px', marginTop: '2px' }}>
+                        {movil && <span style={{ fontSize: '0.8rem', fontWeight: 700, color: C.onSurface, fontVariantNumeric: 'tabular-nums' }}>{money(item.amount)}</span>}
                         {!pagado && vencido && <span style={{ fontSize: '0.68rem', fontWeight: 700, color: C.rojo }}>VENCIDO</span>}
                         {!pagado && hoyToca && <span style={{ fontSize: '0.68rem', fontWeight: 700, color: C.ambar }}>TOCA HOY</span>}
                         {esSemanal && <span style={{ fontSize: '0.68rem', color: C.outline }}>cada {WEEKDAYS[item.dueWeekday ?? 1]}</span>}
@@ -728,9 +724,11 @@ const FilaFijo = ({
                     </div>
                 </div>
 
-                <span style={{ fontSize: '0.87rem', fontWeight: 700, color: C.onSurface, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-                    {money(item.amount)}
-                </span>
+                {!movil && (
+                    <span style={{ fontSize: '0.87rem', fontWeight: 700, color: C.onSurface, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+                        {money(item.amount)}
+                    </span>
+                )}
 
                 {!isPaying && !pagado && (
                     <button
@@ -751,16 +749,16 @@ const FilaFijo = ({
                     </button>
                 )}
 
-                <button
+                {(!movil || item.nota) && <button
                     onClick={() => { setNotaDraft(item.nota ?? ''); setEditandoNota(v => !v); }}
                     title={item.nota ? 'Tiene una nota — tocar para editarla' : 'Agregar nota o comentario'}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: item.nota ? C.ambar : C.outlineVariant, padding: '2px', display: 'flex', flexShrink: 0 }}
                 >
                     <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>{item.nota ? 'sticky_note_2' : 'note_add'}</span>
-                </button>
+                </button>}
 
                 <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <button onClick={() => setMenuOpen(v => !v)} title="Más opciones" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, padding: '2px', display: 'flex' }}>
+                    <button onClick={() => setMenuOpen(v => !v)} title="Más opciones" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, padding: movil ? '6px 2px' : '2px', display: 'flex' }}>
                         <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>more_vert</span>
                     </button>
                     {menuOpen && (
@@ -768,6 +766,11 @@ const FilaFijo = ({
                             <button onClick={() => { setEditando(true); setMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '7px', width: '100%', background: 'none', border: 'none', padding: '9px 12px', cursor: 'pointer', color: C.onSurface, fontSize: '0.78rem', fontWeight: 600, textAlign: 'left' }}>
                                 <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>edit</span> Editar
                             </button>
+                            {movil && !item.nota && (
+                                <button onClick={() => { setNotaDraft(''); setEditandoNota(true); setMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '7px', width: '100%', background: 'none', border: 'none', padding: '9px 12px', cursor: 'pointer', color: C.onSurface, fontSize: '0.78rem', fontWeight: 600, textAlign: 'left', borderTop: `1px solid ${C.surfaceContainerLow}` }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>note_add</span> Agregar nota
+                                </button>
+                            )}
                             {/* "Desactivar" no significa nada para un préstamo/cobro a plazos (no
                                 es un interruptor manual, se desactiva solo al terminar de pagarse) --
                                 para esos la acción útil es deshacer la conversión y volver a manejarlo
