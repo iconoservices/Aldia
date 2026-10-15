@@ -7,6 +7,7 @@ process.loadEnvFile(new URL('../.env.local', import.meta.url));
 import { readFileSync } from 'fs';
 import { initializeApp, cert, deleteApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { actualizarDatos } from '../api/_datosUsuario.js';
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_DATABASE_ID = '219d689c-60c5-81ab-90d6-e13c2d1a3e20'; // Base "Agenda" dentro de "Agenda Calendario"
@@ -127,43 +128,39 @@ function notionIdToNumber(uuid) {
 }
 
 async function main() {
-    const docRef = db.collection('users').doc(USER_UID);
-    const snap = await docRef.get();
-    const data = snap.data() || {};
-
-    if (data.preferences?.notionSyncEnabled === false) {
-        console.log('Sincronizacion con Notion desactivada en Ajustes de AlDia. No se hizo nada.');
-        return;
-    }
-
-    const existingAgenda = Array.isArray(data.agenda) ? data.agenda : [];
-    const existingNotionIds = new Set(existingAgenda.filter((e) => e.notionId).map((e) => e.notionId));
-
     const pages = await fetchAllNotionSessions();
     const fetchedEvents = pages.map(toCalendarEvent).filter(Boolean);
     const fetchedNotionIds = new Set(fetchedEvents.map((e) => e.notionId));
 
-    let added = 0, updated = 0, removed = 0;
-    fetchedEvents.forEach((e) => { if (existingNotionIds.has(e.notionId)) updated++; else added++; });
-    existingNotionIds.forEach((id) => { if (!fetchedNotionIds.has(id)) removed++; });
+    let added = 0, updated = 0, removed = 0, skipped = false;
+    await actualizarDatos(db, USER_UID, ['agenda', 'preferences'], (data) => {
+        skipped = data.preferences?.notionSyncEnabled === false;
+        if (skipped) return null;
 
+        const existingAgenda = Array.isArray(data.agenda) ? data.agenda : [];
+        const existingNotionIds = new Set(existingAgenda.filter((e) => e.notionId).map((e) => e.notionId));
+        added = 0; updated = 0; removed = 0;
+        fetchedEvents.forEach((e) => { if (existingNotionIds.has(e.notionId)) updated++; else added++; });
+        existingNotionIds.forEach((id) => { if (!fetchedNotionIds.has(id)) removed++; });
+        if (added === 0 && updated === 0 && removed === 0) return null;
+
+        // Reconstruye agenda: eventos no-Notion tal cual, más los eventos de Notion
+        // exactamente como están AHORA en Notion (fetchAllNotionSessions ya solo trae
+        // páginas vivas). Antes esto arrancaba de existingAgenda y solo agregaba/
+        // actualizaba encima sin nunca quitar, así que una página borrada o archivada
+        // en Notion se quedaba pegada en AlDía para siempre -- ya no.
+        const nonNotion = existingAgenda.filter((e) => !e.notionId);
+        return { agenda: [...nonNotion, ...fetchedEvents] };
+    });
+
+    if (skipped) {
+        console.log('Sincronizacion con Notion desactivada en Ajustes de AlDia. No se hizo nada.');
+        return;
+    }
     if (added === 0 && updated === 0 && removed === 0) {
         console.log('Nada que traer de Notion.');
         return;
     }
-
-    // Reconstruye agenda: eventos no-Notion tal cual, más los eventos de Notion
-    // exactamente como están AHORA en Notion (fetchAllNotionSessions ya solo trae
-    // páginas vivas). Antes esto arrancaba de existingAgenda y solo agregaba/
-    // actualizaba encima sin nunca quitar, así que una página borrada o archivada
-    // en Notion se quedaba pegada en AlDía para siempre -- ya no.
-    const nonNotion = existingAgenda.filter((e) => !e.notionId);
-    const nextAgenda = [...nonNotion, ...fetchedEvents];
-
-    await docRef.set(
-        { agenda: nextAgenda, lastSync: new Date().toISOString() },
-        { merge: true }
-    );
 
     console.log(`Notion sync: ${added} nueva(s), ${updated} actualizada(s), ${removed} eliminada(s).`);
 }

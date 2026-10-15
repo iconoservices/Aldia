@@ -11,6 +11,7 @@
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { actualizarDatos } from './_datosUsuario.js';
 
 const NOTION_DATABASE_ID = '219d689c-60c5-81ab-90d6-e13c2d1a3e20';
 
@@ -121,33 +122,28 @@ export default async function handler(req, res) {
 
     try {
         const db = getFirestore(getFirebaseApp());
-        const docRef = db.collection('users').doc(process.env.ALDIA_USER_UID);
-        const snap = await docRef.get();
-        const data = snap.data() || {};
 
-        const existingAgenda = Array.isArray(data.agenda) ? data.agenda : [];
-        const existingNotionIds = new Set(existingAgenda.filter((e) => e.notionId).map((e) => e.notionId));
-
+        // Notion se consulta antes de la transacción (si se reintenta, no se repite).
         const pages = await fetchAllNotionSessions();
         const fetchedEvents = pages.map(toCalendarEvent).filter(Boolean);
         const fetchedNotionIds = new Set(fetchedEvents.map((e) => e.notionId));
 
         let added = 0, updated = 0, removed = 0;
-        fetchedEvents.forEach((e) => { if (existingNotionIds.has(e.notionId)) updated++; else added++; });
-        existingNotionIds.forEach((id) => { if (!fetchedNotionIds.has(id)) removed++; });
+        await actualizarDatos(db, process.env.ALDIA_USER_UID, ['agenda'], (data) => {
+            const existingAgenda = Array.isArray(data.agenda) ? data.agenda : [];
+            const existingNotionIds = new Set(existingAgenda.filter((e) => e.notionId).map((e) => e.notionId));
+            added = 0; updated = 0; removed = 0;
+            fetchedEvents.forEach((e) => { if (existingNotionIds.has(e.notionId)) updated++; else added++; });
+            existingNotionIds.forEach((id) => { if (!fetchedNotionIds.has(id)) removed++; });
 
-        // Reconstruye agenda: eventos no-Notion tal cual, más los eventos de Notion
-        // exactamente como están AHORA en Notion (fetchAllNotionSessions ya solo
-        // devuelve páginas vivas, sin archivar/borrar). Antes esto arrancaba de
-        // existingAgenda y solo agregaba/actualizaba encima sin nunca quitar, así
-        // que una página borrada en Notion se quedaba pegada en AlDía para siempre.
-        const nonNotion = existingAgenda.filter((e) => !e.notionId);
-        const nextAgenda = [...nonNotion, ...fetchedEvents];
-
-        await docRef.set(
-            { agenda: nextAgenda, lastSync: new Date().toISOString() },
-            { merge: true }
-        );
+            // Reconstruye agenda: eventos no-Notion tal cual, más los eventos de Notion
+            // exactamente como están AHORA en Notion (fetchAllNotionSessions ya solo
+            // devuelve páginas vivas, sin archivar/borrar). Antes esto arrancaba de
+            // existingAgenda y solo agregaba/actualizaba encima sin nunca quitar, así
+            // que una página borrada en Notion se quedaba pegada en AlDía para siempre.
+            const nonNotion = existingAgenda.filter((e) => !e.notionId);
+            return { agenda: [...nonNotion, ...fetchedEvents] };
+        });
 
         res.status(200).json({ ok: true, added, updated, removed, total: fetchedEvents.length });
     } catch (err) {

@@ -13,6 +13,7 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { actualizarDatos } from './_datosUsuario.js';
 
 export const config = { api: { bodyParser: false } };
 
@@ -128,18 +129,17 @@ function notionIdToNumber(uuid) {
 
 async function upsertEvent(event) {
     const db = getFirestore(getFirebaseApp());
-    const docRef = db.collection('users').doc(process.env.ALDIA_USER_UID);
-    const snap = await docRef.get();
-    const data = snap.data() || {};
+    let skipped = false;
+    await actualizarDatos(db, process.env.ALDIA_USER_UID, ['agenda', 'preferences'], (data) => {
+        skipped = data.preferences?.notionSyncEnabled === false;
+        if (skipped) return null;
 
-    if (data.preferences?.notionSyncEnabled === false) return { skipped: true };
-
-    const agenda = Array.isArray(data.agenda) ? data.agenda : [];
-    const idx = agenda.findIndex((e) => e.notionId === event.notionId);
-    const nextAgenda = idx === -1 ? [...agenda, event] : agenda.map((e, i) => (i === idx ? event : e));
-
-    await docRef.set({ agenda: nextAgenda, lastSync: new Date().toISOString() }, { merge: true });
-    return { upserted: true };
+        const agenda = Array.isArray(data.agenda) ? data.agenda : [];
+        const idx = agenda.findIndex((e) => e.notionId === event.notionId);
+        const nextAgenda = idx === -1 ? [...agenda, event] : agenda.map((e, i) => (i === idx ? event : e));
+        return { agenda: nextAgenda };
+    });
+    return skipped ? { skipped: true } : { upserted: true };
 }
 
 export default async function handler(req, res) {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { db, auth } from '../firebase';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, runTransaction, writeBatch } from 'firebase/firestore';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useFinanzasState } from './state/useFinanzasState';
 import { useMisionesState } from './state/useMisionesState';
@@ -10,7 +10,7 @@ import { useRitaState } from './state/useRitaState';
 import { useNegocioState } from './state/useNegocioState';
 import { useMetasState, migrarMetas } from './state/useMetasState';
 import { PLANTILLAS, type PlantillaId } from '../lib/plantillasFinanzas';
-import { medirDatos } from '../lib/tamanoDatos';
+import { medirDatos, CLAVES_NUBE, ESQUEMA_DATOS, type ClaveNube } from '../lib/tamanoDatos';
 
 // Tipos de datos
 export interface Mission {
@@ -614,6 +614,8 @@ export const useAlDiaState = () => {
     // Si no hubo escritura local después de este punto, no re-guardamos (evita el echo-save
     // que sobreescribía cambios del otro dispositivo).
     const lastSnapshotTimestampRef = useRef<number>(0);
+    // Última referencia subida a (o recibida de) Firestore, por colección.
+    const nubeEscritoRef = useRef<Record<string, unknown>>({});
 
 
     // 2. Lógica de Sincronización Real-Time
@@ -702,13 +704,18 @@ export const useAlDiaState = () => {
         }
 
         const userId = user.uid;
-        const docRef = doc(db, 'users', userId);
+        const rootRef = doc(db, 'users', userId);
+        const datosRef = collection(db, 'users', userId, 'datos');
+        // Cambia el usuario: nada de lo anterior cuenta como "ya está en la nube".
+        nubeEscritoRef.current = {};
 
         // Lo anotado SIN sesión vive solo en este dispositivo. Al iniciar sesión, el
         // primer snapshot de la nube reemplazaba todo el estado local y ese trabajo se
         // perdía. Ahora, si hay ítems locales que la nube no tiene, se hace copia de
         // seguridad y se pregunta si combinar o descartar. Solo aplica la primera vez.
         let anonChecked = false;
+        // Claves combinadas con lo local: no cuentan como "ya en la nube" y se suben.
+        const combinadas = new Set<string>();
         const MERGE_KEYS = ['missions', 'transactions', 'habits', 'agenda', 'notes', 'rutinas',
             'fixedExpenses', 'timeBlocks', 'contacts', 'shoppingList', 'recipes',
             'mealPlanEntries', 'ritaEntries', 'goals', 'dailyCheckins'] as const;
@@ -737,6 +744,7 @@ export const useAlDiaState = () => {
                 const merged = { ...cloudData };
                 for (const k of Object.keys(extras)) {
                     merged[k] = [...(Array.isArray(cloudData[k]) ? cloudData[k] : []), ...extras[k]];
+                    combinadas.add(k);
                 }
                 // Forzar el guardado del resultado combinado hacia la nube.
                 setTimeout(() => { localWriteTimestampRef.current = Date.now() + 1; }, 0);
@@ -747,84 +755,122 @@ export const useAlDiaState = () => {
             }
         };
 
-        const unsubSnap = onSnapshot(docRef, (docSnap) => {
-            if (docSnap.exists()) {
-                const cloud = mergeAnonWork(docSnap.data());
+        // Cada colección vive en su propio documento users/{uid}/datos/{clave} = { v, t }.
+        // Antes todo iba en users/{uid} y cada cambio reenviaba el estado entero.
+        const SETTERS: Record<ClaveNube, Function> = {
+            missions: setMisionesDirect, transactions: setTransactions, habits: setHabits,
+            agenda: setAgenda, notes: setNotes, projects: setProjects, rutinas: setRutinas,
+            fixedExpenses: setFixedExpenses, timeBlocks: setTimeBlocks, accounts: setAccounts,
+            contacts: setContacts, preferences: setPreferences, incomeCategories: setIncomeCategories,
+            expenseCategories: setExpenseCategories, dailyBlocks: setDailyBlocks, shoppingList: setShoppingList,
+            sporadicProjects: setSporadicProjects, phaseTemplates: setPhaseTemplates, recipes: setRecipes,
+            mealPlanEntries: setMealPlanEntries, nutritionGoals: setNutritionGoals, ritaEntries: setRitaEntries,
+            negocioProjects: setNegocioProjects, goals: setGoals, trash: setTrash, dailyCheckins: setDailyCheckins,
+            monthlyBudget: setMonthlyBudget,
+        };
 
-                // NOTA: antes había un chequeo aca que comparaba cloud.lastSync contra
-                // localWriteTimestampRef y, si la nube "parecia" mas vieja, se saltaba
-                // aplicar sync() PERO igual marcaba hasLoadedFromCloud/isInitialLoad como
-                // listos. Eso es lo que causo que se vaciara la cuenta entera una vez:
-                // el estado local se quedaba en sus valores iniciales (vacios o con
-                // datos sembrados por defecto), el guard de guardado se destrababa
-                // igual, y 2s despues ese estado vacio se escribia encima de Firestore,
-                // borrando datos reales. La comparacion de timestamps ademas es fragil
-                // por naturaleza: cloud.lastSync lo escribe quien sea que haya tocado el
-                // documento (este dispositivo, otro, o un script/webhook externo como el
-                // de sync de Notion), mientras que localWriteTimestampRef es un reloj de
-                // pared local -- no hay garantia de que esten sincronizados, y Firestore
-                // ya entrega los snapshots de un mismo listener en orden. Por eso ahora
-                // simplemente se aplica siempre lo que llega; el guard anti-echo del
-                // guardado (mas abajo, comparando localWriteTimestampRef contra
-                // lastSnapshotTimestampRef) sigue evitando reenvios innecesarios.
-
-                // Función helper que usa el setter funcional para no depender del valor actual
-                const sync = (newValue: any, setter: Function) => {
-                    if (newValue !== undefined) {
-                        setter((prev: any) => {
-                            if (JSON.stringify(newValue) !== JSON.stringify(prev)) {
-                                return newValue;
-                            }
-                            return prev;
-                        });
-                    }
-                };
-
-                // Actualizaciones individuales
-                sync(cloud.missions, setMisionesDirect);
-                sync(cloud.transactions, setTransactions);
-                sync(cloud.habits, setHabits);
-                sync(cloud.agenda, setAgenda);
-                sync(cloud.notes, setNotes);
-                sync(cloud.projects, setProjects);
-                sync(cloud.rutinas, setRutinas);
-                sync(cloud.fixedExpenses, setFixedExpenses);
-                sync(cloud.timeBlocks, setTimeBlocks);
-                sync(cloud.accounts, setAccounts);
-                sync(cloud.contacts, setContacts);
-                sync(cloud.preferences, setPreferences);
-                sync(cloud.incomeCategories, setIncomeCategories);
-                sync(cloud.expenseCategories, setExpenseCategories);
-                sync(cloud.dailyBlocks, setDailyBlocks);
-                sync(cloud.shoppingList, setShoppingList);
-                sync(cloud.sporadicProjects, setSporadicProjects);
-                sync(cloud.phaseTemplates, setPhaseTemplates);
-                sync(cloud.recipes, setRecipes);
-                sync(cloud.mealPlanEntries, setMealPlanEntries);
-                sync(cloud.nutritionGoals, setNutritionGoals);
-                sync(cloud.ritaEntries, setRitaEntries);
-                sync(cloud.negocioProjects, setNegocioProjects);
-                sync(cloud.goals, setGoals);
-                sync(cloud.trash, setTrash);
-                sync(cloud.dailyCheckins, setDailyCheckins);
-                if (cloud.monthlyBudget !== undefined) {
-                    setMonthlyBudget(prev => Math.abs(cloud.monthlyBudget - prev) > 0.01 ? Number(cloud.monthlyBudget) : prev);
-                }
-
-                lastSnapshotTimestampRef.current = Date.now();
-                setHasLoadedFromCloud(true);
-                setIsInitialLoad(false);
-            } else {
-                lastSnapshotTimestampRef.current = Date.now();
-                setHasLoadedFromCloud(true);
-                setIsInitialLoad(false);
+        // Aplica lo que llegó con el setter funcional (no depende del valor actual) y
+        // anota la referencia resultante como "ya en la nube", para que el guardado no
+        // la reenvíe (anti-eco por colección).
+        const aplicar = (cloud: Record<string, any>) => {
+            for (const [k, nuevo] of Object.entries(cloud)) {
+                if (nuevo === undefined || !(k in SETTERS)) continue;
+                SETTERS[k as ClaveNube]((prev: any) => {
+                    const sig = k === 'monthlyBudget'
+                        ? (Math.abs(Number(nuevo) - prev) > 0.01 ? Number(nuevo) : prev)
+                        : (JSON.stringify(nuevo) !== JSON.stringify(prev) ? nuevo : prev);
+                    if (!combinadas.has(k)) nubeEscritoRef.current[k] = sig;
+                    return sig;
+                });
             }
+        };
+
+        const marcarCargado = () => {
+            lastSnapshotTimestampRef.current = Date.now();
+            setHasLoadedFromCloud(true);
+            setIsInitialLoad(false);
+        };
+
+        // Migración de una sola vez (idempotente): copia cada colección del documento
+        // único a su propio documento y marca users/{uid}.esquema = 2. Va en transacción:
+        // si otro dispositivo migra a la vez, esta se reintenta, ve esquema 2 y no pisa
+        // nada. Los campos viejos de users/{uid} quedan intactos como respaldo.
+        const migrarDocumentoUnico = () => runTransaction(db, async (tx) => {
+            const rootSnap = await tx.get(rootRef);
+            const root: Record<string, any> = rootSnap.exists() ? rootSnap.data() : {};
+            if (root.esquema === ESQUEMA_DATOS) return 'yaMigrado';
+            const t = new Date().toISOString();
+            let n = 0;
+            for (const k of CLAVES_NUBE) {
+                if (root[k] === undefined) continue;
+                tx.set(doc(datosRef, k), { v: root[k], t });
+                n++;
+            }
+            tx.set(rootRef, { esquema: ESQUEMA_DATOS, migradoEn: t }, { merge: true });
+            return n ? 'migrado' : 'vacio';
+        });
+
+        let primera = true;
+        let migrando = false;
+        let esperaOffline: ReturnType<typeof setTimeout> | undefined;
+        const unsubSnap = onSnapshot(datosRef, (snap) => {
+            if (!snap.metadata.fromCache || !snap.empty) clearTimeout(esperaOffline);
+            if (snap.empty) {
+                // La caché local puede no tener aún los documentos nuevos: solo el
+                // servidor puede decir que de verdad no hay nada.
+                if (snap.metadata.fromCache) {
+                    // Sin conexión y sin caché (primera vez tras la migración): mostrar lo
+                    // local en vez de quedarse cargando, pero sin habilitar el guardado.
+                    if (!esperaOffline) esperaOffline = setTimeout(() => setIsInitialLoad(false), 8000);
+                    return;
+                }
+                if (migrando) return;
+                migrando = true;
+                migrarDocumentoUnico()
+                    .then((r) => {
+                        // 'migrado': el listener vuelve a disparar con los documentos.
+                        if (r === 'migrado') console.info('[AlDía] Datos separados en un documento por colección.');
+                        else marcarCargado();
+                    })
+                    .catch((e) => {
+                        console.error('Error migrando a documentos por colección:', e);
+                        setIsInitialLoad(false);
+                    })
+                    .finally(() => { migrando = false; });
+                return;
+            }
+
+            // La primera vez se aplican todos; después, solo los documentos que cambiaron.
+            let cloud: Record<string, any> = {};
+            const docs = primera ? snap.docs : snap.docChanges().filter(c => c.type !== 'removed').map(c => c.doc);
+            docs.forEach(d => { cloud[d.id] = d.data().v; });
+            if (primera) cloud = mergeAnonWork(cloud);
+            primera = false;
+
+            // NOTA: antes había un chequeo aca que comparaba cloud.lastSync contra
+            // localWriteTimestampRef y, si la nube "parecia" mas vieja, se saltaba
+            // aplicar sync() PERO igual marcaba hasLoadedFromCloud/isInitialLoad como
+            // listos. Eso es lo que causo que se vaciara la cuenta entera una vez:
+            // el estado local se quedaba en sus valores iniciales (vacios o con
+            // datos sembrados por defecto), el guard de guardado se destrababa
+            // igual, y 2s despues ese estado vacio se escribia encima de Firestore,
+            // borrando datos reales. La comparacion de timestamps ademas es fragil
+            // por naturaleza: cloud.lastSync lo escribe quien sea que haya tocado el
+            // documento (este dispositivo, otro, o un script/webhook externo como el
+            // de sync de Notion), mientras que localWriteTimestampRef es un reloj de
+            // pared local -- no hay garantia de que esten sincronizados, y Firestore
+            // ya entrega los snapshots de un mismo listener en orden. Por eso ahora
+            // simplemente se aplica siempre lo que llega; el guard anti-echo del
+            // guardado (mas abajo, comparando localWriteTimestampRef contra
+            // lastSnapshotTimestampRef) sigue evitando reenvios innecesarios.
+            aplicar(cloud);
+            marcarCargado();
         }, (error) => {
             console.error("Error Snapshot Firestore:", error);
             setIsInitialLoad(false);
         });
 
-        return () => unsubSnap();
+        return () => { unsubSnap(); clearTimeout(esperaOffline); };
     }, [user?.uid]); // Solo re-suscribir si cambia el usuario
 
     // Mantenemos la referencia más reciente del estado completo.
@@ -892,14 +938,22 @@ export const useAlDiaState = () => {
                 // porque recibió un snapshot del dispositivo B.
                 if (localWriteTimestampRef.current <= lastSnapshotTimestampRef.current) return;
 
-                const docRef = doc(db, 'users', user.uid);
-                const syncTimestamp = new Date().toISOString();
-                const payload = JSON.parse(JSON.stringify({
-                    ...latestStateRef.current,
-                    lastSync: syncTimestamp
-                }));
-                setDoc(docRef, payload, { merge: true })
+                // Solo se suben las colecciones cuya referencia cambió desde lo último
+                // que se subió o llegó de la nube (misma idea que el guardado local).
+                const estado = latestStateRef.current as Record<string, unknown>;
+                const enNube = nubeEscritoRef.current;
+                const cambiadas = CLAVES_NUBE.filter(k => estado[k] !== enNube[k]);
+                if (cambiadas.length === 0) return;
+                const t = new Date().toISOString();
+                const batch = writeBatch(db);
+                cambiadas.forEach(k => {
+                    batch.set(doc(db, 'users', user.uid, 'datos', k), { v: JSON.parse(JSON.stringify(estado[k] ?? null)), t });
+                    enNube[k] = estado[k];
+                });
+                batch.commit()
                     .catch(error => {
+                        // Que el próximo guardado lo reintente.
+                        cambiadas.forEach(k => { if (enNube[k] === estado[k]) delete enNube[k]; });
                         console.error("🔥 Error crítico guardando en Firestore:", error);
                         alert("ERROR DE SINCRONIZACIÓN: No se pudo guardar en la nube. " + error.message);
                     });
@@ -1497,8 +1551,11 @@ export const useAlDiaState = () => {
         localStorage.clear();
         localEscritoRef.current = {};
         if (user) {
-            const docRef = doc(db, 'users', user.uid);
-            await setDoc(docRef, { lastSync: new Date().toISOString() }, { merge: false });
+            nubeEscritoRef.current = {};
+            const batch = writeBatch(db);
+            CLAVES_NUBE.forEach(k => batch.delete(doc(db, 'users', user.uid, 'datos', k)));
+            batch.set(doc(db, 'users', user.uid), { lastSync: new Date().toISOString(), esquema: ESQUEMA_DATOS }, { merge: false });
+            await batch.commit();
         }
     };
 

@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Database, ChevronDown } from 'lucide-react';
 import { LIMITE_DOC_BYTES, UMBRAL_AVISO, formatoKB, type MedidaDatos } from '../../lib/tamanoDatos';
 
-// Muestra cuánto ocupan los datos sincronizados frente al límite de 1 MB por
-// documento de Firestore, con el desglose por colección.
+// Muestra cuánto ocupan los datos sincronizados y, como cada colección es su
+// propio documento de Firestore (límite 1 MB c/u), qué tan cerca está la más pesada.
 export const MedidorAlmacenamiento = ({ medir }: { medir: () => MedidaDatos }) => {
     // Se mide una vez al montar (al abrir el perfil): stringify de todo el estado.
     const [medida] = useState(medir);
@@ -20,9 +20,14 @@ export const MedidorAlmacenamiento = ({ medir }: { medir: () => MedidaDatos }) =
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-carbon)' }}>Espacio en la nube</p>
-                    <p style={{ margin: '2px 0 0', fontSize: '0.75rem', fontWeight: 700, color: '#666', fontFamily: 'var(--font-mono, monospace)' }}>
-                        {formatoKB(medida.total)} de {formatoKB(LIMITE_DOC_BYTES)} · {pct.toFixed(0)}%
+                    <p style={{ margin: '2px 0 0', fontSize: '0.75rem', fontWeight: 700, color: '#666' }}>
+                        <span style={{ fontFamily: 'var(--font-mono, monospace)' }}>{formatoKB(medida.total)}</span> en total
                     </p>
+                    {medida.mayor && (
+                        <p style={{ margin: '2px 0 0', fontSize: '0.7rem', fontWeight: 650, color: '#999' }}>
+                            Más pesado: {medida.mayor.nombre} · <span style={{ fontFamily: 'var(--font-mono, monospace)' }}>{formatoKB(medida.mayor.bytes)} de {formatoKB(LIMITE_DOC_BYTES)} ({pct.toFixed(0)}%)</span>
+                        </p>
+                    )}
                 </div>
                 <ChevronDown size={18} color="#999" style={{ transform: abierto ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
             </button>
@@ -33,7 +38,7 @@ export const MedidorAlmacenamiento = ({ medir }: { medir: () => MedidaDatos }) =
 
             {aviso && (
                 <p style={{ margin: '0.6rem 0 0', fontSize: '0.75rem', fontWeight: 700, color: '#C63C3C', lineHeight: 1.4 }}>
-                    Pasaste el {Math.round(UMBRAL_AVISO * 100)}% del límite. Si llega al 100% la app deja de poder guardar en la nube.
+                    {medida.mayor?.nombre} pasó el {Math.round(UMBRAL_AVISO * 100)}% del límite por documento. Si llega al 100% la app deja de poder guardarlo en la nube.
                 </p>
             )}
 

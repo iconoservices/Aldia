@@ -1,10 +1,22 @@
 // Mide cuánto ocupa el estado que se sube a Firestore. Firestore limita cada
-// documento a 1 MiB; el tamaño real que cuenta Firestore no es idéntico al de
+// documento a 1 MiB (y cada colección es un documento); el tamaño real que cuenta Firestore no es idéntico al de
 // JSON.stringify (nombres de campo + valores), pero queda muy cerca y sirve
 // para saber qué colección crece y cuándo hay que actuar.
 
 export const LIMITE_DOC_BYTES = 1024 * 1024;
 export const UMBRAL_AVISO = 0.7;
+
+// Desde el esquema 2 cada colección es un documento users/{uid}/datos/{clave} = { v, t }
+// y users/{uid} solo guarda { esquema: 2, ... }. Las mismas claves que latestStateRef.
+export const ESQUEMA_DATOS = 2;
+export const CLAVES_NUBE = [
+    'missions', 'transactions', 'habits', 'agenda', 'timeBlocks', 'notes', 'projects', 'rutinas',
+    'monthlyBudget', 'fixedExpenses', 'accounts', 'contacts', 'preferences', 'incomeCategories',
+    'expenseCategories', 'dailyBlocks', 'shoppingList', 'sporadicProjects', 'phaseTemplates',
+    'recipes', 'mealPlanEntries', 'nutritionGoals', 'ritaEntries', 'negocioProjects', 'goals',
+    'trash', 'dailyCheckins',
+] as const;
+export type ClaveNube = typeof CLAVES_NUBE[number];
 
 export const NOMBRES_COLECCION: Record<string, string> = {
     missions: 'Misiones',
@@ -45,7 +57,8 @@ export interface MedidaColeccion {
 
 export interface MedidaDatos {
     total: number;
-    fraccion: number; // total / LIMITE_DOC_BYTES
+    mayor: MedidaColeccion | null; // el documento más pesado
+    fraccion: number; // mayor.bytes / LIMITE_DOC_BYTES: el límite es por documento
     colecciones: MedidaColeccion[]; // de mayor a menor
 }
 
@@ -60,7 +73,8 @@ export const medirDatos = (estado: Record<string, unknown>): MedidaDatos => {
         items: Array.isArray(valor) ? valor.length : null,
     })).sort((a, b) => b.bytes - a.bytes);
     const total = colecciones.reduce((s, c) => s + c.bytes, 0);
-    return { total, fraccion: total / LIMITE_DOC_BYTES, colecciones };
+    const mayor = colecciones[0] ?? null;
+    return { total, mayor, fraccion: (mayor?.bytes ?? 0) / LIMITE_DOC_BYTES, colecciones };
 };
 
 export const formatoKB = (bytes: number) =>
