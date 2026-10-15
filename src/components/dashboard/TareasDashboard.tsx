@@ -27,14 +27,16 @@ interface TareasDashboardProps {
     projects: Project[];
 }
 
+// Mismos índices que Mi Día (lunes = 0 … domingo = 6). Antes Tareas usaba getDay() (lunes = 1,
+// domingo = 0) y una repetitiva creada acá podía caer un día corrido en Mi Día.
 const DIAS_SEMANA = [
-    { idx: 1, label: 'L', full: 'Lun' },
-    { idx: 2, label: 'M', full: 'Mar' },
-    { idx: 3, label: 'M', full: 'Mié' },
-    { idx: 4, label: 'J', full: 'Jue' },
-    { idx: 5, label: 'V', full: 'Vie' },
-    { idx: 6, label: 'S', full: 'Sáb' },
-    { idx: 0, label: 'D', full: 'Dom' },
+    { idx: 0, label: 'L', full: 'Lun' },
+    { idx: 1, label: 'M', full: 'Mar' },
+    { idx: 2, label: 'X', full: 'Mié' },
+    { idx: 3, label: 'J', full: 'Jue' },
+    { idx: 4, label: 'V', full: 'Vie' },
+    { idx: 5, label: 'S', full: 'Sáb' },
+    { idx: 6, label: 'D', full: 'Dom' },
 ];
 
 /** Extrae tareas de un solo texto: permite una sola tarea, múltiples líneas, o títulos con ':' */
@@ -88,11 +90,22 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
         </button>
     );
     // Las repetitivas ya traen su hora: una sola lista ordenada por hora (las sin hora, al final).
+    // Día de hoy con el índice de Mi Día (lunes = 0)
+    const hoyIdx = (new Date().getDay() + 6) % 7;
+    const mismaTarea = (x: DailyBlock, b: DailyBlock) => x.label.trim().toLowerCase() === b.label.trim().toLowerCase() && x.period === b.period;
+    const tocaHoy = (b: DailyBlock) => !!b.repeatDays?.includes(hoyIdx);
+    const hechaHoy = (b: DailyBlock) => dailyBlocks.some(x => mismaTarea(x, b) && x.date === todayStr && x.completed);
+    // Igual que en Mi Día: se marca creando (o alternando) el bloque de hoy de esa tarea.
+    const marcarHoy = (b: DailyBlock) => {
+        const existente = dailyBlocks.find(x => mismaTarea(x, b) && x.date === todayStr);
+        if (existente) toggleDailyBlock(existente.id);
+        else addDailyBlock(b.label, (b.period ?? 'Otro') as any, todayStr, true, b.projectId, b.repeatDays, b.time, b.isActive);
+    };
     const GRUPOS_SUE = ['Vencidas', 'Hoy', 'Próximas', 'Sin fecha', 'Hechas'];
     const estadoDe = (b: DailyBlock) => b.completed ? 'Hechas' : !b.date ? 'Sin fecha' : b.date < todayStr ? 'Vencidas' : b.date === todayStr ? 'Hoy' : 'Próximas';
 
     // Menú de tres puntos de cada fila (Editar / Eliminar), en vez de dos íconos sueltos.
-    const menuAcciones = (id: number, onEditar: () => void, onEliminar: () => void) => (
+    const menuAcciones = (id: number, onEditar: () => void, onEliminar: () => void, extra?: { icono: string; texto: string; onClick: () => void }) => (
         <div style={{ position: 'relative', flexShrink: 0 }}>
             <button onClick={() => setMenuFila(menuFila === id ? null : id)} title="Más opciones" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>more_vert</span>
@@ -101,6 +114,11 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                 <>
                     <div onClick={() => setMenuFila(null)} style={{ position: 'fixed', inset: 0, zIndex: 20 }} />
                     <div style={{ position: 'absolute', right: 0, top: '34px', zIndex: 21, minWidth: '150px', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px' }}>
+                        {extra && (
+                            <button onClick={() => { setMenuFila(null); extra.onClick(); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 12px', background: 'none', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: C.onSurface, fontFamily: 'inherit' }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{extra.icono}</span> {extra.texto}
+                            </button>
+                        )}
                         <button onClick={() => { setMenuFila(null); onEditar(); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 12px', background: 'none', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: C.onSurface, fontFamily: 'inherit' }}>
                             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span> Editar
                         </button>
@@ -116,7 +134,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     // ── Form State (Texto unificado: 1 tarea o varias en el mismo texto) ──
     const [textoTarea, setTextoTarea] = useState('');
     const [tipo, setTipo] = useState<'repetitiva' | 'suelta'>('suelta');
-    const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // default Lun-Vie
+    const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4]); // default Lun-Vie
     const [targetDate, setTargetDate] = useState('');
     const [paraHoy, setParaHoy] = useState(false);
     const [targetTime, setTargetTime] = useState('');
@@ -196,7 +214,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                 } else {
                     const prev = seen.get(key)!;
                     // Mantenemos el más reciente o con isActive definido
-                    if (b.isActive !== undefined && prev.isActive === undefined) {
+                    if ((b.isActive !== undefined && prev.isActive === undefined) || (!prev.time && b.time)) {
                         seen.set(key, b);
                     }
                 }
@@ -204,6 +222,9 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
         });
         return Array.from(seen.values());
     }, [dailyBlocks]);
+    const repetitivasOrdenadas = [...repetitivas].sort((a, b) => (tocaHoy(a) === tocaHoy(b) ? 0 : tocaHoy(a) ? -1 : 1) || (a.time || '99:99').localeCompare(b.time || '99:99'));
+    const tocanHoy = repetitivas.filter(tocaHoy).length;
+    const hechasHoy = repetitivas.filter(b => tocaHoy(b) && hechaHoy(b)).length;
 
     // Tareas de una sola vez (sueltas): sin repeatDays
     const sueltas = useMemo(() => {
@@ -271,7 +292,6 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
         setTargetTime('');
         setIsFormOpen(false);
     };
-    const repetitivasOrdenadas = [...repetitivas].sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
 
     const toggleDia = (diaIdx: number) => {
         setSelectedDays(prev =>
@@ -630,8 +650,8 @@ Supermercado:
                             <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: C.onSurface }}>
                                 Repetitivas (Tipo Alarma)
                             </h2>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 800, background: 'rgba(185, 118, 10, 0.12)', color: C.ambar, borderRadius: '999px', padding: '1px 8px' }}>
-                                {repetitivas.length}
+                            <span style={{ fontSize: '0.72rem', fontWeight: 800, background: 'rgba(15, 169, 122, 0.12)', color: C.primary, borderRadius: '999px', padding: '1px 8px' }} title="Hechas hoy / las que tocan hoy">
+                                {hechasHoy}/{tocanHoy} hoy
                             </span>
                         </div>
                     </div>
@@ -647,6 +667,8 @@ Supermercado:
                             repetitivasOrdenadas.map(b => {
                                 const project = projects.find(p => p.id === b.projectId);
                                 const isEncendida = b.isActive !== false;
+                                const toca = tocaHoy(b);
+                                const hecha = toca && hechaHoy(b);
 
                                 return (
                                     <div
@@ -654,27 +676,30 @@ Supermercado:
                                         style={{
                                             padding: '9px 8px 9px 14px', borderBottom: `1px solid ${C.surfaceContainerHigh}`,
                                             display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
-                                            opacity: isEncendida ? 1 : 0.55,
+                                            opacity: !toca || !isEncendida ? 0.5 : 1,
+                                            background: hecha ? 'rgba(15, 169, 122, 0.06)' : 'transparent',
                                         }}
                                     >
-                                        {/* Switch tipo alarma */}
+                                        {/* Círculo: hecha hoy (solo se puede si hoy toca) */}
                                         <button
-                                            onClick={() => toggleAlarmaActiva(b)}
-                                            title={isEncendida ? 'Alarma activada (Clic para pausar)' : 'Alarma pausada (Clic para activar)'}
+                                            onClick={() => toca && marcarHoy(b)}
+                                            disabled={!toca}
+                                            title={!toca ? 'Hoy no toca' : hecha ? 'Hecha hoy (clic para desmarcar)' : 'Marcar como hecha hoy'}
                                             style={{
-                                                width: '34px', height: '20px', borderRadius: '999px',
-                                                background: isEncendida ? C.primary : C.surfaceContainerHighest,
-                                                border: 'none', cursor: 'pointer', padding: '2px',
-                                                display: 'flex', alignItems: 'center',
-                                                justifyContent: isEncendida ? 'flex-end' : 'flex-start',
-                                                transition: 'background 0.2s', flexShrink: 0,
+                                                width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0, padding: 0,
+                                                border: `2px solid ${hecha ? C.primary : toca ? C.outlineVariant : C.surfaceContainerHigh}`,
+                                                background: hecha ? C.primary : 'transparent',
+                                                cursor: toca ? 'pointer' : 'default',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
                                             }}
                                         >
-                                            <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                                            {hecha && <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#fff' }}>check</span>}
                                         </button>
 
                                         <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-                                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: C.onSurface, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.label}</div>
+                                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: hecha ? C.outline : C.onSurface, textDecoration: hecha ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {b.label}{!isEncendida && <span style={{ marginLeft: '8px', fontSize: '0.62rem', fontWeight: 800, color: C.outline, border: `1px solid ${C.outlineVariant}`, borderRadius: '999px', padding: '0 6px' }}>pausada</span>}
+                                            </div>
                                             {project && (
                                                 <div style={{ fontSize: '0.68rem', color: C.onSurfaceVariant, display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                     <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: project.color }} />
@@ -689,7 +714,7 @@ Supermercado:
                                                 const activo = b.repeatDays?.includes(d.idx);
                                                 return (
                                                     <span key={d.idx} style={{
-                                                        width: '19px', height: '19px', borderRadius: '5px',
+                                                        width: '19px', height: '19px', borderRadius: '5px', outline: d.idx === hoyIdx && activo ? `2px solid ${C.primary}55` : 'none', outlineOffset: '1px',
                                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                         fontSize: '0.62rem', fontWeight: 800,
                                                         background: activo ? (isEncendida ? C.primary : C.outline) : 'transparent',
@@ -707,7 +732,7 @@ Supermercado:
                                             </span>
                                         )}
 
-                                        {menuAcciones(b.id, () => handleStartEdit(b), () => handleDeleteRepetitiva(b))}
+                                        {menuAcciones(b.id, () => handleStartEdit(b), () => handleDeleteRepetitiva(b), { icono: isEncendida ? 'alarm_off' : 'alarm_on', texto: isEncendida ? 'Pausar alarma' : 'Activar alarma', onClick: () => toggleAlarmaActiva(b) })}
                                     </div>
                                 );
                             })
