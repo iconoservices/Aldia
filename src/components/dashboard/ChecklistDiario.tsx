@@ -83,16 +83,15 @@ const TaskCard = ({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 style={{
-                    ...bentoTarea,
-                    padding: '5px 10px',
-                    display: 'flex', alignItems: 'center', gap: '8px',
-                    background: isDone ? '#F7FAF8' : C.surfaceLowest,
-                    opacity: isDone ? 0.72 : 1,
+                    padding: '7px 8px',
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    background: C.surfaceLowest,
+                    borderBottom: `1px solid ${C.outlineVariant}`,
+                    opacity: isDone ? 0.6 : 1,
                     cursor: isDragging ? 'grabbing' : 'default',
-                    minHeight: '34px',
+                    minHeight: '40px',
                     boxSizing: 'border-box',
                 }}
-                whileHover={!isSortDragging ? { boxShadow: '0 3px 12px rgba(0,0,0,0.06)' } as any : undefined}
                 className="task-card-row"
             >
                 {/* Drag handle */}
@@ -116,9 +115,9 @@ const TaskCard = ({
                 <button
                     onClick={onToggle}
                     style={{
-                        width: '18px', height: '18px', minWidth: '18px',
-                        borderRadius: '5px',
-                        border: `1.5px solid ${isDone ? projColor : C.outlineVariant}`,
+                        width: '20px', height: '20px', minWidth: '20px',
+                        borderRadius: '50%',
+                        border: `1.5px solid ${isDone ? projColor : C.outline}`,
                         background: isDone ? projColor : 'transparent',
                         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         transition: 'all 0.15s', padding: 0, flexShrink: 0,
@@ -157,7 +156,6 @@ const TaskCard = ({
                     <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: '3px',
                         fontSize: '0.64rem', color: C.onSurfaceVariant,
-                        background: 'rgba(0,0,0,0.03)', padding: '1px 6px', borderRadius: '4px',
                         flexShrink: 0,
                     }}>
                         <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: projColor, display: 'inline-block' }} />
@@ -172,7 +170,7 @@ const TaskCard = ({
                     className="menu-btn"
                     style={{
                         background: 'none', border: 'none', cursor: 'pointer',
-                        color: '#6C8079', opacity: 0, transition: 'opacity 0.15s',
+                        color: '#6C8079', opacity: 0.7, transition: 'opacity 0.15s',
                         padding: '2px', display: 'flex', alignItems: 'center',
                         borderRadius: '6px', flexShrink: 0,
                     }}
@@ -395,10 +393,10 @@ const EntregasEnDesarrollo = ({ sporadicProjects, calendarEvents, todayStr, onOp
             {abierto && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '4px' }}>
                     {/* Solo la primera visible por defecto */}
-                    {renderItem(activas[0])}
+                    {activas.slice(0, activas.length <= 3 ? 3 : 1).map(p => renderItem(p))}
 
                     {/* El resto es desplegable */}
-                    {activas.length > 1 && (
+                    {activas.length > 3 && (
                         <>
                             {mostrarTodas && activas.slice(1).map(p => renderItem(p))}
 
@@ -857,10 +855,6 @@ export const ChecklistDiario = ({
                     </div>
                 </div>
 
-                {/* Ayuda: qué es esta lista */}
-                <p style={{ margin: '0 0 12px', fontSize: '0.78rem', color: C.onSurfaceVariant, lineHeight: 1.4 }}>
-                    Tu lista de hoy. Mantén pulsado y arrastra para ponerla en el orden en que la vas a hacer.
-                </p>
 
                 {/* DnD Tasks List */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -916,7 +910,7 @@ export const ChecklistDiario = ({
                                         key="empty"
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
-                                        style={{ ...bentoTarea, padding: '3rem 2rem', textAlign: 'center', color: C.onSurfaceVariant }}
+                                        style={{ padding: '2.5rem 2rem', textAlign: 'center', color: C.onSurfaceVariant }}
                                     >
                                         <span className="material-symbols-outlined" style={{ fontSize: '48px', color: C.outlineVariant, display: 'block', marginBottom: '12px' }}>
                                             checklist
@@ -925,7 +919,7 @@ export const ChecklistDiario = ({
                                             Sin tareas programadas
                                         </p>
                                         <p style={{ margin: 0, fontSize: '0.8rem' }}>
-                                            Añade tareas en Vida › Rutina.
+                                            Añade tareas en Agenda › Tareas.
                                         </p>
                                     </motion.div>
                                 )}
@@ -1216,7 +1210,7 @@ export const ChecklistDiario = ({
                 </p>
 
                 {/* ── Task list ── */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
 
                     {/* List header */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
@@ -1313,6 +1307,7 @@ export const ChecklistDiario = ({
                     />
 
                     {/* DnD List */}
+                    <div style={{ background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: '12px', overflow: 'hidden' }}>
                     <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
@@ -1387,6 +1382,7 @@ export const ChecklistDiario = ({
                             ) : null}
                         </DragOverlay>
                     </DndContext>
+                    </div>
                 </div>
             </div>
 
@@ -1408,6 +1404,7 @@ export const ChecklistDiario = ({
             <style>{`
                 .task-card-row:hover .drag-handle { opacity: 1 !important; }
                 .task-card-row:hover .menu-btn  { opacity: 1 !important; }
+                .task-card-row .menu-btn { opacity: 0.7; }
             `}</style>
 
             <ConfirmDialog
