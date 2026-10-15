@@ -1,5 +1,5 @@
 // Final deployment build - Aldia App
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense, startTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 import { Header } from './components/layout/Header';
@@ -16,6 +16,16 @@ import { ActionBanner } from './components/dashboard/ActionBanner';
 
 /* El resto de pantallas y overlays se cargan solo al abrirlas (code-splitting):
    así el arranque baja el marco + el Checklist, no las ~45 vistas de una. */
+// Pestañas que comparten selector de vistas: cambiar entre ellas no re-anima
+// toda la página (el selector se queda quieto, solo cambia el contenido).
+const GRUPOS_VISTA: string[][] = [
+  ['Listas', 'Quiero hacer', 'Bandeja'],
+  ['Tareas', 'Pendientes'],
+  ['Metas', 'Proyectos', 'Compras'],
+  ['Finanzas', 'Fijos', 'Plan', 'Deudas', 'Proyección', 'Movimientos'],
+];
+const grupoVista = (tab: string) => GRUPOS_VISTA.find(g => g.includes(tab))?.[0] ?? tab;
+
 const named = <M extends Record<string, unknown>, K extends keyof M>(
     loader: () => Promise<M>, key: K,
 ) => lazy(() => loader().then(m => ({ default: m[key] as React.ComponentType<any> })));
@@ -59,7 +69,7 @@ const RendimientoDashboard = named(() => import('./components/dashboard/Rendimie
 const TareasDashboard = named(() => import('./components/dashboard/TareasDashboard'), 'TareasDashboard');
 
 function App() {
-  const [activeTab, setActiveTab] = useState(() => {
+  const [activeTab, setActiveTabRaw] = useState(() => {
     const path = window.location.pathname.toLowerCase();
     // Ojo: "/lienzo-ops" también matchea "/lienzo", así que el caso más
     // específico va primero — si no, nunca se llega a la rama de abajo.
@@ -101,6 +111,10 @@ function App() {
     if (path.includes('/plan')) return 'Plan';
     return 'Checklist';
   });
+  // En transición: mientras carga el chunk de la pestaña nueva se mantiene la
+  // anterior en pantalla (sin parpadeo de la pantalla de carga).
+  const setActiveTab = (t: string) => startTransition(() => setActiveTabRaw(t));
+
 
   useEffect(() => {
     let path = `/${activeTab.toLowerCase()}`;
@@ -199,13 +213,13 @@ function App() {
 
       <Suspense fallback={<PantallaCarga />}>
       <main className={`dashboard ${activeTab === 'Calendario' || activeTab === 'Lienzo' || activeTab === 'Lienzo Ops' ? 'full-bleed' : ''}`}>
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
+            key={grupoVista(activeTab)}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.14, ease: "easeOut" }}
             style={{
               width: '100%',
               ...((activeTab === 'Calendario' || activeTab === 'Lienzo' || activeTab === 'Lienzo Ops') && {
