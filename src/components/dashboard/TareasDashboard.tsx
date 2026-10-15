@@ -280,7 +280,12 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
         });
         return Array.from(seen.values());
     }, [dailyBlocks]);
-    const repetitivasOrdenadas = [...repetitivas].sort((a, b) => (tocaHoy(a) === tocaHoy(b) ? 0 : tocaHoy(a) ? -1 : 1) || (a.time || '99:99').localeCompare(b.time || '99:99'));
+    // Orden: pausadas siempre al final; luego las que tocan hoy primero; luego por hora.
+    const pausada = (b: typeof repetitivas[number]) => b.isActive === false;
+    const repetitivasOrdenadas = [...repetitivas].sort((a, b) =>
+        (pausada(a) === pausada(b) ? 0 : pausada(a) ? 1 : -1)
+        || (tocaHoy(a) === tocaHoy(b) ? 0 : tocaHoy(a) ? -1 : 1)
+        || (a.time || '99:99').localeCompare(b.time || '99:99'));
     const tocanHoy = repetitivas.filter(tocaHoy).length;
     const hechasHoy = repetitivas.filter(b => tocaHoy(b) && hechaHoy(b)).length;
 

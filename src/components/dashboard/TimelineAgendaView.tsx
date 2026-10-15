@@ -1034,6 +1034,11 @@ export const TimelineAgendaView = ({
         agenda: true,
         entregas: true
     });
+    // En la vista semanal (Timeline) el Horario se prende solo al entrar: es la vista
+    // donde los bloques con hora tienen sentido. Después se puede apagar a mano.
+    useEffect(() => {
+        if (viewMode === 'timeline') setActiveFilters(f => f.rutinas ? f : { ...f, rutinas: true });
+    }, [viewMode]);
     // Interruptor general de Notion (abajo, solito). Apagado = oculta todo lo
     // que viene de Notion (sesiones + entregas), sin importar los filtros de
     // arriba. Encenderlo dispara una sincronizacion. Es aparte de los filtros

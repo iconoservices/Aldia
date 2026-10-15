@@ -1,10 +1,10 @@
-import { Plus, Check, Trash2, Calendar, LayoutGrid, Clock, Edit2, GripVertical, Leaf, Folder } from 'lucide-react';
+import { Plus, Check, Trash2, Calendar, LayoutGrid, Clock, Edit2, GripVertical, Leaf, Folder, MoreVertical } from 'lucide-react';
 import type { Habit, Routine, Project } from '../../hooks/useAlDiaState';
 import { motion, AnimatePresence, Reorder, MotionConfig } from 'framer-motion';
 import { useState } from 'react';
 import { RoutineEditOverlay } from '../features/RoutineEditOverlay';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
-import { C } from '../../theme';
+import { C, MONO, useIsMobile, paddingPagina } from '../../theme';
 
 /* ── Estilos compartidos por las 3 sub-pestañas de Vida ─────────────
    Rutina, Hábitos y Horario usan el mismo lenguaje: encabezado con
@@ -34,6 +34,21 @@ const vidaInputBtn = (primary: boolean): React.CSSProperties => ({
     padding: primary ? '10px 16px' : '10px 14px', fontWeight: 700, fontSize: '0.82rem',
     cursor: 'pointer', fontFamily: 'inherit',
 });
+// Botón de ícono chico en cada tarea del horario (hora, hábito, proyecto, quitar).
+const iconoFila = (activo: boolean, fondo = 'transparent'): React.CSSProperties => ({
+    background: activo ? fondo : 'transparent', border: 'none', borderRadius: '6px', cursor: 'pointer',
+    padding: '4px 5px', display: 'flex', alignItems: 'center', flexShrink: 0,
+});
+const menuItem = (color: string): React.CSSProperties => ({
+    display: 'flex', alignItems: 'center', gap: '8px', width: '100%', background: 'none', border: 'none',
+    padding: '9px 12px', cursor: 'pointer', color, fontSize: '0.78rem', fontWeight: 600, textAlign: 'left', fontFamily: 'inherit',
+});
+// Los íconos de acción de cada tarea se muestran al pasar el mouse; en celular siempre (más tenues).
+const HORARIO_CSS = `
+.hz-item .hz-acc { opacity: 0; transition: opacity .15s; }
+.hz-item:hover .hz-acc, .hz-item:focus-within .hz-acc { opacity: 1; }
+@media (hover: none) { .hz-item .hz-acc { opacity: .55; } }
+`;
 const vidaVacio = (icon: string, text: string): React.ReactElement => (
     <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: C.onSurfaceVariant }}>
         <span className="material-symbols-outlined" style={{ fontSize: '40px', color: C.outlineVariant, display: 'block', marginBottom: '10px' }}>{icon}</span>
@@ -102,12 +117,15 @@ export const VidaDashboard = ({
     const [addingHabit, setAddingHabit] = useState(false);
     const [newHabitName, setNewHabitName] = useState('');
     const [deletingHabit, setDeletingHabit] = useState<Habit | null>(null);
+    const [menuBloque, setMenuBloque] = useState<number | null>(null);
+    const [horaAbierta, setHoraAbierta] = useState<number | null>(null);
+    const movil = useIsMobile();
     const days = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
     const todayStr = new Date().toLocaleDateString('en-CA');
     const normalizedDay = (new Date().getDay() + 6) % 7;
 
     return (
-        <div style={{ paddingBottom: '5rem' }}>
+        <div style={paddingPagina(movil)}>
             <style>{`
                 .vida-layout {
                     display: grid;
@@ -115,6 +133,7 @@ export const VidaDashboard = ({
                     gap: 1.5rem;
                     align-items: start;
                 }
+                .vida-layout > * { min-width: 0; }
                 .vida-main-container {
                     padding: 1.2rem;
                     background: white;
@@ -151,7 +170,7 @@ export const VidaDashboard = ({
                 }
             `}</style>
             
-            <div className="vida-layout" style={only ? { gridTemplateColumns: '1fr', maxWidth: 760 } : undefined}>
+            <div className="vida-layout" style={only ? { gridTemplateColumns: '1fr', maxWidth: only === 'horario' ? undefined : 760 } : undefined}>
             {/* MOTOR DE HÁBITOS (SECCIÓN PRINCIPAL) */}
             {only !== 'horario' && (
             <div className="habitos-col" style={only ? { position: 'static' } : undefined}>
@@ -284,6 +303,7 @@ export const VidaDashboard = ({
                     />
                 )}
 
+                <style>{HORARIO_CSS}</style>
                 <MotionConfig reducedMotion="user">
                 <AnimatePresence mode="wait">
                     {viewMode === 'hoy' ? (
@@ -294,127 +314,115 @@ export const VidaDashboard = ({
                             exit={{ opacity: 0, y: -10 }}
                             transition={{ duration: 0.2, ease: 'easeOut' }}
                             style={{
-                                display: 'flex',
-                                flexDirection: 'column'
+                                display: 'grid',
+                                // Escritorio: 2 o 3 bloques por fila según el ancho (nunca más de 3); celular: uno debajo de otro.
+                                gridTemplateColumns: movil ? '1fr' : 'repeat(auto-fill, minmax(max(300px, calc((100% - 20px) / 3)), 1fr))',
+                                gap: '10px', alignItems: 'start',
                             }}
                         >
                             {(() => {
                                 let displayRutinas = [...rutinas];
-                                displayRutinas.sort((a, b) => {
-                                    const timeA = a.startTime || '99:99';
-                                    const timeB = b.startTime || '99:99';
-                                    return timeA.localeCompare(timeB);
-                                });
+                                displayRutinas.sort((a, b) =>
+                                    (a.isActive === b.isActive ? 0 : a.isActive ? -1 : 1)
+                                    || (a.startTime || '99:99').localeCompare(b.startTime || '99:99'));
                                 if (displayRutinas.length === 0 && !addingBlock) {
                                     return vidaVacio('schedule', 'Aún no tienes bloques. Crea el primero.');
                                 }
-                                return displayRutinas.map((rutina, idx) => (
+                                return displayRutinas.map((rutina, idx) => {
+                                    const hechas = rutina.items.filter(i => i.completed).length;
+                                    const aMin = (t?: string) => t ? parseInt(t.slice(0, 2)) * 60 + parseInt(t.slice(3, 5)) : -1;
+                                    const cruza = rutinas.find(o => o.id !== rutina.id && o.isActive && rutina.isActive
+                                        && o.startTime && o.endTime && rutina.startTime && rutina.endTime
+                                        && aMin(o.startTime) < aMin(rutina.endTime) && aMin(rutina.startTime) < aMin(o.endTime)
+                                        && (o.repeatDays || []).some(d => (rutina.repeatDays || []).includes(d)));
+                                    const tocaHoy = (rutina.repeatDays || []).includes(normalizedDay);
+                                    return (
                                     <motion.div
                                         key={rutina.id}
+                                        layout="position"
                                         initial={{ opacity: 0, y: 14 }}
                                         animate={{ opacity: rutina.isActive ? 1 : 0.55, y: 0 }}
                                         transition={{ duration: 0.25, ease: 'easeOut', delay: Math.min(idx, 8) * 0.04 }}
-                                        style={{ background: C.surfaceLowest, borderLeft: `4px solid ${rutina.color}`, borderBottom: `1px solid ${C.outlineVariant}`, padding: '0.7rem 0.9rem', position: 'relative' }}
+                                        style={{ background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: '14px', position: 'relative', minWidth: 0, boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
                                     >
-                                    <div style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        marginBottom: '12px',
-                                        flexWrap: 'wrap',
-                                        gap: '12px'
-                                    }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 'min-content' }}>
-                                            <div
-                                                onClick={() => setDeletingBlock(rutina)}
-                                                title="Eliminar bloque"
-                                                style={{ cursor: 'pointer', opacity: 0.35, transition: 'opacity 0.2s' }}
-                                                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                                                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.35'}
-                                            >
-                                                <Trash2 size={13} color={C.rojo} style={{ marginRight: '4px' }} />
+                                    {/* Cabecera del bloque */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: movil ? '10px 10px 10px 12px' : '12px 12px 12px 14px', flexWrap: movil ? 'wrap' : 'nowrap' }}>
+                                        {/* Franja de hora, con el color del bloque */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px', width: '62px', flexShrink: 0, padding: '6px 0', borderRadius: '10px', background: `${rutina.color}14`, borderLeft: `3px solid ${rutina.color}` }}>
+                                            <input type="time" value={rutina.startTime || ''} onChange={(e) => updateRoutine(rutina.id, { startTime: e.target.value })} className="time-input-clean" title="Hora de inicio"
+                                                style={{ border: 'none', background: 'transparent', fontFamily: MONO, fontSize: '0.82rem', fontWeight: 800, color: C.onSurface, outline: 'none', width: '52px', textAlign: 'center', padding: 0 }} />
+                                            <input type="time" value={rutina.endTime || ''} onChange={(e) => updateRoutine(rutina.id, { endTime: e.target.value })} className="time-input-clean" title="Hora de fin"
+                                                style={{ border: 'none', background: 'transparent', fontFamily: MONO, fontSize: '0.68rem', fontWeight: 600, color: C.onSurfaceVariant, outline: 'none', width: '52px', textAlign: 'center', padding: 0 }} />
+                                        </div>
+
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                <h4 onClick={() => setEditingRoutine(rutina)} title="Editar bloque" style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: C.onSurface, cursor: 'pointer' }}>{rutina.title}</h4>
+                                                {!rutina.isActive && <span style={{ fontSize: '0.62rem', fontWeight: 800, color: C.outline, border: `1px solid ${C.outlineVariant}`, borderRadius: '999px', padding: '0 7px' }}>pausado</span>}
+                                                {rutina.isActive && tocaHoy && rutina.items.length > 0 && (
+                                                    <span style={{ fontSize: '0.64rem', fontWeight: 800, color: hechas === rutina.items.length ? C.primary : C.onSurfaceVariant, background: hechas === rutina.items.length ? 'rgba(15,169,122,0.10)' : C.surfaceContainerLow, borderRadius: '999px', padding: '1px 8px' }}>
+                                                        {hechas}/{rutina.items.length}
+                                                    </span>
+                                                )}
                                             </div>
-                                            <div>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800, color: C.onSurface }}>{rutina.title}</h4>
-                                                    <button 
-                                                        onClick={() => setEditingRoutine(rutina)}
-                                                        style={{ background: 'transparent', border: 'none', color: '#CCC', cursor: 'pointer', padding: '4px', display: 'flex' }}
-                                                    >
-                                                        <Edit2 size={12} />
-                                                    </button>
-                                                </div>
-                                                {(() => {
-                                                    const aMin = (t?: string) => t ? parseInt(t.slice(0, 2)) * 60 + parseInt(t.slice(3, 5)) : -1;
-                                                    const cruza = rutinas.find(o => o.id !== rutina.id && o.isActive && rutina.isActive
-                                                        && o.startTime && o.endTime && rutina.startTime && rutina.endTime
-                                                        && aMin(o.startTime) < aMin(rutina.endTime) && aMin(rutina.startTime) < aMin(o.endTime)
-                                                        && (o.repeatDays || []).some(d => (rutina.repeatDays || []).includes(d)));
-                                                    return cruza ? <div style={{ fontSize: '0.66rem', fontWeight: 700, color: C.ambar, marginTop: '2px' }}>⚠ Se cruza con {cruza.title}</div> : null;
-                                                })()}
-                                                <div style={{ display: 'flex', gap: '3px', marginTop: '4px', flexWrap: 'wrap' }}>
-                                                    {days.map((day, dIdx) => {
-                                                        const isSet = rutina.repeatDays?.includes(dIdx);
-                                                        return (
-                                                            <div 
-                                                                key={dIdx}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    const currentDays = rutina.repeatDays || [];
-                                                                    const nextDays = isSet ? currentDays.filter(d => d !== dIdx) : [...currentDays, dIdx];
-                                                                    updateRoutine(rutina.id, { repeatDays: nextDays });
-                                                                }}
-                                                                style={{ 
-                                                                    fontSize: '0.55rem', fontWeight: 900, width: '16px', height: '16px', 
-                                                                    borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                    cursor: 'pointer', background: isSet ? rutina.color : '#F0F0F0',
-                                                                    color: isSet ? 'white' : '#CCC'
-                                                                }}
-                                                            >
-                                                                {day}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '5px', flexWrap: 'wrap' }}>
+                                                {days.map((day, dIdx) => {
+                                                    const isSet = rutina.repeatDays?.includes(dIdx);
+                                                    return (
+                                                        <button
+                                                            key={dIdx}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const currentDays = rutina.repeatDays || [];
+                                                                const nextDays = isSet ? currentDays.filter(d => d !== dIdx) : [...currentDays, dIdx];
+                                                                updateRoutine(rutina.id, { repeatDays: nextDays });
+                                                            }}
+                                                            title={isSet ? 'Quitar este día' : 'Agregar este día'}
+                                                            style={{
+                                                                fontSize: '0.58rem', fontWeight: 800, width: '18px', height: '18px', padding: 0,
+                                                                borderRadius: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                cursor: 'pointer', fontFamily: 'inherit',
+                                                                background: isSet ? rutina.color : 'transparent',
+                                                                color: isSet ? '#fff' : C.outline,
+                                                                border: dIdx === normalizedDay ? `1.5px solid ${C.onSurface}` : isSet ? 'none' : `1px solid ${C.surfaceContainerHigh}`,
+                                                            }}
+                                                        >
+                                                            {day}
+                                                        </button>
+                                                    );
+                                                })}
+                                                {cruza && <span style={{ fontSize: '0.66rem', fontWeight: 700, color: C.ambar, marginLeft: '6px' }}>⚠ Se cruza con {cruza.title}</span>}
                                             </div>
                                         </div>
-                                        
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
-                                            {/* Editable Times */}
-                                            <div style={{ display: 'flex', gap: '4px', padding: '4px 8px', background: '#F9F9F9', borderRadius: '8px', alignItems: 'center' }}>
-                                                <Clock size={10} color="#AAA" />
-                                                <input 
-                                                    type="time" 
-                                                    value={rutina.startTime || ''} 
-                                                    onChange={(e) => updateRoutine(rutina.id, { startTime: e.target.value })}
-                                                    className="time-input-clean"
-                                                    style={{ border: 'none', background: 'transparent', fontSize: '0.65rem', fontWeight: 800, color: '#666', outline: 'none', width: '75px' }}
-                                                />
-                                                <span style={{ fontSize: '0.65rem', color: '#CCC' }}>-</span>
-                                                <input 
-                                                    type="time" 
-                                                    value={rutina.endTime || ''} 
-                                                    onChange={(e) => updateRoutine(rutina.id, { endTime: e.target.value })}
-                                                    className="time-input-clean"
-                                                    style={{ border: 'none', background: 'transparent', fontSize: '0.65rem', fontWeight: 800, color: '#666', outline: 'none', width: '75px' }}
-                                                />
-                                            </div>
-                                            {/* FB Style Switch */}
-                                            <div 
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0, marginLeft: movil ? 'auto' : undefined }}>
+                                            {/* Interruptor activo / pausado */}
+                                            <div
                                                 onClick={() => updateRoutine(rutina.id, { isActive: !rutina.isActive })}
-                                                style={{ 
-                                                    width: '32px', height: '18px', borderRadius: '20px', 
-                                                    background: rutina.isActive ? 'var(--domain-green)' : '#DDD', 
-                                                    position: 'relative', cursor: 'pointer', transition: 'all 0.3s ease',
-                                                    flexShrink: 0
+                                                title={rutina.isActive ? 'Pausar bloque' : 'Activar bloque'}
+                                                style={{
+                                                    width: '34px', height: '20px', borderRadius: '20px',
+                                                    background: rutina.isActive ? C.primary : C.surfaceContainerHigh,
+                                                    position: 'relative', cursor: 'pointer', transition: 'background 0.25s ease', flexShrink: 0,
                                                 }}
                                             >
                                                 <motion.div
                                                     animate={{ x: rutina.isActive ? 16 : 2 }}
                                                     whileTap={{ scale: 0.85 }}
                                                     transition={{ type: 'spring', stiffness: 600, damping: 30 }}
-                                                    style={{ width: '14px', height: '14px', borderRadius: '50%', background: 'white', position: 'absolute', top: '2px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
+                                                    style={{ width: '16px', height: '16px', borderRadius: '50%', background: 'white', position: 'absolute', top: '2px', boxShadow: '0 2px 4px rgba(0,0,0,0.15)' }}
                                                 />
+                                            </div>
+                                            <div style={{ position: 'relative' }}>
+                                                <button onClick={() => setMenuBloque(menuBloque === rutina.id ? null : rutina.id)} title="Más opciones" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, padding: '6px 4px', display: 'flex' }}>
+                                                    <MoreVertical size={16} />
+                                                </button>
+                                                {menuBloque === rutina.id && (
+                                                    <div style={{ position: 'absolute', top: '100%', right: 0, zIndex: 20, background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: '10px', boxShadow: '0 6px 20px rgba(0,0,0,0.10)', overflow: 'hidden', minWidth: '150px' }}>
+                                                        <button onClick={() => { setEditingRoutine(rutina); setMenuBloque(null); }} style={menuItem(C.onSurface)}><Edit2 size={13} /> Editar bloque</button>
+                                                        <button onClick={() => { setDeletingBlock(rutina); setMenuBloque(null); }} style={{ ...menuItem(C.rojo), borderTop: `1px solid ${C.surfaceContainerLow}` }}><Trash2 size={13} /> Eliminar</button>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -429,31 +437,32 @@ export const VidaDashboard = ({
                                                 animate={{ opacity: 1, height: 'auto' }}
                                                 exit={{ opacity: 0, height: 0 }}
                                                 transition={{ duration: 0.22, ease: 'easeInOut' }}
-                                                style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '10px', listStyle: 'none', padding: 0, overflow: 'visible' }}
+                                                style={{ display: 'flex', flexDirection: 'column', listStyle: 'none', margin: 0, padding: movil ? '0 8px 8px' : '0 10px 10px', borderTop: `1px solid ${C.surfaceContainerLow}`, overflow: 'visible' }}
                                             >
                                                 {rutina.items.map(item => {
                                                     const isDone = item.completed;
+                                                    const linkedHabit = habits.find(h => h.linkedRoutineItemId === item.id && h.linkedRoutineId === rutina.id);
                                                     return (
-                                                        <Reorder.Item 
+                                                        <Reorder.Item
                                                             key={item.id}
                                                             value={item}
-                                                            style={{ 
-                                                                display: 'flex', alignItems: 'center', gap: '7px', padding: '5px 8px', 
-                                                                background: isDone ? '#F9F9F9' : 'transparent', borderRadius: '10px', 
-                                                                cursor: 'default',
-                                                                listStyle: 'none'
+                                                            className="hz-item"
+                                                            style={{
+                                                                display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 4px',
+                                                                borderBottom: `1px solid ${C.surfaceContainerLow}`,
+                                                                cursor: 'default', listStyle: 'none', position: 'relative',
                                                             }}
                                                         >
-                                                            <div style={{ cursor: 'grab', color: '#DDD', display: 'flex', alignItems: 'center' }}>
+                                                            <div className="hz-acc" style={{ cursor: 'grab', color: C.outlineVariant, display: 'flex', alignItems: 'center', touchAction: 'none' }}>
                                                                 <GripVertical size={14} />
                                                             </div>
 
-                                                            <div 
+                                                            <div
                                                                 onClick={() => toggleRoutineItem(rutina.id, item.id)}
-                                                                style={{ 
-                                                                    width: '16px', height: '16px', borderRadius: '5px', 
-                                                                    border: `2px solid ${isDone ? 'var(--domain-green)' : '#DDD'}`,
-                                                                    background: isDone ? 'var(--domain-green)' : 'transparent',
+                                                                style={{
+                                                                    width: '18px', height: '18px', borderRadius: '6px',
+                                                                    border: `2px solid ${isDone ? C.primary : C.outlineVariant}`,
+                                                                    background: isDone ? C.primary : 'transparent',
                                                                     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                                                                     cursor: 'pointer'
                                                                 }}
@@ -467,80 +476,69 @@ export const VidaDashboard = ({
                                                                             transition={{ type: 'spring', stiffness: 600, damping: 22 }}
                                                                             style={{ display: 'flex' }}
                                                                         >
-                                                                            <Check size={10} color="white" />
+                                                                            <Check size={11} color="white" strokeWidth={3} />
                                                                         </motion.span>
                                                                     )}
                                                                 </AnimatePresence>
                                                             </div>
-                                                            <input 
+                                                            <input
                                                                 value={item.text}
                                                                 onClick={(e) => e.stopPropagation()}
                                                                 onChange={(e) => updateRoutineItem(rutina.id, item.id, { text: e.target.value })}
-                                                                style={{ 
-                                                                    fontSize: '0.75rem', 
-                                                                    fontWeight: 800, 
-                                                                    color: isDone ? '#CCC' : 'var(--text-carbon)', 
-                                                                    textDecoration: isDone ? 'line-through' : 'none', 
-                                                                    flex: 1,
-                                                                    background: 'transparent',
-                                                                    border: 'none',
-                                                                    outline: 'none',
-                                                                    padding: '0'
+                                                                style={{
+                                                                    fontSize: movil ? '16px' : '0.84rem', fontWeight: 600, minWidth: 0,
+                                                                    color: isDone ? C.outline : C.onSurface,
+                                                                    textDecoration: isDone ? 'line-through' : 'none',
+                                                                    flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: 0, fontFamily: 'inherit',
                                                                 }}
                                                             />
-                                                            
-                                                            {/* Item Time */}
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#F0F0F0', padding: '2px 6px', borderRadius: '6px' }}>
-                                                                <Clock size={10} color="#888" />
-                                                                <input 
-                                                                    type="time" 
-                                                                    value={item.time || ''} 
+
+                                                            {/* Hora de la tarea: chip si tiene, reloj (al pasar el mouse) si no */}
+                                                            {item.time || horaAbierta === item.id ? (
+                                                                <input
+                                                                    type="time"
+                                                                    autoFocus={!item.time}
+                                                                    value={item.time || ''}
                                                                     onClick={(e) => e.stopPropagation()}
                                                                     onChange={(e) => updateRoutineItem(rutina.id, item.id, { time: e.target.value })}
+                                                                    onBlur={() => setHoraAbierta(null)}
                                                                     className="time-input-clean"
-                                                                    style={{ border: 'none', background: 'transparent', fontSize: '0.65rem', fontWeight: 850, color: '#555', outline: 'none', width: '70px' }}
+                                                                    style={{ border: 'none', background: C.surfaceContainerLow, borderRadius: '6px', padding: '2px 6px', fontFamily: MONO, fontSize: '0.7rem', fontWeight: 700, color: C.onSurfaceVariant, outline: 'none', width: '58px', flexShrink: 0 }}
                                                                 />
-                                                            </div>
+                                                            ) : (
+                                                                <button className="hz-acc" onClick={(e) => { e.stopPropagation(); setHoraAbierta(item.id); }} title="Poner hora" style={iconoFila(false)}>
+                                                                    <Clock size={13} color={C.outline} />
+                                                                </button>
+                                                            )}
 
-                                                            {/* Boton Promover/Desvincular Habito */}
-                                                            {(() => {
-                                                                const linkedHabit = habits.find(h => h.linkedRoutineItemId === item.id && h.linkedRoutineId === rutina.id);
-                                                                const isLinked = !!linkedHabit;
-                                                                return (
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            if (isLinked) {
-                                                                                // Desvincular: preguntar qué eliminar
-                                                                                if (confirm(`¿Quitar "${linkedHabit.name}" de los hábitos?`)) {
-                                                                                    const alsoRemoveItem = confirm('¿También eliminar esta tarea del bloque de horario?');
-                                                                                    removeHabit(linkedHabit.id);
-                                                                                    if (alsoRemoveItem) {
-                                                                                        removeRoutineItem(rutina.id, item.id);
-                                                                                    }
-                                                                                }
-                                                                            } else {
-                                                                                // Promover a hábito con vínculo
-                                                                                addHabit(item.text, rutina.repeatDays, rutina.id, item.id);
-                                                                            }
-                                                                        }}
-                                                                        title={isLinked ? 'Quitar de hábitos' : 'Convertir en hábito'}
-                                                                        style={{ background: isLinked ? 'rgba(168,218,220,0.15)' : 'transparent', border: 'none', borderRadius: '6px', cursor: 'pointer', padding: '3px 5px', opacity: 1, transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '3px' }}
-                                                                        onMouseEnter={(e) => { e.currentTarget.style.background = isLinked ? 'rgba(168,218,220,0.3)' : 'rgba(0,0,0,0.06)'; }}
-                                                                        onMouseLeave={(e) => { e.currentTarget.style.background = isLinked ? 'rgba(168,218,220,0.15)' : 'transparent'; }}
-                                                                    >
-                                                                        <Leaf size={10} color={isLinked ? 'var(--domain-green)' : '#BBB'} fill={isLinked ? 'var(--domain-green)' : 'none'} />
-                                                                    </button>
-                                                                );
-                                                            })()}
+                                                            {/* Hábito: visible si está vinculado; si no, al pasar el mouse */}
+                                                            <button
+                                                                className={linkedHabit ? undefined : 'hz-acc'}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    if (linkedHabit) {
+                                                                        if (confirm(`¿Quitar "${linkedHabit.name}" de los hábitos?`)) {
+                                                                            const alsoRemoveItem = confirm('¿También eliminar esta tarea del bloque de horario?');
+                                                                            removeHabit(linkedHabit.id);
+                                                                            if (alsoRemoveItem) removeRoutineItem(rutina.id, item.id);
+                                                                        }
+                                                                    } else {
+                                                                        addHabit(item.text, rutina.repeatDays, rutina.id, item.id);
+                                                                    }
+                                                                }}
+                                                                title={linkedHabit ? 'Quitar de hábitos' : 'Convertir en hábito'}
+                                                                style={iconoFila(!!linkedHabit, 'rgba(15,169,122,0.12)')}
+                                                            >
+                                                                <Leaf size={13} color={linkedHabit ? C.primary : C.outline} fill={linkedHabit ? C.primary : 'none'} />
+                                                            </button>
 
-                                                            {/* Botón Vincular con Proyecto */}
-                                                            <div style={{ position: 'relative' }}>
+                                                            {/* Proyecto: visible si está vinculado; si no, al pasar el mouse */}
+                                                            <div style={{ position: 'relative', display: 'flex' }}>
                                                                 <button
+                                                                    className={item.linkedProjectId ? undefined : 'hz-acc'}
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
                                                                         if (item.linkedProjectId) {
-                                                                            // Navegar al proyecto o desvincular (aquí simplemente desvinculamos por simplicidad en este paso)
                                                                             if (confirm('¿Desvincular esta tarea del proyecto?')) {
                                                                                 updateRoutineItem(rutina.id, item.id, { linkedProjectId: undefined, linkedTaskId: undefined });
                                                                             }
@@ -548,59 +546,43 @@ export const VidaDashboard = ({
                                                                             setLinkingItem(linkingItem?.iId === item.id ? null : { rId: rutina.id, iId: item.id });
                                                                         }
                                                                     }}
-                                                                    title={item.linkedProjectId ? 'Ver proyecto vinculado' : 'Vincular con proyecto'}
-                                                                    style={{ 
-                                                                        background: item.linkedProjectId ? 'rgba(67,97,238,0.15)' : 'transparent', 
-                                                                        border: 'none', borderRadius: '6px', cursor: 'pointer', padding: '3px 5px', 
-                                                                        display: 'flex', alignItems: 'center', transition: 'all 0.2s' 
-                                                                    }}
+                                                                    title={item.linkedProjectId ? `Proyecto: ${projects.find(p => p.id === item.linkedProjectId)?.name ?? ''} (tocar para desvincular)` : 'Vincular con proyecto'}
+                                                                    style={iconoFila(!!item.linkedProjectId, 'rgba(67,97,238,0.12)')}
                                                                 >
-                                                                    <Folder size={10} color={item.linkedProjectId ? 'var(--domain-purple)' : '#BBB'} fill={item.linkedProjectId ? 'var(--domain-purple)' : 'none'} />
+                                                                    <Folder size={13} color={item.linkedProjectId ? '#4361EE' : C.outline} fill={item.linkedProjectId ? '#4361EE' : 'none'} />
                                                                 </button>
 
-                                                                {/* Menú de Selección de Proyecto */}
                                                                 <AnimatePresence>
                                                                     {linkingItem?.iId === item.id && (
                                                                         <motion.div
-                                                                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                                                                            initial={{ opacity: 0, scale: 0.95, y: 6 }}
                                                                             animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                                                                            style={{ 
+                                                                            exit={{ opacity: 0, scale: 0.95, y: 6 }}
+                                                                            style={{
                                                                                 position: 'absolute', top: '100%', right: 0, zIndex: 100,
-                                                                                background: 'white', borderRadius: '12px', padding: '8px', 
-                                                                                boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #EEE',
-                                                                                minWidth: '160px', marginTop: '8px'
+                                                                                background: C.surfaceLowest, borderRadius: '12px', padding: '8px',
+                                                                                boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: `1px solid ${C.outlineVariant}`,
+                                                                                minWidth: '170px', marginTop: '6px'
                                                                             }}
                                                                         >
-                                                                            <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#AAA', marginBottom: '6px', padding: '0 4px' }}>ENVIAR A PROYECTO:</div>
+                                                                            <div style={{ fontSize: '0.62rem', fontWeight: 800, color: C.outline, marginBottom: '6px', padding: '0 4px', letterSpacing: '0.06em' }}>ENVIAR A PROYECTO</div>
                                                                             <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                                                                 {projects.filter(p => p.status === 'activo').map(proj => (
-                                                                                    <div
+                                                                                    <button
                                                                                         key={proj.id}
                                                                                         onClick={(e) => {
                                                                                             e.stopPropagation();
-                                                                                            e.preventDefault();
-                                                                                            console.log("Linking to project:", proj.id, "from routine item:", item.id);
                                                                                             promoteRoutineItemToProject(rutina.id, item.id, proj.id);
-                                                                                            // Pequeño timeout para asegurar que el estado se procesa antes de desmontar el menú
                                                                                             setTimeout(() => setLinkingItem(null), 100);
                                                                                         }}
-                                                                                        style={{ 
-                                                                                            textAlign: 'left', background: 'transparent', border: 'none', 
-                                                                                            padding: '8px 10px', borderRadius: '8px', fontSize: '0.75rem', 
-                                                                                            fontWeight: 800, color: 'var(--text-carbon)', cursor: 'pointer',
-                                                                                            display: 'flex', alignItems: 'center', gap: '8px',
-                                                                                            transition: 'all 0.2s'
-                                                                                        }}
-                                                                                        onMouseEnter={(e) => { e.currentTarget.style.background = '#F5F5F7'; e.currentTarget.style.color = proj.color; }}
-                                                                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-carbon)'; }}
+                                                                                        style={{ ...menuItem(C.onSurface), borderRadius: '8px', padding: '7px 8px' }}
                                                                                     >
-                                                                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: proj.color, boxShadow: `0 0 10px ${proj.color}44` }} />
+                                                                                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: proj.color, flexShrink: 0 }} />
                                                                                         {proj.name}
-                                                                                    </div>
+                                                                                    </button>
                                                                                 ))}
-                                                                                {projects.length === 0 && (
-                                                                                    <div style={{ fontSize: '0.65rem', color: '#CCC', textAlign: 'center', padding: '10px' }}>No hay proyectos activos</div>
+                                                                                {projects.filter(p => p.status === 'activo').length === 0 && (
+                                                                                    <div style={{ fontSize: '0.7rem', color: C.outline, textAlign: 'center', padding: '10px' }}>No hay proyectos activos</div>
                                                                                 )}
                                                                             </div>
                                                                         </motion.div>
@@ -608,35 +590,37 @@ export const VidaDashboard = ({
                                                                 </AnimatePresence>
                                                             </div>
 
-                                                            <button 
+                                                            <button
+                                                                className="hz-acc"
                                                                 onClick={(e) => { e.stopPropagation(); removeRoutineItem(rutina.id, item.id); }}
-                                                                style={{ background: 'transparent', border: 'none', color: '#EEE', cursor: 'pointer', padding: '4px', opacity: 0.1 }}
-                                                                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                                                                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.1'}
+                                                                title="Quitar tarea"
+                                                                style={iconoFila(false)}
                                                             >
-                                                                <Trash2 size={10} color="#C63C3C" />
+                                                                <Trash2 size={13} color={C.rojo} />
                                                             </button>
                                                         </Reorder.Item>
                                                     );
                                                 })}
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', border: '1px dashed #DDD', borderRadius: '12px' }}>
-                                                    <Plus size={12} color="#CCC" />
-                                                    <input 
-                                                        placeholder="Añadir..."
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 4px 2px 26px' }}>
+                                                    <Plus size={14} color={C.outline} />
+                                                    <input
+                                                        placeholder="Añadir tarea y Enter"
+                                                        enterKeyHint="done"
                                                         onKeyDown={(e) => {
-                                                            if (e.key === 'Enter' && e.currentTarget.value) {
-                                                                addRoutineItem(rutina.id, e.currentTarget.value);
+                                                            if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                                                                addRoutineItem(rutina.id, e.currentTarget.value.trim());
                                                                 e.currentTarget.value = '';
                                                             }
                                                         }}
-                                                        style={{ border: 'none', background: 'transparent', fontSize: '0.75rem', fontWeight: 600, outline: 'none', width: '100%' }}
+                                                        style={{ border: 'none', background: 'transparent', fontSize: movil ? '16px' : '0.82rem', fontWeight: 500, color: C.onSurface, outline: 'none', width: '100%', padding: 0, fontFamily: 'inherit' }}
                                                     />
                                                 </div>
                                             </Reorder.Group>
                                         )}
                                         </AnimatePresence>
                                     </motion.div>
-                                ));
+                                    );
+                                });
                             })()}
                         </motion.div>
                     ) : (
