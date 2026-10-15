@@ -1039,6 +1039,14 @@ export const TimelineAgendaView = ({
     useEffect(() => {
         if (viewMode === 'timeline') setActiveFilters(f => f.rutinas ? f : { ...f, rutinas: true });
     }, [viewMode]);
+    // En la vista Mes, Foco se abre solo al lado de Agenda Central si hay ancho
+    // (el mes no necesita todo el espacio como el Timeline); en Timeline se cierra
+    // para dejar solo Agenda Central. Después se puede abrir o cerrar a mano.
+    useEffect(() => {
+        if (viewMode === 'month' && window.innerWidth >= 1200) abrirPanel('foco');
+        if (viewMode === 'timeline') cerrarPanel('foco');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [viewMode]);
     // Interruptor general de Notion (abajo, solito). Apagado = oculta todo lo
     // que viene de Notion (sesiones + entregas), sin importar los filtros de
     // arriba. Encenderlo dispara una sincronizacion. Es aparte de los filtros
@@ -1354,10 +1362,10 @@ export const TimelineAgendaView = ({
         };
 
         const secDefs = [
-            { k: 'atrasadas', icon: <AlertTriangle size={15} color="#C63C3C" />, title: 'Entregas atrasadas', tint: '#C63C3C', empty: 'Nada atrasado 🎉', kind: 'entrega' as const, items: ordenar(atrasadas, (x: any) => String(x.id), 'atrasadas') },
-            { k: 'proximas', icon: <Package size={15} color="#0FA97A" />, title: 'Próximas entregas', tint: '#0FA97A', empty: 'Ninguna por entregar', kind: 'entrega' as const, items: ordenar(proximas, (x: any) => String(x.id), 'proximas') },
-            { k: 'eventos', icon: <Calendar size={15} color="#3ED9A0" />, title: 'Agenda · próximos eventos', tint: '#3ED9A0', empty: 'Sin eventos próximos', kind: 'evento' as const, items: ordenar(eventos, (x: any) => String(x.id), 'eventos') },
-            { k: 'checklist', icon: <Clock size={15} color="#F59E0B" />, title: 'Checklist de hoy', tint: '#F59E0B', empty: 'Todo listo por hoy ✅', kind: 'check' as const, items: ordenar(checklist, idCheck, 'checklist') },
+            { k: 'atrasadas', icon: <AlertTriangle size={15} color="#C63C3C" />, title: 'Entregas atrasadas', tint: '#C63C3C', ink: '#C63C3C', empty: 'Nada atrasado 🎉', kind: 'entrega' as const, items: ordenar(atrasadas, (x: any) => String(x.id), 'atrasadas') },
+            { k: 'proximas', icon: <Package size={15} color="#0FA97A" />, title: 'Próximas entregas', tint: '#0FA97A', ink: '#0E8F66', empty: 'Ninguna por entregar', kind: 'entrega' as const, items: ordenar(proximas, (x: any) => String(x.id), 'proximas') },
+            { k: 'eventos', icon: <Calendar size={15} color="#0FA97A" />, title: 'Próximos eventos', tint: '#3ED9A0', ink: '#0E7C66', empty: 'Sin eventos próximos', kind: 'evento' as const, items: ordenar(eventos, (x: any) => String(x.id), 'eventos') },
+            { k: 'checklist', icon: <Clock size={15} color="#F59E0B" />, title: 'Checklist de hoy', tint: '#F59E0B', ink: '#B45309', empty: 'Todo listo por hoy ✅', kind: 'check' as const, items: ordenar(checklist, idCheck, 'checklist') },
         ];
         const secOf = (k: string) => secDefs.find(s => s.k === k)!;
         const orderedSecs = focoAplicaOrden && focoManual.secs.length
@@ -1387,9 +1395,9 @@ export const TimelineAgendaView = ({
                 onClick: () => it.id && toggleDailyBlock?.(it.id),
                 borderLeft: undefined as string | undefined,
                 node: <>
-                    <span style={{ width: '15px', height: '15px', borderRadius: '5px', border: '2px solid #DCE7E1', flexShrink: 0 }} />
-                    <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.label}</span>
-                    <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#6C8079', flexShrink: 0 }}>{it.period.toUpperCase()}</span>
+                    <span style={{ width: '16px', height: '16px', borderRadius: '5px', border: '2px solid #C9D8D1', background: '#FFFFFF', flexShrink: 0 }} />
+                    <span style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: '0.8rem', color: '#0C2A20', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.label}</span>
+                    <span style={{ fontSize: '0.6rem', fontWeight: 700, color: '#6C8079', background: '#F0F4F2', borderRadius: '999px', padding: '1px 7px', flexShrink: 0, textTransform: 'lowercase' }}>{it.period}</span>
                 </>,
             };
             const right = s.kind === 'evento' ? `${it.time ? it.time + ' · ' : ''}${diasLabel(it.dias)}` : diasLabel(it.dias);
@@ -1397,14 +1405,15 @@ export const TimelineAgendaView = ({
                 onClick: it.raw ? () => setEditingItem({ type: 'calendar', data: it.raw }) : undefined,
                 borderLeft: it.color as string,
                 node: <>
-                    <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</span>
-                    <span style={{ fontSize: '0.68rem', fontWeight: 800, color: it.color, whiteSpace: 'nowrap', flexShrink: 0 }}>{right}</span>
+                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: it.color || s.tint, flexShrink: 0 }} />
+                    <span style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: '0.8rem', color: '#0C2A20', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</span>
+                    <span style={{ fontSize: '0.64rem', fontWeight: 800, color: s.ink, background: `${s.tint}14`, borderRadius: '999px', padding: '2px 8px', whiteSpace: 'nowrap', flexShrink: 0 }}>{right}</span>
                 </>,
             };
         };
         const rowBox = (_bl?: string): React.CSSProperties => ({
             display: 'flex', alignItems: 'center', gap: '9px', background: 'transparent',
-            borderBottom: '1px solid #F0F4F2', padding: '9px 4px',
+            borderTop: '1px solid #F0F4F2', padding: '8px 12px',
         });
 
         const renderSeccion = (s: typeof secDefs[number], headerHandle: Record<string, unknown>) => {
@@ -1427,20 +1436,20 @@ export const TimelineAgendaView = ({
                 );
             });
             return (
-                <div>
-                    <div {...headerHandle} style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px', cursor: 'grab' }}>
+                <div style={{ background: '#FFFFFF', border: '1px solid #E3ECE7', borderRadius: '14px', overflow: 'hidden', boxShadow: '0 1px 2px rgba(15,23,42,0.03)' }}>
+                    <div {...headerHandle} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', background: `${s.tint}0F`, cursor: 'grab' }}>
                         {s.icon}
-                        <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#6C8079', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{s.title}</span>
-                        {s.items.length > 0 && <span style={{ fontSize: '0.68rem', fontWeight: 700, color: s.tint }}>{s.items.length}</span>}
+                        <span style={{ flex: 1, fontSize: '0.68rem', fontWeight: 800, color: '#0C2A20', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.title}</span>
+                        {s.items.length > 0 && <span style={{ fontSize: '0.66rem', fontWeight: 800, color: '#fff', background: s.ink, borderRadius: '999px', minWidth: '20px', padding: '1px 7px', textAlign: 'center' }}>{s.items.length}</span>}
                     </div>
                     {s.items.length === 0
-                        ? <div style={{ fontSize: '0.72rem', color: '#6C8079', paddingLeft: '22px' }}>{s.empty}</div>
+                        ? <div style={{ fontSize: '0.74rem', color: '#6C8079', padding: '10px 12px', borderTop: '1px solid #F0F4F2' }}>{s.empty}</div>
                         : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                                 <SortableContext items={visibles.map((it: any) => `row§${s.k}§${idOf(it)}`)} strategy={verticalListSortingStrategy}>{rows}</SortableContext>
                                 {(resto > 0 || abierto) && (
                                     <button onClick={() => setFocoExpandido(e => ({ ...e, [s.k]: !abierto }))}
-                                        style={{ alignSelf: 'flex-start', background: 'none', border: 'none', cursor: 'pointer', color: s.tint, fontSize: '0.68rem', fontWeight: 800, padding: '2px 2px' }}>
+                                        style={{ width: '100%', background: '#FAFCFB', border: 'none', borderTop: '1px solid #F0F4F2', cursor: 'pointer', color: s.ink, fontSize: '0.7rem', fontWeight: 800, padding: '7px 12px', fontFamily: 'inherit' }}>
                                         {abierto ? 'ver menos' : `ver ${resto} más`}
                                     </button>
                                 )}
@@ -1451,7 +1460,7 @@ export const TimelineAgendaView = ({
         };
 
         return (
-            <div style={{ padding: '12px 12px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px', background: '#F7FAF8', minHeight: '100%', boxSizing: 'border-box' }}>
                 {focoHayOrden && (
                     <button onClick={() => actualizarFocoManual(p => ({ ...p, usarOrden: !p.usarOrden }))}
                         style={{ alignSelf: 'flex-start', background: 'none', border: 'none', cursor: 'pointer', color: '#6C8079', fontSize: '0.66rem', fontWeight: 800, padding: 0 }}>
@@ -1460,7 +1469,7 @@ export const TimelineAgendaView = ({
                 )}
                 <DndContext sensors={focoSensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
                     <SortableContext items={orderedSecs.map(s => `sec§${s.k}`)} strategy={verticalListSortingStrategy}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             {orderedSecs.map(s => (
                                 <FocoSortable key={s.k} id={`sec§${s.k}`}>
                                     {({ ref, style, handleProps }) => <div ref={ref} style={style}>{renderSeccion(s, handleProps)}</div>}
