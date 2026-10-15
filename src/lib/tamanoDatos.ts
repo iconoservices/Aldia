@@ -3,6 +3,8 @@
 // JSON.stringify (nombres de campo + valores), pero queda muy cerca y sirve
 // para saber qué colección crece y cuándo hay que actuar.
 
+import { compactarBloques, expandirBloques } from './bloquesCompactos';
+
 export const LIMITE_DOC_BYTES = 1024 * 1024;
 export const UMBRAL_AVISO = 0.7;
 
@@ -17,6 +19,17 @@ export const CLAVES_NUBE = [
     'trash', 'dailyCheckins',
 ] as const;
 export type ClaveNube = typeof CLAVES_NUBE[number];
+
+// Colecciones que se guardan en formato compacto: en Firestore van en el campo `c`
+// (no `v`, así una versión vieja de la app que solo lee `v` las ignora en vez de
+// romperse) y en localStorage como el objeto compacto.
+const COMPACTAS: Partial<Record<string, { compactar: (v: any) => unknown; expandir: (v: unknown) => any }>> = {
+    dailyBlocks: { compactar: compactarBloques, expandir: expandirBloques },
+};
+export const esCompactable = (clave: string) => clave in COMPACTAS;
+export const aGuardado = (clave: string, valor: unknown) => COMPACTAS[clave] ? COMPACTAS[clave]!.compactar(valor) : valor;
+// Acepta tanto el formato compacto como el de siempre. Lanza si el compacto está dañado.
+export const deGuardado = (clave: string, valor: unknown) => COMPACTAS[clave] ? COMPACTAS[clave]!.expandir(valor) : valor;
 
 export const NOMBRES_COLECCION: Record<string, string> = {
     missions: 'Misiones',
@@ -69,7 +82,7 @@ export const medirDatos = (estado: Record<string, unknown>): MedidaDatos => {
     const colecciones = Object.entries(estado).map(([clave, valor]) => ({
         clave,
         nombre: NOMBRES_COLECCION[clave] ?? clave,
-        bytes: bytesJSON(valor),
+        bytes: bytesJSON(aGuardado(clave, valor)), // lo que de verdad se sube
         items: Array.isArray(valor) ? valor.length : null,
     })).sort((a, b) => b.bytes - a.bytes);
     const total = colecciones.reduce((s, c) => s + c.bytes, 0);

@@ -10,7 +10,7 @@ import { useRitaState } from './state/useRitaState';
 import { useNegocioState } from './state/useNegocioState';
 import { useMetasState, migrarMetas } from './state/useMetasState';
 import { PLANTILLAS, type PlantillaId } from '../lib/plantillasFinanzas';
-import { medirDatos, CLAVES_NUBE, ESQUEMA_DATOS, type ClaveNube } from '../lib/tamanoDatos';
+import { medirDatos, CLAVES_NUBE, ESQUEMA_DATOS, type ClaveNube, esCompactable, aGuardado, deGuardado } from '../lib/tamanoDatos';
 
 // Tipos de datos
 export interface Mission {
@@ -638,7 +638,7 @@ export const useAlDiaState = () => {
                 preferences: JSON.parse(localStorage.getItem('aldia_preferences') || JSON.stringify(DEFAULT_PREFERENCES)),
                 incomeCategories: JSON.parse(localStorage.getItem('aldia_income_categories') || JSON.stringify(DEFAULT_INCOME_CATEGORIES)),
                 expenseCategories: JSON.parse(localStorage.getItem('aldia_expense_categories') || JSON.stringify(DEFAULT_EXPENSE_CATEGORIES)),
-                dailyblocks: JSON.parse(localStorage.getItem('aldia_dailyblocks') || '[]'),
+                dailyblocks: (() => { try { return deGuardado('dailyBlocks', JSON.parse(localStorage.getItem('aldia_dailyblocks') || '[]')); } catch { return []; } })(),
                 shoppingList: JSON.parse(localStorage.getItem('aldia_shopping_list') || '[]'),
                 sporadicProjects: JSON.parse(localStorage.getItem('aldia_sporadic_projects') || '[]'),
                 phaseTemplates: JSON.parse(localStorage.getItem('aldia_phase_templates') || JSON.stringify(DEFAULT_PHASE_TEMPLATES)),
@@ -843,7 +843,13 @@ export const useAlDiaState = () => {
             // La primera vez se aplican todos; después, solo los documentos que cambiaron.
             let cloud: Record<string, any> = {};
             const docs = primera ? snap.docs : snap.docChanges().filter(c => c.type !== 'removed').map(c => c.doc);
-            docs.forEach(d => { cloud[d.id] = d.data().v; });
+            docs.forEach(d => {
+                const data = d.data();
+                // Las compactas llegan en `c`; si vienen dañadas no se aplican (nunca vaciar la lista).
+                if (data.c !== undefined && esCompactable(d.id)) {
+                    try { cloud[d.id] = deGuardado(d.id, data.c); } catch (e) { console.error(`[AlDía] ${d.id} ilegible en la nube:`, e); }
+                } else cloud[d.id] = data.v;
+            });
             if (primera) cloud = mergeAnonWork(cloud);
             primera = false;
 
@@ -896,9 +902,9 @@ export const useAlDiaState = () => {
         // las 27 colecciones enteras y en el celular eso se notaba como tirón.
         localStorage.setItem('aldia_local_owner', user ? user.uid : 'anon');
         const escritas = localEscritoRef.current;
-        const guardarLocal = (clave: string, valor: unknown) => {
+        const guardarLocal = (clave: string, valor: unknown, aTexto: (v: unknown) => unknown = v => v) => {
             if (escritas[clave] === valor) return;
-            localStorage.setItem(clave, JSON.stringify(valor));
+            localStorage.setItem(clave, JSON.stringify(aTexto(valor)));
             escritas[clave] = valor;
         };
         guardarLocal('aldia_missions', misionesState);
@@ -916,7 +922,7 @@ export const useAlDiaState = () => {
         guardarLocal('aldia_preferences', preferences);
         guardarLocal('aldia_income_categories', incomeCategories);
         guardarLocal('aldia_expense_categories', expenseCategories);
-        guardarLocal('aldia_dailyblocks', dailyBlocks);
+        guardarLocal('aldia_dailyblocks', dailyBlocks, v => aGuardado('dailyBlocks', v));
         guardarLocal('aldia_shopping_list', shoppingList);
         guardarLocal('aldia_sporadic_projects', sporadicProjects);
         guardarLocal('aldia_phase_templates', phaseTemplates);
@@ -947,7 +953,9 @@ export const useAlDiaState = () => {
                 const t = new Date().toISOString();
                 const batch = writeBatch(db);
                 cambiadas.forEach(k => {
-                    batch.set(doc(db, 'users', user.uid, 'datos', k), { v: JSON.parse(JSON.stringify(estado[k] ?? null)), t });
+                    const ref = doc(db, 'users', user.uid, 'datos', k);
+                    if (esCompactable(k)) batch.set(ref, { c: JSON.parse(JSON.stringify(aGuardado(k, estado[k]))), t });
+                    else batch.set(ref, { v: JSON.parse(JSON.stringify(estado[k] ?? null)), t });
                     enNube[k] = estado[k];
                 });
                 batch.commit()
