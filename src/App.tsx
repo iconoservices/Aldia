@@ -537,14 +537,17 @@ function App() {
                 />
               </>
             ) : activeTab === 'Compras' ? (
-              <ComprasDashboard
-                shoppingList={state.shoppingList}
-                addShoppingItem={state.addShoppingItem}
-                updateShoppingItem={state.updateShoppingItem}
-                removeShoppingItem={state.removeShoppingItem}
-                markShoppingItemPurchased={state.markShoppingItemPurchased}
-                presupuestoDisponible={state.balance}
-              />
+              <>
+                <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_METAS} />
+                <ComprasDashboard
+                  shoppingList={state.shoppingList}
+                  addShoppingItem={state.addShoppingItem}
+                  updateShoppingItem={state.updateShoppingItem}
+                  removeShoppingItem={state.removeShoppingItem}
+                  markShoppingItemPurchased={state.markShoppingItemPurchased}
+                  presupuestoDisponible={state.balance}
+                />
+              </>
             ) : activeTab === 'Comidas' ? (
               <ComidasDashboard
                 recipes={state.recipes}

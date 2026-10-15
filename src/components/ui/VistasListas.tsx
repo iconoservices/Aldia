@@ -17,6 +17,7 @@ export const VISTAS_PENDIENTES = [
 export const VISTAS_METAS = [
     { tab: "Metas", label: "Metas" },
     { tab: "Proyectos", label: "Proyectos" },
+    { tab: "Compras", label: "Por comprar" },
 ] as const;
 
 type Vista = { readonly tab: string; readonly label: string };

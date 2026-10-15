@@ -1651,8 +1651,16 @@ const ProjectCard = ({ p, updateSporadicProject, removeSporadicProject, reschedu
                 así que en vez de desaparecer en silencio o quedarse como si nada, avisa. */}
             {p.notionId && !linkedEvent ? (
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.68rem", color: C.rojo, fontWeight: 700, background: "rgba(239,68,68,0.08)", borderRadius: "8px", padding: "6px 9px" }}>
-                    <AlertTriangle size={13} style={{ flexShrink: 0 }} />
-                    Ya no está en Notion (se borró o archivó allá) — esta tarjeta se quedó porque tiene horas/notas propias. Bórrala a mano si ya no aplica.
+                    <AlertTriangle size={13} style={{ flexShrink: 0, alignSelf: "flex-start", marginTop: "2px" }} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "flex-start" }}>
+                        <span>Ya no está en Notion (se borró o archivó allá). Esta tarjeta se quedó porque tiene horas o notas propias.</span>
+                        <button
+                            onClick={() => setConfirmDelete(true)}
+                            style={{ display: "flex", alignItems: "center", gap: "5px", background: C.rojo, color: "white", border: "none", borderRadius: "999px", padding: "6px 14px", fontSize: "0.74rem", fontWeight: 800, cursor: "pointer" }}
+                        >
+                            <Trash2 size={13} /> Eliminar tarjeta
+                        </button>
+                    </div>
                 </div>
             ) : p.notionId && (
                 <EstadoStepper current={linkedEvent?.notionEstado} onSelect={setNotionEstado} />
