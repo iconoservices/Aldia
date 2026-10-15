@@ -3,7 +3,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 import { Header } from './components/layout/Header';
-import { VistasListas, VISTAS_PENDIENTES, VISTAS_METAS } from './components/ui/VistasListas';
+import { VistasListas, VISTAS_PENDIENTES, VISTAS_METAS, VISTAS_DINERO } from './components/ui/VistasListas';
 import { useAlDiaState } from './hooks/useAlDiaState';
 import type { Mission, Note } from './hooks/useAlDiaState';
 import { ProfileOverlay } from './components/layout/ProfileOverlay';
@@ -216,6 +216,9 @@ function App() {
               })
             }}
           >
+            {VISTAS_DINERO.some(v => v.tab === activeTab) && (
+              <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_DINERO} />
+            )}
             {activeTab === 'Acción' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
                 <ActionBanner performanceScore={state.performanceScore} missions={state.missions} />

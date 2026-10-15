@@ -20,10 +20,18 @@ export const VISTAS_METAS = [
     { tab: "Compras", label: "Por comprar" },
 ] as const;
 
+export const VISTAS_DINERO = [
+    { tab: "Finanzas", label: "Finanzas" },
+    { tab: "Movimientos", label: "Movimientos" },
+    { tab: "Plan", label: "Fijos" },
+    { tab: "Deudas", label: "Deudas" },
+    { tab: "Proyección", label: "Proyección" },
+] as const;
+
 type Vista = { readonly tab: string; readonly label: string };
 
 export const VistasListas = ({ activeTab, setActiveTab, vistas = VISTAS_LISTAS }: { activeTab: string; setActiveTab: (t: string) => void; vistas?: readonly Vista[] }) => (
-    <div style={{ padding: "12px 12px 0", display: "flex" }}>
+    <div style={{ padding: "12px 12px 0", display: "flex", overflowX: "auto" }}>
         <div style={{ display: "inline-flex", gap: "4px", padding: "4px", background: C.surfaceContainer, borderRadius: RADIO.chip }}>
             {vistas.map(v => {
                 const activa = activeTab === v.tab;
