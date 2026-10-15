@@ -6,6 +6,7 @@ interface Props {
     fixedExpenses: FixedExpense[];
     fixedIncomeItems: { id: number; name: string; amount: number; active: boolean; lastReceivedMonth?: string }[];
     currentMonthStr: string;
+    currentBalance: number;
     preferences: UserPreferences;
     updatePreference: (key: keyof UserPreferences, value: any) => void;
 }
@@ -85,7 +86,7 @@ const MiniCalculator = () => {
     );
 };
 
-export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, currentMonthStr, preferences, updatePreference }: Props) => {
+export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, currentBalance, preferences, updatePreference }: Props) => {
 
     /* ── Plan del mes: tu propio plan editable, para jugar "¿y si...?".
        Se siembra una vez desde los gastos/ingresos fijos reales, pero de ahí en
@@ -93,9 +94,9 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
        marques se conserva entre sesiones. "Reiniciar" vuelve a sembrar desde
        los datos reales de hoy. Nada de esto toca transacciones ni gastos/
        ingresos fijos reales: es una copia aparte. ── */
-    type SimFixedExpense = { id: number; text: string; amount: number; active: boolean; dueDay?: number; lastPaidMonth?: string; custom?: boolean };
-    type SimFixedIncome = { id: number; name: string; amount: number; active: boolean; lastReceivedMonth?: string; custom?: boolean };
-    type Plan = { fixedExpenses: SimFixedExpense[]; fixedIncomes: SimFixedIncome[] };
+    type SimFixedExpense = { id: number; text: string; amount: number; active: boolean; dueDay?: number; lastPaidMonth?: string; custom?: boolean; excluido?: boolean };
+    type SimFixedIncome = { id: number; name: string; amount: number; active: boolean; lastReceivedMonth?: string; custom?: boolean; excluido?: boolean };
+    type Plan = { fixedExpenses: SimFixedExpense[]; fixedIncomes: SimFixedIncome[]; usarSaldo?: boolean };
 
     const seedPlan = (): Plan => ({
         fixedExpenses: fixedExpenses.filter(f => f.active).map(f => ({ id: f.id, text: f.text, amount: f.amount, active: f.active, dueDay: f.dueDay, lastPaidMonth: f.lastPaidMonth })),
@@ -116,7 +117,7 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                         else fi = [...fi, { id: m.id, name: m.text, amount: m.amount, active: true, custom: true }];
                     }
                 }
-                return { fixedExpenses: fe, fixedIncomes: fi };
+                return { fixedExpenses: fe, fixedIncomes: fi, usarSaldo: !!parsed.usarSaldo };
             }
         } catch { /* si el JSON guardado quedó corrupto, se re-siembra abajo */ }
         return seedPlan();
@@ -133,21 +134,36 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
     const [usarCantidadIngreso, setUsarCantidadIngreso] = useState(false);
     const nuevoIngresoTotal = usarCantidadIngreso ? (parseFloat(nuevoIngresoFijo.cantidad) || 0) * (parseFloat(nuevoIngresoFijo.amount) || 0) : (parseFloat(nuevoIngresoFijo.amount) || 0);
 
-    const reiniciarSimulacion = () => savePlan(seedPlan());
+    const reiniciarSimulacion = () => savePlan({ ...seedPlan(), usarSaldo: plan.usarSaldo });
 
-    const simFijosTotal = useMemo(() => plan.fixedExpenses.reduce((s, f) => s + (Number(f.amount) || 0), 0), [plan.fixedExpenses]);
-    const simFijosPagados = useMemo(() => plan.fixedExpenses.filter(f => f.lastPaidMonth === currentMonthStr), [plan.fixedExpenses, currentMonthStr]);
-    const simFijosPend = useMemo(() => plan.fixedExpenses.filter(f => f.lastPaidMonth !== currentMonthStr), [plan.fixedExpenses, currentMonthStr]);
+    const simFijosTotal = useMemo(() => plan.fixedExpenses.filter(f => !f.excluido).reduce((s, f) => s + (Number(f.amount) || 0), 0), [plan.fixedExpenses]);
 
-    const simIngresoPrevisto = useMemo(() => plan.fixedIncomes.reduce((s, f) => s + (Number(f.amount) || 0), 0), [plan.fixedIncomes]);
-    const simIngresosRecibidos = useMemo(() => plan.fixedIncomes.filter(f => f.lastReceivedMonth === currentMonthStr), [plan.fixedIncomes, currentMonthStr]);
-    const simIngresosPend = useMemo(() => plan.fixedIncomes.filter(f => f.lastReceivedMonth !== currentMonthStr), [plan.fixedIncomes, currentMonthStr]);
+    const simIngresoPrevisto = useMemo(() => plan.fixedIncomes.filter(f => !f.excluido).reduce((s, f) => s + (Number(f.amount) || 0), 0), [plan.fixedIncomes]);
 
-    const simQueda = simIngresoPrevisto - simFijosTotal;
+    const saldoBase = plan.usarSaldo ? currentBalance : 0;
+    const simQueda = saldoBase + simIngresoPrevisto - simFijosTotal;
+
+    // Interruptores en bloque: lo que viene de tus fijos reales vs. lo que agregaste vos.
+    const gastosReales = plan.fixedExpenses.filter(f => !f.custom);
+    const ingresosReales = plan.fixedIncomes.filter(f => !f.custom);
+    const propios = [...plan.fixedExpenses, ...plan.fixedIncomes].filter(f => f.custom);
+    const gastosRealesOn = gastosReales.length > 0 && gastosReales.every(f => !f.excluido);
+    const ingresosRealesOn = ingresosReales.length > 0 && ingresosReales.every(f => !f.excluido);
+    const propiosOn = propios.length > 0 && propios.every(f => !f.excluido);
+    const toggleReales = (tipo: 'gastos' | 'ingresos', incluir: boolean) => savePlan({
+        ...plan,
+        fixedExpenses: tipo === 'gastos' ? plan.fixedExpenses.map(f => f.custom ? f : { ...f, excluido: !incluir }) : plan.fixedExpenses,
+        fixedIncomes: tipo === 'ingresos' ? plan.fixedIncomes.map(f => f.custom ? f : { ...f, excluido: !incluir }) : plan.fixedIncomes,
+    });
+    const toggleGrupo = (custom: boolean, incluir: boolean) => savePlan({
+        ...plan,
+        fixedExpenses: plan.fixedExpenses.map(f => !!f.custom === custom ? { ...f, excluido: !incluir } : f),
+        fixedIncomes: plan.fixedIncomes.map(f => !!f.custom === custom ? { ...f, excluido: !incluir } : f),
+    });
 
     // Resultado de solo lo que agregaste vos a mano (no lo sembrado desde tus gastos/ingresos fijos reales).
-    const customGastos = useMemo(() => plan.fixedExpenses.filter(f => f.custom).reduce((s, f) => s + (Number(f.amount) || 0), 0), [plan.fixedExpenses]);
-    const customIngresos = useMemo(() => plan.fixedIncomes.filter(f => f.custom).reduce((s, f) => s + (Number(f.amount) || 0), 0), [plan.fixedIncomes]);
+    const customGastos = useMemo(() => plan.fixedExpenses.filter(f => f.custom && !f.excluido).reduce((s, f) => s + (Number(f.amount) || 0), 0), [plan.fixedExpenses]);
+    const customIngresos = useMemo(() => plan.fixedIncomes.filter(f => f.custom && !f.excluido).reduce((s, f) => s + (Number(f.amount) || 0), 0), [plan.fixedIncomes]);
     const hayCustom = customGastos > 0 || customIngresos > 0;
     const customNeto = customIngresos - customGastos;
 
@@ -168,7 +184,7 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                     </button>
                 </div>
                 <p style={{ margin: "0 0 1rem", fontSize: "0.72rem", color: "#6C8079" }}>
-                    Se guarda solo, no toca tus gastos/ingresos fijos reales. Sumá, borrá o marcá cosas acá para probar "¿y si...?".
+                    Se guarda solo, no toca tus gastos/ingresos fijos reales. Sumá, borrá o destildá cosas acá para probar "¿y si...?".
                 </p>
 
                 <div style={{ background: simQueda < 0 ? "rgba(239,68,68,0.06)" : "rgba(16,185,129,0.06)", borderRadius: "12px", padding: "1rem 1.1rem", marginBottom: "1.1rem" }}>
@@ -177,8 +193,27 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                         {simQueda < 0 ? "−" : ""}{money(Math.abs(simQueda))}
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px", fontSize: "0.72rem", color: "#6C8079" }}>
-                        <span>Ingresos: <b style={{ color: "#0C2A20" }}>{money(simIngresoPrevisto)}</b></span>
+                        {plan.usarSaldo && <span>Saldo: <b style={{ color: "#0C2A20" }}>{money(currentBalance)}</b></span>}
+                        <span>Ingresos: <b style={{ color: "#0C2A20" }}>+{money(simIngresoPrevisto)}</b></span>
                         <span>Gastos: <b style={{ color: "#0C2A20" }}>−{money(simFijosTotal)}</b></span>
+                    </div>
+                </div>
+
+                {/* Qué se aplica a la proyección */}
+                <div style={{ marginBottom: "1.1rem" }}>
+                    <span style={{ ...LABEL, display: "block", marginBottom: "6px" }}>Qué aplicar a la proyección</span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                        {([
+                            { key: 'saldo', texto: `Mi saldo actual (${money(currentBalance)})`, on: !!plan.usarSaldo, disabled: false, set: (v: boolean) => savePlan({ ...plan, usarSaldo: v }) },
+                            { key: 'gastos', texto: 'Mis gastos fijos', on: gastosRealesOn, disabled: gastosReales.length === 0, set: (v: boolean) => toggleReales('gastos', v) },
+                            { key: 'ingresos', texto: 'Mis ingresos fijos', on: ingresosRealesOn, disabled: ingresosReales.length === 0, set: (v: boolean) => toggleReales('ingresos', v) },
+                            { key: 'propios', texto: 'Lo que agregué yo', on: propiosOn, disabled: propios.length === 0, set: (v: boolean) => toggleGrupo(true, v) },
+                        ]).map(o => (
+                            <label key={o.key} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 10px", borderRadius: "999px", cursor: o.disabled ? "default" : "pointer", opacity: o.disabled ? 0.45 : 1, background: o.on ? "rgba(15,169,122,0.10)" : "#F7FAF8", border: `1px solid ${o.on ? "#0FA97A" : "#DCE7E1"}`, fontSize: "0.74rem", fontWeight: 700, color: "#0C2A20" }}>
+                                <input type="checkbox" checked={o.on} disabled={o.disabled} onChange={e => o.set(e.target.checked)} style={{ accentColor: "#0FA97A" }} />
+                                {o.texto}
+                            </label>
+                        ))}
                     </div>
                 </div>
 
@@ -200,23 +235,19 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px", flexWrap: "wrap", gap: "4px" }}>
                             <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0C2A20" }}>Gastos fijos</span>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#6C8079" }}>{simFijosPagados.length}/{plan.fixedExpenses.length} pagados</span>
+                                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#6C8079" }}>{plan.fixedExpenses.filter(f => !f.excluido).length}/{plan.fixedExpenses.length} en cuenta</span>
                                 <button type="button" onClick={() => setUsarCantidadGasto(v => !v)} title="Cargar por cantidad × precio unitario (ej: 5 × S/10)" style={{ display: "flex", alignItems: "center", gap: "3px", background: usarCantidadGasto ? "#F59E0B" : "transparent", color: usarCantidadGasto ? "#fff" : "#6C8079", border: usarCantidadGasto ? "none" : "1px solid #DCE7E1", borderRadius: "6px", padding: "2px 6px", fontSize: "0.62rem", fontWeight: 700, cursor: "pointer" }}>
                                     Cant. × precio
                                 </button>
                             </div>
                         </div>
                         {plan.fixedExpenses.length === 0 && <p style={{ fontSize: "0.72rem", color: "#6C8079", margin: 0 }}>Sin gastos fijos activos.</p>}
-                        {[...simFijosPend, ...simFijosPagados].map(f => {
-                            const pagado = f.lastPaidMonth === currentMonthStr;
+                        {plan.fixedExpenses.map(f => {
                             return (
-                                <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 9px", marginBottom: "4px", borderRadius: "8px", background: "#F7FAF8", opacity: pagado ? 0.55 : 1 }}>
-                                    <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0C2A20", textDecoration: pagado ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.text}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
+                                <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 9px", marginBottom: "4px", borderRadius: "8px", background: "#F7FAF8", opacity: f.excluido ? 0.4 : 1 }}>
+                                    <input type="checkbox" checked={!f.excluido} title="Contar en la proyección" onChange={e => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, excluido: !e.target.checked } : x) })} style={{ accentColor: "#0FA97A", flexShrink: 0 }} />
+                                    <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0C2A20", textDecoration: f.excluido ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.text}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
                                     <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0C2A20" }}>{money(f.amount)}</span>
-                                    <button onClick={() => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, lastPaidMonth: pagado ? undefined : currentMonthStr } : x) })}
-                                        style={{ background: pagado ? "transparent" : "#0E9F6E", color: pagado ? "#6C8079" : "#fff", border: pagado ? "1px solid #DCE7E1" : "none", borderRadius: "6px", padding: "3px 8px", fontSize: "0.65rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
-                                        {pagado ? "Deshacer" : "Pagué"}
-                                    </button>
                                     <button onClick={() => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.filter(x => x.id !== f.id) })} style={{ background: "none", border: "none", color: "#6C8079", cursor: "pointer", display: "flex", flexShrink: 0 }}><Trash2 size={13} /></button>
                                 </div>
                             );
@@ -248,23 +279,19 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px", flexWrap: "wrap", gap: "4px" }}>
                             <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0C2A20" }}>Ingresos fijos</span>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#6C8079" }}>{simIngresosRecibidos.length}/{plan.fixedIncomes.length} recibidos</span>
+                                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#6C8079" }}>{plan.fixedIncomes.filter(f => !f.excluido).length}/{plan.fixedIncomes.length} en cuenta</span>
                                 <button type="button" onClick={() => setUsarCantidadIngreso(v => !v)} title="Cargar por cantidad × precio unitario (ej: 5 × S/10)" style={{ display: "flex", alignItems: "center", gap: "3px", background: usarCantidadIngreso ? "#F59E0B" : "transparent", color: usarCantidadIngreso ? "#fff" : "#6C8079", border: usarCantidadIngreso ? "none" : "1px solid #DCE7E1", borderRadius: "6px", padding: "2px 6px", fontSize: "0.62rem", fontWeight: 700, cursor: "pointer" }}>
                                     Cant. × precio
                                 </button>
                             </div>
                         </div>
                         {plan.fixedIncomes.length === 0 && <p style={{ fontSize: "0.72rem", color: "#6C8079", margin: 0 }}>Sin ingresos fijos activos.</p>}
-                        {[...simIngresosPend, ...simIngresosRecibidos].map(f => {
-                            const recibido = f.lastReceivedMonth === currentMonthStr;
+                        {plan.fixedIncomes.map(f => {
                             return (
-                                <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 9px", marginBottom: "4px", borderRadius: "8px", background: "#F7FAF8", opacity: recibido ? 0.55 : 1 }}>
-                                    <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0C2A20", textDecoration: recibido ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
+                                <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 9px", marginBottom: "4px", borderRadius: "8px", background: "#F7FAF8", opacity: f.excluido ? 0.4 : 1 }}>
+                                    <input type="checkbox" checked={!f.excluido} title="Contar en la proyección" onChange={e => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, excluido: !e.target.checked } : x) })} style={{ accentColor: "#0FA97A", flexShrink: 0 }} />
+                                    <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0C2A20", textDecoration: f.excluido ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
                                     <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0C2A20" }}>{money(f.amount)}</span>
-                                    <button onClick={() => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, lastReceivedMonth: recibido ? undefined : currentMonthStr } : x) })}
-                                        style={{ background: recibido ? "transparent" : "#0E9F6E", color: recibido ? "#6C8079" : "#fff", border: recibido ? "1px solid #DCE7E1" : "none", borderRadius: "6px", padding: "3px 8px", fontSize: "0.65rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
-                                        {recibido ? "Deshacer" : "Recibí"}
-                                    </button>
                                     <button onClick={() => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.filter(x => x.id !== f.id) })} style={{ background: "none", border: "none", color: "#6C8079", cursor: "pointer", display: "flex", flexShrink: 0 }}><Trash2 size={13} /></button>
                                 </div>
                             );

@@ -280,6 +280,7 @@ function App() {
                 fixedExpenses={state.fixedExpenses}
                 fixedIncomeItems={(() => { try { return JSON.parse(state.preferences.fixedIncomes || '[]'); } catch { return []; }})()}
                 currentMonthStr={new Date().toLocaleDateString('en-CA').substring(0, 7)}
+                currentBalance={state.balance}
                 preferences={state.preferences}
                 updatePreference={state.updatePreference}
               />
