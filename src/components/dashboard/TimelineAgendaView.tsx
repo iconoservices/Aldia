@@ -1025,11 +1025,12 @@ export const TimelineAgendaView = ({
     // el detalle de la fila.
     const focoSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
     const [activeFilters, setActiveFilters] = useState({
-        citas: true,
-        rutinas: true,
-        tareas: true,
-        habitos: true,
-        mision: true,
+        // Por defecto solo Sesiones (agenda) y Entregas; lo demás se prende desde Categorías.
+        citas: false,
+        rutinas: false,
+        tareas: false,
+        habitos: false,
+        mision: false,
         agenda: true,
         entregas: true
     });
