@@ -16,6 +16,8 @@ interface VidaBloquesProps {
     // sub-pestaña inicial (según por qué ruta/URL llegó el usuario).
     // Se aceptan los alias antiguos 'bloques' (→ rutina) y 'vida' (→ habitos).
     initial?: VidaSub | 'bloques' | 'vida';
+    // Dentro de Agenda la barra de vistas de arriba ya elige entre Rutina y Horario.
+    ocultarSwitcher?: boolean;
 
     // ── Bloques ──
     dailyBlocks: DailyBlock[];
@@ -83,6 +85,7 @@ export const VidaBloquesDashboard = (props: VidaBloquesProps) => {
 
     return (
         <div>
+            {!props.ocultarSwitcher && (
             <div style={{ display: 'flex', gap: '4px', background: '#F7FAF8', padding: '4px', borderRadius: '14px', maxWidth: '520px', margin: '0 auto 1.2rem', position: 'sticky', top: '8px', zIndex: 30 }}>
                 <button onClick={() => setSub('rutina')} style={tabBtn('rutina')}>
                     <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>checklist</span>
@@ -97,6 +100,7 @@ export const VidaBloquesDashboard = (props: VidaBloquesProps) => {
                     Horario
                 </button>
             </div>
+            )}
 
             {sub === 'rutina' ? (
                 <BloquesDashboard

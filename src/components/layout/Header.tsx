@@ -65,7 +65,6 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Proyección',   tab: 'Proyección',  icon: 'trending_up' },
         { label: 'Movimientos', tab: 'Movimientos', icon: 'list_alt'    },
         { label: 'Pendientes', tab: 'Pendientes', icon: 'checklist' },
-        { label: 'Vida',       tab: 'Vida',        icon: 'spa'           },
         { label: 'Listas',    tab: 'Listas',    icon: 'fact_check'    },        { label: 'Compras',   tab: 'Compras',   icon: 'shopping_cart' },
         { label: 'Comidas',   tab: 'Comidas',   icon: 'restaurant'    },
         { label: 'Metas',     tab: 'Metas',     icon: 'flag'          },
@@ -97,8 +96,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         activeTab === tab
         || (tab === 'Listas' && (activeTab === 'Bandeja' || activeTab === 'Quiero hacer'))
                 || (tab === 'Finanzas' && ['Movimientos', 'Plan', 'Deudas', 'Proyección'].includes(activeTab))
-        || (tab === 'Resumen' && ['Agenda', 'Calendario', 'Entregas', 'Tareas', 'Pendientes'].includes(activeTab))
-        || (tab === 'Vida' && ['Comidas', 'Bienestar'].includes(activeTab))
+        || (tab === 'Resumen' && ['Agenda', 'Calendario', 'Entregas', 'Tareas', 'Pendientes', 'Rutina', 'Horario', 'Vida', 'Bloques'].includes(activeTab))
+        || (tab === 'Listas' && ['Comidas', 'Bienestar'].includes(activeTab))
         || (tab === 'Metas' && (activeTab === 'Proyectos' || activeTab === 'Compras'));
 
     // Herramientas: grupo plegado por defecto (se abre solo si estás en una).
@@ -194,7 +193,9 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             case 'Calendario': return 'Calendario';
             case 'Stats': return 'Datos';
             case 'Cerebro': return 'Cerebro';
-            case 'Vida': return 'Vida';
+            case 'Vida': return 'Rutina';
+            case 'Rutina': return 'Rutina';
+            case 'Horario': return 'Horario';
             case 'Proyectos': return 'Proyectos';
             case 'Metas': return 'Metas';
             case 'Tablero': return 'Tablero';

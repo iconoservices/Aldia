@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 import { Header } from './components/layout/Header';
 import { PedirCuentaDialog } from './components/ui/PedirCuentaDialog';
-import { VistasListas, VISTAS_METAS, VISTAS_DINERO, VISTAS_AGENDA, VISTAS_VIDA } from './components/ui/VistasListas';
+import { VistasListas, VISTAS_METAS, VISTAS_DINERO, VISTAS_AGENDA } from './components/ui/VistasListas';
 import { useAlDiaState } from './hooks/useAlDiaState';
 import type { Mission, Note } from './hooks/useAlDiaState';
 import { ProfileOverlay } from './components/layout/ProfileOverlay';
@@ -20,9 +20,8 @@ import { ActionBanner } from './components/dashboard/ActionBanner';
 // Pestañas que comparten selector de vistas: cambiar entre ellas no re-anima
 // toda la página (el selector se queda quieto, solo cambia el contenido).
 const GRUPOS_VISTA: string[][] = [
-  ['Listas', 'Quiero hacer', 'Bandeja'],
-  ['Resumen', 'Agenda', 'Calendario', 'Entregas', 'Tareas', 'Pendientes'],
-  ['Vida', 'Comidas', 'Bienestar'],
+  ['Listas', 'Quiero hacer', 'Bandeja', 'Comidas', 'Bienestar'],
+  ['Resumen', 'Agenda', 'Calendario', 'Entregas', 'Tareas', 'Pendientes', 'Rutina', 'Horario', 'Vida', 'Bloques'],
   ['Metas', 'Proyectos', 'Compras'],
   ['Finanzas', 'Fijos', 'Plan', 'Deudas', 'Proyección', 'Movimientos'],
 ];
@@ -95,9 +94,10 @@ function App() {
     if (path.includes('/compras')) return 'Compras';
     if (path.includes('/comidas')) return 'Comidas';
     if (path.includes('/tablero')) return 'Tablero';
-    if (path.includes('/vida')) return 'Vida';
+    if (path.includes('/horario')) return 'Horario';
+    if (path.includes('/rutina') || path.includes('/vida')) return 'Rutina';
     if (path.includes('/cerebro')) return 'Cerebro';
-    if (path.includes('/bloques')) return 'Bloques';
+    if (path.includes('/bloques')) return 'Rutina';
     if (path.includes('/checklist')) return 'Checklist';
     if (path.includes('/calendario')) return 'Calendario';
     if (path.includes('/ruta')) return 'Ruta';
@@ -105,7 +105,7 @@ function App() {
     if (path.includes('/accion')) return 'Acción';
     if (path.includes('/base')) return 'Base de Datos';
     if (path.includes('/proyeccion')) return 'Proyección';
-    if (path.includes('/bloques')) return 'Bloques';
+    if (path.includes('/bloques')) return 'Rutina';
     if (path.includes('/deudas')) return 'Deudas';
     if (path.includes('/bienestar')) return 'Bienestar';
     if (path.includes('/negocio')) return 'Negocio';
@@ -171,9 +171,10 @@ function App() {
       else if (path.includes('/comidas')) setActiveTab('Comidas');
       else if (path.includes('/tareas')) setActiveTab('Tareas');
       else if (path.includes('/tablero')) setActiveTab('Tablero');
-      else if (path.includes('/vida')) setActiveTab('Vida');
+      else if (path.includes('/horario')) setActiveTab('Horario');
+      else if (path.includes('/rutina') || path.includes('/vida')) setActiveTab('Rutina');
       else if (path.includes('/cerebro')) setActiveTab('Cerebro');
-      else if (path.includes('/bloques')) setActiveTab('Bloques');
+      else if (path.includes('/bloques')) setActiveTab('Rutina');
       else if (path.includes('/checklist')) setActiveTab('Checklist');
       else if (path.includes('/calendario')) setActiveTab('Calendario');
       else if (path.includes('/ruta')) setActiveTab('Ruta');
@@ -182,7 +183,7 @@ function App() {
       else if (path.includes('/base')) setActiveTab('Base de Datos');
       else if (path.includes('/proyeccion')) setActiveTab('Proyección');
       else if (path.includes('/gastos-fijos')) setActiveTab('Gastos Fijos');
-      else if (path.includes('/bloques')) setActiveTab('Bloques');
+      else if (path.includes('/bloques')) setActiveTab('Rutina');
     else if (path.includes('/bienestar')) setActiveTab('Bienestar');
     else if (path.includes('/negocio')) setActiveTab('Negocio');
     else if (path.includes('/deudas')) setActiveTab('Deudas');
@@ -252,8 +253,8 @@ function App() {
             {VISTAS_DINERO.some(v => v.tab === activeTab) && (
               <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_DINERO} />
             )}
-            {VISTAS_VIDA.some(v => v.tab === activeTab) && (
-              <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_VIDA} />
+            {['Listas', 'Quiero hacer', 'Bandeja', 'Comidas', 'Bienestar'].includes(activeTab) && (
+              <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} />
             )}
             <div className={enAgenda ? 'agenda-wrapper' : undefined} style={enAgenda ? undefined : { display: 'contents' }}>
             {enAgenda && <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_AGENDA} />}
@@ -319,9 +320,11 @@ function App() {
                 updateDailyBlock={state.updateDailyBlock}
                 removeDailyBlock={state.removeDailyBlock}
               />
-            ) : (activeTab === 'Vida' || activeTab === 'Bloques') ? (
+            ) : (activeTab === 'Rutina' || activeTab === 'Horario' || activeTab === 'Vida' || activeTab === 'Bloques') ? (
               <VidaBloquesDashboard
-                initial={activeTab === 'Vida' ? 'habitos' : 'rutina'}
+                key={activeTab}
+                ocultarSwitcher
+                initial={activeTab === 'Horario' ? 'horario' : 'rutina'}
                 dailyBlocks={state.dailyBlocks}
                 addDailyBlock={state.addDailyBlock}
                 toggleDailyBlock={state.toggleDailyBlock}
@@ -548,7 +551,6 @@ function App() {
               />
             ) : (activeTab === 'Listas' || activeTab === 'Bandeja' || activeTab === 'Quiero hacer') ? (
               <>
-                <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} />
                 {activeTab === 'Listas' ? (
                   <ListasDashboard
                     notes={state.notes}

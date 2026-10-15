@@ -7,6 +7,8 @@ export const VISTAS_LISTAS = [
     { tab: "Listas", label: "Mis listas" },
     { tab: "Quiero hacer", label: "Por temas" },
     { tab: "Bandeja", label: "Bandeja" },
+    { tab: "Comidas", label: "Comidas" },
+    { tab: "Bienestar", label: "Bienestar" },
 ] as const;
 
 export const VISTAS_METAS = [
@@ -30,12 +32,8 @@ export const VISTAS_AGENDA = [
     { tab: "Calendario", label: "Calendario" },
     { tab: "Tareas", label: "Tareas" },
     { tab: "Pendientes", label: "Por hacer" },
-] as const;
-
-export const VISTAS_VIDA = [
-    { tab: "Vida", label: "Vida" },
-    { tab: "Comidas", label: "Comidas" },
-    { tab: "Bienestar", label: "Bienestar" },
+    { tab: "Rutina", label: "Rutina" },
+    { tab: "Horario", label: "Horario" },
 ] as const;
 
 type Vista = { readonly tab: string; readonly label: string };
