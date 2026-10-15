@@ -3,6 +3,7 @@ import { useState, useEffect, lazy, Suspense, startTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 import { Header } from './components/layout/Header';
+import { PedirCuentaDialog } from './components/ui/PedirCuentaDialog';
 import { VistasListas, VISTAS_PENDIENTES, VISTAS_METAS, VISTAS_DINERO, VISTAS_AGENDA, VISTAS_VIDA } from './components/ui/VistasListas';
 import { useAlDiaState } from './hooks/useAlDiaState';
 import type { Mission, Note } from './hooks/useAlDiaState';
@@ -200,6 +201,17 @@ function App() {
   const [selectedProjectDetailId, setSelectedProjectDetailId] = useState<number | null>(null);
 
   const state = useAlDiaState();
+
+  // Guardia de "sin cuenta": un movimiento que mueve plata (no es solo seguimiento de una
+  // deuda ni una transferencia) no se anota sin cuenta por descuido. Se pide la cuenta, o
+  // se confirma a propósito que no va a ninguna. Sin cuentas creadas no hay nada que elegir.
+  const [sinCuentaPend, setSinCuentaPend] = useState<Parameters<typeof state.addTransaction> | null>(null);
+  const addTransactionSeguro: typeof state.addTransaction = (...args) => {
+    const [, , , , , accountId, isCashless, category] = args;
+    const mueveCaja = !isCashless && category !== 'Transferencia';
+    if (mueveCaja && accountId == null && state.accounts.length > 0) { setSinCuentaPend(args); return; }
+    return state.addTransaction(...args);
+  };
   const viewingNote: Note | null = state.notes.find((n: Note) => n.id === viewingNoteId) || null;
   const selectedProjectDetail = state.projects.find((p: any) => p.id === selectedProjectDetailId);
 
@@ -346,7 +358,7 @@ function App() {
                 removeDailyBlock={state.removeDailyBlock}
                 updateDailyBlock={state.updateDailyBlock}
                 projects={state.projects}
-                addTransaction={state.addTransaction}
+                addTransaction={addTransactionSeguro}
                 accounts={state.accounts}
                 incomeCategories={state.incomeCategories}
                 expenseCategories={state.expenseCategories}
@@ -389,7 +401,7 @@ function App() {
                 rolloverFixedExpenses={state.rolloverFixedExpenses}
                 payPendingPeriod={state.payPendingPeriod}
                 unmarkPendingPeriod={state.unmarkPendingPeriod}
-                addTransaction={state.addTransaction}
+                addTransaction={addTransactionSeguro}
                 removeTransaction={state.removeTransaction}
                 updatePreference={state.updatePreference}
               />
@@ -451,7 +463,7 @@ function App() {
             ) : activeTab === 'Deudas' ? (
               <DeudasyCobrosDashboard
                 transactions={state.transactions}
-                addTransaction={state.addTransaction}
+                addTransaction={addTransactionSeguro}
                 removeTransaction={state.removeTransaction}
                 repayDebt={state.repayDebt}
                 updateTransaction={state.updateTransaction}
@@ -487,7 +499,7 @@ function App() {
                 projects={state.projects}
                 accounts={state.accounts}
                 setAccounts={state.setAccounts}
-                addTransaction={state.addTransaction}
+                addTransaction={addTransactionSeguro}
                 // Missing props for ProjectDetailView
                 addProjectTask={state.addProjectTask}
                 toggleProjectTask={state.toggleProjectTask}
@@ -527,6 +539,7 @@ function App() {
                 transactions={state.transactions}
                 removeTransaction={state.removeTransaction}
                 undoFixedExpensePayment={state.undoFixedExpensePayment}
+                fijosNombres={state.fixedExpenses.map(f => f.text)}
                 updateTransaction={state.updateTransaction}
                 accounts={state.accounts}
                 incomeCategories={state.incomeCategories}
@@ -791,6 +804,17 @@ function App() {
         onClose={() => setIsTrashOpen(false)}
       />
       </Suspense>
+
+      <PedirCuentaDialog
+        open={sinCuentaPend !== null}
+        texto={sinCuentaPend?.[0] ?? ''}
+        monto={sinCuentaPend?.[1] ?? 0}
+        tipo={sinCuentaPend?.[2] ?? 'gasto'}
+        accounts={state.accounts}
+        onElegir={id => { if (sinCuentaPend) { const a = [...sinCuentaPend] as typeof sinCuentaPend; a[5] = id; state.addTransaction(...a); } setSinCuentaPend(null); }}
+        onSinCuenta={() => { if (sinCuentaPend) state.addTransaction(...sinCuentaPend); setSinCuentaPend(null); }}
+        onDescartar={() => setSinCuentaPend(null)}
+      />
 
     </div>
   );

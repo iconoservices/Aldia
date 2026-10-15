@@ -114,7 +114,7 @@ export const useFinanzasState = () => {
 
         // Auto-generate the transaction if it's being marked as paid
         if (isNewPayment) {
-            addTransaction(`Pago: ${expense.text}`, remaining, 'gasto', false, expense.projectId, resolvedAccountId, false, 'Gastos Fijos', expense.contact);
+            addTransaction(`Pago: ${expense.text}`, remaining, 'gasto', false, expense.projectId, resolvedAccountId, false, expense.totalAmount != null ? 'Deudas' : 'Gastos Fijos', expense.contact);
         }
     };
 
@@ -139,7 +139,7 @@ export const useFinanzasState = () => {
             ...applyInstallmentProgress(e, value),
         } : e));
 
-        addTransaction(`Pago: ${expense.text}`, value, 'gasto', false, expense.projectId, resolvedAccountId, false, 'Gastos Fijos', expense.contact);
+        addTransaction(`Pago: ${expense.text}`, value, 'gasto', false, expense.projectId, resolvedAccountId, false, expense.totalAmount != null ? 'Deudas' : 'Gastos Fijos', expense.contact);
     };
 
     // Detecta gastos fijos que cruzaron a un período nuevo (mes/semana) sin quedar saldados
@@ -200,7 +200,7 @@ export const useFinanzasState = () => {
             ...applyInstallmentProgress(e, value),
         } : e));
 
-        addTransaction(`Pago: ${expense.text} (${period})`, value, 'gasto', false, expense.projectId, resolvedAccountId, false, 'Gastos Fijos', expense.contact);
+        addTransaction(`Pago: ${expense.text} (${period})`, value, 'gasto', false, expense.projectId, resolvedAccountId, false, expense.totalAmount != null ? 'Deudas' : 'Gastos Fijos', expense.contact);
     };
 
     // Deshace todos los abonos hechos a un período pendiente específico (vuelve a quedar en 0).

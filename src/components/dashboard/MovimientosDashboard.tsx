@@ -27,6 +27,7 @@ interface MovimientosProps {
     transactions: Transaction[];
     removeTransaction: (id: number) => void;
     undoFixedExpensePayment?: (txId: number) => void;
+    fijosNombres?: string[]; // nombres de los gastos fijos, para saber qué "Pago: …" se puede deshacer
     updateTransaction: (id: number, updates: Partial<Transaction>) => void;
     accounts: { id: number; name: string; color: string }[];
     incomeCategories?: string[];
@@ -67,7 +68,7 @@ const Resumen = ({ titulo, total, color, filas, signo }: {
     );
 };
 
-export const MovimientosDashboard = ({ transactions, removeTransaction, undoFixedExpensePayment, updateTransaction, accounts, incomeCategories = [], expenseCategories = [] }: MovimientosProps) => {
+export const MovimientosDashboard = ({ transactions, removeTransaction, undoFixedExpensePayment, fijosNombres = [], updateTransaction, accounts, incomeCategories = [], expenseCategories = [] }: MovimientosProps) => {
     const movil = useIsMobile();
     const [periodMode, setPeriodMode] = useState<PeriodMode>("month");
     const [periodRef, setPeriodRef] = useState<Date>(new Date());
@@ -246,7 +247,7 @@ export const MovimientosDashboard = ({ transactions, removeTransaction, undoFixe
                                 <span style={{ fontSize: "0.72rem", fontWeight: 800, color: dia.neto >= 0 ? C.verde : C.rojo }}>{dia.neto >= 0 ? "+" : "−"}S/ {fmt(dia.neto)}</span>
                             </div>
                             {dia.txs.map(tx => (
-                                <MovimientoRow key={tx.id} tx={tx} accountById={accountById} accounts={accounts} removeTransaction={removeTransaction} undoFixedExpensePayment={undoFixedExpensePayment} updateTransaction={updateTransaction} incomeCategories={incomeCategories} expenseCategories={expenseCategories} />
+                                <MovimientoRow key={tx.id} tx={tx} accountById={accountById} accounts={accounts} removeTransaction={removeTransaction} undoFixedExpensePayment={undoFixedExpensePayment} fijosNombres={fijosNombres} updateTransaction={updateTransaction} incomeCategories={incomeCategories} expenseCategories={expenseCategories} />
                             ))}
                         </div>
                     ))}
@@ -257,12 +258,13 @@ export const MovimientosDashboard = ({ transactions, removeTransaction, undoFixe
 };
 
 // ─── Movimiento row ────────────────────────────────────────────────────────────
-const MovimientoRow = ({ tx, accountById, accounts, removeTransaction, undoFixedExpensePayment, updateTransaction, incomeCategories = [], expenseCategories = [] }: {
+const MovimientoRow = ({ tx, accountById, accounts, removeTransaction, undoFixedExpensePayment, fijosNombres = [], updateTransaction, incomeCategories = [], expenseCategories = [] }: {
     tx: Transaction;
     accountById: Map<number, { id: number; name: string; color: string }>;
     accounts: { id: number; name: string; color: string }[];
     removeTransaction: (id: number) => void;
     undoFixedExpensePayment?: (txId: number) => void;
+    fijosNombres?: string[];
     updateTransaction: (id: number, updates: Partial<Transaction>) => void;
     incomeCategories?: string[];
     expenseCategories?: string[];
@@ -278,7 +280,8 @@ const MovimientoRow = ({ tx, accountById, accounts, removeTransaction, undoFixed
 
     const categoriasDisponibles = tx.type === "ingreso" ? incomeCategories : expenseCategories;
     // Pagos de gastos fijos: se pueden deshacer (por si se apretó "Pagué" sin querer)
-    const esPagoFijo = tx.category === "Gastos Fijos" && /^Pago: /.test(tx.text) && !!undoFixedExpensePayment;
+    const nombrePago = /^Pago: (.+?)(?: \(\d{4}-(?:\d{2}|W\d{2})\))?$/.exec(tx.text)?.[1];
+    const esPagoFijo = (tx.category === "Gastos Fijos" || tx.category === "Deudas") && !!nombrePago && fijosNombres.includes(nombrePago) && !!undoFixedExpensePayment;
     const monto = Math.abs(tx.amount).toLocaleString("en-US", { minimumFractionDigits: 2 });
 
     const save = () => {
