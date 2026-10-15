@@ -1,17 +1,18 @@
-import { useState, Fragment } from 'react';
+import { useState, useEffect, Fragment } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NuevaMetaModal } from './NuevaMetaModal';
 import type { NuevaMeta } from './NuevaMetaModal';
 import type { Goal, GoalHorizon, GoalMilestone, GoalStatus, Project } from '../../hooks/useAlDiaState';
 import {
     C, useIsMobile,
-    paddingPagina, cabecera, tituloPagina, subtituloPagina, campo, TOQUE_MINIMO,
+    paddingPagina, cabecera, tituloPagina, subtituloPagina, campo,
 } from '../../theme';
 
 interface MetasDashboardProps {
     goals: Goal[];
     projects?: Project[];
-    addGoal: (title: string, horizon: GoalHorizon, area: string, color: string, icon?: string, targetDate?: string, projectId?: number, milestones?: GoalMilestone[]) => void;
+    addGoal: (title: string, horizon: GoalHorizon, area: string, color: string, icon?: string, targetDate?: string, projectId?: number, milestones?: GoalMilestone[], nombresPlazo?: Goal['nombresPlazo']) => void;
     updateGoal: (id: number, updates: Partial<Goal>) => void;
     removeGoal: (id: number) => void;
     addGoalMilestone: (goalId: number, text: string, plazo?: GoalHorizon) => void;
@@ -37,6 +38,9 @@ const NEXT_STATUS: Record<GoalStatus, GoalStatus> = {
     'en-progreso': 'completado',
     'completado': 'pendiente',
 };
+
+const nombrePlazo = (goal: Goal, k: GoalHorizon) =>
+    goal.nombresPlazo?.[k]?.trim() || PLAZOS.find(p => p.k === k)!.titulo;
 
 const diasRestantes = (fecha?: string) => {
     if (!fecha) return null;
@@ -76,7 +80,8 @@ export const MetasDashboard = ({
     const guardarMeta = (m: NuevaMeta) => {
         const pasosIniciales: GoalMilestone[] = PLAZOS.flatMap((pl, i) =>
             m[pl.k].map((texto, j) => ({ id: Date.now() + i * 1000 + j, text: texto, completed: false, plazo: pl.k })));
-        addGoal(m.title, 'mediano', m.area || 'Personal', m.color, m.icon, m.targetDate || undefined, undefined, pasosIniciales);
+        const nombres = Object.fromEntries(PLAZOS.filter(pl => m.nombres[pl.k].trim()).map(pl => [pl.k, m.nombres[pl.k].trim()]));
+        addGoal(m.title, 'mediano', m.area || 'Personal', m.color, m.icon, m.targetDate || undefined, undefined, pasosIniciales, Object.keys(nombres).length ? nombres : undefined);
         setAdding(false);
     };
 
@@ -87,20 +92,13 @@ export const MetasDashboard = ({
                 <div>
                     <h2 style={tituloPagina}>Metas</h2>
                     <p style={subtituloPagina}>
-                        {goals.filter(g => g.status === 'completado').length} de {goals.length} logradas
+                        {goals.length === 0 ? 'Cada meta con su corto, mediano y largo plazo' : `${goals.filter(g => g.status === 'completado').length} de ${goals.length} logradas · toca un plazo para ver o agregar tareas`}
                     </p>
                 </div>
             </div>
 
             <div>
                 <section>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                        <div>
-                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.onSurface }}>Mis metas</h3>
-                            <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: C.outline }}>Corto, mediano y largo plazo</p>
-                        </div>
-                    </div>
-
                         {goals.length === 0 && !adding && (
                             <div style={{ padding: '2rem 1rem', textAlign: 'center', color: C.onSurfaceVariant }}>
                                 <span className="material-symbols-outlined" style={{ fontSize: '36px', color: C.outlineVariant, display: 'block', marginBottom: '8px' }}>
@@ -121,7 +119,7 @@ export const MetasDashboard = ({
                                         onToggleExpand={() => setExpandedId(expandedId === goal.id ? null : goal.id)}
                                     />
                                 ) : (
-                                    <div key={goal.id} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                                    <div key={goal.id} style={{ display: 'flex', gap: '12px', alignItems: 'stretch' }}>
                                         <TarjetaMeta
                                             {...propsMeta(goal)}
                                             expandido={false}
@@ -220,10 +218,14 @@ const TarjetaMeta = ({
                                 style={{ ...campo(movil), width: '100%', padding: '4px 8px' }}
                             />
                         ) : (
-                            <div style={{
-                                fontSize: '0.9rem', fontWeight: 700, color: C.onSurface,
-                                textDecoration: goal.status === 'completado' ? 'line-through' : 'none',
-                            }}>
+                            <div
+                                onClick={modoLista ? e => { e.stopPropagation(); setTitulo(goal.title); setEditando(true); } : undefined}
+                                title={modoLista ? 'Toca para cambiar el nombre' : undefined}
+                                style={{
+                                    fontSize: '0.9rem', fontWeight: 700, color: C.onSurface, cursor: modoLista ? 'text' : undefined,
+                                    textDecoration: goal.status === 'completado' ? 'line-through' : 'none',
+                                }}
+                            >
                                 {goal.title}
                             </div>
                         )}
@@ -259,14 +261,6 @@ const TarjetaMeta = ({
                                 <span style={{ fontSize: '0.68rem', color: C.outline, fontWeight: 600 }}>{hechos}/{total}</span>
                             )}
                         </div>
-                        {goal.milestones.length > 0 && (
-                            <div style={{ display: 'flex', gap: '10px', marginTop: '6px', fontSize: '0.68rem', color: C.outline, fontWeight: 600 }}>
-                                {PLAZOS.map(pl => {
-                                    const ps = goal.milestones.filter(m => (m.plazo ?? 'corto') === pl.k);
-                                    return <span key={pl.k}>{pl.titulo.split(' ')[0]} {ps.filter(m => m.completed).length}/{ps.length}</span>;
-                                })}
-                            </div>
-                        )}
                         {total > 0 && (
                             <div style={{ height: '4px', background: C.surfaceContainerHigh, borderRadius: '999px', marginTop: '8px', overflow: 'hidden' }}>
                                 <div style={{ height: '100%', width: `${progreso}%`, background: goal.color, borderRadius: '999px', transition: 'width 0.25s' }} />
@@ -332,79 +326,57 @@ const CuerpoMeta = ({
     const proyecto = projects.find(p => p.id === goal.projectId);
     const pasosProyecto = proyecto?.checklist ?? [];
     const [detalles, setDetalles] = useState(false);
+    const [abierto, setAbierto] = useState<GoalHorizon | null>(null);
     return (
                         <div style={{ padding: conBorde ? '10px 12px 12px' : '0', borderTop: conBorde ? `1px solid ${C.outlineVariant}` : 'none' }} onClick={e => e.stopPropagation()}>
 
                             <div style={{ display: 'flex', flexDirection: movil ? 'column' : 'row', alignItems: 'stretch', gap: movil ? '4px' : '0', marginBottom: '10px' }}>
                             {PLAZOS.map((pl, idx) => {
                                 const pasos = goal.milestones.filter(m => (m.plazo ?? 'corto') === pl.k);
-                                const texto = nuevaSub[`${goal.id}:${pl.k}`] || '';
+                                const pendientes = pasos.filter(m => !m.completed);
                                 return (
                                     <Fragment key={pl.k}>
-                                    {idx > 0 && (
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: goal.color, flexShrink: 0, padding: movil ? '0' : '0 8px' }}>
-                                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{movil ? 'arrow_downward' : 'arrow_forward'}</span>
-                                        </div>
-                                    )}
-                                    <div style={{ flex: 1, minWidth: 0, padding: '10px', borderRadius: '10px', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderTop: `3px solid ${goal.color}` }}>
-                                        <div style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.outline, marginBottom: '4px' }}>
-                                            {pl.titulo} <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>· {pl.sub}</span>
-                                        </div>
-                                        {pasos.map(m => (
-                                            <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
-                                                <button
-                                                    onClick={() => onToggleSub(m.id)}
-                                                    style={{
-                                                        width: '17px', height: '17px', borderRadius: '5px', flexShrink: 0, padding: 0,
-                                                        background: m.completed ? goal.color : 'transparent',
-                                                        border: `2px solid ${m.completed ? goal.color : C.outlineVariant}`,
-                                                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    }}
-                                                >
-                                                    {m.completed && <span style={{ color: '#fff', fontSize: '9px', fontWeight: 900 }}>✓</span>}
-                                                </button>
-                                                <span style={{
-                                                    flex: 1, fontSize: '0.82rem', color: m.completed ? C.outline : C.onSurface,
-                                                    textDecoration: m.completed ? 'line-through' : 'none',
-                                                }}>
-                                                    {m.text}
-                                                </span>
-                                                <button onClick={() => onRemoveSub(m.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, padding: '2px', display: 'flex' }}>
-                                                    <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>close</span>
-                                                </button>
+                                        {idx > 0 && (
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: goal.color, flexShrink: 0, padding: movil ? '0' : '0 8px' }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{movil ? 'arrow_downward' : 'arrow_forward'}</span>
                                             </div>
-                                        ))}
-                                        <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                                            <input
-                                                value={texto}
-                                                onChange={e => onNuevaSubChange(pl.k, e.target.value)}
-                                                onKeyDown={e => { if (e.key === 'Enter') onAddSub(pl.k); }}
-                                                placeholder={`Agregar a ${pl.titulo.toLowerCase()}...`}
-                                                style={{ ...campo(movil), flex: 1, minWidth: 0, padding: '6px 10px', fontSize: '0.8rem' }}
-                                            />
-                                            <button
-                                                onClick={() => onAddSub(pl.k)}
-                                                disabled={!texto.trim()}
-                                                style={{
-                                                    width: movil ? `${TOQUE_MINIMO}px` : '32px', flexShrink: 0,
-                                                    background: texto.trim() ? goal.color : C.surfaceContainerHigh,
-                                                    color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                }}
-                                            >
-                                                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span>
-                                            </button>
-                                        </div>
-                                    </div>
+                                        )}
+                                        <button
+                                            onClick={() => setAbierto(pl.k)}
+                                            style={{
+                                                flex: 1, minWidth: 0, textAlign: 'left', padding: '10px', borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit',
+                                                background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderTop: `3px solid ${goal.color}`,
+                                                display: 'flex', flexDirection: 'column', gap: '4px',
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '6px' }}>
+                                                <span style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.outline }}>
+                                                    {nombrePlazo(goal, pl.k)} <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>· {pl.sub}</span>
+                                                </span>
+                                                {pasos.length > 0 && (
+                                                    <span style={{ fontSize: '0.68rem', fontWeight: 700, color: C.outline }}>{pasos.length - pendientes.length}/{pasos.length}</span>
+                                                )}
+                                            </div>
+                                            {pendientes.slice(0, 3).map(m => (
+                                                <div key={m.id} style={{ fontSize: '0.8rem', color: C.onSurface, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    <span style={{ color: goal.color }}>•</span> {m.text}
+                                                </div>
+                                            ))}
+                                            {pendientes.length > 3 && <div style={{ fontSize: '0.72rem', color: C.outline }}>+{pendientes.length - 3} más</div>}
+                                            {pasos.length === 0 && <div style={{ fontSize: '0.78rem', color: C.outline }}>Sin tareas todavía</div>}
+                                            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: goal.color, marginTop: '2px' }}>
+                                                {pasos.length === 0 ? '+ Agregar tareas' : 'Abrir lista'}
+                                            </div>
+                                        </button>
                                     </Fragment>
                                 );
                             })}
                             </div>
                             <button
                                 onClick={() => setDetalles(v => !v)}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.primary, fontSize: '0.78rem', fontWeight: 700, padding: '2px 0', fontFamily: 'inherit' }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, fontSize: '0.72rem', fontWeight: 600, padding: '6px 0 0', fontFamily: 'inherit' }}
                             >
-                                {detalles ? 'Ocultar detalles' : 'Detalles (notas, proyecto vinculado)'}
+                                {detalles ? 'Ocultar notas y proyecto' : 'Notas y proyecto vinculado'}
                             </button>
                             {detalles && (
                                 <div style={{ marginTop: '8px' }}>
@@ -436,6 +408,129 @@ const CuerpoMeta = ({
                             )}
                                 </div>
                             )}
+                            <PlazoModal
+                                goal={goal} plazo={abierto} movil={movil} onClose={() => setAbierto(null)}
+                                texto={abierto ? (nuevaSub[`${goal.id}:${abierto}`] || '') : ''}
+                                onTexto={t => abierto && onNuevaSubChange(abierto, t)}
+                                onAdd={() => abierto && onAddSub(abierto)}
+                                onToggle={onToggleSub} onRemove={onRemoveSub} onUpdate={onUpdate}
+                            />
                         </div>
+    );
+};
+
+interface PlazoModalProps {
+    goal: Goal;
+    plazo: GoalHorizon | null;
+    movil: boolean;
+    onClose: () => void;
+    texto: string;
+    onTexto: (t: string) => void;
+    onAdd: () => void;
+    onToggle: (milestoneId: number) => void;
+    onRemove: (milestoneId: number) => void;
+    onUpdate: (updates: Partial<Goal>) => void;
+}
+
+// Ventanita con la lista de tareas de UN plazo de UNA meta.
+const PlazoModal = ({ goal, plazo, movil, onClose, texto, onTexto, onAdd, onToggle, onRemove, onUpdate }: PlazoModalProps) => {
+    const info = PLAZOS.find(p => p.k === plazo);
+    const pasos = plazo ? goal.milestones.filter(m => (m.plazo ?? 'corto') === plazo) : [];
+
+    useEffect(() => {
+        if (!plazo) return;
+        const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', h);
+        return () => window.removeEventListener('keydown', h);
+    }, [plazo, onClose]);
+
+    return createPortal(
+        <AnimatePresence>
+            {plazo && info && (
+                <motion.div
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    onClick={onClose}
+                    style={{
+                        position: 'fixed', inset: 0, zIndex: 9999, display: 'flex',
+                        alignItems: movil ? 'flex-end' : 'center', justifyContent: 'center',
+                        background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', padding: movil ? 0 : '20px',
+                    }}
+                >
+                    <motion.div
+                        onClick={e => e.stopPropagation()}
+                        initial={{ y: movil ? 60 : 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: movil ? 60 : 20, opacity: 0 }}
+                        transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+                        style={{
+                            background: C.surfaceLowest, width: '100%', maxWidth: '460px', maxHeight: movil ? '85dvh' : '80dvh', overflowY: 'auto',
+                            borderRadius: movil ? '24px 24px 0 0' : '20px', padding: movil ? '20px 18px 24px' : '22px',
+                            boxShadow: '0 20px 60px rgba(0,0,0,0.18)', borderTop: `4px solid ${goal.color}`,
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '14px' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.outline }}>
+                                    {goal.icon} {goal.title}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '2px' }}>
+                                    <input
+                                        value={goal.nombresPlazo?.[plazo] ?? info.titulo}
+                                        onChange={e => onUpdate({ nombresPlazo: { ...goal.nombresPlazo, [plazo]: e.target.value } })}
+                                        onBlur={() => { if (!(goal.nombresPlazo?.[plazo] ?? '').trim()) onUpdate({ nombresPlazo: { ...goal.nombresPlazo, [plazo]: undefined } }); }}
+                                        maxLength={28} title="Toca para cambiar el nombre"
+                                        style={{ minWidth: 0, flex: '0 1 auto', width: `${Math.max(6, (goal.nombresPlazo?.[plazo] ?? info.titulo).length + 1)}ch`, border: 'none', borderBottom: `2px dashed ${C.outlineVariant}`, outline: 'none', background: 'transparent', fontSize: '1.15rem', fontWeight: 800, color: C.onSurface, padding: 0, fontFamily: 'inherit' }}
+                                    />
+                                    <span style={{ fontWeight: 500, fontSize: '0.85rem', color: C.outline, whiteSpace: 'nowrap' }}>· {info.sub}</span>
+                                </div>
+                            </div>
+                            <button onClick={onClose} title="Cerrar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '4px' }}>
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+
+                        {pasos.length === 0 && (
+                            <p style={{ margin: '0 0 12px', fontSize: '0.85rem', color: C.onSurfaceVariant }}>Todavía no hay tareas. Escribe la primera abajo.</p>
+                        )}
+                        {pasos.map(m => (
+                            <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: `1px solid ${C.surfaceContainerHigh}` }}>
+                                <button
+                                    onClick={() => onToggle(m.id)}
+                                    style={{
+                                        width: '22px', height: '22px', borderRadius: '6px', flexShrink: 0, padding: 0, cursor: 'pointer',
+                                        background: m.completed ? goal.color : 'transparent',
+                                        border: `2px solid ${m.completed ? goal.color : C.outlineVariant}`,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}
+                                >
+                                    {m.completed && <span style={{ color: '#fff', fontSize: '12px', fontWeight: 900 }}>✓</span>}
+                                </button>
+                                <span style={{
+                                    flex: 1, fontSize: '0.92rem', wordBreak: 'break-word',
+                                    color: m.completed ? C.outline : C.onSurface, textDecoration: m.completed ? 'line-through' : 'none',
+                                }}>{m.text}</span>
+                                <button onClick={() => onRemove(m.id)} title="Quitar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '4px' }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+                                </button>
+                            </div>
+                        ))}
+
+                        <form onSubmit={e => { e.preventDefault(); onAdd(); }} style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+                            <input
+                                autoFocus value={texto} onChange={e => onTexto(e.target.value)}
+                                placeholder="Nueva tarea…" enterKeyHint="done"
+                                style={{ ...campo(movil), flex: 1, minWidth: 0 }}
+                            />
+                            <button type="submit" disabled={!texto.trim()} title="Agregar" style={{
+                                width: '44px', flexShrink: 0, border: 'none', borderRadius: '12px', cursor: texto.trim() ? 'pointer' : 'default',
+                                background: texto.trim() ? goal.color : C.surfaceContainerHigh, color: '#fff',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                                <span className="material-symbols-outlined">add</span>
+                            </button>
+                        </form>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>,
+        document.body,
     );
 };

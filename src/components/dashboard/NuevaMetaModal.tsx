@@ -12,9 +12,10 @@ export const AREAS = ['Negocio', 'Finanzas', 'Salud', 'Personal', 'Aprendizaje',
 export interface NuevaMeta {
     title: string; area: string; icon: string; color: string; targetDate: string;
     corto: string[]; mediano: string[]; largo: string[];
+    nombres: { corto: string; mediano: string; largo: string };
 }
 
-const VACIA: NuevaMeta = { title: '', area: 'Personal', icon: ICONOS[0], color: COLORES[0], targetDate: '', corto: [], mediano: [], largo: [] };
+const VACIA: NuevaMeta = { title: '', area: 'Personal', icon: ICONOS[0], color: COLORES[0], targetDate: '', corto: [], mediano: [], largo: [], nombres: { corto: '', mediano: '', largo: '' } };
 
 const PLAZOS = [
     { k: 'corto', titulo: 'Corto plazo', sub: 'este mes' },
@@ -111,7 +112,7 @@ export const NuevaMetaModal = ({ open, movil, onClose, onSave }: Props) => {
 
                         {/* Línea de tiempo: corto → mediano → largo */}
                         <div>
-                            <div style={etiqueta}>Cómo lo ves por plazo</div>
+                            <div style={etiqueta}>Cómo lo ves por plazo (toca el nombre para cambiarlo)</div>
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                                 {PLAZOS.map((pl, i) => (
                                     <div key={pl.k} style={{ display: 'flex', gap: '12px' }}>
@@ -120,8 +121,13 @@ export const NuevaMetaModal = ({ open, movil, onClose, onSave }: Props) => {
                                             {i < PLAZOS.length - 1 && <span style={{ flex: 1, width: '2px', background: `${f.color}55` }} />}
                                         </div>
                                         <div style={{ flex: 1, minWidth: 0, paddingBottom: i < PLAZOS.length - 1 ? '10px' : 0 }}>
-                                            <div style={{ fontSize: '0.74rem', fontWeight: 700, color: C.onSurface, margin: '6px 0 4px' }}>
-                                                {pl.titulo} <span style={{ fontWeight: 500, color: C.outline }}>· {pl.sub}</span>
+                                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', margin: '6px 0 4px' }}>
+                                                <input
+                                                    value={f.nombres[pl.k]} onChange={e => set({ nombres: { ...f.nombres, [pl.k]: e.target.value } })}
+                                                    placeholder={pl.titulo} maxLength={28} title="Toca para ponerle tu propio nombre"
+                                                    style={{ border: 'none', borderBottom: `1px dashed ${C.outlineVariant}`, outline: 'none', background: 'transparent', fontSize: '0.8rem', fontWeight: 700, color: C.onSurface, padding: '0 0 1px', width: '9.5em', fontFamily: 'inherit' }}
+                                                />
+                                                <span style={{ fontSize: '0.72rem', color: C.outline }}>· {pl.sub}</span>
                                             </div>
                                             {f[pl.k].map((t, idx) => (
                                                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0' }}>

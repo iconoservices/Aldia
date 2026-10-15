@@ -13,6 +13,7 @@ export const useMetasState = () => {
         targetDate?: string,
         projectId?: number,
         milestones: GoalMilestone[] = [],
+        nombresPlazo?: Goal['nombresPlazo'],
     ) => {
         const newGoal: Goal = {
             id: Date.now() + Math.random(),
@@ -24,6 +25,7 @@ export const useMetasState = () => {
             status: 'pendiente',
             targetDate,
             milestones,
+            nombresPlazo,
             projectId,
             order: goals.length,
         };

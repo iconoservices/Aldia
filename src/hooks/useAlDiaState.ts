@@ -487,6 +487,7 @@ export interface Goal {
     targetDate?: string;  // YYYY-MM-DD, para cuándo se quiere lograr
     milestones: GoalMilestone[];
     projectId?: number;   // vínculo opcional a un proyecto existente
+    nombresPlazo?: Partial<Record<GoalHorizon, string>>; // nombre propio de cada plazo (si no, 'Corto/Mediano/Largo plazo')
     order: number;
 }
 
