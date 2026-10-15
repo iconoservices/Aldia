@@ -1022,13 +1022,37 @@ export const FinanzasDashboard = ({
                 groupAccountScope={groupAccountScope}
             />
 
+            {/* ── Lo que PASÓ en el período (gastos e ingresos) — aparte de lo que TENGO (cuentas) ── */}
+            {(() => {
+                const neto = topIncome - topExpense;
+                const fmtS = (n: number) => `S/ ${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+                const item = (titulo: string, texto: string, color: string) => (
+                    <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: "0.62rem", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: C.outline }}>{titulo}</div>
+                        <div style={{ fontSize: movil ? "1.1rem" : "1.3rem", fontWeight: 800, color, lineHeight: 1.2, whiteSpace: "nowrap" }}>{texto}</div>
+                    </div>
+                );
+                return (
+                    <div style={{ ...CARD, padding: movil ? "1rem" : "1.25rem 1.5rem" }}>
+                        <div style={{ fontSize: "0.85rem", fontWeight: 800, marginBottom: "0.7rem" }}>
+                            Lo que pasó · <span style={{ color: C.outline, fontWeight: 700 }}>{periodLabel(topPeriod, periodRef)}</span>
+                        </div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 32px" }}>
+                            {item("Entró", `+${fmtS(topIncome)}`, C.verde)}
+                            {item("Gasté", `−${fmtS(topExpense)}`, C.rojo)}
+                            {item("Resultado", `${neto < 0 ? "−" : "+"}${fmtS(neto)}`, neto < 0 ? C.rojo : C.verde)}
+                        </div>
+                    </div>
+                );
+            })()}
+
             {/* ── Mis Cuentas: vista directa y siempre visible de cuánto hay en cada
                 cuenta (antes vivía oculta en un acordeón al fondo de la página) ─── */}
             <div style={{ ...CARD, padding: movil ? "1rem" : "1.5rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: movil ? "0.7rem" : "1rem", flexWrap: "wrap", gap: "8px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <PiggyBank size={16} color={C.secondary} />
-                        <span style={{ fontSize: "0.85rem", fontWeight: 800 }}>Mis Cuentas</span>
+                        <span style={{ fontSize: "0.85rem", fontWeight: 800 }}>Lo que tengo · Mis cuentas</span>
                         <button
                             onClick={() => setIsAddingAccount(v => !v)}
                             title="Nueva cuenta"
@@ -1056,13 +1080,32 @@ export const FinanzasDashboard = ({
                             </button>
                         )}
                     </div>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: "5px" }}>
-                        <span style={{ fontSize: "0.65rem", color: C.onSurfaceVariant, fontWeight: 700 }}>Total:</span>
-                        <span style={{ fontSize: "1rem", fontWeight: 900, color: C.secondary }}>
-                            S/ {accountsWithBalance.reduce((s, a) => s + a.balance, 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                        </span>
-                    </div>
                 </div>
+
+                {/* Aquí solo lo que TENGO (saldo de las cuentas). Lo que gasté / entró en el período va abajo, en su propio bloque. */}
+                {(() => {
+                    const tengo = accountsWithBalance.reduce((t, a) => t + a.balance, 0);
+                    const fmtS = (n: number) => `S/ ${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+                    const bloque = (titulo: string, texto: string, color: string, nota?: string) => (
+                        <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: "0.62rem", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: C.outline }}>{titulo}</div>
+                            <div style={{ fontSize: movil ? "1.1rem" : "1.3rem", fontWeight: 800, color, lineHeight: 1.2, whiteSpace: "nowrap" }}>{texto}</div>
+                            {nota && <div style={{ fontSize: "0.64rem", color: C.outline, fontWeight: 600 }}>{nota}</div>}
+                        </div>
+                    );
+                    return (
+                        <div style={{ marginBottom: movil ? "0.8rem" : "1rem" }}>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 28px", alignItems: "flex-end" }}>
+                                {bloque("Tengo ahora", `${tengo < 0 ? "−" : ""}${fmtS(tengo)}`, tengo < 0 ? C.rojo : C.secondary, "suma del saldo de tus cuentas")}
+                            </div>
+                            {tengo < 0 && (
+                                <div style={{ marginTop: "8px", fontSize: "0.72rem", color: "#B9760A", background: "rgba(245,158,11,0.10)", borderRadius: "8px", padding: "6px 10px", display: "inline-block" }}>
+                                    El saldo sale negativo porque aquí se suma lo que entró y lo que salió de cada cuenta. Puede que falten ingresos por registrar.
+                                </div>
+                            )}
+                        </div>
+                    );
+                })()}
 
                 {isAddingAccount && (
                     <div style={{ borderRadius: movil ? "10px" : "14px", padding: movil ? "8px" : "12px", border: `1px solid ${C.secondary}`, background: C.surface, display: "flex", flexDirection: "column", gap: "6px", marginBottom: movil ? "8px" : "12px" }}>
