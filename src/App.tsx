@@ -3,7 +3,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 import { Header } from './components/layout/Header';
-import { VistasListas } from './components/ui/VistasListas';
+import { VistasListas, VISTAS_PENDIENTES } from './components/ui/VistasListas';
 import { useAlDiaState } from './hooks/useAlDiaState';
 import type { Mission, Note } from './hooks/useAlDiaState';
 import { ProfileOverlay } from './components/layout/ProfileOverlay';
@@ -332,14 +332,17 @@ function App() {
                 pauseSporadicTimer={state.pauseSporadicTimer}
               />
             ) : activeTab === 'Tareas' ? (
-              <TareasDashboard
-                dailyBlocks={state.dailyBlocks}
-                addDailyBlock={state.addDailyBlock}
-                toggleDailyBlock={state.toggleDailyBlock}
-                removeDailyBlock={state.removeDailyBlock}
-                updateDailyBlock={state.updateDailyBlock}
-                projects={state.projects}
-              />
+              <>
+                <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_PENDIENTES} />
+                <TareasDashboard
+                  dailyBlocks={state.dailyBlocks}
+                  addDailyBlock={state.addDailyBlock}
+                  toggleDailyBlock={state.toggleDailyBlock}
+                  removeDailyBlock={state.removeDailyBlock}
+                  updateDailyBlock={state.updateDailyBlock}
+                  projects={state.projects}
+                />
+              </>
             ) : activeTab === 'Plan' ? (
               <PlanDashboard
                 transactions={state.transactions}
@@ -519,14 +522,17 @@ function App() {
                 )}
               </>
             ) : activeTab === 'Pendientes' ? (
-              <PendientesDashboard
-                notes={state.notes}
-                addNote={state.addNote}
-                removeNote={state.removeNote}
-                toggleNoteItem={state.toggleNoteItem}
-                updateNote={state.updateNote}
-                agenda={state.agenda}
-              />
+              <>
+                <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_PENDIENTES} />
+                <PendientesDashboard
+                  notes={state.notes}
+                  addNote={state.addNote}
+                  removeNote={state.removeNote}
+                  toggleNoteItem={state.toggleNoteItem}
+                  updateNote={state.updateNote}
+                  agenda={state.agenda}
+                />
+              </>
             ) : activeTab === 'Compras' ? (
               <ComprasDashboard
                 shoppingList={state.shoppingList}

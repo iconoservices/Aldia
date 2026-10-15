@@ -48,6 +48,9 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     }, [user]);
 
 
+    // Pestañas que viven dentro de otra (selector de vistas) y no van en el menú.
+    const OCULTAS = ['Bandeja', 'Pendientes'];
+
     // ── Primary sidebar items ─────────────────────────────────────────
     const PRIMARY_ITEMS = [
         { label: 'Mi Día', tab: 'Checklist', icon: 'task_alt' },
@@ -91,7 +94,9 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     // Bandeja y "Quiero hacer" viven dentro de Listas (selector de vistas arriba),
     // así que Listas se marca activa en las tres.
     const esActiva = (tab: string) =>
-        activeTab === tab || (tab === 'Listas' && (activeTab === 'Bandeja' || activeTab === 'Quiero hacer'));
+        activeTab === tab
+        || (tab === 'Listas' && (activeTab === 'Bandeja' || activeTab === 'Quiero hacer'))
+        || (tab === 'Tareas' && activeTab === 'Pendientes');
 
     // Herramientas: grupo plegado por defecto (se abre solo si estás en una).
     const enHerramienta = SECONDARY_ITEMS.some(i => i.tab === activeTab);
@@ -215,7 +220,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                 {/* Nav Items */}
                 <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', overflowY: 'auto', paddingRight: '2px' }}>
                     {/* Primary group */}
-                    {PRIMARY_ITEMS.filter(item => item.tab !== 'Bandeja').map(item => renderSidebarBtn(item))}
+                    {PRIMARY_ITEMS.filter(item => !OCULTAS.includes(item.tab)).map(item => renderSidebarBtn(item))}
 
                     {encabezadoHerramientas}
 
@@ -313,7 +318,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     </button>
                 </div>
                 <div className="mobile-drawer-tabs">
-                    {PRIMARY_ITEMS.filter(item => item.tab !== 'Bandeja').map(item => renderSidebarBtn(item))}
+                    {PRIMARY_ITEMS.filter(item => !OCULTAS.includes(item.tab)).map(item => renderSidebarBtn(item))}
                     {encabezadoHerramientas}
                     {herramientasVisibles && SECONDARY_ITEMS.map(item => renderSidebarBtn(item))}
                 </div>
@@ -326,7 +331,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             <div className="mobile-bottom-nav">
                 <div className="mbn-scroll" ref={bottomScrollRef}>
                     {/* Bandeja no va en la barra: se abre desde el botón de "Mi Día" */}
-                    {PRIMARY_ITEMS.filter(item => item.tab !== 'Bandeja').map(item => {
+                    {PRIMARY_ITEMS.filter(item => !OCULTAS.includes(item.tab)).map(item => {
                         const isActive = esActiva(item.tab);
                         return (
                             <button
@@ -358,7 +363,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
             <div className={`mobile-more-sheet ${isMoreOpen ? 'open' : ''}`}>
                 <div className="mobile-more-handle" />
                 <div className="mobile-more-grid">
-                    {[...PRIMARY_ITEMS, ...SECONDARY_ITEMS].filter(item => item.tab !== 'Bandeja').map(item => {
+                    {[...PRIMARY_ITEMS, ...SECONDARY_ITEMS].filter(item => !OCULTAS.includes(item.tab)).map(item => {
                         const isActive = esActiva(item.tab);
                         return (
                             <button
