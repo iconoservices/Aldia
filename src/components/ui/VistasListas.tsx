@@ -31,8 +31,8 @@ export const VISTAS_AGENDA = [
     { tab: "Entregas", label: "Entregas" },
     { tab: "Calendario", label: "Calendario" },
     { tab: "Tareas", label: "Tareas", alias: ["Rutina", "Vida", "Bloques"] },   // Rutina = la misma lista de tareas en cuadrícula semanal
-    { tab: "Pendientes", label: "Por hacer" },
     { tab: "Horario", label: "Horario" },
+    { tab: "Pendientes", label: "Por hacer" },
 ] as const;
 
 type Vista = { readonly tab: string; readonly label: string; readonly alias?: readonly string[] };

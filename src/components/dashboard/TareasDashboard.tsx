@@ -122,7 +122,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     const estadoDe = (b: DailyBlock) => b.completed ? 'Hechas' : !b.date ? 'Sin fecha' : b.date < todayStr ? 'Vencidas' : b.date === todayStr ? 'Hoy' : 'Próximas';
 
     // Menú de tres puntos de cada fila (Editar / Eliminar), en vez de dos íconos sueltos.
-    const menuAcciones = (id: number, onEditar: () => void, onEliminar: () => void, extra?: { icono: string; texto: string; onClick: () => void }) => (
+    const menuAcciones = (id: number, onEditar: () => void, onEliminar: () => void, extra?: { icono: string; texto: string; onClick: () => void } | { icono: string; texto: string; onClick: () => void }[]) => (
         <div style={{ position: 'relative', flexShrink: 0 }}>
             <button onClick={() => setMenuFila(menuFila === id ? null : id)} title="Más opciones" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>more_vert</span>
@@ -131,11 +131,11 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                 <>
                     <div onClick={() => setMenuFila(null)} style={{ position: 'fixed', inset: 0, zIndex: 20 }} />
                     <div style={{ position: 'absolute', right: 0, top: '34px', zIndex: 21, minWidth: '150px', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px' }}>
-                        {extra && (
-                            <button onClick={() => { setMenuFila(null); extra.onClick(); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 12px', background: 'none', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: C.onSurface, fontFamily: 'inherit' }}>
-                                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{extra.icono}</span> {extra.texto}
+                        {(Array.isArray(extra) ? extra : extra ? [extra] : []).map(ex => (
+                            <button key={ex.texto} onClick={() => { setMenuFila(null); ex.onClick(); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 12px', background: 'none', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: C.onSurface, fontFamily: 'inherit' }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{ex.icono}</span> {ex.texto}
                             </button>
-                        )}
+                        ))}
                         <button onClick={() => { setMenuFila(null); onEditar(); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 12px', background: 'none', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: C.onSurface, fontFamily: 'inherit' }}>
                             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span> Editar
                         </button>
@@ -320,6 +320,11 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
         setSelectedDays(prev =>
             prev.includes(diaIdx) ? prev.filter(d => d !== diaIdx) : [...prev, diaIdx]
         );
+    };
+
+    const toggleHabito = (block: DailyBlock) => {
+        const nuevo = !esHabito(block);
+        dailyBlocks.filter(b => mismaTarea(b, block)).forEach(b => updateDailyBlock(b.id, { isHabit: nuevo }));
     };
 
     const toggleAlarmaActiva = (block: DailyBlock) => {
@@ -764,7 +769,7 @@ Supermercado:
                                             </span>
                                         )}
 
-                                        {menuAcciones(b.id, () => handleStartEdit(b), () => handleDeleteRepetitiva(b), { icono: isEncendida ? 'alarm_off' : 'alarm_on', texto: isEncendida ? 'Pausar alarma' : 'Activar alarma', onClick: () => toggleAlarmaActiva(b) })}
+                                        {menuAcciones(b.id, () => handleStartEdit(b), () => handleDeleteRepetitiva(b), [{ icono: esHabito(b) ? 'spa' : 'local_fire_department', texto: esHabito(b) ? 'Quitar de hábitos' : 'Marcar como hábito', onClick: () => toggleHabito(b) }, { icono: isEncendida ? 'alarm_off' : 'alarm_on', texto: isEncendida ? 'Pausar alarma' : 'Activar alarma', onClick: () => toggleAlarmaActiva(b) }])}
                                     </div>
                                 );
                             })}

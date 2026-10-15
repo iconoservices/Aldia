@@ -302,7 +302,7 @@ export const VidaDashboard = ({
                                 return displayRutinas.map((rutina) => (
                                     <div
                                         key={rutina.id}
-                                        style={{ ...vidaCard(rutina.color), opacity: rutina.isActive ? 1 : 0.55, transition: 'all 0.2s ease', position: 'relative' }}
+                                        style={{ background: C.surfaceLowest, borderLeft: `4px solid ${rutina.color}`, borderBottom: `1px solid ${C.outlineVariant}`, padding: '0.7rem 0.9rem', opacity: rutina.isActive ? 1 : 0.55, transition: 'all 0.2s ease', position: 'relative' }}
                                     >
                                     <div style={{
                                         display: 'flex',
@@ -332,6 +332,14 @@ export const VidaDashboard = ({
                                                         <Edit2 size={12} />
                                                     </button>
                                                 </div>
+                                                {(() => {
+                                                    const aMin = (t?: string) => t ? parseInt(t.slice(0, 2)) * 60 + parseInt(t.slice(3, 5)) : -1;
+                                                    const cruza = rutinas.find(o => o.id !== rutina.id && o.isActive && rutina.isActive
+                                                        && o.startTime && o.endTime && rutina.startTime && rutina.endTime
+                                                        && aMin(o.startTime) < aMin(rutina.endTime) && aMin(rutina.startTime) < aMin(o.endTime)
+                                                        && (o.repeatDays || []).some(d => (rutina.repeatDays || []).includes(d)));
+                                                    return cruza ? <div style={{ fontSize: '0.66rem', fontWeight: 700, color: C.ambar, marginTop: '2px' }}>⚠ Se cruza con {cruza.title}</div> : null;
+                                                })()}
                                                 <div style={{ display: 'flex', gap: '3px', marginTop: '4px', flexWrap: 'wrap' }}>
                                                     {days.map((day, dIdx) => {
                                                         const isSet = rutina.repeatDays?.includes(dIdx);
@@ -608,10 +616,10 @@ export const VidaDashboard = ({
                             className="vida-main-container"
                             style={{ overflowX: 'auto' }}
                         >
-                            <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(7, 1fr)', gap: '12px', minWidth: '700px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '48px repeat(7, 1fr)', gap: '4px', minWidth: '560px' }}>
                                 <div />
                                 {days.map((d, i) => (
-                                    <div key={i} style={{ textAlign: 'center', fontWeight: 900, fontSize: '0.7rem', color: '#888' }}>{d}</div>
+                                    <div key={i} style={{ textAlign: 'center', fontWeight: 900, fontSize: '0.7rem', color: i === normalizedDay ? C.primary : '#888' }}>{d}</div>
                                 ))}
                                 
                                 {/* Generar filas por hora 06:00 a 24:00 de a 1 hora */}
@@ -632,7 +640,7 @@ export const VidaDashboard = ({
                                                 });
                                                 
                                                 return (
-                                                    <div key={day} style={{ height: '40px', background: '#FBFBFB', borderRadius: '8px', position: 'relative', border: '1px solid #F0F0F0' }}>
+                                                    <div key={day} style={{ height: '40px', background: day === normalizedDay ? 'rgba(15,169,122,0.05)' : '#FBFBFB', borderRadius: '6px', position: 'relative', border: '1px solid #F0F0F0' }}>
                                                         {activeRoutines.map(r => (
                                                             <div 
                                                                 key={r.id}
@@ -643,7 +651,7 @@ export const VidaDashboard = ({
                                                                 }}
                                                                 onClick={() => updateRoutine(r.id, { isActive: !r.isActive })}
                                                             >
-                                                                <span style={{ fontSize: '0.5rem', fontWeight: 900, color: 'white', textTransform: 'uppercase' }}>{r.title.split(' ')[1] || r.title}</span>
+                                                                <span style={{ fontSize: '0.55rem', fontWeight: 800, color: 'white', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{r.title}</span>
                                                             </div>
                                                         ))}
                                                     </div>
