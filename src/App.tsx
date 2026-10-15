@@ -3,6 +3,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 import { Header } from './components/layout/Header';
+import { VistasListas } from './components/ui/VistasListas';
 import { useAlDiaState } from './hooks/useAlDiaState';
 import type { Mission, Note } from './hooks/useAlDiaState';
 import { ProfileOverlay } from './components/layout/ProfileOverlay';
@@ -46,6 +47,7 @@ const MovimientosDashboard = named(() => import('./components/dashboard/Movimien
 const ListasDashboard = named(() => import('./components/dashboard/ListasDashboard'), 'ListasDashboard');
 const PendientesDashboard = named(() => import('./components/dashboard/PendientesDashboard'), 'PendientesDashboard');
 const BandejaDashboard = named(() => import('./components/dashboard/BandejaDashboard'), 'BandejaDashboard');
+const QuieroHacerDashboard = named(() => import('./components/dashboard/QuieroHacerDashboard'), 'QuieroHacerDashboard');
 const ComprasDashboard = named(() => import('./components/dashboard/ComprasDashboard'), 'ComprasDashboard');
 const ComidasDashboard = named(() => import('./components/dashboard/ComidasDashboard'), 'ComidasDashboard');
 const EsporadicosDashboard = named(() => import('./components/dashboard/EsporadicosDashboard'), 'EsporadicosDashboard');
@@ -75,6 +77,7 @@ function App() {
     if (path.includes('/listas')) return 'Listas';
     if (path.includes('/pendientes')) return 'Pendientes';
     if (path.includes('/bandeja')) return 'Bandeja';
+    if (path.includes('/quiero')) return 'Quiero hacer';
     if (path.includes('/compras')) return 'Compras';
     if (path.includes('/comidas')) return 'Comidas';
     if (path.includes('/tablero')) return 'Tablero';
@@ -141,6 +144,7 @@ function App() {
       else if (path.includes('/listas')) setActiveTab('Listas');
       else if (path.includes('/pendientes')) setActiveTab('Pendientes');
       else if (path.includes('/bandeja')) setActiveTab('Bandeja');
+      else if (path.includes('/quiero')) setActiveTab('Quiero hacer');
       else if (path.includes('/compras')) setActiveTab('Compras');
       else if (path.includes('/comidas')) setActiveTab('Comidas');
       else if (path.includes('/tareas')) setActiveTab('Tareas');
@@ -489,20 +493,31 @@ function App() {
                 incomeCategories={state.incomeCategories}
                 expenseCategories={state.expenseCategories}
               />
-            ) : activeTab === 'Listas' ? (
-              <ListasDashboard
-                notes={state.notes}
-                addNote={state.addNote}
-                removeNote={state.removeNote}
-                toggleNoteItem={state.toggleNoteItem}
-                updateNote={state.updateNote}
-              />
-            ) : activeTab === 'Bandeja' ? (
-              <BandejaDashboard
-                notes={state.notes}
-                addNote={state.addNote}
-                updateNote={state.updateNote}
-              />
+            ) : (activeTab === 'Listas' || activeTab === 'Bandeja' || activeTab === 'Quiero hacer') ? (
+              <>
+                <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} />
+                {activeTab === 'Listas' ? (
+                  <ListasDashboard
+                    notes={state.notes}
+                    addNote={state.addNote}
+                    removeNote={state.removeNote}
+                    toggleNoteItem={state.toggleNoteItem}
+                    updateNote={state.updateNote}
+                  />
+                ) : activeTab === 'Bandeja' ? (
+                  <BandejaDashboard
+                    notes={state.notes}
+                    addNote={state.addNote}
+                    updateNote={state.updateNote}
+                  />
+                ) : (
+                  <QuieroHacerDashboard
+                    notes={state.notes}
+                    addNote={state.addNote}
+                    updateNote={state.updateNote}
+                  />
+                )}
+              </>
             ) : activeTab === 'Pendientes' ? (
               <PendientesDashboard
                 notes={state.notes}

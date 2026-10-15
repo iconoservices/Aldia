@@ -10,7 +10,7 @@ interface CerebroProps {
 }
 
 export const CerebroDashboard = ({ notes, removeNote, toggleNoteItem, onOpenNote }: CerebroProps) => {
-    const visibles = notes.filter((n) => n.q !== 'bandeja');
+    const visibles = notes.filter((n) => n.q !== 'bandeja' && n.q !== 'quiero-hacer');
     return (
         <div style={{ paddingBottom: '5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>

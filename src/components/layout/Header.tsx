@@ -16,6 +16,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     const [profilePic, setProfilePic] = useState<string | null>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [isMoreOpen, setIsMoreOpen] = useState(false);
+    const [herramientasAbiertas, setHerramientasAbiertas] = useState(false);
     const bottomScrollRef = useRef<HTMLDivElement>(null);
 
     // Centra la pestaña activa en el carrusel de abajo.
@@ -62,8 +63,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Movimientos', tab: 'Movimientos', icon: 'list_alt'    },
         { label: 'Pendientes', tab: 'Pendientes', icon: 'checklist' },
         { label: 'Vida',       tab: 'Vida',        icon: 'spa'           },
-        { label: 'Listas',    tab: 'Listas',    icon: 'fact_check'    },
-        { label: 'Compras',   tab: 'Compras',   icon: 'shopping_cart' },
+        { label: 'Listas',    tab: 'Listas',    icon: 'fact_check'    },        { label: 'Compras',   tab: 'Compras',   icon: 'shopping_cart' },
         { label: 'Comidas',   tab: 'Comidas',   icon: 'restaurant'    },
         { label: 'Metas',     tab: 'Metas',     icon: 'flag'          },
         { label: 'Proyectos',  tab: 'Proyectos',   icon: 'folder'        },
@@ -88,9 +88,30 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         { label: 'Bienestar',  tab: 'Bienestar',   icon: 'favorite'      },
     ];
 
+    // Bandeja y "Quiero hacer" viven dentro de Listas (selector de vistas arriba),
+    // así que Listas se marca activa en las tres.
+    const esActiva = (tab: string) =>
+        activeTab === tab || (tab === 'Listas' && (activeTab === 'Bandeja' || activeTab === 'Quiero hacer'));
+
+    // Herramientas: grupo plegado por defecto (se abre solo si estás en una).
+    const enHerramienta = SECONDARY_ITEMS.some(i => i.tab === activeTab);
+    const herramientasVisibles = herramientasAbiertas || enHerramienta;
+    const encabezadoHerramientas = (
+        <button
+            onClick={() => setHerramientasAbiertas(a => !a)}
+            style={{ margin: '10px 0 6px', display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}
+        >
+            <span style={{ flex: 1, height: '1px', background: '#DCE7E1' }} />
+            <span style={{ fontSize: '10px', fontWeight: 700, color: '#6C8079', letterSpacing: '0.08em', whiteSpace: 'nowrap', opacity: 0.7 }}>
+                HERRAMIENTAS {herramientasVisibles ? '▾' : '▸'}
+            </span>
+            <span style={{ flex: 1, height: '1px', background: '#DCE7E1' }} />
+        </button>
+    );
+
     // ── Shared sidebar button renderer ─────────────────────────────────
     const renderSidebarBtn = (item: { label: string; tab: string; icon: string }) => {
-        const isActive = item.tab === '__profile' ? false : activeTab === item.tab;
+        const isActive = item.tab === '__profile' ? false : esActiva(item.tab);
         return (
             <button
                 key={item.tab}
@@ -150,6 +171,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
         switch (tab) {
             case 'Checklist': return 'Mi Día';
             case 'Bandeja': return 'Bandeja';
+            case 'Quiero hacer': return 'Quiero hacer';
             case 'Pendientes': return 'Pendientes';
             case 'Plan': return 'Fijos';
             case 'Compras': return 'Compras';
@@ -195,17 +217,10 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                     {/* Primary group */}
                     {PRIMARY_ITEMS.filter(item => item.tab !== 'Bandeja').map(item => renderSidebarBtn(item))}
 
-                    {/* Divider */}
-                    <div style={{ margin: '10px 0 6px', display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px' }}>
-                        <span style={{ flex: 1, height: '1px', background: '#DCE7E1' }} />
-                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#6C8079', letterSpacing: '0.08em', whiteSpace: 'nowrap', opacity: 0.7 }}>
-                            HERRAMIENTAS
-                        </span>
-                        <span style={{ flex: 1, height: '1px', background: '#DCE7E1' }} />
-                    </div>
+                    {encabezadoHerramientas}
 
                     {/* Secondary group */}
-                    {SECONDARY_ITEMS.map(item => renderSidebarBtn(item))}
+                    {herramientasVisibles && SECONDARY_ITEMS.map(item => renderSidebarBtn(item))}
                 </nav>
 
                 {/* Bottom: iconos */}
@@ -299,14 +314,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                 </div>
                 <div className="mobile-drawer-tabs">
                     {PRIMARY_ITEMS.filter(item => item.tab !== 'Bandeja').map(item => renderSidebarBtn(item))}
-                    <div style={{ margin: '10px 0 6px', display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px' }}>
-                        <span style={{ flex: 1, height: '1px', background: '#DCE7E1' }} />
-                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#6C8079', letterSpacing: '0.08em', whiteSpace: 'nowrap', opacity: 0.7 }}>
-                            HERRAMIENTAS
-                        </span>
-                        <span style={{ flex: 1, height: '1px', background: '#DCE7E1' }} />
-                    </div>
-                    {SECONDARY_ITEMS.map(item => renderSidebarBtn(item))}
+                    {encabezadoHerramientas}
+                    {herramientasVisibles && SECONDARY_ITEMS.map(item => renderSidebarBtn(item))}
                 </div>
             </div>
 
@@ -318,7 +327,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                 <div className="mbn-scroll" ref={bottomScrollRef}>
                     {/* Bandeja no va en la barra: se abre desde el botón de "Mi Día" */}
                     {PRIMARY_ITEMS.filter(item => item.tab !== 'Bandeja').map(item => {
-                        const isActive = activeTab === item.tab;
+                        const isActive = esActiva(item.tab);
                         return (
                             <button
                                 key={item.tab}
@@ -350,7 +359,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
                 <div className="mobile-more-handle" />
                 <div className="mobile-more-grid">
                     {[...PRIMARY_ITEMS, ...SECONDARY_ITEMS].filter(item => item.tab !== 'Bandeja').map(item => {
-                        const isActive = activeTab === item.tab;
+                        const isActive = esActiva(item.tab);
                         return (
                             <button
                                 key={item.tab}
