@@ -10,6 +10,7 @@ import { useRitaState } from './state/useRitaState';
 import { useNegocioState } from './state/useNegocioState';
 import { useMetasState, migrarMetas } from './state/useMetasState';
 import { PLANTILLAS, type PlantillaId } from '../lib/plantillasFinanzas';
+import { medirDatos } from '../lib/tamanoDatos';
 
 // Tipos de datos
 export interface Mission {
@@ -2175,6 +2176,8 @@ export const useAlDiaState = () => {
         addGoal: lw(addGoal), updateGoal: lw(updateGoal), removeGoal: lw(removeGoal), reorderGoals: lw(reorderGoals),
         addGoalMilestone: lw(addGoalMilestone), toggleGoalMilestone: lw(toggleGoalMilestone), removeGoalMilestone: lw(removeGoalMilestone),
         user, isInitialLoad, clearAllData, clearFinanzasSelectivo: lw(clearFinanzasSelectivo),
+        // Tamaño de lo que se sube a la nube (se calcula al pedirlo, no en cada render)
+        medirAlmacenamiento: () => medirDatos(latestStateRef.current),
         // Rendimiento
         dailyCheckins, toggleDailyCheckin: lw(toggleDailyCheckin)
     };

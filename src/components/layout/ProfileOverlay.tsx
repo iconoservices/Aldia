@@ -6,6 +6,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { ReiniciarFinanzas, type OpcionesReinicioFinanzas } from '../features/ReiniciarFinanzas';
 
 import type { UserPreferences } from '../../hooks/useAlDiaState';
+import type { MedidaDatos } from '../../lib/tamanoDatos';
+import { MedidorAlmacenamiento } from './MedidorAlmacenamiento';
 
 interface ProfileOverlayProps {
     isOpen: boolean;
@@ -14,9 +16,10 @@ interface ProfileOverlayProps {
     clearFinanzasSelectivo?: (opciones: OpcionesReinicioFinanzas) => void;
     preferences: UserPreferences;
     updatePreference: (key: keyof UserPreferences, value: any) => void;
+    medirAlmacenamiento?: () => MedidaDatos;
 }
 
-export const ProfileOverlay = ({ isOpen, onClose, clearAllData, clearFinanzasSelectivo, preferences, updatePreference }: ProfileOverlayProps) => {
+export const ProfileOverlay = ({ isOpen, onClose, clearAllData, clearFinanzasSelectivo, preferences, updatePreference, medirAlmacenamiento }: ProfileOverlayProps) => {
     const { user, loginWithGoogle, logout, updateProfile, loading: authLoading } = useAuth();
     const { isInstalled, install, canInstall } = usePWA();
     const [showIOSGuide, setShowIOSGuide] = useState(false);
@@ -160,6 +163,8 @@ export const ProfileOverlay = ({ isOpen, onClose, clearAllData, clearFinanzasSel
                                                 </div>
                                             </div>
                                         )}
+
+                                        {medirAlmacenamiento && <MedidorAlmacenamiento medir={medirAlmacenamiento} />}
 
                                         <button onClick={() => setView('prefs')} style={settingButtonStyle}>
                                             <div style={settingIconWrapper()}><Settings size={18} /></div>

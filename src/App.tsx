@@ -864,6 +864,7 @@ function App() {
         clearFinanzasSelectivo={state.clearFinanzasSelectivo}
         preferences={state.preferences}
         updatePreference={state.updatePreference}
+        medirAlmacenamiento={state.medirAlmacenamiento}
       />
       )}
 
