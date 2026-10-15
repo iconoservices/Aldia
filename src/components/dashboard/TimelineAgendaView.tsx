@@ -110,9 +110,11 @@ export interface TableroPiece {
 
 const isRepetitiveActiveOnDay = (repeatDays: number[] | undefined, dayIdx: number, jsDay: number): boolean => {
     if (!repeatDays || repeatDays.length === 0) return false;
-    // dayIdx: 0=Lun, 1=Mar, 2=Mié, 3=Jue, 4=Vie, 5=Sáb, 6=Dom
-    // jsDay:  0=Dom, 1=Lun, 2=Mar, 3=Mié, 4=Jue, 5=Vie, 6=Sáb
-    return repeatDays.includes(dayIdx) || repeatDays.includes(jsDay);
+    // Las repetitivas guardan los días como Date.getDay() (lunes = 1 … sábado = 6, domingo = 0),
+    // igual que en Tareas y Mi Día. Antes también se aceptaba la otra numeración (lunes = 0) y
+    // una tarea podía aparecer en dos días a la vez.
+    void dayIdx;
+    return repeatDays.includes(jsDay);
 };
 
 interface TableroPieceCardProps {
@@ -1034,6 +1036,13 @@ export const TimelineAgendaView = ({
     // que viene de Notion (sesiones + entregas), sin importar los filtros de
     // arriba. Encenderlo dispara una sincronizacion. Es aparte de los filtros
     // porque Notion lo usan varias pestañas, no solo el calendario.
+    // "Solo": deja prendida una categoría y apaga las demás. "Mostrar todo": las prende todas.
+    const soloFiltro = (key: keyof typeof activeFilters) => setActiveFilters({
+        citas: key === 'citas', rutinas: key === 'rutinas', tareas: key === 'tareas', habitos: key === 'habitos',
+        mision: key === 'mision', agenda: key === 'agenda', entregas: key === 'entregas',
+    });
+    const todosFiltros = () => setActiveFilters({ citas: true, rutinas: true, tareas: true, habitos: true, mision: true, agenda: true, entregas: true });
+    const hayFiltroApagado = Object.values(activeFilters).some(v => !v);
     const [notionOn, setNotionOn] = useState(true);
     const [notionSyncing, setNotionSyncing] = useState(false);
     const [notionSyncMsg, setNotionSyncMsg] = useState<string | null>(null);
@@ -1248,24 +1257,27 @@ export const TimelineAgendaView = ({
     // incluye este día, o si no tiene repeatDays y ya se registró alguna vez).
     const dayChecklistTasks = useMemo(() => {
         const keys = new Set<string>();
-        const templates: { label: string; period: string; repeatDays?: number[] }[] = [];
+        const templates: { label: string; period: string; repeatDays?: number[]; time?: string }[] = [];
         (dailyBlocks || []).forEach((b: any) => {
             const k = `${b.label.toLowerCase()}||${b.period}`;
             if (!keys.has(k)) {
                 keys.add(k);
-                templates.push({ label: b.label, period: b.period, repeatDays: b.repeatDays });
-            } else if (b.repeatDays?.length) {
+                templates.push({ label: b.label, period: b.period, repeatDays: b.repeatDays, time: b.time });
+            } else {
                 const ex = templates.find(t => `${t.label.toLowerCase()}||${t.period}` === k);
-                if (ex && !ex.repeatDays?.length) ex.repeatDays = b.repeatDays;
+                if (ex && b.repeatDays?.length && !ex.repeatDays?.length) ex.repeatDays = b.repeatDays;
+                if (ex && b.time && !ex.time) ex.time = b.time;
             }
         });
+        // Las repetitivas guardan sus días como Date.getDay() (lunes = 1 … domingo = 0), igual que en Tareas.
+        const diaSemana = selectedDate.getDay();
         return templates
-            .filter(t => t.repeatDays ? t.repeatDays.includes(dayIdx) : true)
+            .filter(t => t.repeatDays ? t.repeatDays.includes(diaSemana) : true)
             .map(t => {
                 const record = (dailyBlocks || []).find((b: any) => b.label.toLowerCase() === t.label.toLowerCase() && b.period === t.period && b.date === todayStr);
-                return { id: record?.id, label: t.label, period: t.period, completed: !!record?.completed, repeatDays: t.repeatDays };
+                return { id: record?.id, label: t.label, period: t.period, completed: !!record?.completed, repeatDays: t.repeatDays, time: t.time };
             });
-    }, [dailyBlocks, dayIdx, todayStr]);
+    }, [dailyBlocks, selectedDate, todayStr]);
 
     // 5.5 Vista FOCO — "lo primero que necesito de cada cosa", agrupado por tipo
     // y SIEMPRE contra el día real (no el seleccionado): entregas atrasadas,
@@ -1296,7 +1308,7 @@ export const TimelineAgendaView = ({
             .map((e: any) => ({ id: `fv-${e.id}`, title: e.title, date: e.date, time: e.startTime, dias: enDias(e.date), isNotion: !!e.notionId, color: e.notionId ? colorSesionNotion(e.date, e.notionEstado) : (e.color || '#3ED9A0'), raw: e }));
 
         // checklist de hoy real (misma deducción plantilla+registro que dayChecklistTasks)
-        const hoyIdx = (new Date().getDay() + 6) % 7;
+        const hoyIdx = new Date().getDay(); // lunes = 1 … domingo = 0 (como Tareas)
         const keys = new Set<string>();
         const templates: { label: string; period: string; repeatDays?: number[] }[] = [];
         (dailyBlocks || []).forEach((b: any) => {
@@ -1379,9 +1391,9 @@ export const TimelineAgendaView = ({
                 </>,
             };
         };
-        const rowBox = (bl?: string): React.CSSProperties => ({
-            display: 'flex', alignItems: 'center', gap: '8px', background: 'white', border: '1px solid #F7FAF8',
-            borderLeft: bl ? `4px solid ${bl}` : '1px solid #F7FAF8', borderRadius: '10px', padding: '8px 10px',
+        const rowBox = (_bl?: string): React.CSSProperties => ({
+            display: 'flex', alignItems: 'center', gap: '9px', background: 'transparent',
+            borderBottom: '1px solid #F0F4F2', padding: '9px 4px',
         });
 
         const renderSeccion = (s: typeof secDefs[number], headerHandle: Record<string, unknown>) => {
@@ -1407,13 +1419,13 @@ export const TimelineAgendaView = ({
                 <div>
                     <div {...headerHandle} style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px', cursor: 'grab' }}>
                         {s.icon}
-                        <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#0C2A20', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{s.title}</span>
-                        {s.items.length > 0 && <span style={{ fontSize: '0.64rem', fontWeight: 800, color: s.tint, background: `${s.tint}1a`, borderRadius: '999px', padding: '1px 7px' }}>{s.items.length}</span>}
+                        <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#6C8079', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{s.title}</span>
+                        {s.items.length > 0 && <span style={{ fontSize: '0.68rem', fontWeight: 700, color: s.tint }}>{s.items.length}</span>}
                     </div>
                     {s.items.length === 0
                         ? <div style={{ fontSize: '0.72rem', color: '#6C8079', paddingLeft: '22px' }}>{s.empty}</div>
                         : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                                 <SortableContext items={visibles.map((it: any) => `row§${s.k}§${idOf(it)}`)} strategy={verticalListSortingStrategy}>{rows}</SortableContext>
                                 {(resto > 0 || abierto) && (
                                     <button onClick={() => setFocoExpandido(e => ({ ...e, [s.k]: !abierto }))}
@@ -1512,12 +1524,12 @@ export const TimelineAgendaView = ({
                         <div ref={ref} {...handleProps}
                             onClick={it.raw ? () => setEditingItem({ type: 'calendar', data: it.raw }) : undefined}
                             style={{
-                                display: 'flex', alignItems: 'center', gap: '8px', background: 'white',
-                                border: '1px solid #F7FAF8', borderLeft: `4px solid ${it.color || '#3ED9A0'}`,
-                                borderRadius: '10px', padding: '8px 10px', cursor: it.raw ? 'pointer' : 'grab', ...style,
+                                display: 'flex', alignItems: 'center', gap: '9px', background: 'transparent',
+                                borderBottom: '1px solid #F0F4F2', padding: '9px 4px', cursor: it.raw ? 'pointer' : 'grab', ...style,
                             }}>
-                            <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</span>
-                            <span style={{ fontSize: '0.68rem', fontWeight: 800, color: it.color || '#3ED9A0', whiteSpace: 'nowrap', flexShrink: 0 }}>{right}</span>
+                            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: it.color || '#3ED9A0', flexShrink: 0 }} />
+                            <span style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: '0.8rem', color: '#0C2A20', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</span>
+                            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#6C8079', whiteSpace: 'nowrap', flexShrink: 0 }}>{right}</span>
                         </div>
                     )}
                 </FocoSortable>
@@ -1525,10 +1537,10 @@ export const TimelineAgendaView = ({
         };
 
         const cab = (icon: React.ReactNode, txt: string, n: number, tint: string) => (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '2px' }}>
                 {icon}
-                <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#0C2A20', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{txt}</span>
-                {n > 0 && <span style={{ fontSize: '0.64rem', fontWeight: 800, color: tint, background: `${tint}1a`, borderRadius: '999px', padding: '1px 7px' }}>{n}</span>}
+                <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#6C8079', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{txt}</span>
+                {n > 0 && <span style={{ fontSize: '0.68rem', fontWeight: 700, color: tint }}>{n}</span>}
             </div>
         );
 
@@ -1541,7 +1553,7 @@ export const TimelineAgendaView = ({
             const oculto = o.items.length - visibles.length;
             const cuerpo = (
                 <SortableContext items={visibles.map(x => String(x.id))} strategy={verticalListSortingStrategy}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                         {o.items.length === 0
                             ? <div style={{ fontSize: '0.72rem', color: '#6C8079', padding: '10px 4px' }}>{o.vacio}</div>
                             : visibles.map(fila)}
@@ -1619,7 +1631,7 @@ export const TimelineAgendaView = ({
         );
 
         return (
-            <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {notas}
                 <DndContext sensors={focoSensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
                     {seccion({ key: 'proceso', icon: <Target size={15} color="#3ED9A0" />, txt: 'En proceso', tint: '#3ED9A0', items: enProceso, zona: 'zona§proceso', vacio: 'Arrastra aquí lo que estés haciendo, en el orden que lo harás.' })}
@@ -1839,7 +1851,12 @@ export const TimelineAgendaView = ({
                     {renderMiniCalendar()}
                 </div>
 
-                <div className="sidebar-section-title" style={{ marginTop: '0px', marginBottom: '8px' }}>Categorías</div>
+                <div className="sidebar-section-title" style={{ marginTop: '0px', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>Categorías</span>
+                    {hayFiltroApagado && (
+                        <button onClick={todosFiltros} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0FA97A', fontSize: '0.65rem', fontWeight: 800, fontFamily: 'inherit' }}>Mostrar todo</button>
+                    )}
+                </div>
                 <div style={{ padding: '0 8px' }}>
                     {[
                         { key: 'mision', label: 'Misión Diaria (Timeline)', color: 'var(--domain-orange)', icon: <Star size={14} />, type: 'UNIFICADO' },
@@ -1872,6 +1889,11 @@ export const TimelineAgendaView = ({
                                 <span style={{ fontSize: '0.75rem', fontWeight: panelAbierto(f.key as RightPanel) ? 900 : 800, color: '#4A5F58' }}>{f.label}</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); soloFiltro(f.key as keyof typeof activeFilters); }}
+                                    title={`Ver solo ${f.label}`}
+                                    style={{ background: 'none', border: `1px solid ${f.color}55`, color: f.color, borderRadius: '999px', fontSize: '0.55rem', fontWeight: 900, padding: '1px 7px', cursor: 'pointer', fontFamily: 'inherit' }}
+                                >solo</button>
                                 <span style={{ fontSize: '0.55rem', fontWeight: 900, color: f.color, opacity: 0.8 }}>{f.type}</span>
                                 <div
                                     onClick={(e) => { e.stopPropagation(); setActiveFilters(prev => ({ ...prev, [f.key]: !prev[f.key as keyof typeof prev] })); }}
@@ -1900,8 +1922,15 @@ export const TimelineAgendaView = ({
                                     <div style={{ color: f.color }}>{f.icon}</div>
                                     <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#4A5F58' }}>{f.label}</span>
                                 </div>
-                                <div style={{ width: '13px', height: '13px', borderRadius: '4px', border: `1px solid ${on ? f.color : '#DCE7E1'}`, background: on ? f.color : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                    {on && <span style={{ color: 'white', fontSize: '9px', fontWeight: 900, lineHeight: 1 }}>✓</span>}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); soloFiltro(f.key); }}
+                                        title={`Ver solo ${f.label}`}
+                                        style={{ background: 'none', border: `1px solid ${f.color}55`, color: f.color, borderRadius: '999px', fontSize: '0.55rem', fontWeight: 900, padding: '1px 7px', cursor: 'pointer', fontFamily: 'inherit' }}
+                                    >solo</button>
+                                    <div style={{ width: '13px', height: '13px', borderRadius: '4px', border: `1px solid ${on ? f.color : '#DCE7E1'}`, background: on ? f.color : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        {on && <span style={{ color: 'white', fontSize: '9px', fontWeight: 900, lineHeight: 1 }}>✓</span>}
+                                    </div>
                                 </div>
                             </div>
                         );
@@ -2386,7 +2415,7 @@ export const TimelineAgendaView = ({
                                         // ── Hoy (el día seleccionado) ──
                                         const rows: Row[] = [];
                                         dayChecklistTasks.forEach(t => rows.push({
-                                            id: `c-${t.label.toLowerCase()}-${t.period}`, time: PERIOD_TIME[t.period] || '23:00',
+                                            id: `c-${t.label.toLowerCase()}-${t.period}`, time: t.time || PERIOD_TIME[t.period] || '23:00',
                                             kind: 'checklist', label: t.label, completed: t.completed, color: '#F59E0B', task: t
                                         }));
                                         dayEvents.forEach((e: any) => rows.push({

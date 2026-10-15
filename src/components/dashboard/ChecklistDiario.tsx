@@ -482,7 +482,8 @@ export const ChecklistDiario = ({
         };
     }, []);
 
-    const todayIndex = useMemo(() => (new Date(`${todayStr}T00:00:00`).getDay() + 6) % 7, [todayStr]);
+    // Mismos índices que Tareas (donde se crean las repetitivas): lunes = 1 … sábado = 6, domingo = 0.
+    const todayIndex = useMemo(() => new Date(`${todayStr}T00:00:00`).getDay(), [todayStr]);
     const todayLabel = useMemo(() =>
         new Date(`${todayStr}T00:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }), [todayStr]);
 
@@ -1433,7 +1434,7 @@ export const ChecklistDiario = ({
                             ¿Qué días de la semana se repite "{editingRepeat.label}"?
                         </p>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '20px' }}>
-                            {['L','M','X','J','V','S','D'].map((day, i) => {
+                            {[{ l: 'L', i: 1 }, { l: 'M', i: 2 }, { l: 'X', i: 3 }, { l: 'J', i: 4 }, { l: 'V', i: 5 }, { l: 'S', i: 6 }, { l: 'D', i: 0 }].map(({ l: day, i }) => {
                                 const selected = editingRepeat.repeatDays.includes(i);
                                 return (
                                     <button

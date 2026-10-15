@@ -25,9 +25,9 @@ export const VISTAS_DINERO = [
 
 export const VISTAS_AGENDA = [
     { tab: "Resumen", label: "Resumen" },
-    { tab: "Calendario", label: "Calendario" },
     { tab: "Agenda", label: "Sesiones" },
     { tab: "Entregas", label: "Entregas" },
+    { tab: "Calendario", label: "Calendario" },
     { tab: "Tareas", label: "Tareas" },
     { tab: "Pendientes", label: "Por hacer" },
 ] as const;

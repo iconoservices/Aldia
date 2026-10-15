@@ -27,16 +27,16 @@ interface TareasDashboardProps {
     projects: Project[];
 }
 
-// Mismos índices que Mi Día (lunes = 0 … domingo = 6). Antes Tareas usaba getDay() (lunes = 1,
-// domingo = 0) y una repetitiva creada acá podía caer un día corrido en Mi Día.
+// Índices de día de la semana de las repetitivas (la referencia para toda la app):
+// lunes = 1 … sábado = 6, domingo = 0 (igual que Date.getDay()).
 const DIAS_SEMANA = [
-    { idx: 0, label: 'L', full: 'Lun' },
-    { idx: 1, label: 'M', full: 'Mar' },
-    { idx: 2, label: 'X', full: 'Mié' },
-    { idx: 3, label: 'J', full: 'Jue' },
-    { idx: 4, label: 'V', full: 'Vie' },
-    { idx: 5, label: 'S', full: 'Sáb' },
-    { idx: 6, label: 'D', full: 'Dom' },
+    { idx: 1, label: 'L', full: 'Lun' },
+    { idx: 2, label: 'M', full: 'Mar' },
+    { idx: 3, label: 'M', full: 'Mié' },
+    { idx: 4, label: 'J', full: 'Jue' },
+    { idx: 5, label: 'V', full: 'Vie' },
+    { idx: 6, label: 'S', full: 'Sáb' },
+    { idx: 0, label: 'D', full: 'Dom' },
 ];
 
 /** Extrae tareas de un solo texto: permite una sola tarea, múltiples líneas, o títulos con ':' */
@@ -90,8 +90,8 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
         </button>
     );
     // Las repetitivas ya traen su hora: una sola lista ordenada por hora (las sin hora, al final).
-    // Día de hoy con el índice de Mi Día (lunes = 0)
-    const hoyIdx = (new Date().getDay() + 6) % 7;
+    // Día de hoy con el mismo índice de las repetitivas (lunes = 1 … domingo = 0)
+    const hoyIdx = new Date().getDay();
     const mismaTarea = (x: DailyBlock, b: DailyBlock) => x.label.trim().toLowerCase() === b.label.trim().toLowerCase() && x.period === b.period;
     const tocaHoy = (b: DailyBlock) => !!b.repeatDays?.includes(hoyIdx);
     const hechaHoy = (b: DailyBlock) => dailyBlocks.some(x => mismaTarea(x, b) && x.date === todayStr && x.completed);
@@ -134,7 +134,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     // ── Form State (Texto unificado: 1 tarea o varias en el mismo texto) ──
     const [textoTarea, setTextoTarea] = useState('');
     const [tipo, setTipo] = useState<'repetitiva' | 'suelta'>('suelta');
-    const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4]); // default Lun-Vie
+    const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // default Lun-Vie
     const [targetDate, setTargetDate] = useState('');
     const [paraHoy, setParaHoy] = useState(false);
     const [targetTime, setTargetTime] = useState('');
