@@ -1,4 +1,4 @@
-import { C, bento, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina, RADIO, etiqueta, MONO } from "../../theme";
+import { C, bento, useIsMobile, paddingPagina, RADIO, etiqueta, MONO } from "../../theme";
 import type { CalendarEvent, SporadicProject } from "../../hooks/useAlDiaState";
 
 /* ══════════════════════════════════════════════════════════════════
@@ -89,13 +89,6 @@ export const ResumenAgendaDashboard = ({ calendarEvents, sporadicProjects, setAc
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: movil ? "14px" : "20px", ...paddingPagina(movil), color: C.onSurface }}>
-            <div style={cabecera(movil)}>
-                <div>
-                    <h2 style={tituloPagina}>Resumen</h2>
-                    <p style={subtituloPagina}>Lo que viene y lo que hay que entregar.</p>
-                </div>
-            </div>
-
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                 {stat(semana, "Sesiones en 7 días", false, "Agenda")}
                 {stat(atrasadas.length, "Atrasadas", true, "Agenda")}

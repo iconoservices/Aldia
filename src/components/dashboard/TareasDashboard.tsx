@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { C, MONO } from '../../theme';
+import { C, MONO, useIsMobile, paddingPagina } from '../../theme';
 import type { DailyBlock } from '../../hooks/useAlDiaState';
 
 interface Project {
@@ -73,6 +73,45 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     projects,
 }) => {
     const todayStr = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
+    const movil = useIsMobile();
+    const [menuFila, setMenuFila] = useState<number | null>(null);
+    // Grupos plegables (como en Proyección): cada uno muestra su título y cuántas tareas tiene.
+    const [cerrados, setCerrados] = useState<Record<string, boolean>>({ 'sue:Hechas': true });
+    const cabeceraGrupo = (clave: string, titulo: string, n: number, color?: string) => (
+        <button
+            onClick={() => setCerrados(c => ({ ...c, [clave]: !c[clave] }))}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '7px 14px', background: C.surfaceContainerLow, border: 'none', borderBottom: `1px solid ${C.surfaceContainerHigh}`, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+        >
+            <span className="material-symbols-outlined" style={{ fontSize: '17px', color: C.outline, transform: cerrados[clave] ? 'rotate(-90deg)' : 'none', transition: 'transform .15s' }}>expand_more</span>
+            <span style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: color ?? C.onSurfaceVariant }}>{titulo}</span>
+            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: C.outline }}>{n}</span>
+        </button>
+    );
+    // Las repetitivas ya traen su hora: una sola lista ordenada por hora (las sin hora, al final).
+    const GRUPOS_SUE = ['Vencidas', 'Hoy', 'Próximas', 'Sin fecha', 'Hechas'];
+    const estadoDe = (b: DailyBlock) => b.completed ? 'Hechas' : !b.date ? 'Sin fecha' : b.date < todayStr ? 'Vencidas' : b.date === todayStr ? 'Hoy' : 'Próximas';
+
+    // Menú de tres puntos de cada fila (Editar / Eliminar), en vez de dos íconos sueltos.
+    const menuAcciones = (id: number, onEditar: () => void, onEliminar: () => void) => (
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+            <button onClick={() => setMenuFila(menuFila === id ? null : id)} title="Más opciones" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>more_vert</span>
+            </button>
+            {menuFila === id && (
+                <>
+                    <div onClick={() => setMenuFila(null)} style={{ position: 'fixed', inset: 0, zIndex: 20 }} />
+                    <div style={{ position: 'absolute', right: 0, top: '34px', zIndex: 21, minWidth: '150px', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px' }}>
+                        <button onClick={() => { setMenuFila(null); onEditar(); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 12px', background: 'none', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: C.onSurface, fontFamily: 'inherit' }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span> Editar
+                        </button>
+                        <button onClick={() => { setMenuFila(null); onEliminar(); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 12px', background: 'none', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: C.rojo, fontFamily: 'inherit' }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete</span> Eliminar
+                        </button>
+                    </div>
+                </>
+            )}
+        </div>
+    );
 
     // ── Form State (Texto unificado: 1 tarea o varias en el mismo texto) ──
     const [textoTarea, setTextoTarea] = useState('');
@@ -232,6 +271,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
         setTargetTime('');
         setIsFormOpen(false);
     };
+    const repetitivasOrdenadas = [...repetitivas].sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
 
     const toggleDia = (diaIdx: number) => {
         setSelectedDays(prev =>
@@ -256,32 +296,22 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     };
 
     return (
-        <div style={{ maxWidth: '1080px', margin: '0 auto', padding: '1.25rem 1rem 4rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ ...paddingPagina(movil), display: 'flex', flexDirection: 'column', gap: movil ? '1rem' : '1.25rem' }}>
             {/* ── Header ── */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                <div>
-                    <h1 style={{ margin: 0, fontSize: '1.65rem', fontWeight: 800, color: C.onSurface, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: '28px', color: C.primary }}>alarm_on</span>
-                        Tareas
-                    </h1>
-                    <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: C.onSurfaceVariant }}>
-                        Organiza tus tareas sueltas y tus rutinas repetitivas tipo alarma en un solo lugar.
-                    </p>
-                </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
 
                 <button
                     onClick={() => setIsFormOpen(true)}
                     style={{
                         display: 'flex', alignItems: 'center', gap: '8px',
                         background: C.primary, color: '#fff', border: 'none',
-                        borderRadius: '12px', padding: '10px 18px',
-                        fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer',
-                        boxShadow: '0 4px 14px rgba(15, 169, 122, 0.25)',
+                        borderRadius: '999px', padding: '8px 16px',
+                        fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
                         transition: 'transform 0.15s, opacity 0.15s',
                     }}
                 >
-                    <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>add</span>
-                    Nueva Tarea
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
+                    Nueva tarea
                 </button>
             </div>
 
@@ -606,15 +636,15 @@ Supermercado:
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: '14px' }}>
                         {repetitivas.length === 0 ? (
-                            <div style={{ padding: '2rem 1.5rem', textAlign: 'center', background: C.surfaceLowest, borderRadius: '16px', border: `1px dashed ${C.outlineVariant}`, color: C.onSurfaceVariant }}>
+                            <div style={{ padding: '1.5rem 1rem', textAlign: 'center', color: C.onSurfaceVariant }}>
                                 <span className="material-symbols-outlined" style={{ fontSize: '32px', color: C.outlineVariant, marginBottom: '6px', display: 'block' }}>alarm_off</span>
                                 <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>No tienes tareas repetitivas activas.</p>
                                 <p style={{ margin: '4px 0 0', fontSize: '0.75rem' }}>Crea hábitos o alarmas que se repitan ciertos días de la semana.</p>
                             </div>
                         ) : (
-                            repetitivas.map(b => {
+                            repetitivasOrdenadas.map(b => {
                                 const project = projects.find(p => p.id === b.projectId);
                                 const isEncendida = b.isActive !== false;
 
@@ -622,101 +652,62 @@ Supermercado:
                                     <div
                                         key={b.id}
                                         style={{
-                                            background: C.surfaceLowest,
-                                            borderRadius: '14px',
-                                            border: `1px solid ${isEncendida ? C.outlineVariant : 'rgba(0,0,0,0.06)'}`,
-                                            padding: '12px 14px',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: '8px',
-                                            opacity: isEncendida ? 1 : 0.6,
-                                            transition: 'all 0.15s',
-                                            boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+                                            padding: '9px 8px 9px 14px', borderBottom: `1px solid ${C.surfaceContainerHigh}`,
+                                            display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
+                                            opacity: isEncendida ? 1 : 0.55,
                                         }}
                                     >
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
-                                                {/* Switch tipo alarma */}
-                                                <button
-                                                    onClick={() => toggleAlarmaActiva(b)}
-                                                    title={isEncendida ? 'Alarma activada (Clic para pausar)' : 'Alarma pausada (Clic para activar)'}
-                                                    style={{
-                                                        width: '36px', height: '20px', borderRadius: '999px',
-                                                        background: isEncendida ? C.primary : C.surfaceContainerHighest,
-                                                        border: 'none', cursor: 'pointer', padding: '2px',
-                                                        display: 'flex', alignItems: 'center',
-                                                        justifyContent: isEncendida ? 'flex-end' : 'flex-start',
-                                                        transition: 'background 0.2s', flexShrink: 0,
-                                                    }}
-                                                >
-                                                    <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-                                                </button>
+                                        {/* Switch tipo alarma */}
+                                        <button
+                                            onClick={() => toggleAlarmaActiva(b)}
+                                            title={isEncendida ? 'Alarma activada (Clic para pausar)' : 'Alarma pausada (Clic para activar)'}
+                                            style={{
+                                                width: '34px', height: '20px', borderRadius: '999px',
+                                                background: isEncendida ? C.primary : C.surfaceContainerHighest,
+                                                border: 'none', cursor: 'pointer', padding: '2px',
+                                                display: 'flex', alignItems: 'center',
+                                                justifyContent: isEncendida ? 'flex-end' : 'flex-start',
+                                                transition: 'background 0.2s', flexShrink: 0,
+                                            }}
+                                        >
+                                            <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                                        </button>
 
-                                                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: C.onSurface, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                    {b.label}
-                                                </span>
-                                            </div>
-
-                                            {/* Hora si tiene */}
-                                            {b.time && (
-                                                <span style={{
-                                                    fontSize: '0.75rem', fontWeight: 800, fontFamily: MONO,
-                                                    background: 'rgba(15, 169, 122, 0.1)', color: C.primary,
-                                                    borderRadius: '6px', padding: '2px 7px', display: 'flex', alignItems: 'center', gap: '3px',
-                                                }}>
-                                                    <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>schedule</span>
-                                                    {b.time}
-                                                </span>
-                                            )}
-
-                                            {/* Botón editar */}
-                                            <button
-                                                onClick={() => handleStartEdit(b)}
-                                                title="Editar tarea repetitiva"
-                                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: C.outline, display: 'flex', alignItems: 'center' }}
-                                            >
-                                                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
-                                            </button>
-
-                                            {/* Botón eliminar */}
-                                            <button
-                                                onClick={() => handleDeleteRepetitiva(b)}
-                                                title="Eliminar tarea repetitiva"
-                                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: C.outline, display: 'flex', alignItems: 'center' }}
-                                            >
-                                                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete</span>
-                                            </button>
-                                        </div>
-
-                                        {/* Días y proyecto */}
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px', marginTop: '2px' }}>
-                                            <div style={{ display: 'flex', gap: '4px' }}>
-                                                {DIAS_SEMANA.map(d => {
-                                                    const activo = b.repeatDays?.includes(d.idx);
-                                                    return (
-                                                        <span
-                                                            key={d.idx}
-                                                            style={{
-                                                                width: '18px', height: '18px', borderRadius: '5px',
-                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                fontSize: '0.62rem', fontWeight: 800,
-                                                                background: activo ? (isEncendida ? C.primary : C.outline) : 'transparent',
-                                                                color: activo ? '#fff' : C.outlineVariant,
-                                                            }}
-                                                        >
-                                                            {d.label}
-                                                        </span>
-                                                    );
-                                                })}
-                                            </div>
-
+                                        <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+                                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: C.onSurface, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.label}</div>
                                             {project && (
-                                                <span style={{ fontSize: '0.68rem', fontWeight: 600, color: C.onSurfaceVariant, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <div style={{ fontSize: '0.68rem', color: C.onSurfaceVariant, display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                     <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: project.color }} />
                                                     {project.name}
-                                                </span>
+                                                </div>
                                             )}
                                         </div>
+
+                                        {/* Días de la semana */}
+                                        <div style={{ display: 'flex', gap: '3px', order: movil ? 5 : undefined, flexBasis: movil ? '100%' : undefined, paddingLeft: movil ? '44px' : 0 }}>
+                                            {DIAS_SEMANA.map(d => {
+                                                const activo = b.repeatDays?.includes(d.idx);
+                                                return (
+                                                    <span key={d.idx} style={{
+                                                        width: '19px', height: '19px', borderRadius: '5px',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        fontSize: '0.62rem', fontWeight: 800,
+                                                        background: activo ? (isEncendida ? C.primary : C.outline) : 'transparent',
+                                                        color: activo ? '#fff' : C.outlineVariant,
+                                                    }}>{d.label}</span>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Hora si tiene */}
+                                        {b.time && (
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 800, fontFamily: MONO, background: 'rgba(15, 169, 122, 0.1)', color: C.primary, borderRadius: '6px', padding: '2px 7px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>schedule</span>
+                                                {b.time}
+                                            </span>
+                                        )}
+
+                                        {menuAcciones(b.id, () => handleStartEdit(b), () => handleDeleteRepetitiva(b))}
                                     </div>
                                 );
                             })
@@ -778,105 +769,79 @@ Supermercado:
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: '14px' }}>
                         {sueltasFiltradas.length === 0 ? (
-                            <div style={{ padding: '2rem 1.5rem', textAlign: 'center', background: C.surfaceLowest, borderRadius: '16px', border: `1px dashed ${C.outlineVariant}`, color: C.onSurfaceVariant }}>
+                            <div style={{ padding: '1.5rem 1rem', textAlign: 'center', color: C.onSurfaceVariant }}>
                                 <span className="material-symbols-outlined" style={{ fontSize: '32px', color: C.outlineVariant, marginBottom: '6px', display: 'block' }}>task_alt</span>
                                 <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>No hay tareas sueltas en este filtro.</p>
                                 <p style={{ margin: '4px 0 0', fontSize: '0.75rem' }}>Agrega una tarea de una sola vez con el botón arriba.</p>
                             </div>
                         ) : (
-                            sueltasFiltradas.map(b => {
+                            GRUPOS_SUE.map(g => {
+                                const items = sueltasFiltradas.filter(x => estadoDe(x) === g);
+                                if (items.length === 0) return null;
+                                const clave = 'sue:' + g;
+                                return (
+                                    <div key={g}>
+                                        {cabeceraGrupo(clave, g, items.length, g === 'Vencidas' ? C.rojo : g === 'Hoy' ? C.primary : undefined)}
+                                        {!cerrados[clave] && items.map(b => {
                                 const project = projects.find(p => p.id === b.projectId);
                                 const esHoy = b.date === todayStr;
+
+                                const vencida = !!b.date && b.date < todayStr && !b.completed;
+                                const fechaCorta = b.date ? new Date(b.date + 'T00:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'short' }).replace('.', '') : '';
 
                                 return (
                                     <div
                                         key={b.id}
-                                        style={{
-                                            background: C.surfaceLowest,
-                                            borderRadius: '14px',
-                                            border: `1px solid ${C.outlineVariant}`,
-                                            padding: '10px 14px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '10px',
-                                            transition: 'all 0.15s',
-                                            boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-                                        }}
+                                        style={{ padding: '8px 8px 8px 14px', borderBottom: `1px solid ${C.surfaceContainerHigh}`, display: 'flex', alignItems: 'center', gap: '10px' }}
                                     >
                                         {/* Checkbox circular */}
                                         <button
                                             onClick={() => toggleDailyBlock(b.id)}
                                             style={{
-                                                width: '20px', height: '20px', borderRadius: '50%',
+                                                width: '22px', height: '22px', borderRadius: '50%',
                                                 border: `2px solid ${b.completed ? C.primary : C.outlineVariant}`,
                                                 background: b.completed ? C.primary : 'transparent',
                                                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                 flexShrink: 0, padding: 0,
                                             }}
                                         >
-                                            {b.completed && (
-                                                <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#fff' }}>check</span>
-                                            )}
+                                            {b.completed && <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#fff' }}>check</span>}
                                         </button>
 
-                                        {/* Texto y metadatos */}
                                         <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{
-                                                fontSize: '0.88rem', fontWeight: 600, color: b.completed ? C.outline : C.onSurface,
-                                                textDecoration: b.completed ? 'line-through' : 'none',
-                                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                                            }}>
+                                            <div style={{ fontSize: '0.88rem', fontWeight: 600, color: b.completed ? C.outline : C.onSurface, textDecoration: b.completed ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                 {b.label}
                                             </div>
-
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', flexWrap: 'wrap' }}>
-                                                {/* Badge de fecha si no es hoy pero tiene fecha asignada */}
+                                                {/* Fecha (en rojo si ya venció) */}
                                                 {!esHoy && b.date && (
-                                                    <span style={{
-                                                        fontSize: '0.68rem', fontWeight: 600,
-                                                        color: C.onSurfaceVariant,
-                                                        background: C.surfaceContainer,
-                                                        borderRadius: '4px', padding: '1px 6px',
-                                                    }}>
-                                                        📅 {b.date}
+                                                    <span style={{ fontSize: '0.68rem', fontWeight: 700, color: vencida ? C.rojo : C.onSurfaceVariant, background: vencida ? 'rgba(198,60,60,0.08)' : C.surfaceContainer, borderRadius: '999px', padding: '1px 8px' }}>
+                                                        {vencida ? 'Venció ' : ''}{fechaCorta}
                                                     </span>
                                                 )}
 
                                                 {/* Botón rápido Hoy / Mi Día */}
                                                 <button
                                                     type="button"
-                                                    onClick={() => {
-                                                        const nextDate = esHoy ? '' : todayStr;
-                                                        updateDailyBlock(b.id, { date: nextDate });
-                                                    }}
-                                                    title={esHoy ? 'Marcada para Hoy (Clic para quitar de Mi Día)' : 'Clic para marcar para Hoy (aparecerá en Mi Día)'}
+                                                    onClick={() => updateDailyBlock(b.id, { date: esHoy ? '' : todayStr })}
+                                                    title={esHoy ? 'Marcada para Hoy (clic para quitar de Mi Día)' : 'Clic para marcar para Hoy (aparecerá en Mi Día)'}
                                                     style={{
                                                         display: 'inline-flex', alignItems: 'center', gap: '3px',
                                                         fontSize: '0.68rem', fontWeight: 700,
                                                         color: esHoy ? C.primary : C.onSurfaceVariant,
-                                                        background: esHoy ? 'rgba(15, 169, 122, 0.12)' : C.surfaceContainerHigh,
-                                                        border: `1px solid ${esHoy ? 'rgba(15, 169, 122, 0.35)' : 'transparent'}`,
-                                                        borderRadius: '6px', padding: '2px 7px',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.15s',
+                                                        background: esHoy ? 'rgba(15, 169, 122, 0.12)' : 'transparent',
+                                                        border: `1px solid ${esHoy ? 'rgba(15, 169, 122, 0.35)' : C.outlineVariant}`,
+                                                        borderRadius: '999px', padding: '1px 8px', cursor: 'pointer',
                                                     }}
                                                 >
-                                                    <span className="material-symbols-outlined" style={{ fontSize: '13px', color: esHoy ? C.primary : 'inherit' }}>
-                                                        {esHoy ? 'wb_sunny' : 'add'}
-                                                    </span>
-                                                    {esHoy ? 'Hoy (En Mi Día)' : '+ Hoy'}
+                                                    <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>{esHoy ? 'wb_sunny' : 'add'}</span>
+                                                    {esHoy ? 'Hoy' : 'Hoy'}
                                                 </button>
 
-                                                {/* Hora si tiene */}
-                                                {b.time && (
-                                                    <span style={{ fontSize: '0.68rem', fontFamily: MONO, color: C.onSurfaceVariant }}>
-                                                        ⏰ {b.time}
-                                                    </span>
-                                                )}
+                                                {b.time && <span style={{ fontSize: '0.68rem', fontFamily: MONO, color: C.onSurfaceVariant }}>⏰ {b.time}</span>}
 
-                                                {/* Proyecto */}
                                                 {project && (
                                                     <span style={{ fontSize: '0.68rem', color: C.onSurfaceVariant, display: 'flex', alignItems: 'center', gap: '3px' }}>
                                                         <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: project.color }} />
@@ -886,23 +851,10 @@ Supermercado:
                                             </div>
                                         </div>
 
-                                        {/* Botón editar */}
-                                        <button
-                                            onClick={() => handleStartEdit(b)}
-                                            title="Editar tarea"
-                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: C.outline, display: 'flex', alignItems: 'center' }}
-                                        >
-                                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
-                                        </button>
-
-                                        {/* Botón eliminar */}
-                                        <button
-                                            onClick={() => removeDailyBlock(b.id)}
-                                            title="Eliminar tarea"
-                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: C.outline, display: 'flex', alignItems: 'center' }}
-                                        >
-                                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete</span>
-                                        </button>
+                                        {menuAcciones(b.id, () => handleStartEdit(b), () => removeDailyBlock(b.id))}
+                                    </div>
+                                );
+                            })}
                                     </div>
                                 );
                             })

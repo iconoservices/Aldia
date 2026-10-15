@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 import { Header } from './components/layout/Header';
 import { PedirCuentaDialog } from './components/ui/PedirCuentaDialog';
-import { VistasListas, VISTAS_PENDIENTES, VISTAS_METAS, VISTAS_DINERO, VISTAS_AGENDA, VISTAS_VIDA } from './components/ui/VistasListas';
+import { VistasListas, VISTAS_METAS, VISTAS_DINERO, VISTAS_AGENDA, VISTAS_VIDA } from './components/ui/VistasListas';
 import { useAlDiaState } from './hooks/useAlDiaState';
 import type { Mission, Note } from './hooks/useAlDiaState';
 import { ProfileOverlay } from './components/layout/ProfileOverlay';
@@ -21,9 +21,8 @@ import { ActionBanner } from './components/dashboard/ActionBanner';
 // toda la página (el selector se queda quieto, solo cambia el contenido).
 const GRUPOS_VISTA: string[][] = [
   ['Listas', 'Quiero hacer', 'Bandeja'],
-  ['Resumen', 'Agenda', 'Calendario', 'Entregas'],
+  ['Resumen', 'Agenda', 'Calendario', 'Entregas', 'Tareas', 'Pendientes'],
   ['Vida', 'Comidas', 'Bienestar'],
-  ['Tareas', 'Pendientes'],
   ['Metas', 'Proyectos', 'Compras'],
   ['Finanzas', 'Fijos', 'Plan', 'Deudas', 'Proyección', 'Movimientos'],
 ];
@@ -119,6 +118,9 @@ function App() {
   // En transición: mientras carga el chunk de la pestaña nueva se mantiene la
   // anterior en pantalla (sin parpadeo de la pantalla de carga).
   const setActiveTab = (t: string) => startTransition(() => setActiveTabRaw(t));
+  // Todas las vistas de Agenda (Resumen, Sesiones, Calendario, Entregas, Tareas, Por hacer) ocupan
+  // todo el ancho y el alto disponibles, como el Calendario; el contenido se desplaza adentro.
+  const enAgenda = VISTAS_AGENDA.some(v => v.tab === activeTab);
 
 
   useEffect(() => {
@@ -229,7 +231,7 @@ function App() {
       />
 
       <Suspense fallback={<PantallaCarga />}>
-      <main className={`dashboard ${activeTab === 'Calendario' || activeTab === 'Lienzo' || activeTab === 'Lienzo Ops' ? 'full-bleed' : ''}`}>
+      <main className={`dashboard ${enAgenda || activeTab === 'Lienzo' || activeTab === 'Lienzo Ops' ? 'full-bleed' : ''}`}>
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={grupoVista(activeTab)}
@@ -239,7 +241,7 @@ function App() {
             transition={{ duration: 0.14, ease: "easeOut" }}
             style={{
               width: '100%',
-              ...((activeTab === 'Calendario' || activeTab === 'Lienzo' || activeTab === 'Lienzo Ops') && {
+              ...((activeTab === 'Lienzo' || activeTab === 'Lienzo Ops') && {
                 height: 'calc(100dvh - var(--header-height, 65px))', /* Altura de la cabecera */
                 overflow: 'hidden',
                 display: 'flex',
@@ -250,12 +252,12 @@ function App() {
             {VISTAS_DINERO.some(v => v.tab === activeTab) && (
               <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_DINERO} />
             )}
-            {VISTAS_AGENDA.some(v => v.tab === activeTab) && (
-              <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_AGENDA} />
-            )}
             {VISTAS_VIDA.some(v => v.tab === activeTab) && (
               <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_VIDA} />
             )}
+            <div className={enAgenda ? 'agenda-wrapper' : undefined} style={enAgenda ? undefined : { display: 'contents' }}>
+            {enAgenda && <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_AGENDA} />}
+            <div style={enAgenda ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflowY: activeTab === 'Calendario' ? 'hidden' : 'auto' } : { display: 'contents' }}>
             {activeTab === 'Acción' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
                 <ActionBanner performanceScore={state.performanceScore} missions={state.missions} />
@@ -376,7 +378,6 @@ function App() {
               />
             ) : activeTab === 'Tareas' ? (
               <>
-                <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_PENDIENTES} />
                 <TareasDashboard
                   dailyBlocks={state.dailyBlocks}
                   addDailyBlock={state.addDailyBlock}
@@ -572,7 +573,6 @@ function App() {
               </>
             ) : activeTab === 'Pendientes' ? (
               <>
-                <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_PENDIENTES} />
                 <PendientesDashboard
                   notes={state.notes}
                   addNote={state.addNote}
@@ -711,6 +711,8 @@ function App() {
                 <p>En construcción...</p>
               </div>
             )}
+            </div>
+            </div>
           </motion.div>
         </AnimatePresence>
       </main>

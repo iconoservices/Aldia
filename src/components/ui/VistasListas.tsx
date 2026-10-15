@@ -9,11 +9,6 @@ export const VISTAS_LISTAS = [
     { tab: "Bandeja", label: "Bandeja" },
 ] as const;
 
-export const VISTAS_PENDIENTES = [
-    { tab: "Tareas", label: "Con hora" },
-    { tab: "Pendientes", label: "Por hacer" },
-] as const;
-
 export const VISTAS_METAS = [
     { tab: "Metas", label: "Metas" },
     { tab: "Proyectos", label: "Proyectos" },
@@ -30,9 +25,11 @@ export const VISTAS_DINERO = [
 
 export const VISTAS_AGENDA = [
     { tab: "Resumen", label: "Resumen" },
-    { tab: "Agenda", label: "Sesiones" },
     { tab: "Calendario", label: "Calendario" },
+    { tab: "Agenda", label: "Sesiones" },
     { tab: "Entregas", label: "Entregas" },
+    { tab: "Tareas", label: "Tareas" },
+    { tab: "Pendientes", label: "Por hacer" },
 ] as const;
 
 export const VISTAS_VIDA = [
@@ -44,7 +41,7 @@ export const VISTAS_VIDA = [
 type Vista = { readonly tab: string; readonly label: string };
 
 export const VistasListas = ({ activeTab, setActiveTab, vistas = VISTAS_LISTAS }: { activeTab: string; setActiveTab: (t: string) => void; vistas?: readonly Vista[] }) => (
-    <div style={{ padding: "12px 12px 0", display: "flex", overflowX: "auto" }}>
+    <div style={{ padding: "12px 12px 0", display: "flex", overflowX: "auto", flexShrink: 0 }}>
         <div style={{ display: "inline-flex", gap: "4px", padding: "4px", background: C.surfaceContainer, borderRadius: RADIO.chip }}>
             {vistas.map(v => {
                 const activa = activeTab === v.tab;

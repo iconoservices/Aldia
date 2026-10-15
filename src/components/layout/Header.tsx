@@ -49,7 +49,7 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
 
 
     // Pestañas que viven dentro de otra (selector de vistas) y no van en el menú.
-    const OCULTAS = ['Bandeja', 'Pendientes', 'Proyectos', 'Compras', 'Movimientos', 'Plan', 'Deudas', 'Proyección', 'Calendario', 'Entregas', 'Comidas', 'Bienestar'];
+    const OCULTAS = ['Bandeja', 'Tareas', 'Pendientes', 'Proyectos', 'Compras', 'Movimientos', 'Plan', 'Deudas', 'Proyección', 'Calendario', 'Entregas', 'Comidas', 'Bienestar'];
 
     // ── Primary sidebar items ─────────────────────────────────────────
     const PRIMARY_ITEMS = [
@@ -96,9 +96,8 @@ export const Header = ({ activeTab, setActiveTab, onProfileClick, onTrashClick }
     const esActiva = (tab: string) =>
         activeTab === tab
         || (tab === 'Listas' && (activeTab === 'Bandeja' || activeTab === 'Quiero hacer'))
-        || (tab === 'Tareas' && activeTab === 'Pendientes')
-        || (tab === 'Finanzas' && ['Movimientos', 'Plan', 'Deudas', 'Proyección'].includes(activeTab))
-        || (tab === 'Resumen' && ['Agenda', 'Calendario', 'Entregas'].includes(activeTab))
+                || (tab === 'Finanzas' && ['Movimientos', 'Plan', 'Deudas', 'Proyección'].includes(activeTab))
+        || (tab === 'Resumen' && ['Agenda', 'Calendario', 'Entregas', 'Tareas', 'Pendientes'].includes(activeTab))
         || (tab === 'Vida' && ['Comidas', 'Bienestar'].includes(activeTab))
         || (tab === 'Metas' && (activeTab === 'Proyectos' || activeTab === 'Compras'));
 
