@@ -287,31 +287,31 @@ export const useFinanzasState = () => {
 
     // Métricas calculadas (DIARIAS)
     const todayIncome = txArr
-        .filter(t => t?.type === 'ingreso' && !t.isCashless && t.fullDate === todayStr)
+        .filter(t => t?.type === 'ingreso' && t.category !== 'Ajuste' && !t.isCashless && t.fullDate === todayStr)
         .reduce((acc, t) => acc + (Number(t?.amount) || 0), 0);
 
     const todayExpense = txArr
-        .filter(t => t?.type === 'gasto' && !t.isCashless && t.fullDate === todayStr)
+        .filter(t => t?.type === 'gasto' && t.category !== 'Ajuste' && !t.isCashless && t.fullDate === todayStr)
         .reduce((acc, t) => acc + Math.abs(Number(t?.amount) || 0), 0);
 
     const todayNet = todayIncome - todayExpense;
 
     // Ganancia Real Diaria (sin deudas)
     const todayIncomeReal = txArr
-        .filter(t => t?.type === 'ingreso' && !t.isDebt && t.fullDate === todayStr)
+        .filter(t => t?.type === 'ingreso' && t.category !== 'Ajuste' && !t.isDebt && t.fullDate === todayStr)
         .reduce((acc, t) => acc + (Number(t?.amount) || 0), 0);
 
     const todayExpenseReal = txArr
-        .filter(t => t?.type === 'gasto' && !t.isDebt && t.fullDate === todayStr)
+        .filter(t => t?.type === 'gasto' && t.category !== 'Ajuste' && !t.isDebt && t.fullDate === todayStr)
         .reduce((acc, t) => acc + Math.abs(Number(t?.amount) || 0), 0);
 
     // Totales Históricos (Para el Balance de "Tres Realidades")
     const totalIncomeReal = txArr
-        .filter(t => t?.type === 'ingreso' && !t.isDebt)
+        .filter(t => t?.type === 'ingreso' && t.category !== 'Ajuste' && !t.isDebt)
         .reduce((acc, t) => acc + (Number(t?.amount) || 0), 0);
 
     const totalExpenseReal = txArr
-        .filter(t => t?.type === 'gasto' && !t.isDebt)
+        .filter(t => t?.type === 'gasto' && t.category !== 'Ajuste' && !t.isDebt)
         .reduce((acc, t) => acc + Math.abs(Number(t?.amount) || 0), 0);
 
     const totalNetReal = totalIncomeReal - totalExpenseReal;

@@ -49,7 +49,7 @@ export const RendimientoDashboard = ({ sporadicProjects, transactions, dailyChec
     // Finanzas: de lo que movió el mes en curso, qué proporción fue ingreso
     // (vs. gasto). Sin movimientos este mes todavía = neutral (100).
     const mesActual = hoy.slice(0, 7);
-    const txMes = transactions.filter(t => t.fullDate.startsWith(mesActual));
+    const txMes = transactions.filter(t => t.fullDate.startsWith(mesActual) && t.category !== 'Ajuste');
     const ingresosMes = txMes.filter(t => t.type === 'ingreso').reduce((s, t) => s + t.amount, 0);
     const gastosMes = txMes.filter(t => t.type === 'gasto').reduce((s, t) => s + t.amount, 0);
     const finanzasScore = (ingresosMes + gastosMes) === 0 ? 100

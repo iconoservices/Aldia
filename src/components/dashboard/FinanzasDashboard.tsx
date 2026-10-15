@@ -513,7 +513,7 @@ export const FinanzasDashboard = ({
     // Gastos del período por el mismo monto, aunque el Balance Neto no cambie.
     const topTxs = useMemo(() => {
         const { start, end } = getPeriodBounds(topPeriod, periodRef);
-        return transactions.filter(tx => !tx.isDebt && tx.category !== "Transferencia" && tx.fullDate >= start && tx.fullDate <= end);
+        return transactions.filter(tx => !tx.isDebt && tx.category !== "Transferencia" && tx.category !== "Ajuste" && tx.fullDate >= start && tx.fullDate <= end);
     }, [transactions, topPeriod, periodRef]);
 
     const topIncome = useMemo(() =>
@@ -577,8 +577,8 @@ export const FinanzasDashboard = ({
     const accountsBudget = useMemo(() => {
         const { start, end } = getPeriodBounds(topPeriod, periodRef);
         return accounts.map(acc => {
-            const inPeriod = transactions.filter(tx => tx.accountId === acc.id && !tx.isCashless && tx.fullDate >= start && tx.fullDate <= end);
-            const ingresoReal = inPeriod.filter(tx => tx.type === "ingreso" && tx.category !== "Transferencia").reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
+            const inPeriod = transactions.filter(tx => tx.accountId === acc.id && !tx.isCashless && tx.category !== "Ajuste" && tx.fullDate >= start && tx.fullDate <= end);
+            const ingresoReal = inPeriod.filter(tx => tx.type === "ingreso" && tx.category !== "Transferencia" && tx.category !== "Ajuste").reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
             const gastoTotal = inPeriod.filter(tx => tx.type === "gasto").reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
             // Cuánto de ese movimiento (entrada o salida) fue plata que solo cambió de cuenta,
             // no gasto real ni ingreso nuevo — se muestra aparte para no confundirlo con lo demás.
@@ -600,7 +600,7 @@ export const FinanzasDashboard = ({
         accounts.forEach(acc => {
             const byCategory = new Map<string, number>();
             transactions
-                .filter(tx => tx.accountId === acc.id && !tx.isCashless && tx.type === "gasto" && tx.category !== "Transferencia" && tx.fullDate >= start && tx.fullDate <= end)
+                .filter(tx => tx.accountId === acc.id && !tx.isCashless && tx.type === "gasto" && tx.category !== "Transferencia" && tx.category !== "Ajuste" && tx.fullDate >= start && tx.fullDate <= end)
                 .forEach(tx => {
                     const cat = tx.category || "Sin categoría";
                     byCategory.set(cat, (byCategory.get(cat) || 0) + Math.abs(Number(tx.amount) || 0));
@@ -620,8 +620,8 @@ export const FinanzasDashboard = ({
         if (topPeriod === "all") return null;
         const prevRef = shiftPeriod(topPeriod, periodRef, -1);
         const { start, end } = getPeriodBounds(topPeriod, prevRef);
-        const inPeriod = transactions.filter(tx => !tx.isCashless && tx.fullDate >= start && tx.fullDate <= end);
-        const ingresoReal = inPeriod.filter(tx => tx.type === "ingreso" && tx.category !== "Transferencia").reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
+        const inPeriod = transactions.filter(tx => !tx.isCashless && tx.category !== "Ajuste" && tx.fullDate >= start && tx.fullDate <= end);
+        const ingresoReal = inPeriod.filter(tx => tx.type === "ingreso" && tx.category !== "Transferencia" && tx.category !== "Ajuste").reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
         const gastoTotal = inPeriod.filter(tx => tx.type === "gasto").reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
         const gastoTransferSaliente = inPeriod.filter(tx => tx.type === "gasto" && tx.category === "Transferencia").reduce((s, tx) => s + Math.abs(Number(tx.amount) || 0), 0);
         return ingresoReal - (gastoTotal - gastoTransferSaliente);
@@ -635,6 +635,22 @@ export const FinanzasDashboard = ({
 
     // ── Transferir entre cuentas ──────────────────────────────────────────
     const [isTransferring, setIsTransferring] = useState(false);
+    const [ajustando, setAjustando] = useState(false);
+    const [ajusteVals, setAjusteVals] = useState<Record<number, string>>({});
+    const guardarAjustes = () => {
+        accountsWithBalance.forEach(acc => {
+            const txt = (ajusteVals[acc.id] ?? "").replace(",", ".").trim();
+            if (txt === "") return;
+            const real = parseFloat(txt);
+            if (isNaN(real)) return;
+            const diff = Math.round((real - acc.balance) * 100) / 100;
+            if (Math.abs(diff) < 0.005) return;
+            // Ajuste: cambia solo el saldo de la cuenta; no cuenta como ingreso ni como gasto.
+            addTransaction(`Ajuste de saldo: ${acc.name}`, Math.abs(diff), diff > 0 ? "ingreso" : "gasto", false, undefined, acc.id, false, "Ajuste");
+        });
+        setAjusteVals({});
+        setAjustando(false);
+    };
     const [transferAmount, setTransferAmount] = useState("");
     const [transferFrom, setTransferFrom] = useState<number | undefined>(undefined);
     const [transferTo, setTransferTo] = useState<number | undefined>(undefined);
@@ -1065,6 +1081,20 @@ export const FinanzasDashboard = ({
                         >
                             <Plus size={12} />
                         </button>
+                        {accounts.length > 0 && (
+                            <button
+                                onClick={() => setAjustando(v => !v)}
+                                title="Poner cuánto tienes realmente en cada cuenta"
+                                style={{
+                                    display: "flex", alignItems: "center", gap: "4px", justifyContent: "center",
+                                    padding: "3px 8px", borderRadius: "999px",
+                                    border: `1px solid ${ajustando ? C.secondary : C.outlineVariant}`, background: ajustando ? "rgba(15,169,122,0.10)" : "transparent",
+                                    color: ajustando ? C.secondary : C.onSurfaceVariant, cursor: "pointer", fontSize: "0.65rem", fontWeight: 700,
+                                }}
+                            >
+                                Ajustar saldos
+                            </button>
+                        )}
                         {accounts.length > 1 && (
                             <button
                                 onClick={() => setIsTransferring(v => !v)}
@@ -1096,16 +1126,40 @@ export const FinanzasDashboard = ({
                     return (
                         <div style={{ marginBottom: movil ? "0.8rem" : "1rem" }}>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 28px", alignItems: "flex-end" }}>
-                                {bloque("Tengo ahora", `${tengo < 0 ? "−" : ""}${fmtS(tengo)}`, tengo < 0 ? C.rojo : C.secondary, "suma del saldo de tus cuentas")}
+                                {bloque("Tengo ahora", `${tengo < 0 ? "−" : ""}${fmtS(tengo)}`, tengo < 0 ? C.rojo : C.secondary, "acumulado de todo lo registrado en tus cuentas")}
                             </div>
                             {tengo < 0 && (
                                 <div style={{ marginTop: "8px", fontSize: "0.72rem", color: "#B9760A", background: "rgba(245,158,11,0.10)", borderRadius: "8px", padding: "6px 10px", display: "inline-block" }}>
-                                    El saldo sale negativo porque aquí se suma lo que entró y lo que salió de cada cuenta. Puede que falten ingresos por registrar.
+                                    El saldo sale negativo porque las cuentas empiezan en cero y solo suman lo que registraste. Toca «Ajustar saldos» y pon cuánto tienes realmente.
                                 </div>
                             )}
                         </div>
                     );
                 })()}
+
+                {ajustando && (
+                    <div style={{ borderRadius: movil ? "10px" : "14px", padding: movil ? "10px" : "14px", border: `1px solid ${C.secondary}`, background: C.surface, display: "flex", flexDirection: "column", gap: "10px", marginBottom: movil ? "8px" : "12px" }}>
+                        <div style={{ fontSize: "0.8rem", fontWeight: 700, color: C.onSurface }}>¿Cuánto tienes realmente en cada cuenta hoy?</div>
+                        <div style={{ fontSize: "0.7rem", color: C.outline }}>La app anota la diferencia como un ajuste: cambia tu saldo, pero no cuenta como ingreso ni como gasto. Deja en blanco las que no quieras tocar.</div>
+                        {accountsWithBalance.map(acc => (
+                            <div key={acc.id} style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                                <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: acc.color, flexShrink: 0 }} />
+                                <span style={{ flex: "1 1 120px", fontSize: "0.82rem", fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{acc.name}</span>
+                                <span style={{ fontSize: "0.72rem", color: C.outline }}>ahora S/ {acc.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                                <input
+                                    inputMode="decimal" placeholder="Tengo S/" value={ajusteVals[acc.id] ?? ""}
+                                    onChange={e => setAjusteVals(v => ({ ...v, [acc.id]: e.target.value }))}
+                                    onKeyDown={e => e.key === "Enter" && guardarAjustes()}
+                                    style={{ width: "110px", padding: "8px 10px", borderRadius: "8px", border: `1px solid ${C.outlineVariant}`, fontSize: "16px", outline: "none", background: "white" }}
+                                />
+                            </div>
+                        ))}
+                        <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                            <button onClick={() => { setAjustando(false); setAjusteVals({}); }} style={{ background: "none", border: `1px solid ${C.outlineVariant}`, color: C.onSurfaceVariant, borderRadius: "8px", padding: "7px 14px", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer" }}>Cancelar</button>
+                            <button onClick={guardarAjustes} style={{ background: C.secondary, color: "white", border: "none", borderRadius: "8px", padding: "7px 14px", fontWeight: 800, fontSize: "0.78rem", cursor: "pointer" }}>Guardar ajustes</button>
+                        </div>
+                    </div>
+                )}
 
                 {isAddingAccount && (
                     <div style={{ borderRadius: movil ? "10px" : "14px", padding: movil ? "8px" : "12px", border: `1px solid ${C.secondary}`, background: C.surface, display: "flex", flexDirection: "column", gap: "6px", marginBottom: movil ? "8px" : "12px" }}>

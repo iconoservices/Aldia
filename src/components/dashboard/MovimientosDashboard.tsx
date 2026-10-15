@@ -100,7 +100,7 @@ export const MovimientosDashboard = ({ transactions, removeTransaction, undoFixe
         let gastoReal = 0, prestamoDado = 0, pagoDeuda = 0;
         for (const t of periodTxs) {
             const cat = t.category || "";
-            if (cat === "Transferencia") continue;
+            if (cat === "Transferencia" || cat === "Ajuste") continue;
             const monto = Math.abs(Number(t.amount) || 0);
             const esDeuda = cat === "Préstamos" || cat === "Deudas";
             if (t.type === "ingreso") {
