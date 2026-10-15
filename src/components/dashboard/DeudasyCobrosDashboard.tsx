@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Transaction, Contact, FixedExpense } from "../../hooks/useAlDiaState";
 import type { FixedIncome } from "./PlanDashboard";
-import { useIsMobile } from "../../theme";
+import { useIsMobile, MONO } from "../../theme";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 
 // En iOS Safari, `position: fixed` no se reacomoda cuando aparece el teclado: el
@@ -136,22 +136,7 @@ const CARD: React.CSSProperties = {
     overflow: "hidden",
 };
 
-const TH: React.CSSProperties = {
-    padding: "14px 16px",
-    fontSize: "0.68rem",
-    fontWeight: 800,
-    color: "#4A5F58",
-    textTransform: "uppercase",
-    letterSpacing: "0.06em",
-    textAlign: "left",
-};
 
-const TD: React.CSSProperties = {
-    padding: "14px 16px",
-    fontSize: "0.88rem",
-    color: "#0C2A20",
-    borderBottom: "1px solid #DCE7E1",
-};
 
 const SELECT_MINI: React.CSSProperties = {
     width: "100%", padding: "5px 6px", borderRadius: "6px", border: "1px solid #DCE7E1",
@@ -265,6 +250,7 @@ export const DeudasyCobrosDashboard = ({
     const [confirmPayId, setConfirmPayId] = useState<number | null>(null);
     const [editingTx, setEditingTx] = useState<Transaction | null>(null);
     const [abonarId, setAbonarId] = useState<number | null>(null);
+    const [menuFila, setMenuFila] = useState<number | null>(null);
     const [abonarAmount, setAbonarAmount] = useState<Record<number, string>>({});
     const [abonarAccountId, setAbonarAccountId] = useState<Record<number, string>>({});
     const [convertId, setConvertId] = useState<number | null>(null);
@@ -669,247 +655,114 @@ export const DeudasyCobrosDashboard = ({
         setConfirmPayId(null);
     };
 
-    const renderDebtTable = (items: DebtGroup[]) => (
-        <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-<thead>
-                    <tr style={{ background: "#F1F5F3", borderBottom: "1px solid #DCE7E1" }}>
-                        <th style={TH}>Acreedor</th>
-                        <th style={TH}>Monto</th>
-                        <th style={TH}>Fecha</th>
-                        <th style={TH}>Estado</th>
-                        <th style={TH}>Acciones</th>
-                    </tr>
-                </thead>
-<tbody>
-                    {items.length === 0 && (
-                        <tr>
-                            <td colSpan={5} style={{ ...TD, textAlign: "center", color: "#6C8079", padding: "2.5rem", borderBottom: "none" }}>
-                                Sin deudas registradas 🎉
-                            </td>
-                        </tr>
-                    )}
-                    {annotateGroups(items).map(({ item, groupCount, groupTotal, isFirstOfGroup, isLastOfGroup }) => {
-                        const badge = getEstadoBadge(item.originalTx);
-                        const iconC = getIconColor(badge);
-                        const icon = getContactIcon(item.contact || item.name, "gasto");
-                        const id = item.originalTx.id;
-                        return (
-                            <Fragment key={item.key}>
-                                <tr
-                                    style={{ transition: "background 0.15s" }}
-                                    onMouseEnter={e => (e.currentTarget.style.background = "#F1F5F3")}
-                                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                                >
-                                    <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent" }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                                            {isFirstOfGroup ? (
-                                                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: iconC.bg, color: iconC.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                                    <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>{icon}</span>
-                                                </div>
-                                            ) : (
-                                                <div style={{ width: "32px", display: "flex", justifyContent: "center", flexShrink: 0 }}>
-                                                    <div style={{ width: "2px", alignSelf: "stretch", minHeight: "18px", background: "#DFF3E9" }} />
-                                                </div>
-                                            )}
-                                            <div>
-                                                {isFirstOfGroup ? (
-                                                    <div style={{ fontWeight: 600 }}>{item.contact || item.name}{groupCount > 1 ? ` (${groupCount})` : ""}</div>
-                                                ) : (
-                                                    <div style={{ fontSize: "0.72rem", color: "#6C8079", fontWeight: 600 }}>↳ mismo contacto</div>
-                                                )}
-                                                {item.contact && <div style={{ fontSize: "0.72rem", color: "#6C8079" }}>{item.name}</div>}
-                                                {item.originalTx.notes && <div style={{ fontSize: "0.7rem", color: "#6C8079", fontStyle: "italic" }}>{item.originalTx.notes}</div>}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent", fontWeight: 700, color: "#C63C3C", fontVariantNumeric: "tabular-nums" }}>
-                                        {formatCurrency(item.amount)}
-                                    </td>
-                                    <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent", color: "#4A5F58", fontSize: "0.82rem" }}>{formatDate(item.originalTx.dueDate || item.originalTx.fullDate)}</td>
-                                    <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent" }}>
-                                        <span style={{ padding: "3px 10px", borderRadius: "999px", background: badge.bg, color: badge.text, fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
-                                            {badge.label}
-                                        </span>
-                                    </td>
-                                    <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent" }}>
-                                        <div style={{ display: "flex", gap: "4px" }}>
-                                            {abonarId === id ? (
-                                                <div style={ABONO_PANEL}>
-                                                    <select value={abonarAccountId[id] ?? ""} onChange={e => setAbonarAccountId(m => ({ ...m, [id]: e.target.value }))} style={SELECT_MINI} title="¿De qué cuenta sale?">
-                                                        <option value="">Sin cuenta</option>
-                                                        {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                                                    </select>
-                                                    <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-                                                        <input type="number" value={abonarAmount[id] ?? item.amount.toFixed(2)} onChange={e => setAbonarAmount(m => ({ ...m, [id]: e.target.value }))}
-                                                            style={{ width: "56px", padding: "5px 6px", borderRadius: "6px", border: "1px solid #DCE7E1", fontSize: "0.68rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
-                                                        <button onClick={() => handleAbonar(item, parseFloat(abonarAmount[id] || String(item.amount)), abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#0E9F6E", color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.64rem", cursor: "pointer" }}>Abonar</button>
-                                                        <button onClick={() => handleAbonar(item, item.amount, abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#0FA97A", color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.64rem", cursor: "pointer" }}>Todo</button>
-                                                        <button onClick={() => closeAbonar(id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6C8079", padding: "2px", fontSize: "0.75rem", fontWeight: 800 }}>✕</button>
-                                                    </div>
-                                                </div>
-                                            ) : convertId === id ? (
-                                                <ConvertPanel item={item} accounts={accounts} cuota={convertCuota[id]} setCuota={(v: string) => setConvertCuota(m => ({ ...m, [id]: v }))} dueDay={convertDueDay[id]} setDueDay={(v: string) => setConvertDueDay(m => ({ ...m, [id]: v }))} accountId={convertAccountId[id]} setAccountId={(v: string) => setConvertAccountId(m => ({ ...m, [id]: v }))} onConfirm={() => handleConvert(item)} onCancel={() => closeConvert(id)} />
-                                            ) : (
-                                                <>
-                                                    <button onClick={() => openAbonar(item)} title="Abonar" style={{ background: "#DCE7E1", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#4A5F58" }}>Abonar</button>
-                                                    {addFixedExpense && (
-                                                        <button onClick={() => openConvert(item)} title="Convertir a pago fijo" style={{ background: "#DFF3E9", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#0C8F67" }}>A plazos</button>
-                                                    )}
-                                                    <button onClick={() => handleEdit(item)} title="Editar" style={{ background: "none", border: "1px solid #0FA97A", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#0FA97A" }}>
-                                                        <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>edit</span>
-                                                    </button>
-                                                    <button onClick={() => handleDelete(item)} title="Eliminar" style={{ background: "none", border: "1px solid #C63C3C", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#C63C3C" }}>
-                                                        <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>delete</span>
-                                                    </button>
-                                                </>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                                {isLastOfGroup && groupCount > 1 && (
-                                    <tr style={{ background: "#F7FAF8" }}>
-                                        <td colSpan={5} style={{ ...TD, padding: "6px 16px 6px 52px", fontSize: "0.74rem" }}>
-                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                                <span style={{ color: "#6C8079", fontWeight: 700 }}>Subtotal {item.contact} · {groupCount} deudas</span>
-                                                <span style={{ fontWeight: 800, color: "#C63C3C" }}>{formatCurrency(groupTotal)}</span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
-                            </Fragment>
-                        );
-                    })}
-                </tbody>
-            </table>
-        </div>
-    );
-
-    const renderCobroTable = (items: DebtGroup[]) => (
-        <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                    <tr style={{ background: "#F1F5F3", borderBottom: "1px solid #DCE7E1" }}>
-                        <th style={TH}>Deudor</th>
-                        <th style={TH}>Monto</th>
-                        <th style={TH}>Fecha Est.</th>
-                        <th style={TH}>Estado</th>
-                        <th style={TH}></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {items.length === 0 && (
-                        <tr>
-                            <td colSpan={5} style={{ ...TD, textAlign: "center", color: "#6C8079", padding: "2.5rem", borderBottom: "none" }}>
-                                Sin cobros registrados
-                            </td>
-                        </tr>
-                    )}
-                    {annotateGroups(items).map(({ item, groupCount, groupTotal, isFirstOfGroup, isLastOfGroup }) => {
-                        const badge = getEstadoBadge(item.originalTx);
-                        const iconC = getIconColor(badge);
-                        const icon = getContactIcon(item.contact || item.name, "ingreso");
-                        const id = item.originalTx.id;
-                        return (
-                            <Fragment key={item.key}>
-                            <tr
-                                style={{ transition: "background 0.15s" }}
-                                onMouseEnter={e => (e.currentTarget.style.background = "#F1F5F3")}
-                                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                            >
-                                <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent" }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                                        {isFirstOfGroup ? (
-                                            <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: iconC.bg, color: iconC.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                                <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>{icon}</span>
-                                            </div>
-                                        ) : (
-                                            <div style={{ width: "32px", display: "flex", justifyContent: "center", flexShrink: 0 }}>
-                                                <div style={{ width: "2px", alignSelf: "stretch", minHeight: "18px", background: "#CDEDDD" }} />
-                                            </div>
-                                        )}
-                                        <div>
-                                            {isFirstOfGroup ? (
-                                                <div style={{ fontWeight: 600 }}>{item.contact || item.name}{groupCount > 1 ? ` (${groupCount})` : ""}</div>
-                                            ) : (
-                                                <div style={{ fontSize: "0.72rem", color: "#6C8079", fontWeight: 600 }}>↳ mismo contacto</div>
-                                            )}
-                                            {item.contact && <div style={{ fontSize: "0.72rem", color: "#6C8079" }}>{item.name}</div>}
-                                            {item.originalTx.notes && <div style={{ fontSize: "0.7rem", color: "#6C8079", fontStyle: "italic" }}>{item.originalTx.notes}</div>}
-                                        </div>
+    // Lista compacta (escritorio): una fila por deuda/cobro. Lo principal a la vista
+    // (concepto, monto, fecha, estado, un botón) y lo demás en el menú de tres puntos.
+    const renderLista = (items: DebtGroup[], tipo: "deuda" | "cobro") => {
+        const esDeuda = tipo === "deuda";
+        const colorMonto = esDeuda ? "#C63C3C" : "#0E9F6E";
+        const verbo = esDeuda ? "Abonar" : "Cobrar";
+        if (items.length === 0) {
+            return <p style={{ textAlign: "center", color: "#6C8079", padding: "2.5rem 1rem", margin: 0, fontSize: "0.88rem" }}>{esDeuda ? "Sin deudas registradas 🎉" : "Sin cobros registrados"}</p>;
+        }
+        const itemMenu = (icon: string, texto: string, onClick: () => void, color = "#0C2A20") => (
+            <button onClick={() => { setMenuFila(null); onClick(); }} style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%", padding: "9px 12px", background: "none", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "0.82rem", fontWeight: 600, color, fontFamily: "inherit", textAlign: "left", whiteSpace: "nowrap" }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>{icon}</span> {texto}
+            </button>
+        );
+        return (
+            <div>
+                {annotateGroups(items).map(({ item, groupCount, groupTotal, isFirstOfGroup, isLastOfGroup }) => {
+                    const badge = getEstadoBadge(item.originalTx);
+                    const iconC = getIconColor(badge);
+                    const icon = getContactIcon(item.contact || item.name, esDeuda ? "gasto" : "ingreso");
+                    const id = item.originalTx.id;
+                    const abierta = abonarId === id || convertId === id || confirmPayId === id;
+                    return (
+                        <Fragment key={item.key}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 16px", borderBottom: isLastOfGroup && groupCount <= 1 ? "1px solid #EDF3F0" : "1px solid transparent", position: "relative" }}>
+                                {isFirstOfGroup ? (
+                                    <div style={{ width: "34px", height: "34px", borderRadius: "50%", background: iconC.bg, color: iconC.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                        <span className="material-symbols-outlined" style={{ fontSize: "17px" }}>{icon}</span>
                                     </div>
-                                </td>
-                                <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent", fontWeight: 700, color: "#0E9F6E", fontVariantNumeric: "tabular-nums" }}>
-                                    {formatCurrency(item.amount)}
-                                </td>
-                                <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent", color: "#4A5F58", fontSize: "0.82rem" }}>{formatDate(item.originalTx.dueDate || item.originalTx.fullDate)}</td>
-                                <td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent" }}>
-                                    <span style={{ padding: "3px 10px", borderRadius: "999px", background: badge.bg, color: badge.text, fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
-                                        {badge.label}
-                                    </span>
-                                </td>
-<td style={{ ...TD, borderBottom: isLastOfGroup ? TD.borderBottom : "1px solid transparent" }}>
-                                    {confirmPayId === id ? (
-                                        <div style={{ display: "flex", gap: "4px" }}>
-                                            <button onClick={() => handleMarkPaid(item)} style={{ ...BTN_PRIMARY, padding: "4px 10px", fontSize: "0.72rem", boxShadow: "none" }}>✓ Confirmar</button>
-                                            <button onClick={() => setConfirmPayId(null)} style={{ ...BTN_SECONDARY, padding: "4px 10px", fontSize: "0.72rem" }}>✗</button>
-                                        </div>
-                                    ) : (
-                                        <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-                                            {abonarId === id ? (
-                                                <div style={ABONO_PANEL}>
-                                                    <select value={abonarAccountId[id] ?? ""} onChange={e => setAbonarAccountId(m => ({ ...m, [id]: e.target.value }))} style={SELECT_MINI} title="¿A qué cuenta entra?">
-                                                        <option value="">Sin cuenta</option>
-                                                        {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                                                    </select>
-                                                    <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-                                                        <input type="number" value={abonarAmount[id] ?? item.amount.toFixed(2)} onChange={e => setAbonarAmount(m => ({ ...m, [id]: e.target.value }))}
-                                                            style={{ width: "56px", padding: "5px 6px", borderRadius: "6px", border: "1px solid #DCE7E1", fontSize: "0.68rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
-                                                        <button onClick={() => handleAbonar(item, parseFloat(abonarAmount[id] || String(item.amount)), abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#0E9F6E", color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.64rem", cursor: "pointer" }}>Cobrar</button>
-                                                        <button onClick={() => handleAbonar(item, item.amount, abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#0FA97A", color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.64rem", cursor: "pointer" }}>Todo</button>
-                                                        <button onClick={() => closeAbonar(id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6C8079", padding: "2px", fontSize: "0.75rem", fontWeight: 800 }}>✕</button>
-                                                    </div>
-                                                </div>
-                                            ) : convertId === id ? (
-                                                <ConvertPanel item={item} accounts={accounts} cuota={convertCuota[id]} setCuota={(v: string) => setConvertCuota(m => ({ ...m, [id]: v }))} dueDay={convertDueDay[id]} setDueDay={(v: string) => setConvertDueDay(m => ({ ...m, [id]: v }))} accountId={convertAccountId[id]} setAccountId={(v: string) => setConvertAccountId(m => ({ ...m, [id]: v }))} onConfirm={() => handleConvert(item)} onCancel={() => closeConvert(id)} />
-                                            ) : (
-                                                <>
-                                                    <button onClick={() => openAbonar(item)} title="Cobrar" style={{ background: "#DCE7E1", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#4A5F58" }}>Cobrar</button>
-                                                    {updatePreference && (
-                                                        <button onClick={() => openConvert(item)} title="Convertir a cobro fijo" style={{ background: "#DFF3E9", border: "none", borderRadius: "4px", padding: "2px 6px", fontWeight: 700, fontSize: "0.6rem", cursor: "pointer", color: "#0C8F67" }}>A plazos</button>
-                                                    )}
-                                                    <button onClick={() => handleEdit(item)} title="Editar" style={{ background: "none", border: "1px solid #0FA97A", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#0FA97A" }}>
-                                                        <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>edit</span>
-                                                    </button>
-                                                    <button onClick={() => handleDelete(item)} title="Eliminar" style={{ background: "none", border: "1px solid #C63C3C", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#C63C3C" }}>
-                                                        <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>delete</span>
-                                                    </button>
-                                                    <button onClick={() => setConfirmPayId(id)} title="Marcar como cobrado" style={{ background: "none", border: "1px solid #DCE7E1", borderRadius: "6px", padding: "4px 8px", cursor: "pointer", color: "#4A5F58" }}>
-                                                        <span className="material-symbols-outlined" style={{ fontSize: "14px", verticalAlign: "middle" }}>check_circle</span>
-                                                    </button>
-                                                </>
-                                            )}
+                                ) : (
+                                    <div style={{ width: "34px", display: "flex", justifyContent: "center", flexShrink: 0, alignSelf: "stretch" }}>
+                                        <div style={{ width: "2px", background: esDeuda ? "#DFF3E9" : "#CDEDDD" }} />
+                                    </div>
+                                )}
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#0C2A20", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                        {item.name}{isFirstOfGroup && groupCount > 1 ? <span style={{ fontWeight: 600, color: "#6C8079", fontSize: "0.72rem" }}> · +{groupCount - 1} más</span> : null}
+                                    </div>
+                                    {(item.contact || item.originalTx.notes) && (
+                                        <div style={{ fontSize: "0.72rem", color: "#6C8079", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                            {item.contact}{item.contact && item.originalTx.notes ? " · " : ""}{item.originalTx.notes}
                                         </div>
                                     )}
-                                </td>
-                            </tr>
-                            {isLastOfGroup && groupCount > 1 && (
-                                <tr style={{ background: "#F7FAF8" }}>
-                                    <td colSpan={5} style={{ ...TD, padding: "6px 16px 6px 52px", fontSize: "0.74rem" }}>
-                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                            <span style={{ color: "#6C8079", fontWeight: 700 }}>Subtotal {item.contact} · {groupCount} cobros</span>
-                                            <span style={{ fontWeight: 800, color: "#0E9F6E" }}>{formatCurrency(groupTotal)}</span>
+                                </div>
+                                <span style={{ fontFamily: MONO, fontSize: "0.95rem", fontWeight: 800, letterSpacing: "-0.02em", color: colorMonto, whiteSpace: "nowrap", minWidth: "92px", textAlign: "right" }}>{formatCurrency(item.amount)}</span>
+                                <span style={{ fontSize: "0.78rem", color: "#4A5F58", whiteSpace: "nowrap", minWidth: "84px" }}>{formatDate(item.originalTx.dueDate || item.originalTx.fullDate)}</span>
+                                <span style={{ padding: "3px 10px", borderRadius: "999px", background: badge.bg, color: badge.text, fontSize: "0.64rem", fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{badge.label}</span>
+                                <button onClick={() => openAbonar(item)} style={{ background: "#F1F5F3", border: "1px solid #DCE7E1", borderRadius: "8px", padding: "6px 12px", fontWeight: 800, fontSize: "0.72rem", cursor: "pointer", color: "#0C2A20", fontFamily: "inherit", flexShrink: 0 }}>{verbo}</button>
+                                <div style={{ position: "relative", flexShrink: 0 }}>
+                                    <button onClick={() => setMenuFila(menuFila === id ? null : id)} title="Más opciones" style={{ background: "none", border: "none", cursor: "pointer", color: "#6C8079", width: "32px", height: "32px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                        <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>more_vert</span>
+                                    </button>
+                                    {menuFila === id && (
+                                        <>
+                                            <div onClick={() => setMenuFila(null)} style={{ position: "fixed", inset: 0, zIndex: 20 }} />
+                                            <div style={{ position: "absolute", right: 0, top: "34px", zIndex: 21, minWidth: "190px", background: "#fff", border: "1px solid #DCE7E1", borderRadius: "12px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", padding: "4px" }}>
+                                                {(esDeuda ? !!addFixedExpense : !!updatePreference) && itemMenu("event_repeat", "Pasar a plazos", () => openConvert(item))}
+                                                {itemMenu("edit", "Editar", () => handleEdit(item))}
+                                                {!esDeuda && itemMenu("check_circle", "Marcar como cobrado", () => setConfirmPayId(id))}
+                                                {itemMenu("delete", "Eliminar", () => handleDelete(item), "#C63C3C")}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
+                            {abierta && (
+                                <div style={{ padding: "0 16px 12px 62px", borderBottom: "1px solid #EDF3F0" }}>
+                                    {confirmPayId === id ? (
+                                        <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                                            <span style={{ fontSize: "0.8rem", color: "#4A5F58" }}>¿Marcar como cobrado?</span>
+                                            <button onClick={() => handleMarkPaid(item)} style={{ ...BTN_PRIMARY, padding: "5px 12px", fontSize: "0.74rem", boxShadow: "none" }}>✓ Confirmar</button>
+                                            <button onClick={() => setConfirmPayId(null)} style={{ ...BTN_SECONDARY, padding: "5px 12px", fontSize: "0.74rem" }}>✗</button>
                                         </div>
-                                    </td>
-                                </tr>
+                                    ) : abonarId === id ? (
+                                        <div style={ABONO_PANEL}>
+                                            <select value={abonarAccountId[id] ?? ""} onChange={e => setAbonarAccountId(m => ({ ...m, [id]: e.target.value }))} style={SELECT_MINI} title={esDeuda ? "¿De qué cuenta sale?" : "¿A qué cuenta entra?"}>
+                                                <option value="">Sin cuenta</option>
+                                                {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                            </select>
+                                            <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                                                <input type="number" value={abonarAmount[id] ?? item.amount.toFixed(2)} onChange={e => setAbonarAmount(m => ({ ...m, [id]: e.target.value }))}
+                                                    style={{ width: "72px", padding: "5px 6px", borderRadius: "6px", border: "1px solid #DCE7E1", fontSize: "0.74rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
+                                                <button onClick={() => handleAbonar(item, parseFloat(abonarAmount[id] || String(item.amount)), abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#0E9F6E", color: "white", border: "none", borderRadius: "6px", padding: "5px 10px", fontWeight: 800, fontSize: "0.68rem", cursor: "pointer" }}>{verbo}</button>
+                                                <button onClick={() => handleAbonar(item, item.amount, abonarAccountId[id] ? Number(abonarAccountId[id]) : undefined)} style={{ background: "#0FA97A", color: "white", border: "none", borderRadius: "6px", padding: "5px 10px", fontWeight: 800, fontSize: "0.68rem", cursor: "pointer" }}>Todo</button>
+                                                <button onClick={() => closeAbonar(id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6C8079", padding: "2px", fontSize: "0.8rem", fontWeight: 800 }}>✕</button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <ConvertPanel item={item} accounts={accounts} cuota={convertCuota[id]} setCuota={(v: string) => setConvertCuota(m => ({ ...m, [id]: v }))} dueDay={convertDueDay[id]} setDueDay={(v: string) => setConvertDueDay(m => ({ ...m, [id]: v }))} accountId={convertAccountId[id]} setAccountId={(v: string) => setConvertAccountId(m => ({ ...m, [id]: v }))} onConfirm={() => handleConvert(item)} onCancel={() => closeConvert(id)} />
+                                    )}
+                                </div>
                             )}
-                            </Fragment>
-                        );
-                    })}
-                </tbody>
-            </table>
-        </div>
-    );
+
+                            {isLastOfGroup && groupCount > 1 && (
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 16px 8px 62px", fontSize: "0.74rem", borderBottom: "1px solid #EDF3F0" }}>
+                                    <span style={{ color: "#6C8079", fontWeight: 700 }}>Subtotal {item.contact} · {groupCount} {esDeuda ? "deudas" : "cobros"}</span>
+                                    <span style={{ fontFamily: MONO, fontWeight: 800, color: colorMonto }}>{formatCurrency(groupTotal)}</span>
+                                </div>
+                            )}
+                        </Fragment>
+                    );
+                })}
+            </div>
+        );
+    };
+    const renderDebtTable = (items: DebtGroup[]) => renderLista(items, "deuda");
+    const renderCobroTable = (items: DebtGroup[]) => renderLista(items, "cobro");
 
     // Vista móvil: la tabla de 5 columnas no entra en una pantalla angosta,
     // así que cada fila se convierte en una tarjeta apilada (mismo dato, otro layout).
@@ -1240,33 +1093,29 @@ export const DeudasyCobrosDashboard = ({
             </div>
 
             {/* ── TABLES ──
-                "Deudas/Cobros a plazos" vive DENTRO de la misma columna que su tabla
-                (apilado arriba de ella con un div flex-column), no como una grilla
-                aparte -- si viviera en su propia grilla de dos columnas, cuando solo
-                existe uno de los dos lados (ej. solo hay deudas a plazos, cero cobros
-                a plazos) el `auto-fit` lo estira a todo el ancho en vez de quedarse a
-                la mitad, como quedó la primera vez que se armó esto. */}
+                "Deudas/Cobros a plazos" ya no es una tarjeta aparte: son las primeras
+                filas de la tarjeta de Deudas / Cobros (con la etiqueta "A plazos"). */}
             {viewMode === "contacto" ? renderContactView() : (
                 <div style={{ display: "grid", gridTemplateColumns: movil ? "1fr" : "repeat(auto-fit, minmax(380px, 1fr))", gap: movil ? "1.25rem" : "2rem" }}>
                     {filterType !== "cobro" && (
                         <div style={{ display: "flex", flexDirection: "column", gap: movil ? "1.25rem" : "1.5rem" }}>
-                            {deudasAPlazos.length > 0 && (
-                                <section style={CARD}>
-                                    <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #DCE7E1", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F1F5F3" }}>
-                                        <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0C2A20", display: "flex", alignItems: "center", gap: "8px" }}>
-                                            <span className="material-symbols-outlined" style={{ color: "#C63C3C", fontSize: "20px" }}>event_repeat</span>
-                                            Deudas a plazos ({deudasAPlazos.length})
-                                        </h3>
-                                        <span style={{ fontSize: "0.72rem", color: "#4A5F58" }}>Se abonan desde Fijos</span>
-                                    </div>
-                                    <div style={{ padding: movil ? "0.85rem" : "1rem 1.5rem", display: "flex", flexDirection: "column", gap: "10px" }}>
+                            <section style={CARD}>
+                                <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #DCE7E1", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F1F5F3" }}>
+                                    <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0C2A20", display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <span className="material-symbols-outlined" style={{ color: "#C63C3C", fontSize: "20px" }}>outbox</span>
+                                        Deudas (Cuentas por Pagar)
+                                    </h3>
+                                </div>
+                                {deudasAPlazos.length > 0 && (
+                                    <div style={{ padding: movil ? "0.5rem 0.85rem 0" : "0.5rem 1.5rem 0", borderBottom: "1px solid #DCE7E1" }}>
                                         {deudasAPlazos.map(item => {
                                             const restante = Math.max(0, (item.totalAmount ?? 0) - (item.paidToDate ?? 0));
                                             return (
-                                                <div key={item.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 14px", padding: "10px 12px", borderRadius: "10px", background: "#F7FAF8", border: "1px solid #DCE7E1" }}>
-                                                    <div style={{ flex: "1 1 140px", minWidth: 0 }}>
-                                                        <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0C2A20", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                                            {item.text}
+                                                <div key={item.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 14px", padding: "10px 0", borderBottom: "1px solid #EDF3F0" }}>
+                                                    <div style={{ flex: "1 1 160px", minWidth: 0 }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                            <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0C2A20", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.text}</span>
+                                                            <span style={{ fontSize: "0.58rem", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "#C63C3C", background: "#C63C3C1A", borderRadius: "999px", padding: "2px 7px", flexShrink: 0 }}>A plazos</span>
                                                         </div>
                                                         {item.contact && <div style={{ fontSize: "0.7rem", color: "#4A5F58" }}>{item.contact}</div>}
                                                     </div>
@@ -1276,7 +1125,7 @@ export const DeudasyCobrosDashboard = ({
                                                     <button
                                                         onClick={() => volverADeuda(item)}
                                                         title="Dejar de tratarla como pago fijo mensual y volver a manejarla suelta desde acá"
-                                                        style={{ marginLeft: "auto", background: "none", border: "1px solid #DCE7E1", borderRadius: "8px", padding: "5px 10px", fontSize: "0.68rem", fontWeight: 700, color: "#4A5F58", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                                                        style={{ marginLeft: "auto", background: "none", border: "1px solid #DCE7E1", borderRadius: "8px", padding: "4px 9px", fontSize: "0.66rem", fontWeight: 700, color: "#4A5F58", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
                                                     >
                                                         Volver a Deudas
                                                     </button>
@@ -1284,15 +1133,7 @@ export const DeudasyCobrosDashboard = ({
                                             );
                                         })}
                                     </div>
-                                </section>
-                            )}
-                            <section style={CARD}>
-                                <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #DCE7E1", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F1F5F3" }}>
-                                    <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0C2A20", display: "flex", alignItems: "center", gap: "8px" }}>
-                                        <span className="material-symbols-outlined" style={{ color: "#C63C3C", fontSize: "20px" }}>outbox</span>
-                                        Deudas (Cuentas por Pagar)
-                                    </h3>
-                                </div>
+                                )}
                                 {movil ? renderDebtCards(filteredDebts) : renderDebtTable(filteredDebts)}
                             </section>
                         </div>
@@ -1300,23 +1141,23 @@ export const DeudasyCobrosDashboard = ({
 
                     {filterType !== "deuda" && (
                         <div style={{ display: "flex", flexDirection: "column", gap: movil ? "1.25rem" : "1.5rem" }}>
-                            {cobrosAPlazos.length > 0 && (
-                                <section style={CARD}>
-                                    <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #DCE7E1", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F1F5F3" }}>
-                                        <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0C2A20", display: "flex", alignItems: "center", gap: "8px" }}>
-                                            <span className="material-symbols-outlined" style={{ color: "#0E9F6E", fontSize: "20px" }}>event_repeat</span>
-                                            Cobros a plazos ({cobrosAPlazos.length})
-                                        </h3>
-                                        <span style={{ fontSize: "0.72rem", color: "#4A5F58" }}>Se cobran desde Fijos</span>
-                                    </div>
-                                    <div style={{ padding: movil ? "0.85rem" : "1rem 1.5rem", display: "flex", flexDirection: "column", gap: "10px" }}>
+                            <section style={CARD}>
+                                <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #DCE7E1", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F1F5F3" }}>
+                                    <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0C2A20", display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <span className="material-symbols-outlined" style={{ color: "#0E9F6E", fontSize: "20px" }}>move_to_inbox</span>
+                                        Cobros (Cuentas por Cobrar)
+                                    </h3>
+                                </div>
+                                {cobrosAPlazos.length > 0 && (
+                                    <div style={{ padding: movil ? "0.5rem 0.85rem 0" : "0.5rem 1.5rem 0", borderBottom: "1px solid #DCE7E1" }}>
                                         {cobrosAPlazos.map(item => {
                                             const restante = Math.max(0, (item.totalAmount ?? 0) - (item.paidToDate ?? 0));
                                             return (
-                                                <div key={item.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 14px", padding: "10px 12px", borderRadius: "10px", background: "#F7FAF8", border: "1px solid #DCE7E1" }}>
-                                                    <div style={{ flex: "1 1 140px", minWidth: 0 }}>
-                                                        <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0C2A20", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                                            {item.name}
+                                                <div key={item.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 14px", padding: "10px 0", borderBottom: "1px solid #EDF3F0" }}>
+                                                    <div style={{ flex: "1 1 160px", minWidth: 0 }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                            <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0C2A20", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
+                                                            <span style={{ fontSize: "0.58rem", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "#0E9F6E", background: "#0E9F6E1A", borderRadius: "999px", padding: "2px 7px", flexShrink: 0 }}>A plazos</span>
                                                         </div>
                                                         {item.contact && <div style={{ fontSize: "0.7rem", color: "#4A5F58" }}>{item.contact}</div>}
                                                     </div>
@@ -1326,7 +1167,7 @@ export const DeudasyCobrosDashboard = ({
                                                     <button
                                                         onClick={() => volverACobro(item)}
                                                         title="Dejar de tratarlo como cobro fijo mensual y volver a manejarlo suelto desde acá"
-                                                        style={{ marginLeft: "auto", background: "none", border: "1px solid #DCE7E1", borderRadius: "8px", padding: "5px 10px", fontSize: "0.68rem", fontWeight: 700, color: "#4A5F58", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                                                        style={{ marginLeft: "auto", background: "none", border: "1px solid #DCE7E1", borderRadius: "8px", padding: "4px 9px", fontSize: "0.66rem", fontWeight: 700, color: "#4A5F58", cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
                                                     >
                                                         Volver a Cobros
                                                     </button>
@@ -1334,15 +1175,7 @@ export const DeudasyCobrosDashboard = ({
                                             );
                                         })}
                                     </div>
-                                </section>
-                            )}
-                            <section style={CARD}>
-                                <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #DCE7E1", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F1F5F3" }}>
-                                    <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0C2A20", display: "flex", alignItems: "center", gap: "8px" }}>
-                                        <span className="material-symbols-outlined" style={{ color: "#0E9F6E", fontSize: "20px" }}>move_to_inbox</span>
-                                        Cobros (Cuentas por Cobrar)
-                                    </h3>
-                                </div>
+                                )}
                                 {movil ? renderCobroCards(filteredCobros) : renderCobroTable(filteredCobros)}
                             </section>
                         </div>

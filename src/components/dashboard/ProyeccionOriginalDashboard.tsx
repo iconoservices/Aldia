@@ -353,8 +353,8 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
 
                 {/* Qué se aplica a la proyección */}
                 <div style={{ marginBottom: "0.6rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 10px" }}>
-                    <span style={{ ...LABEL }}>Aplicar</span>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", flex: 1 }}>
+                    <span style={{ ...LABEL, flex: movil ? 1 : undefined }}>Aplicar</span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", flex: movil ? undefined : 1, flexBasis: movil ? "100%" : undefined, order: movil ? 2 : undefined }}>
                         {([
                             { key: 'saldo', texto: `Mi saldo actual (${money(currentBalance)})`, on: !!plan.usarSaldo, disabled: false, set: (v: boolean) => savePlan({ ...plan, usarSaldo: v }) },
                             { key: 'gastos', texto: 'Mis gastos fijos', on: gastosRealesOn, disabled: gastosReales.length === 0, set: (v: boolean) => toggleReales('gastos', v) },
@@ -367,7 +367,7 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                             </label>
                         ))}
                     </div>
-                    <button onClick={reiniciarSimulacion} title="Reiniciar plan (vuelve a partir de tus gastos/ingresos fijos reales)" style={{ display: "flex", alignItems: "center", gap: "4px", background: "transparent", border: "1px solid #DCE7E1", borderRadius: "8px", padding: "4px 9px", fontSize: "0.68rem", fontWeight: 700, color: "#6C8079", cursor: "pointer" }}>
+                    <button onClick={reiniciarSimulacion} title="Reiniciar plan (vuelve a partir de tus gastos/ingresos fijos reales)" style={{ order: movil ? 1 : undefined, display: "flex", alignItems: "center", gap: "4px", background: "transparent", border: "1px solid #DCE7E1", borderRadius: "8px", padding: "4px 9px", fontSize: "0.68rem", fontWeight: 700, color: "#6C8079", cursor: "pointer" }}>
                         <RotateCcw size={12} /> Reiniciar
                     </button>
                 </div>
@@ -415,7 +415,7 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                             savePlan({ ...plan, fixedExpenses: [...plan.fixedExpenses, { id: Date.now(), text: nuevoGasto.text.trim(), amount: monto, active: true, custom: true, grupo: nuevoGrupoGasto || undefined }] });
                             setNuevoGasto({ text: "", amount: "", cantidad: "" });
                         }} style={{ display: "flex", gap: "6px", marginTop: "6px", flexWrap: "wrap", alignItems: "center" }}>
-                            <input value={nuevoGasto.text} onChange={e => setNuevoGasto(v => ({ ...v, text: e.target.value }))} placeholder="Nuevo gasto fijo…" style={{ flex: 1, minWidth: 0, padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
+                            <input value={nuevoGasto.text} onChange={e => setNuevoGasto(v => ({ ...v, text: e.target.value }))} placeholder="Nuevo gasto fijo…" style={{ flex: movil ? "1 1 100%" : 1, minWidth: 0, padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
                             {usarCantidadGasto ? (
                                 <>
                                     <input value={nuevoGasto.cantidad} onChange={e => setNuevoGasto(v => ({ ...v, cantidad: e.target.value }))} type="number" placeholder="Cant." style={{ width: "70px", padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
@@ -424,10 +424,10 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                                     <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#0C2A20" }}>= {money(nuevoGastoTotal)}</span>
                                 </>
                             ) : (
-                                <input value={nuevoGasto.amount} onChange={e => setNuevoGasto(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="Monto" inputMode="decimal" style={{ width: "100px", padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
+                                <input value={nuevoGasto.amount} onChange={e => setNuevoGasto(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="Monto" inputMode="decimal" style={{ width: movil ? undefined : "100px", flex: movil ? "1 1 35%" : undefined, minWidth: 0, padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
                             )}
-                            <select value={nuevoGrupoGasto} onChange={e => setNuevoGrupoGasto(e.target.value)} title="Grupo" style={{ padding: "11px 8px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "0.8rem", background: "#FFFFFF", color: "#0C2A20" }}><option value="">Grupo: auto</option>{catsGasto.map(g => <option key={g} value={g}>{g}</option>)}</select>
-                            <button type="submit" style={{ background: "#F59E0B", color: "#fff", border: "none", borderRadius: "10px", padding: "0 16px", minHeight: "44px", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", flexShrink: 0, fontSize: "0.8rem", fontWeight: 800 }}><Plus size={16} /> Agregar</button>
+                            <select value={nuevoGrupoGasto} onChange={e => setNuevoGrupoGasto(e.target.value)} title="Grupo" style={{ flex: movil ? "1 1 45%" : undefined, minWidth: 0, padding: "11px 8px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "0.8rem", background: "#FFFFFF", color: "#0C2A20" }}><option value="">Grupo: auto</option>{catsGasto.map(g => <option key={g} value={g}>{g}</option>)}</select>
+                            <button type="submit" style={{ background: "#F59E0B", color: "#fff", border: "none", borderRadius: "10px", padding: "0 16px", minHeight: "44px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", flexShrink: 0, flex: movil ? "1 1 100%" : undefined, fontSize: "0.8rem", fontWeight: 800 }}><Plus size={16} /> Agregar</button>
                         </form>}
                     </div>
 
@@ -461,7 +461,7 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                             savePlan({ ...plan, fixedIncomes: [...plan.fixedIncomes, { id: Date.now(), name: nuevoIngresoFijo.name.trim(), amount: monto, active: true, custom: true, grupo: nuevoGrupoIngreso || undefined }] });
                             setNuevoIngresoFijo({ name: "", amount: "", cantidad: "" });
                         }} style={{ display: "flex", gap: "6px", marginTop: "6px", flexWrap: "wrap", alignItems: "center" }}>
-                            <input value={nuevoIngresoFijo.name} onChange={e => setNuevoIngresoFijo(v => ({ ...v, name: e.target.value }))} placeholder="Nuevo ingreso fijo…" style={{ flex: 1, minWidth: 0, padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
+                            <input value={nuevoIngresoFijo.name} onChange={e => setNuevoIngresoFijo(v => ({ ...v, name: e.target.value }))} placeholder="Nuevo ingreso fijo…" style={{ flex: movil ? "1 1 100%" : 1, minWidth: 0, padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
                             {usarCantidadIngreso ? (
                                 <>
                                     <input value={nuevoIngresoFijo.cantidad} onChange={e => setNuevoIngresoFijo(v => ({ ...v, cantidad: e.target.value }))} type="number" placeholder="Cant." style={{ width: "70px", padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
@@ -470,10 +470,10 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                                     <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#0C2A20" }}>= {money(nuevoIngresoTotal)}</span>
                                 </>
                             ) : (
-                                <input value={nuevoIngresoFijo.amount} onChange={e => setNuevoIngresoFijo(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="Monto" inputMode="decimal" style={{ width: "100px", padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
+                                <input value={nuevoIngresoFijo.amount} onChange={e => setNuevoIngresoFijo(v => ({ ...v, amount: e.target.value }))} type="number" placeholder="Monto" inputMode="decimal" style={{ width: movil ? undefined : "100px", flex: movil ? "1 1 35%" : undefined, minWidth: 0, padding: "11px 12px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "16px", background: "#FFFFFF", outline: "none" }} />
                             )}
-                            <select value={nuevoGrupoIngreso} onChange={e => setNuevoGrupoIngreso(e.target.value)} title="Grupo" style={{ padding: "11px 8px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "0.8rem", background: "#FFFFFF", color: "#0C2A20" }}><option value="">Grupo: auto</option>{catsIngreso.map(g => <option key={g} value={g}>{g}</option>)}</select>
-                            <button type="submit" style={{ background: "#F59E0B", color: "#fff", border: "none", borderRadius: "10px", padding: "0 16px", minHeight: "44px", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", flexShrink: 0, fontSize: "0.8rem", fontWeight: 800 }}><Plus size={16} /> Agregar</button>
+                            <select value={nuevoGrupoIngreso} onChange={e => setNuevoGrupoIngreso(e.target.value)} title="Grupo" style={{ flex: movil ? "1 1 45%" : undefined, minWidth: 0, padding: "11px 8px", borderRadius: "10px", border: "1px solid #DCE7E1", fontSize: "0.8rem", background: "#FFFFFF", color: "#0C2A20" }}><option value="">Grupo: auto</option>{catsIngreso.map(g => <option key={g} value={g}>{g}</option>)}</select>
+                            <button type="submit" style={{ background: "#F59E0B", color: "#fff", border: "none", borderRadius: "10px", padding: "0 16px", minHeight: "44px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", flexShrink: 0, flex: movil ? "1 1 100%" : undefined, fontSize: "0.8rem", fontWeight: 800 }}><Plus size={16} /> Agregar</button>
                         </form>}
                     </div>
                 </div>
