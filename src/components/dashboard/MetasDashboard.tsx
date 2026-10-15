@@ -4,7 +4,7 @@ import { NuevaMetaModal } from './NuevaMetaModal';
 import type { NuevaMeta } from './NuevaMetaModal';
 import type { Goal, GoalHorizon, GoalMilestone, GoalStatus, Project } from '../../hooks/useAlDiaState';
 import {
-    C, bento, useIsMobile,
+    C, useIsMobile,
     paddingPagina, cabecera, tituloPagina, subtituloPagina, campo, TOQUE_MINIMO,
 } from '../../theme';
 
@@ -51,8 +51,6 @@ export const MetasDashboard = ({
     const movil = useIsMobile();
     const [adding, setAdding] = useState(false);
     const [expandedId, setExpandedId] = useState<number | null>(null);
-    const [seleccionadaId, setSeleccionadaId] = useState<number | null>(null);
-    const seleccionada = goals.find(g => g.id === seleccionadaId) ?? goals[0] ?? null;
     const [nuevaSub, setNuevaSub] = useState<Record<string, string>>({});
 
 
@@ -112,45 +110,40 @@ export const MetasDashboard = ({
                             </div>
                         )}
 
-                        <div style={{ display: 'grid', gridTemplateColumns: movil || goals.length === 0 ? '1fr' : 'minmax(280px, 360px) 1fr', gap: '16px', alignItems: 'start' }}>
-                            <div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                    <AnimatePresence initial={false}>
-                                        {goals.map(goal => (
-                                            <TarjetaMeta
-                                                key={goal.id}
-                                                {...propsMeta(goal)}
-                                                expandido={expandedId === goal.id}
-                                                modoLista={!movil}
-                                                seleccionada={!movil && seleccionada?.id === goal.id}
-                                                onToggleExpand={() => movil
-                                                    ? setExpandedId(expandedId === goal.id ? null : goal.id)
-                                                    : setSeleccionadaId(goal.id)}
-                                            />
-                                        ))}
-                                    </AnimatePresence>
-                                </div>
-                                <button
-                                    onClick={() => setAdding(true)}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', minHeight: '52px', width: '100%', marginTop: goals.length ? '10px' : 0,
-                                        background: 'transparent', border: `2px dashed ${C.outlineVariant}`, borderRadius: '12px',
-                                        color: C.onSurfaceVariant, fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', fontFamily: 'inherit',
-                                    }}
-                                >
-                                    <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>add</span> Nueva meta
-                                </button>
-                            </div>
-
-                            {!movil && seleccionada && (
-                                <div style={{ ...bento, padding: '16px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-                                        <span style={{ fontSize: '1.5rem' }}>{seleccionada.icon}</span>
-                                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: C.onSurface }}>{seleccionada.title}</h3>
+                        {/* Cada fila es una meta distinta; hacia la derecha van sus niveles (corto → mediano → largo) */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            <AnimatePresence initial={false}>
+                                {goals.map(goal => movil ? (
+                                    <TarjetaMeta
+                                        key={goal.id}
+                                        {...propsMeta(goal)}
+                                        expandido={expandedId === goal.id}
+                                        onToggleExpand={() => setExpandedId(expandedId === goal.id ? null : goal.id)}
+                                    />
+                                ) : (
+                                    <div key={goal.id} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                                        <TarjetaMeta
+                                            {...propsMeta(goal)}
+                                            expandido={false}
+                                            modoLista
+                                            onToggleExpand={() => {}}
+                                        />
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <CuerpoMeta {...propsMeta(goal)} />
+                                        </div>
                                     </div>
-                                    <CuerpoMeta {...propsMeta(seleccionada)} />
-                                </div>
-                            )}
+                                ))}
+                            </AnimatePresence>
+                            <button
+                                onClick={() => setAdding(true)}
+                                style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', minHeight: '52px', width: '100%',
+                                    background: 'transparent', border: `2px dashed ${C.outlineVariant}`, borderRadius: '12px',
+                                    color: C.onSurfaceVariant, fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', fontFamily: 'inherit',
+                                }}
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>add</span> Nueva meta
+                            </button>
                         </div>
                 </section>
             </div>
@@ -206,12 +199,13 @@ const TarjetaMeta = ({
             initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}
             style={{
                 gridColumn: expandido && !modoLista ? '1 / -1' : undefined,
+                width: modoLista ? '260px' : undefined, flexShrink: modoLista ? 0 : undefined, maxWidth: '100%',
                 borderRadius: '12px',
                 border: seleccionada ? `2px solid ${goal.color}` : `1px solid ${C.outlineVariant}`,
                 background: seleccionada ? C.surfaceLowest : goal.status === 'completado' ? 'rgba(16,185,129,0.04)' : C.surfaceContainerLow,
             }}
         >
-            <div style={{ padding: '10px 12px', cursor: 'pointer' }} onClick={() => !editando && onToggleExpand()}>
+            <div style={{ padding: '10px 12px', cursor: modoLista ? 'default' : 'pointer' }} onClick={() => !editando && onToggleExpand()}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                     <span style={{ fontSize: '1.2rem', flexShrink: 0, lineHeight: 1.3 }}>{goal.icon}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
