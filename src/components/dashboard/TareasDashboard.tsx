@@ -769,6 +769,13 @@ Supermercado:
                                             </span>
                                         )}
 
+                                        <button
+                                            onClick={() => toggleAlarmaActiva(b)}
+                                            title={isEncendida ? 'Activa — clic para desactivar' : 'Desactivada — clic para activar'}
+                                            style={{ width: '34px', height: '20px', borderRadius: '999px', border: 'none', cursor: 'pointer', padding: 0, position: 'relative', flexShrink: 0, background: isEncendida ? C.primary : C.outlineVariant, transition: 'background .15s' }}
+                                        >
+                                            <span style={{ position: 'absolute', top: '2px', left: isEncendida ? '16px' : '2px', width: '16px', height: '16px', borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.25)', transition: 'left .15s' }} />
+                                        </button>
                                         {menuAcciones(b.id, () => handleStartEdit(b), () => handleDeleteRepetitiva(b), [{ icono: esHabito(b) ? 'spa' : 'local_fire_department', texto: esHabito(b) ? 'Quitar de hábitos' : 'Marcar como hábito', onClick: () => toggleHabito(b) }, { icono: isEncendida ? 'alarm_off' : 'alarm_on', texto: isEncendida ? 'Pausar alarma' : 'Activar alarma', onClick: () => toggleAlarmaActiva(b) }])}
                                     </div>
                                 );
