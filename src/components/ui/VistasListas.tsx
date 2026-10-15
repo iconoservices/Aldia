@@ -22,10 +22,10 @@ export const VISTAS_METAS = [
 
 export const VISTAS_DINERO = [
     { tab: "Finanzas", label: "Finanzas" },
-    { tab: "Movimientos", label: "Movimientos" },
     { tab: "Plan", label: "Fijos" },
     { tab: "Deudas", label: "Deudas" },
     { tab: "Proyección", label: "Proyección" },
+    { tab: "Movimientos", label: "Movimientos" },
 ] as const;
 
 type Vista = { readonly tab: string; readonly label: string };
