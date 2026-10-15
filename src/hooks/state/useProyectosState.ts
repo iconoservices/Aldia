@@ -22,6 +22,7 @@ export const useProyectosState = () => {
             inventoryItems: []
         };
         setProjects(prev => [newProject, ...prev]);
+        return newProject.id; // Metas lo usa para enlazar la visión recién creada
     };
 
     const addInventoryItem = (projectId: number, text: string, initialQuantity: number = 0) => {

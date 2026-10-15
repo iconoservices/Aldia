@@ -8,7 +8,7 @@ import { useProyectosState } from './state/useProyectosState';
 import { useCerebroState } from './state/useCerebroState';
 import { useRitaState } from './state/useRitaState';
 import { useNegocioState } from './state/useNegocioState';
-import { useMetasState } from './state/useMetasState';
+import { useMetasState, migrarMetas } from './state/useMetasState';
 import { PLANTILLAS, type PlantillaId } from '../lib/plantillasFinanzas';
 
 // Tipos de datos
@@ -25,6 +25,7 @@ export interface Mission {
     labels?: string[]; // Etiquetas para categorizar
     habitId?: number; // Si es un hábito, ID de la fábrica
     projectId?: number; // Referencia opcional a un proyecto
+    goalId?: number; // Meta (o sub-meta) a la que aporta esta tarea
     repeatDays?: number[]; // Índices 0-6 (L-D) para repetición personalizada
     isRoutine?: boolean; // Para identificar tareas que vienen de una rutina
     routineId?: number; // Referencia a la rutina de origen
@@ -489,9 +490,16 @@ export interface Goal {
     status: GoalStatus;
     targetDate?: string;  // YYYY-MM-DD, para cuándo se quiere lograr
     milestones: GoalMilestone[];
-    projectId?: number;   // vínculo opcional a un proyecto existente
+    projectId?: number;   // visión / rumbo (un Project existente). Solo en metas raíz; las sub-metas heredan.
     nombresPlazo?: Partial<Record<GoalHorizon, string>>; // nombre propio de cada plazo (si no, 'Corto/Mediano/Largo plazo')
     order: number;
+    // Sub-metas: una meta con parentId vive dentro de la columna `horizon` de su meta madre.
+    // Máximo 2 niveles: una sub-meta nunca tiene metas adentro.
+    parentId?: number;
+    objetivo?: number;    // número a alcanzar (ej. 10000, 20 clientes, 5 kg)
+    actual?: number;      // avance hacia `objetivo`
+    unidad?: string;      // 'S/', 'clientes', 'kg'...
+    migradoV2?: boolean;  // ya pasó por la migración de tareas '🎯' → sub-metas
 }
 
 export interface Note {
@@ -1110,6 +1118,16 @@ export const useAlDiaState = () => {
         setHabits([]);
         console.info(`[AlDía] Migración: ${habits.length} hábitos pasaron a tareas repetitivas (respaldo guardado).`);
     }, [isInitialLoad, hasLoadedFromCloud, habits, dailyBlocks]);
+
+    // Metas v2: las tareas '🎯' de cada plazo pasan a ser sub-metas reales (una vez).
+    // Corre solo después de cargar la nube para no migrar un estado vacío/viejo.
+    useEffect(() => {
+        if (isInitialLoad || !hasLoadedFromCloud) return;
+        const migradas = migrarMetas(goals);
+        if (!migradas) return;
+        localWriteTimestampRef.current = Date.now() + 1; // que el guardado lo suba a la nube
+        setGoals(migradas);
+    }, [isInitialLoad, hasLoadedFromCloud, goals]);
 
     // Limpieza de una sola vez: proyectos sembrados por defecto que nunca se usaron.
     // El sembrado antiguo los recreaba en cada render, así que se acumularon duplicados

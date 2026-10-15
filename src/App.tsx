@@ -442,6 +442,9 @@ function App() {
                 <MetasDashboard
                   goals={state.goals}
                   projects={state.projects}
+                  missions={state.missions}
+                  updateMission={state.updateMission}
+                  addProject={state.addProject}
                   addGoal={state.addGoal}
                   updateGoal={state.updateGoal}
                   removeGoal={state.removeGoal}

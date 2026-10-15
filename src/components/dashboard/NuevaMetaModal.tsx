@@ -1,44 +1,63 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { C, RADIO, campo } from '../../theme';
+import type { GoalHorizon, Project } from '../../hooks/useAlDiaState';
 
-/* Ventanita para crear una meta: título + sus tres plazos (en línea de tiempo)
-   + detalles que se eligen tocando (área, ícono, color) y una fecha opcional. */
+/* Ventanita para crear o editar una meta o una sub-meta.
+   Meta: qué quieres lograr + número (opcional) + visión/rumbo + fecha + área/ícono/color.
+   Sub-meta: qué paso concreto + número (opcional) + en qué plazo cae. */
 
 export const ICONOS = ['🎯', '💰', '🏠', '💻', '🌱', '❤️', '📚', '✈️', '🏆', '🛠️'];
 export const COLORES = ['#0FA97A', '#4858ab', '#0E9F6E', '#B9760A', '#C77DFF', '#C63C3C', '#4D96FF', '#06D6A0'];
 export const AREAS = ['Negocio', 'Finanzas', 'Salud', 'Personal', 'Aprendizaje', 'Familia'];
+export const UNIDADES = ['S/', 'clientes', 'kg', 'ventas', '%'];
 
 export interface NuevaMeta {
     title: string; area: string; icon: string; color: string; targetDate: string;
-    corto: string[]; mediano: string[]; largo: string[];
-    nombres: { corto: string; mediano: string; largo: string };
+    objetivo: string; actual: string; unidad: string;
+    projectId?: number;
+    horizon: GoalHorizon;
 }
 
-const VACIA: NuevaMeta = { title: '', area: 'Personal', icon: ICONOS[0], color: COLORES[0], targetDate: '', corto: [], mediano: [], largo: [], nombres: { corto: '', mediano: '', largo: '' } };
+const VACIA: NuevaMeta = { title: '', area: 'Personal', icon: ICONOS[0], color: COLORES[0], targetDate: '', objetivo: '', actual: '', unidad: '', horizon: 'corto' };
 
-const PLAZOS = [
+export const PLAZOS_INFO: { k: GoalHorizon; titulo: string; sub: string }[] = [
     { k: 'corto', titulo: 'Corto plazo', sub: 'este mes' },
     { k: 'mediano', titulo: 'Mediano plazo', sub: 'próximos meses' },
     { k: 'largo', titulo: 'Largo plazo', sub: '1+ años' },
-] as const;
+];
 
 const etiqueta: React.CSSProperties = {
     fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.outline, marginBottom: '8px',
 };
 
+const chip = (activo: boolean, color: string): React.CSSProperties => ({
+    border: 'none', borderRadius: RADIO.chip, padding: '8px 14px', cursor: 'pointer',
+    fontSize: '0.78rem', fontWeight: 700, fontFamily: 'inherit',
+    background: activo ? color : C.surfaceContainer, color: activo ? '#fff' : C.onSurfaceVariant,
+});
+
 interface Props {
     open: boolean;
     movil: boolean;
+    tipo: 'meta' | 'sub';
+    inicial?: Partial<NuevaMeta>;   // para editar o para fijar el plazo de una sub-meta nueva
+    editando?: boolean;
+    padre?: { title: string; color: string; nombresPlazo?: Partial<Record<GoalHorizon, string>> };
+    projects?: Project[];
+    onCrearVision?: (nombre: string, color: string) => number | void;
     onClose: () => void;
     onSave: (m: NuevaMeta) => void;
 }
 
-export const NuevaMetaModal = ({ open, movil, onClose, onSave }: Props) => {
+export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, padre, projects = [], onCrearVision, onClose, onSave }: Props) => {
     const [f, setF] = useState<NuevaMeta>(VACIA);
-    const [borrador, setBorrador] = useState({ corto: '', mediano: '', largo: '' });
+    const [nuevaVision, setNuevaVision] = useState<string | null>(null);
 
-    useEffect(() => { if (open) { setF(VACIA); setBorrador({ corto: '', mediano: '', largo: '' }); } }, [open]);
+    useEffect(() => {
+        if (open) { setF({ ...VACIA, ...(padre ? { color: padre.color } : {}), ...inicial }); setNuevaVision(null); }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open]);
     useEffect(() => {
         if (!open) return;
         const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -46,22 +65,20 @@ export const NuevaMetaModal = ({ open, movil, onClose, onSave }: Props) => {
         return () => window.removeEventListener('keydown', h);
     }, [open, onClose]);
 
+    const set = (p: Partial<NuevaMeta>) => setF(v => ({ ...v, ...p }));
     const puede = f.title.trim().length > 0;
-    const agregar = (k: 'corto' | 'mediano' | 'largo') => {
-        const t = borrador[k].trim();
-        if (!t) return;
-        setF(v => ({ ...v, [k]: [...v[k], t] }));
-        setBorrador(b => ({ ...b, [k]: '' }));
-    };
-    const quitar = (k: 'corto' | 'mediano' | 'largo', i: number) => setF(v => ({ ...v, [k]: v[k].filter((_, j) => j !== i) }));
     const guardar = (e: React.FormEvent) => {
         e.preventDefault();
         if (!puede) return;
-        // lo escrito y no agregado con Enter tambien cuenta
-        const con = (k: 'corto' | 'mediano' | 'largo') => borrador[k].trim() ? [...f[k], borrador[k].trim()] : f[k];
-        onSave({ ...f, title: f.title.trim(), corto: con('corto'), mediano: con('mediano'), largo: con('largo') });
+        let projectId = f.projectId;
+        if (nuevaVision?.trim() && onCrearVision) {
+            const id = onCrearVision(nuevaVision.trim(), f.color);
+            if (typeof id === 'number') projectId = id;
+        }
+        onSave({ ...f, title: f.title.trim(), unidad: f.unidad.trim(), projectId });
     };
-    const set = (p: Partial<NuevaMeta>) => setF(v => ({ ...v, ...p }));
+    const visiones = projects.filter(p => p.status !== 'completado' || p.id === f.projectId);
+    const esSub = tipo === 'sub';
 
     return (
         <AnimatePresence>
@@ -70,7 +87,7 @@ export const NuevaMetaModal = ({ open, movil, onClose, onSave }: Props) => {
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                     onClick={onClose}
                     style={{
-                        position: 'fixed', inset: 0, zIndex: 9999, display: 'flex',
+                        position: 'fixed', inset: 0, zIndex: 10000, display: 'flex',
                         alignItems: movil ? 'flex-end' : 'center', justifyContent: 'center',
                         background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', padding: movil ? 0 : '20px',
                     }}
@@ -84,24 +101,29 @@ export const NuevaMetaModal = ({ open, movil, onClose, onSave }: Props) => {
                         transition={{ type: 'spring', damping: 28, stiffness: 320 }}
                         style={{
                             background: C.surfaceLowest, width: '100%', maxWidth: '520px', maxHeight: movil ? '92dvh' : '88dvh',
-                            overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+                            overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)', boxSizing: 'border-box',
                             borderRadius: movil ? '24px 24px 0 0' : RADIO.modal, padding: movil ? '20px 18px 24px' : '24px',
-                            display: 'flex', flexDirection: 'column', gap: '20px',
+                            display: 'flex', flexDirection: 'column', gap: '18px',
                         }}
                     >
-                        {/* Cabecera: ícono elegido + título */}
+                        {padre && (
+                            <div style={{ ...etiqueta, marginBottom: '-10px', color: padre.color }}>
+                                Sub-meta de: {padre.title}
+                            </div>
+                        )}
+                        {/* Cabecera: ícono + título */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             <div style={{
-                                width: '48px', height: '48px', borderRadius: '16px', flexShrink: 0, fontSize: '1.5rem',
+                                width: '44px', height: '44px', borderRadius: '14px', flexShrink: 0, fontSize: '1.35rem',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 background: `${f.color}22`, border: `2px solid ${f.color}`,
-                            }}>{f.icon}</div>
+                            }}>{esSub ? '🎯' : f.icon}</div>
                             <input
                                 autoFocus value={f.title} onChange={e => set({ title: e.target.value })}
-                                placeholder="¿Qué quieres lograr?" enterKeyHint="done"
+                                placeholder={esSub ? 'Paso concreto, ej. Conseguir 20 clientes' : '¿Qué quieres lograr?'} enterKeyHint="done"
                                 style={{
                                     flex: 1, minWidth: 0, border: 'none', borderBottom: `2px solid ${C.outlineVariant}`, outline: 'none',
-                                    background: 'transparent', fontSize: '1.15rem', fontWeight: 700, color: C.onSurface,
+                                    background: 'transparent', fontSize: '1.1rem', fontWeight: 700, color: C.onSurface,
                                     padding: '8px 0', fontFamily: 'inherit',
                                 }}
                             />
@@ -110,102 +132,117 @@ export const NuevaMetaModal = ({ open, movil, onClose, onSave }: Props) => {
                             </button>
                         </div>
 
-                        {/* Línea de tiempo: corto → mediano → largo */}
+                        {/* Número: cuánto y de qué */}
                         <div>
-                            <div style={etiqueta}>Cómo lo ves por plazo (toca el nombre para cambiarlo)</div>
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                {PLAZOS.map((pl, i) => (
-                                    <div key={pl.k} style={{ display: 'flex', gap: '12px' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '14px', flexShrink: 0 }}>
-                                            <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: f.color, marginTop: '26px', flexShrink: 0 }} />
-                                            {i < PLAZOS.length - 1 && <span style={{ flex: 1, width: '2px', background: `${f.color}55` }} />}
-                                        </div>
-                                        <div style={{ flex: 1, minWidth: 0, paddingBottom: i < PLAZOS.length - 1 ? '10px' : 0 }}>
-                                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', margin: '6px 0 4px' }}>
-                                                <input
-                                                    value={f.nombres[pl.k]} onChange={e => set({ nombres: { ...f.nombres, [pl.k]: e.target.value } })}
-                                                    placeholder={pl.titulo} maxLength={28} title="Toca para ponerle tu propio nombre"
-                                                    style={{ border: 'none', borderBottom: `1px dashed ${C.outlineVariant}`, outline: 'none', background: 'transparent', fontSize: '0.8rem', fontWeight: 700, color: C.onSurface, padding: '0 0 1px', width: '9.5em', fontFamily: 'inherit' }}
-                                                />
-                                                <span style={{ fontSize: '0.72rem', color: C.outline }}>· {pl.sub}</span>
-                                            </div>
-                                            {f[pl.k].map((t, idx) => (
-                                                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0' }}>
-                                                    <span style={{ width: '16px', height: '16px', borderRadius: '5px', border: `2px solid ${C.outlineVariant}`, flexShrink: 0 }} />
-                                                    <span style={{ flex: 1, fontSize: '0.85rem', color: C.onSurface, wordBreak: 'break-word' }}>{t}</span>
-                                                    <button type="button" onClick={() => quitar(pl.k, idx)} title="Quitar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '2px' }}>
-                                                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>close</span>
-                                                    </button>
-                                                </div>
+                            <div style={etiqueta}>¿Cómo la mides? (opcional)</div>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                {editando && (
+                                    <>
+                                        <input
+                                            type="number" inputMode="decimal" value={f.actual} onChange={e => set({ actual: e.target.value })}
+                                            placeholder="Llevo" aria-label="Avance actual"
+                                            style={{ ...campo(movil), width: '90px', boxSizing: 'border-box', background: C.surfaceContainerLow }}
+                                        />
+                                        <span style={{ color: C.outline, fontWeight: 700 }}>de</span>
+                                    </>
+                                )}
+                                <input
+                                    type="number" inputMode="decimal" value={f.objetivo} onChange={e => set({ objetivo: e.target.value })}
+                                    placeholder={esSub ? '20' : '10000'} aria-label="Número objetivo"
+                                    style={{ ...campo(movil), width: '100px', boxSizing: 'border-box', background: C.surfaceContainerLow }}
+                                />
+                                <input
+                                    value={f.unidad} onChange={e => set({ unidad: e.target.value })} list="unidades-meta"
+                                    placeholder="unidad" aria-label="Unidad" maxLength={14}
+                                    style={{ ...campo(movil), width: '110px', boxSizing: 'border-box', background: C.surfaceContainerLow }}
+                                />
+                                <datalist id="unidades-meta">{UNIDADES.map(u => <option key={u} value={u} />)}</datalist>
+                            </div>
+                        </div>
+
+                        {esSub ? (
+                            <div>
+                                <div style={etiqueta}>¿En qué plazo?</div>
+                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                    {PLAZOS_INFO.map(pl => (
+                                        <button type="button" key={pl.k} onClick={() => set({ horizon: pl.k })} style={chip(f.horizon === pl.k, f.color)}>
+                                            {padre?.nombresPlazo?.[pl.k]?.trim() || pl.titulo}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div>
+                                    <div style={etiqueta}>🧭 Visión / rumbo (opcional)</div>
+                                    {nuevaVision === null ? (
+                                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                            <button type="button" onClick={() => set({ projectId: undefined })} style={chip(!f.projectId, f.color)}>Sin visión</button>
+                                            {visiones.map(p => (
+                                                <button type="button" key={p.id} onClick={() => set({ projectId: p.id })} style={chip(f.projectId === p.id, f.color)}>{p.name}</button>
                                             ))}
-                                            <div style={{ display: 'flex', gap: '6px' }}>
-                                                <input
-                                                    value={borrador[pl.k]} onChange={e => setBorrador(b => ({ ...b, [pl.k]: e.target.value }))}
-                                                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); agregar(pl.k); } }}
-                                                    placeholder="Agregar tarea y Enter" enterKeyHint="next"
-                                                    style={{ ...campo(movil), flex: 1, minWidth: 0, boxSizing: 'border-box', background: C.surfaceContainerLow }}
-                                                />
-                                                <button type="button" onClick={() => agregar(pl.k)} disabled={!borrador[pl.k].trim()} title="Agregar" style={{
-                                                    width: '40px', flexShrink: 0, border: 'none', borderRadius: RADIO.campo, cursor: 'pointer',
-                                                    background: borrador[pl.k].trim() ? f.color : C.surfaceContainerHigh, color: '#fff',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                }}>
-                                                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
-                                                </button>
-                                            </div>
+                                            {onCrearVision && (
+                                                <button type="button" onClick={() => setNuevaVision('')} style={{ ...chip(false, f.color), background: 'transparent', border: `1px dashed ${C.outlineVariant}` }}>+ Nueva</button>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', gap: '6px' }}>
+                                            <input
+                                                autoFocus value={nuevaVision} onChange={e => setNuevaVision(e.target.value)}
+                                                placeholder="Ej. Que Boga sea la más grande"
+                                                style={{ ...campo(movil), flex: 1, minWidth: 0, boxSizing: 'border-box', background: C.surfaceContainerLow }}
+                                            />
+                                            <button type="button" onClick={() => setNuevaVision(null)} title="Cancelar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', alignItems: 'center' }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>close</span>
+                                            </button>
+                                        </div>
+                                    )}
+                                    <p style={{ margin: '6px 0 0', fontSize: '0.72rem', color: C.outline }}>El norte al que apunta: sin número ni fecha. Son tus Proyectos.</p>
+                                </div>
+
+                                <div>
+                                    <div style={etiqueta}>Área</div>
+                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                        {AREAS.map(a => (
+                                            <button type="button" key={a} onClick={() => set({ area: a })} style={chip(f.area === a, f.color)}>{a}</button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                                    <div>
+                                        <div style={etiqueta}>Ícono</div>
+                                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', maxWidth: '260px' }}>
+                                            {ICONOS.map(ic => (
+                                                <button type="button" key={ic} onClick={() => set({ icon: ic })} style={{
+                                                    width: '34px', height: '34px', borderRadius: '10px', cursor: 'pointer', fontSize: '1rem',
+                                                    border: f.icon === ic ? `2px solid ${f.color}` : `1px solid ${C.outlineVariant}`, background: C.surfaceLowest,
+                                                }}>{ic}</button>
+                                            ))}
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Todo lo que se elige tocando */}
-                        <div>
-                            <div style={etiqueta}>Área</div>
-                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                {AREAS.map(a => (
-                                    <button type="button" key={a} onClick={() => set({ area: a })} style={{
-                                        border: 'none', borderRadius: RADIO.chip, padding: '8px 14px', cursor: 'pointer',
-                                        fontSize: '0.78rem', fontWeight: 700, fontFamily: 'inherit',
-                                        background: f.area === a ? f.color : C.surfaceContainer,
-                                        color: f.area === a ? '#fff' : C.onSurfaceVariant,
-                                    }}>{a}</button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                            <div>
-                                <div style={etiqueta}>Ícono</div>
-                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', maxWidth: '260px' }}>
-                                    {ICONOS.map(ic => (
-                                        <button type="button" key={ic} onClick={() => set({ icon: ic })} style={{
-                                            width: '34px', height: '34px', borderRadius: '10px', cursor: 'pointer', fontSize: '1rem',
-                                            border: f.icon === ic ? `2px solid ${f.color}` : `1px solid ${C.outlineVariant}`, background: C.surfaceLowest,
-                                        }}>{ic}</button>
-                                    ))}
+                                    <div>
+                                        <div style={etiqueta}>Color</div>
+                                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', maxWidth: '200px' }}>
+                                            {COLORES.map(c => (
+                                                <button type="button" key={c} onClick={() => set({ color: c })} style={{
+                                                    width: '26px', height: '26px', borderRadius: '50%', cursor: 'pointer', background: c, padding: 0,
+                                                    border: f.color === c ? `3px solid ${C.onSurface}` : '3px solid transparent',
+                                                }} />
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div>
-                                <div style={etiqueta}>Color</div>
-                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', maxWidth: '200px' }}>
-                                    {COLORES.map(c => (
-                                        <button type="button" key={c} onClick={() => set({ color: c })} style={{
-                                            width: '26px', height: '26px', borderRadius: '50%', cursor: 'pointer', background: c, padding: 0,
-                                            border: f.color === c ? `3px solid ${C.onSurface}` : '3px solid transparent',
-                                        }} />
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
 
-                        <div>
-                            <div style={etiqueta}>Fecha objetivo (opcional)</div>
-                            <input
-                                type="date" value={f.targetDate} onChange={e => set({ targetDate: e.target.value })}
-                                style={{ ...campo(movil), background: C.surfaceContainerLow, width: movil ? '100%' : 'auto', boxSizing: 'border-box' }}
-                            />
-                        </div>
+                                <div>
+                                    <div style={etiqueta}>Fecha objetivo (opcional)</div>
+                                    <input
+                                        type="date" value={f.targetDate} onChange={e => set({ targetDate: e.target.value })}
+                                        style={{ ...campo(movil), background: C.surfaceContainerLow, width: movil ? '100%' : 'auto', boxSizing: 'border-box' }}
+                                    />
+                                </div>
+                            </>
+                        )}
 
                         <div style={{ display: 'flex', gap: '10px' }}>
                             <button type="button" onClick={onClose} style={{
@@ -216,7 +253,7 @@ export const NuevaMetaModal = ({ open, movil, onClose, onSave }: Props) => {
                                 flex: 2, padding: '13px', borderRadius: '14px', border: 'none', fontWeight: 800, fontSize: '0.85rem', fontFamily: 'inherit',
                                 background: puede ? C.primary : C.surfaceContainerHigh, color: puede ? '#fff' : C.onSurfaceVariant,
                                 cursor: puede ? 'pointer' : 'default',
-                            }}>Guardar meta</button>
+                            }}>{editando ? 'Guardar cambios' : esSub ? 'Crear sub-meta' : 'Guardar meta'}</button>
                         </div>
                     </motion.form>
                 </motion.div>
