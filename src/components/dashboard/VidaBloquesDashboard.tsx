@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Habit, Routine, DailyBlock, UserPreferences } from '../../hooks/useAlDiaState';
 import { VidaDashboard } from './VidaDashboard';
 import { BloquesDashboard } from './BloquesDashboard';
@@ -52,6 +52,20 @@ const normalizeSub = (v: VidaBloquesProps['initial']): VidaSub =>
 export const VidaBloquesDashboard = (props: VidaBloquesProps) => {
     const [sub, setSub] = useState<VidaSub>(normalizeSub(props.initial));
 
+    // Adaptador de días: las repetitivas guardan sus días como Date.getDay() (lunes = 1 … domingo = 0, como en
+    // Tareas), pero la vista de Rutina piensa con lunes = 0. Acá se traduce de ida y de vuelta para no tocar
+    // cada uso dentro de BloquesDashboard.
+    const aLunes = (d: number) => (d + 6) % 7;
+    const aGetDay = (i: number) => (i + 1) % 7;
+    const bloquesLunes = useMemo(
+        () => props.dailyBlocks.map(b => b.repeatDays ? { ...b, repeatDays: b.repeatDays.map(aLunes) } : b),
+        [props.dailyBlocks]
+    );
+    const addDailyBlockLunes: VidaBloquesProps['addDailyBlock'] = (label, period, date, completed, projectId, repeatDays) =>
+        props.addDailyBlock(label, period, date, completed, projectId, repeatDays?.map(aGetDay));
+    const updateDailyBlockLunes: VidaBloquesProps['updateDailyBlock'] = (id, updates) =>
+        props.updateDailyBlock(id, updates.repeatDays ? { ...updates, repeatDays: updates.repeatDays.map(aGetDay) } : updates);
+
     const tabBtn = (key: VidaSub): React.CSSProperties => ({
         flex: 1,
         padding: '9px 12px',
@@ -86,11 +100,11 @@ export const VidaBloquesDashboard = (props: VidaBloquesProps) => {
 
             {sub === 'rutina' ? (
                 <BloquesDashboard
-                    dailyBlocks={props.dailyBlocks}
-                    addDailyBlock={props.addDailyBlock}
+                    dailyBlocks={bloquesLunes}
+                    addDailyBlock={addDailyBlockLunes}
                     toggleDailyBlock={props.toggleDailyBlock}
                     removeDailyBlock={props.removeDailyBlock}
-                    updateDailyBlock={props.updateDailyBlock}
+                    updateDailyBlock={updateDailyBlockLunes}
                     projects={props.projects}
                     preferences={props.preferences}
                     updatePreference={props.updatePreference}

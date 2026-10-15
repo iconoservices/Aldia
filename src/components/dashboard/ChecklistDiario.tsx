@@ -515,7 +515,10 @@ export const ChecklistDiario = ({
     const uniqueTemplates = useMemo(() => {
         const keys = new Set<string>();
         const list: { label: string; period: Period; projectId?: number; repeatDays?: number[]; date?: string; isActive?: boolean; time?: string }[] = [];
+        // Los hábitos (tareas marcadas como hábito) ya salen como misiones: no se repiten acá.
+        const etiquetasHabito = new Set(dailyBlocks.filter(b => b.isHabit).map(b => b.label.trim().toLowerCase()));
         dailyBlocks.forEach(b => {
+            if (etiquetasHabito.has(b.label.trim().toLowerCase())) return;
             if (b.isActive === false) return; // Si está desactivada tipo alarma, no aparece
             const k = taskKey(b.label, b.period);
             if (!keys.has(k)) {

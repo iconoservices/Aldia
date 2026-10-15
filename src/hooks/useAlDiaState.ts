@@ -187,6 +187,9 @@ export interface DailyBlock {
     repeatDays?: number[];
     time?: string;      // HH:mm opcional (como alarma)
     isActive?: boolean; // Para tareas repetitivas/alarmas: activa o pausada
+    isHabit?: boolean;  // Tarea repetitiva marcada como hábito (lleva racha). Los hábitos viven acá.
+    linkedRoutineId?: number;     // Hábito promovido desde una rutina
+    linkedRoutineItemId?: number;
 }
 
 // Check-in diario de salud, uno por día -- alimenta el score de Salud/Sueño
@@ -534,9 +537,9 @@ export const useAlDiaState = () => {
         missions: misionesState, setMissions: setMisionesDirect,
         habits, setHabits, agenda, setAgenda,
         toggleMission, updateMission, removeMission, addMission,
-        toggleHabit, addHabit, removeHabit, addCalendarEvent, removeCalendarEvent, updateCalendarEvent,
+        addCalendarEvent, removeCalendarEvent, updateCalendarEvent,
         reorderMissions,
-        performanceScore, missionFocusScore, completedMissionsCount
+        missionFocusScore, completedMissionsCount
     } = useMisionesState();
 
     const {
@@ -1063,6 +1066,51 @@ export const useAlDiaState = () => {
         if (necesita) console.info('[AlDía] Migración de franjas: todos los bloques del Checklist pasan a "Otro".');
     }, [isInitialLoad, hasLoadedFromCloud, dailyBlocks]);
 
+    // Migración de una sola vez: los hábitos guardados (lista vieja) pasan a ser tareas repetitivas
+    // marcadas como hábito, con todo su historial de días hechos. Antes de moverlos se deja un
+    // respaldo en este navegador. Es idempotente: si un hábito ya existe como tarea solo se marca y
+    // se completan los días que falten; al terminar la lista vieja queda vacía.
+    useEffect(() => {
+        if (isInitialLoad || !hasLoadedFromCloud || habits.length === 0) return;
+
+        try { localStorage.setItem(`aldia_habits_backup_${new Date().toLocaleDateString('en-CA')}`, JSON.stringify(habits)); } catch { /* nada */ }
+
+        let sig = Math.max(Date.now(), ...dailyBlocks.map(b => Number(b.id) || 0)) + 1;
+        const nuevos: DailyBlock[] = [];
+        const existentes = new Set<string>();
+        const hechos = new Map<string, Set<string>>();
+
+        habits.forEach(h => {
+            const k = claveHabito(h.name);
+            const dias = (h.schedule || []).map(aGetDay);
+            const vinculo = {
+                ...(h.linkedRoutineId !== undefined && { linkedRoutineId: h.linkedRoutineId }),
+                ...(h.linkedRoutineItemId !== undefined && { linkedRoutineItemId: h.linkedRoutineItemId }),
+            };
+            const bloques = dailyBlocks.filter(b => claveHabito(b.label) === k);
+            if (bloques.length > 0) existentes.add(k);
+            else nuevos.push({ id: sig++, label: h.name, completed: false, period: 'Otro', date: todayStr, repeatDays: dias, isActive: true, isHabit: true, ...vinculo });
+            const fechasConBloque = new Set(bloques.map(b => b.date));
+            const completadas = hechos.get(k) ?? new Set<string>();
+            (h.completedDates || []).forEach(f => {
+                completadas.add(f);
+                if (!fechasConBloque.has(f)) nuevos.push({ id: sig++, label: h.name, completed: true, period: 'Otro', date: f, repeatDays: dias, isActive: true, isHabit: true, ...vinculo });
+            });
+            hechos.set(k, completadas);
+        });
+
+        setDailyBlocks(prev => [
+            ...prev.map(b => {
+                const k = claveHabito(b.label);
+                if (!existentes.has(k)) return b;
+                return { ...b, isHabit: true, ...(hechos.get(k)?.has(b.date) ? { completed: true } : {}) };
+            }),
+            ...nuevos,
+        ]);
+        setHabits([]);
+        console.info(`[AlDía] Migración: ${habits.length} hábitos pasaron a tareas repetitivas (respaldo guardado).`);
+    }, [isInitialLoad, hasLoadedFromCloud, habits, dailyBlocks]);
+
     // Limpieza de una sola vez: proyectos sembrados por defecto que nunca se usaron.
     // El sembrado antiguo los recreaba en cada render, así que se acumularon duplicados
     // (p. ej. "📸 ICONO Agency" junto al "Icono Growth" real del usuario).
@@ -1139,7 +1187,34 @@ export const useAlDiaState = () => {
     const todayStr = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
     const todayIndex = useMemo(() => (new Date().getDay() + 6) % 7, []); // 0=Mon
 
-    const habitMissions = useMemo(() => habits
+    /* ── Hábitos = tareas repetitivas marcadas como hábito ───────────────────────────
+       Una sola fuente de verdad: dailyBlocks. `habitosUnif` reconstruye la forma vieja
+       (Habit: schedule con lunes = 0, completedDates) para que Vida, las misiones, Rita y el
+       calendario sigan leyéndolos igual. Las repetitivas guardan sus días como Date.getDay()
+       (lunes = 1 … domingo = 0); Habit.schedule usa lunes = 0. De ahí las dos conversiones. */
+    const aIdxLunes = (d: number) => (d + 6) % 7;
+    const aGetDay = (i: number) => (i + 1) % 7;
+    const claveHabito = (label: string) => label.trim().toLowerCase();
+
+    const habitosUnif: Habit[] = useMemo(() => {
+        const plantillas = new Map<string, DailyBlock>();
+        dailyBlocks.forEach(b => {
+            if (!b.isHabit) return;
+            const k = claveHabito(b.label);
+            const prev = plantillas.get(k);
+            if (!prev || (!prev.repeatDays?.length && b.repeatDays?.length)) plantillas.set(k, b);
+        });
+        return [...plantillas.entries()].map(([k, t]) => ({
+            id: t.id,
+            name: t.label,
+            schedule: (t.repeatDays || []).map(aIdxLunes),
+            completedDates: Array.from(new Set(dailyBlocks.filter(b => b.completed && b.date && claveHabito(b.label) === k).map(b => b.date))),
+            ...(t.linkedRoutineId !== undefined && { linkedRoutineId: t.linkedRoutineId }),
+            ...(t.linkedRoutineItemId !== undefined && { linkedRoutineItemId: t.linkedRoutineItemId }),
+        }));
+    }, [dailyBlocks]);
+
+    const habitMissions = useMemo(() => habitosUnif
         .filter(h => h.schedule?.includes(todayIndex))
         .map(h => ({
             id: h.id,
@@ -1148,7 +1223,7 @@ export const useAlDiaState = () => {
             completed: h.completedDates?.includes(todayStr),
             q: 'Q2' as const, repeat: 'none' as const, critical: false, isHabit: true,
             habitCount: h.completedDates?.length || 0
-        })), [habits, todayIndex, todayStr]);
+        })), [habitosUnif, todayIndex, todayStr]);
 
     const routineMissions = useMemo(() => rutinas
         .filter(r => r.isActive && r.repeatDays?.includes(todayIndex))
@@ -1421,8 +1496,11 @@ export const useAlDiaState = () => {
         projectId?: number,
         repeatDays?: number[],
         time?: string,
-        isActive: boolean = true
+        isActive: boolean = true,
+        isHabit?: boolean
     ) => {
+        // Los registros de cada día de un hábito heredan su marca (y su vínculo con la rutina).
+        const plantilla = dailyBlocks.find(b => b.isHabit && b.label.trim().toLowerCase() === label.trim().toLowerCase());
         const newBlock: DailyBlock = {
             id: nextBlockId(),
             label,
@@ -1432,7 +1510,10 @@ export const useAlDiaState = () => {
             projectId,
             repeatDays,
             time,
-            isActive
+            isActive,
+            ...((isHabit || plantilla) && { isHabit: true }),
+            ...(plantilla?.linkedRoutineId !== undefined && { linkedRoutineId: plantilla.linkedRoutineId }),
+            ...(plantilla?.linkedRoutineItemId !== undefined && { linkedRoutineItemId: plantilla.linkedRoutineItemId }),
         };
         setDailyBlocks(prev => [...prev, newBlock]);
     };
@@ -1489,6 +1570,58 @@ export const useAlDiaState = () => {
     const updateDailyBlock = (id: number, updates: Partial<DailyBlock>) => {
         setDailyBlocks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
     };
+
+    // Mismas firmas que las funciones viejas de hábitos (Vida las sigue usando tal cual).
+    const toggleHabit = (habitId: number, dayIndex?: number, date?: string) => {
+        const hab = habitosUnif.find(h => h.id === habitId);
+        if (!hab) return;
+        const k = claveHabito(hab.name);
+        if (dayIndex !== undefined) {
+            // Prender/apagar un día de la semana (lunes = 0) en todos los registros del hábito
+            const d = aGetDay(dayIndex);
+            setDailyBlocks(prev => prev.map(b => (claveHabito(b.label) === k && b.repeatDays)
+                ? { ...b, repeatDays: b.repeatDays.includes(d) ? b.repeatDays.filter(x => x !== d) : [...b.repeatDays, d] }
+                : b));
+            return;
+        }
+        if (date) {
+            const existente = dailyBlocks.find(b => claveHabito(b.label) === k && b.date === date);
+            if (existente) {
+                setDailyBlocks(prev => prev.map(b => b.id === existente.id ? { ...b, completed: !b.completed } : b));
+            } else {
+                const t = dailyBlocks.find(b => b.id === habitId);
+                setDailyBlocks(prev => [...prev, {
+                    id: nextBlockId(), label: hab.name, completed: true, period: 'Otro', date,
+                    repeatDays: t?.repeatDays, time: t?.time, isActive: true, isHabit: true,
+                    ...(hab.linkedRoutineId !== undefined && { linkedRoutineId: hab.linkedRoutineId }),
+                    ...(hab.linkedRoutineItemId !== undefined && { linkedRoutineItemId: hab.linkedRoutineItemId }),
+                }]);
+            }
+        }
+    };
+
+    const addHabit = (name: string, schedule?: number[], linkedRoutineId?: number, linkedRoutineItemId?: number) => {
+        setDailyBlocks(prev => [...prev, {
+            id: nextBlockId(), label: name, completed: false, period: 'Otro', date: todayStr,
+            repeatDays: (schedule || [0, 1, 2, 3, 4, 5, 6]).map(aGetDay), isActive: true, isHabit: true,
+            ...(linkedRoutineId !== undefined && { linkedRoutineId }),
+            ...(linkedRoutineItemId !== undefined && { linkedRoutineItemId }),
+        }]);
+    };
+
+    const removeHabit = (id: number) => {
+        const hab = habitosUnif.find(h => h.id === id);
+        if (!hab) return;
+        const k = claveHabito(hab.name);
+        // Pasa por removeDailyBlock para que quede en la papelera como cualquier tarea
+        removeDailyBlock(dailyBlocks.filter(b => claveHabito(b.label) === k).map(b => b.id));
+    };
+
+    // Desempeño de hábitos (antes en useMisionesState, que ya no ve los hábitos)
+    const habitPerformanceUnif = habitosUnif.length > 0
+        ? (habitosUnif.reduce((acc, h) => acc + h.completedDates.length, 0) / (habitosUnif.length * 30)) * 100
+        : 0;
+    const performanceScoreUnif = (missionFocusScore + habitPerformanceUnif) / 2;
 
     /* ── Lista de compras ─────────────────────────────────────────── */
 
@@ -1897,9 +2030,9 @@ export const useAlDiaState = () => {
         missions: misionesState, todayMissions,
         toggleMission: lw(toggleMission), updateMission: lw(updateMission),
         addMission: lw(addMission), removeMission: lw(removeMission), reorderMissions: lw(reorderMissions),
-        habits, toggleHabit: lw(toggleHabit), addHabit: lw(addHabit), removeHabit: lw(removeHabit),
+        habits: habitosUnif, toggleHabit: lw(toggleHabit), addHabit: lw(addHabit), removeHabit: lw(removeHabit),
         agenda, addCalendarEvent: lw(addCalendarEvent), removeCalendarEvent: lw(removeCalendarEvent), updateCalendarEvent: lw(updateCalendarEvent),
-        performanceScore, missionFocusScore, completedMissionsCount,
+        performanceScore: performanceScoreUnif, missionFocusScore, completedMissionsCount,
         // Finanzas
         transactions, balance, todayIncome, todayExpense, todayNet, todayIncomeReal, todayExpenseReal,
         totalIncomeReal, totalExpenseReal, totalNetReal, debtsOwe, debtsOwed,

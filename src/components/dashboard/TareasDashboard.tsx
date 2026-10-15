@@ -19,7 +19,8 @@ interface TareasDashboardProps {
         projectId?: number,
         repeatDays?: number[],
         time?: string,
-        isActive?: boolean
+        isActive?: boolean,
+        isHabit?: boolean
     ) => void;
     toggleDailyBlock: (id: number) => void;
     removeDailyBlock: (idOrIds: number | number[]) => void;
@@ -101,6 +102,22 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
         if (existente) toggleDailyBlock(existente.id);
         else addDailyBlock(b.label, (b.period ?? 'Otro') as any, todayStr, true, b.projectId, b.repeatDays, b.time, b.isActive);
     };
+    // Un hábito es una repetitiva marcada como hábito: lleva racha (días seguidos que tocaban y se hicieron)
+    const esHabito = (b: DailyBlock) => dailyBlocks.some(x => x.isHabit && mismaTarea(x, b));
+    const rachaDe = (b: DailyBlock) => {
+        const hechos = new Set(dailyBlocks.filter(x => mismaTarea(x, b) && x.completed && x.date).map(x => x.date));
+        const dias = b.repeatDays || [];
+        let n = 0;
+        for (let i = 0; i < 400; i++) {
+            const f = new Date(); f.setDate(f.getDate() - i);
+            if (!dias.includes(f.getDay())) continue;            // un día que no toca no rompe la racha
+            if (hechos.has(f.toLocaleDateString('en-CA'))) { n++; continue; }
+            if (i === 0) continue;                                // hoy todavía pendiente: no rompe
+            break;
+        }
+        return n;
+    };
+    const GRUPOS_REP = ['Hábitos', 'Repetitivas'];
     const GRUPOS_SUE = ['Vencidas', 'Hoy', 'Próximas', 'Sin fecha', 'Hechas'];
     const estadoDe = (b: DailyBlock) => b.completed ? 'Hechas' : !b.date ? 'Sin fecha' : b.date < todayStr ? 'Vencidas' : b.date === todayStr ? 'Hoy' : 'Próximas';
 
@@ -135,6 +152,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     const [textoTarea, setTextoTarea] = useState('');
     const [tipo, setTipo] = useState<'repetitiva' | 'suelta'>('suelta');
     const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // default Lun-Vie
+    const [nuevoEsHabito, setNuevoEsHabito] = useState(false);
     const [targetDate, setTargetDate] = useState('');
     const [paraHoy, setParaHoy] = useState(false);
     const [targetTime, setTargetTime] = useState('');
@@ -147,6 +165,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     const [editingTask, setEditingTask] = useState<DailyBlock | null>(null);
     const [editLabel, setEditLabel] = useState('');
     const [editDays, setEditDays] = useState<number[]>([]);
+    const [editHabito, setEditHabito] = useState(false);
     const [editDate, setEditDate] = useState('');
     const [editTime, setEditTime] = useState('');
     const [editProjectId, setEditProjectId] = useState<number | undefined>(undefined);
@@ -155,6 +174,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
         setEditingTask(b);
         setEditLabel(b.label);
         setEditDays(b.repeatDays || [0, 1, 2, 3, 4, 5, 6]);
+        setEditHabito(dailyBlocks.some(x => x.isHabit && x.label.trim().toLowerCase() === b.label.trim().toLowerCase() && x.period === b.period));
         setEditDate(b.date || '');
         setEditTime(b.time || '');
         setEditProjectId(b.projectId);
@@ -183,6 +203,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                         time: editTime || undefined,
                         period: editingTask.period || 'Otro',
                         projectId: editProjectId,
+                        isHabit: editHabito,
                     });
                 });
         } else {
@@ -268,7 +289,8 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                     projectId,
                     selectedDays.length > 0 ? selectedDays : [0, 1, 2, 3, 4, 5, 6],
                     targetTime || undefined,
-                    true // activa por defecto como una alarma
+                    true, // activa por defecto como una alarma
+                    nuevoEsHabito
                 );
             } else {
                 const finalDate = paraHoy ? todayStr : (targetDate || undefined);
@@ -291,6 +313,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
         setTargetDate('');
         setTargetTime('');
         setIsFormOpen(false);
+        setNuevoEsHabito(false);
     };
 
     const toggleDia = (diaIdx: number) => {
@@ -449,6 +472,10 @@ Supermercado:
                             {/* Opciones según tipo */}
                             {tipo === 'repetitiva' ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontWeight: 600, color: C.onSurface, cursor: 'pointer' }}>
+                                        <input type="checkbox" checked={nuevoEsHabito} onChange={e => setNuevoEsHabito(e.target.checked)} style={{ accentColor: C.primary, width: '16px', height: '16px' }} />
+                                        Es un hábito <span style={{ color: C.outline, fontWeight: 500 }}>(lleva racha 🔥)</span>
+                                    </label>
                                     <label style={{ fontSize: '0.78rem', fontWeight: 700, color: C.onSurfaceVariant, textTransform: 'uppercase' }}>
                                         Días en que se repite:
                                     </label>
@@ -654,7 +681,15 @@ Supermercado:
                                 <p style={{ margin: '4px 0 0', fontSize: '0.75rem' }}>Crea hábitos o alarmas que se repitan ciertos días de la semana.</p>
                             </div>
                         ) : (
-                            repetitivasOrdenadas.map(b => {
+                            GRUPOS_REP.map(g => {
+                                const items = repetitivasOrdenadas.filter(x => (esHabito(x) ? 'Hábitos' : 'Repetitivas') === g);
+                                if (items.length === 0) return null;
+                                const clave = 'rep:' + g;
+                                const hayHabitos = repetitivas.some(esHabito);
+                                return (
+                                    <div key={g}>
+                                        {hayHabitos && cabeceraGrupo(clave, g, items.length)}
+                                        {!(hayHabitos && cerrados[clave]) && items.map(b => {
                                 const project = projects.find(p => p.id === b.projectId);
                                 const isEncendida = b.isActive !== false;
                                 const toca = tocaHoy(b);
@@ -690,10 +725,17 @@ Supermercado:
                                             <div style={{ fontSize: '0.9rem', fontWeight: 700, color: hecha ? C.outline : C.onSurface, textDecoration: hecha ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                 {b.label}{!isEncendida && <span style={{ marginLeft: '8px', fontSize: '0.62rem', fontWeight: 800, color: C.outline, border: `1px solid ${C.outlineVariant}`, borderRadius: '999px', padding: '0 6px' }}>pausada</span>}
                                             </div>
-                                            {project && (
-                                                <div style={{ fontSize: '0.68rem', color: C.onSurfaceVariant, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: project.color }} />
-                                                    {project.name}
+                                            {(project || esHabito(b)) && (
+                                                <div style={{ fontSize: '0.68rem', color: C.onSurfaceVariant, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    {project && (
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: project.color }} />
+                                                            {project.name}
+                                                        </span>
+                                                    )}
+                                                    {esHabito(b) && rachaDe(b) > 0 && (
+                                                        <span title="Días seguidos cumplidos" style={{ fontWeight: 800, color: C.ambar }}>🔥 {rachaDe(b)}</span>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -723,6 +765,9 @@ Supermercado:
                                         )}
 
                                         {menuAcciones(b.id, () => handleStartEdit(b), () => handleDeleteRepetitiva(b), { icono: isEncendida ? 'alarm_off' : 'alarm_on', texto: isEncendida ? 'Pausar alarma' : 'Activar alarma', onClick: () => toggleAlarmaActiva(b) })}
+                                    </div>
+                                );
+                            })}
                                     </div>
                                 );
                             })
@@ -944,6 +989,10 @@ Supermercado:
                                 {/* Días (si es repetitiva) o Fecha (si es suelta) */}
                                 {editingTask.repeatDays && editingTask.repeatDays.length > 0 ? (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontWeight: 600, color: C.onSurface, cursor: 'pointer', marginBottom: '4px' }}>
+                                            <input type="checkbox" checked={editHabito} onChange={e => setEditHabito(e.target.checked)} style={{ accentColor: C.primary, width: '16px', height: '16px' }} />
+                                            Es un hábito <span style={{ color: C.outline, fontWeight: 500 }}>(lleva racha 🔥)</span>
+                                        </label>
                                         <label style={{ fontSize: '0.75rem', fontWeight: 700, color: C.onSurfaceVariant, textTransform: 'uppercase' }}>
                                             Días en que se repite:
                                         </label>

@@ -1259,7 +1259,9 @@ export const TimelineAgendaView = ({
     const dayChecklistTasks = useMemo(() => {
         const keys = new Set<string>();
         const templates: { label: string; period: string; repeatDays?: number[]; time?: string }[] = [];
+        const etiquetasHabito = new Set((dailyBlocks || []).filter((b: any) => b.isHabit).map((b: any) => b.label.trim().toLowerCase()));
         (dailyBlocks || []).forEach((b: any) => {
+            if (etiquetasHabito.has(b.label.trim().toLowerCase())) return; // los hábitos van aparte
             const k = `${b.label.toLowerCase()}||${b.period}`;
             if (!keys.has(k)) {
                 keys.add(k);
@@ -1312,7 +1314,9 @@ export const TimelineAgendaView = ({
         const hoyIdx = new Date().getDay(); // lunes = 1 … domingo = 0 (como Tareas)
         const keys = new Set<string>();
         const templates: { label: string; period: string; repeatDays?: number[] }[] = [];
+        const etiquetasHabito = new Set((dailyBlocks || []).filter((b: any) => b.isHabit).map((b: any) => b.label.trim().toLowerCase()));
         (dailyBlocks || []).forEach((b: any) => {
+            if (etiquetasHabito.has(b.label.trim().toLowerCase())) return; // los hábitos van aparte
             const k = `${b.label.toLowerCase()}||${b.period}`;
             if (!keys.has(k)) { keys.add(k); templates.push({ label: b.label, period: b.period, repeatDays: b.repeatDays }); }
         });
@@ -1771,7 +1775,9 @@ export const TimelineAgendaView = ({
             });
         }
         // Tareas (las de la pestaña Tareas): repetitivas en los días que tocan (con su hora) y sueltas con fecha.
-        if (activeFilters.tareas) {
+        if (activeFilters.tareas || activeFilters.habitos) {
+            const etiquetasHabito = new Set((dailyBlocks || []).filter((b: any) => b.isHabit).map((b: any) => b.label.trim().toLowerCase()));
+            const visible = (label: string) => etiquetasHabito.has(label.trim().toLowerCase()) ? activeFilters.habitos : activeFilters.tareas;
             const y = selectedDate.getFullYear(), m = selectedDate.getMonth();
             const diasMes = new Date(y, m + 1, 0).getDate();
             const mismaTarea = (a: any, b: any) => a.label.trim().toLowerCase() === b.label.trim().toLowerCase() && (a.period || 'Otro') === (b.period || 'Otro');
@@ -1788,21 +1794,21 @@ export const TimelineAgendaView = ({
                 const ds = fecha.toLocaleDateString('en-CA');
                 const jsDia = fecha.getDay(); // lunes = 1 … domingo = 0, como en Tareas
                 plantillas.forEach(r => {
-                    if (!r.repeatDays.includes(jsDia)) return;
+                    if (!r.repeatDays.includes(jsDia) || !visible(r.label)) return;
                     const hecha = (dailyBlocks || []).some((b: any) => mismaTarea(b, r) && b.date === ds && b.completed);
                     (map[ds] ||= []).push({ id: `tr-${r.id}-${ds}`, title: r.label, startTime: r.time || '', endTime: '', isTask: true, done: hecha, color: '#F59E0B', task: { block: r, date: ds } });
                 });
             }
             const prefijo = `${y}-${String(m + 1).padStart(2, '0')}`;
             (dailyBlocks || []).forEach((b: any) => {
-                if (b.repeatDays?.length || !b.date || !b.date.startsWith(prefijo)) return;
+                if (b.repeatDays?.length || !b.date || !b.date.startsWith(prefijo) || !visible(b.label)) return;
                 if ([...plantillas.values()].some(r => mismaTarea(r, b))) return; // es el registro de un día de una repetitiva
                 (map[b.date] ||= []).push({ id: `ts-${b.id}`, title: b.label, startTime: b.time || '', endTime: '', isTask: true, done: !!b.completed, color: '#F59E0B', task: { block: b, date: b.date, suelta: true } });
             });
         }
         Object.values(map).forEach(list => list.sort((a, b) => (a.startTime || '99:99').localeCompare(b.startTime || '99:99')));
         return map;
-    }, [calendarEvents, projects, dailyBlocks, selectedDate, activeFilters.agenda, activeFilters.entregas, activeFilters.citas, activeFilters.tareas, notionOn]);
+    }, [calendarEvents, projects, dailyBlocks, selectedDate, activeFilters.agenda, activeFilters.entregas, activeFilters.citas, activeFilters.tareas, activeFilters.habitos, notionOn]);
 
     // Marcar / desmarcar una tarea desde la celda del mes (igual que en Mi Día y Tareas).
     const marcarTareaDeCelda = (t: { block: any; date: string; suelta?: boolean }) => {
