@@ -181,8 +181,22 @@ export const MetasDashboard = ({
             const p = form.padre;
             if (m.esTarea && !form.goal) {
                 const base = Date.now();
-                const pasos = (m.pasosTexto ?? '').split('\n').map(t => t.trim()).filter(Boolean).map((t, i) => ({ id: base + i + 1, text: t, completed: false }));
-                updateGoal(p.id, { milestones: [...p.milestones, { id: base, text: m.title, completed: false, plazo: m.horizon, ...(pasos.length && { pasos }) }] });
+                const meta = goals.find(g => g.id === m.metaId) ?? p;
+                const sub = m.subId ? goals.find(g => g.id === m.subId) : undefined;
+                const lineas = (m.pasosTexto ?? '').split('\n').map(t => t.trim()).filter(Boolean);
+                const pasos = lineas.map((t, i) => ({ id: base + i + 1, text: t, completed: false }));
+                if (m.dias?.length) {
+                    // Repetitiva: tarea de Mi Día ligada a la meta (o a la sub-meta elegida)
+                    addDailyBlock?.(m.title, 'Otro', new Date().toLocaleDateString('en-CA'), false, undefined, m.dias, undefined, true, false, (sub ?? meta).id);
+                } else if (sub) {
+                    // Tarea dentro de una sub-meta
+                    updateGoal(sub.id, { milestones: [...sub.milestones, { id: base, text: m.title, completed: false, ...(pasos.length && { pasos }) }] });
+                } else if (numeros.objetivo) {
+                    // Con número: sub-meta de la meta elegida (los pasos pasan a ser sus tareas)
+                    addGoal(m.title, m.horizon, meta.area, meta.color, '🎯', undefined, undefined, pasos, undefined, { ...numeros, parentId: meta.id });
+                } else {
+                    updateGoal(meta.id, { milestones: [...meta.milestones, { id: base, text: m.title, completed: false, plazo: m.horizon, ...(pasos.length && { pasos }) }] });
+                }
             } else if (form.goal) updateGoal(form.goal.id, { title: m.title, horizon: m.horizon, ...numeros });
             else addGoal(m.title, m.horizon, p.area, p.color, '🎯', undefined, undefined, [], undefined, { ...numeros, parentId: p.id });
         }
@@ -200,7 +214,7 @@ export const MetasDashboard = ({
                 goal={goal} subs={subs} dailyBlocks={dailyBlocks} movil={movil}
                 onAbrirSub={id => setSubAbierta(id)}
                 onAbrirPlazo={plazo => setPlazoAbierto({ goalId: goal.id, plazo })}
-                onNuevaSub={plazo => setForm({ tipo: 'sub', padre: goal, inicial: { horizon: plazo, esTarea: true } })}
+                onNuevaSub={plazo => setForm({ tipo: 'sub', padre: goal, inicial: { horizon: plazo, esTarea: true, metaId: goal.id } })}
                 onToggleTarea={mid => toggleGoalMilestone(goal.id, mid)}
             />
         );
@@ -311,6 +325,7 @@ export const MetasDashboard = ({
                 open={!!form} movil={movil} tipo={form?.tipo ?? 'meta'} editando={!!form?.goal}
                 inicial={form?.goal ? aForm(form.goal) : form?.tipo === 'sub' ? form.inicial : undefined}
                 padre={form?.tipo === 'sub' ? form.padre : undefined}
+                metas={goals.filter(g => !g.parentId && g.status !== 'completado').map(g => ({ id: g.id, title: g.title, color: g.color, icon: g.icon, nombresPlazo: g.nombresPlazo, subs: goals.filter(x => x.parentId === g.id && x.status !== 'completado').map(x => ({ id: x.id, title: x.title, horizon: x.horizon })) }))}
                 projects={projects} onCrearVision={addProject}
                 onClose={() => setForm(null)} onSave={guardarForm}
             />
