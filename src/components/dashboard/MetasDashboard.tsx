@@ -97,6 +97,7 @@ export const MetasDashboard = ({
     const [expandedId, setExpandedId] = useState<number | null>(null);
     const [subAbierta, setSubAbierta] = useState<number | null>(null);
     const [plazoAbierto, setPlazoAbierto] = useState<{ goalId: number; plazo: GoalHorizon } | null>(null);
+    const [detalle, setDetalle] = useState<{ goalId: number; milestoneId: number; plazo: GoalHorizon } | null>(null);
 
     const raiz = goals.filter(g => !g.parentId);
     const subsDe = (id: number) => goals.filter(g => g.parentId === id);
@@ -194,6 +195,7 @@ export const MetasDashboard = ({
                 onAbrirSub={id => setSubAbierta(id)}
                 onAbrirPlazo={plazo => setPlazoAbierto({ goalId: goal.id, plazo })}
                 onNuevaSub={plazo => setForm({ tipo: 'sub', padre: goal, inicial: { horizon: plazo } })}
+                onAbrirTarea={(plazo, mid) => setDetalle({ goalId: goal.id, milestoneId: mid, plazo })}
                 onToggleTarea={mid => toggleGoalMilestone(goal.id, mid)}
             />
         );
@@ -239,6 +241,21 @@ export const MetasDashboard = ({
             </div>
         );
     };
+
+    const metaDetalle = detalle ? goals.find(g => g.id === detalle.goalId) : undefined;
+    const tareaDetalle = metaDetalle?.milestones.find(m => m.id === detalle?.milestoneId);
+    if (detalle && metaDetalle && tareaDetalle) {
+        return (
+            <TareaDetalle
+                goal={metaDetalle} tarea={tareaDetalle} plazo={detalle.plazo} movil={movil} dailyBlocks={dailyBlocks}
+                onVolver={() => { setPlazoAbierto({ goalId: detalle.goalId, plazo: detalle.plazo }); setDetalle(null); }}
+                onUpdate={u => updateGoal(metaDetalle.id, u)}
+                onToggle={mid => toggleGoalMilestone(metaDetalle.id, mid)}
+                onRemove={mid => removeGoalMilestone(metaDetalle.id, mid)}
+                toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal} addDailyBlock={addDailyBlock}
+            />
+        );
+    }
 
     return (
         <div style={paddingPagina(movil)}>
@@ -302,6 +319,7 @@ export const MetasDashboard = ({
                 onToggle={mid => metaPlazo && toggleGoalMilestone(metaPlazo.id, mid)}
                 onRemove={mid => metaPlazo && removeGoalMilestone(metaPlazo.id, mid)}
                 onUpdate={u => metaPlazo && updateGoal(metaPlazo.id, u)}
+                onAbrirTarea={mid => { if (metaPlazo && plazoAbierto) { setDetalle({ goalId: metaPlazo.id, milestoneId: mid, plazo: plazoAbierto.plazo }); setPlazoAbierto(null); } }}
                 addDailyBlock={addDailyBlock}
                 dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal}
             />
@@ -515,9 +533,10 @@ interface ColumnasProps {
     onAbrirPlazo: (plazo: GoalHorizon) => void;
     onNuevaSub: (plazo: GoalHorizon) => void;
     onToggleTarea?: (milestoneId: number) => void;
+    onAbrirTarea?: (plazo: GoalHorizon, milestoneId: number) => void;
 }
 
-const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, onNuevaSub, onToggleTarea }: ColumnasProps) => (
+const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, onNuevaSub, onToggleTarea, onAbrirTarea }: ColumnasProps) => (
     <div style={{ display: 'flex', flexDirection: movil ? 'column' : 'row', alignItems: 'stretch', gap: movil ? '4px' : '0', height: movil ? undefined : '100%' }}>
         {PLAZOS_INFO.map((pl, idx) => {
             const subsPlazo = subs.filter(s => s.horizon === pl.k);
@@ -550,15 +569,22 @@ const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, on
                             <Fragment key={m.id}>
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '2px 0' }}>
                                 <Check marcado={false} color={goal.color} tam={16} onClick={() => onToggleTarea?.(m.id)} />
-                                <span onClick={() => onAbrirPlazo(pl.k)} title={m.text} style={{ flex: 1, minWidth: 0, fontSize: '0.8rem', lineHeight: 1.3, color: C.onSurface, cursor: 'pointer', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>{m.text}</span>
-                                {!!m.pasos?.length && <span style={{ fontSize: '0.66rem', fontWeight: 700, color: C.outline, fontFamily: MONO, whiteSpace: 'nowrap' }}>{m.pasos.filter(p => p.completed).length}/{m.pasos.length}</span>}
+                                <span onClick={() => (onAbrirTarea ? onAbrirTarea(pl.k, m.id) : onAbrirPlazo(pl.k))} title={m.text} style={{ flex: 1, minWidth: 0, fontSize: '0.8rem', lineHeight: 1.3, color: C.onSurface, cursor: 'pointer', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>{m.text}</span>
+                                {!!m.pasos?.some(p => !p.repetitiva) && <span style={{ fontSize: '0.66rem', fontWeight: 700, color: C.outline, fontFamily: MONO, whiteSpace: 'nowrap' }}>{m.pasos.filter(p => !p.repetitiva && p.completed).length}/{m.pasos.filter(p => !p.repetitiva).length}</span>}
+                                {!!m.pasos?.some(p => p.repetitiva) && <span className="material-symbols-outlined" title="Tiene tareas repetitivas" style={{ fontSize: '14px', color: goal.color }}>repeat</span>}
                             </div>
-                            {m.pasos?.filter(p => !p.completed).slice(0, 2).map(p => (
-                                <div key={p.id} onClick={() => onAbrirPlazo(pl.k)} style={{ display: 'flex', alignItems: 'center', gap: '7px', margin: '-2px 0 0 24px', fontSize: '0.74rem', color: C.onSurfaceVariant, cursor: 'pointer', minWidth: 0 }}>
-                                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', border: `1.5px solid ${goal.color}`, flexShrink: 0, opacity: 0.8 }} />
+                            {m.pasos?.filter(p => p.repetitiva || !p.completed).slice(0, 3).map(p => {
+                                const rep = p.repetitiva ? tareasDeMeta(goal.id, dailyBlocks).find(t => t.repetitiva && t.label.trim().toLowerCase() === p.text.trim().toLowerCase()) : undefined;
+                                return (
+                                <div key={p.id} onClick={() => (onAbrirTarea ? onAbrirTarea(pl.k, m.id) : onAbrirPlazo(pl.k))} style={{ display: 'flex', alignItems: 'center', gap: '7px', margin: '-2px 0 0 24px', fontSize: '0.74rem', color: C.onSurfaceVariant, cursor: 'pointer', minWidth: 0 }}>
+                                    {p.repetitiva
+                                        ? <span className="material-symbols-outlined" style={{ fontSize: '12px', color: goal.color, flexShrink: 0 }}>repeat</span>
+                                        : <span style={{ width: '10px', height: '10px', borderRadius: '3px', border: `1.5px solid ${goal.color}`, flexShrink: 0, opacity: 0.8 }} />}
                                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.text}</span>
+                                    {rep?.dias?.length ? <span style={{ fontSize: '0.64rem', fontWeight: 700, color: goal.color, whiteSpace: 'nowrap' }}>{etiquetaDias(rep.dias)}</span> : null}
                                 </div>
-                            ))}
+                                );
+                            })}
                             </Fragment>
                         ))}
                         {pendientes.length > 3 && <button onClick={() => onAbrirPlazo(pl.k)} style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.72rem', fontWeight: 600, color: C.outline }}>+{pendientes.length - 3} más</button>}
@@ -697,7 +723,7 @@ const FilasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock,
                         <div style={{ fontSize: '0.95rem', color: !t.repetitiva && t.hecha ? C.outline : C.onSurface, textDecoration: !t.repetitiva && t.hecha ? 'line-through' : 'none', wordBreak: 'break-word' }}>{t.label}</div>
                         {t.repetitiva && t.semana && (
                             <div style={{ color: C.outline, fontSize: '0.74rem', fontWeight: 600, marginTop: '2px' }}>
-                                🔁 {pausada ? 'Pausada · no cuenta en el avance' : `${t.dias?.length ? etiquetaDias(t.dias) + ' · ' : ''}esta semana ${t.semana.hechos}/${t.semana.toca}${t.hecha ? ' · hoy ✓' : ''}`}
+                                <span className="material-symbols-outlined" style={{ verticalAlign: 'middle', fontSize: '14px' }}>repeat</span> {pausada ? 'Pausada · no cuenta en el avance' : `${t.dias?.length ? etiquetaDias(t.dias) + ' · ' : ''}esta semana ${t.semana.hechos}/${t.semana.toca}${t.hecha ? ' · hoy ✓' : ''}`}
                             </div>
                         )}
                     </div>
@@ -732,9 +758,9 @@ const Check = ({ marcado, color, onClick, tam = 22, cuadrado }: { marcado: boole
 );
 
 // Texto de una tarea que se edita tocándolo: Enter o salir guarda, Escape cancela.
-const TareaEditable = ({ texto, completada, onGuardar }: { texto: string; completada: boolean; onGuardar: (t: string) => void }) => {
+const TareaEditable = ({ texto, completada, onGuardar, grande }: { texto: string; completada: boolean; onGuardar: (t: string) => void; grande?: boolean }) => {
     const [draft, setDraft] = useState<string | null>(null);
-    const estilo: React.CSSProperties = { flex: 1, minWidth: 0, fontSize: '0.92rem', lineHeight: 1.35, wordBreak: 'break-word', fontFamily: 'inherit' };
+    const estilo: React.CSSProperties = { flex: 1, minWidth: 0, fontSize: grande ? '1.5rem' : '0.92rem', fontWeight: grande ? 800 : undefined, lineHeight: 1.35, wordBreak: 'break-word', fontFamily: 'inherit' };
     if (draft === null) return (
         <span onClick={() => setDraft(texto)} title="Toca para editar" style={{ ...estilo, cursor: 'text', color: completada ? C.outline : C.onSurface, textDecoration: completada ? 'line-through' : 'none' }}>{texto}</span>
     );
@@ -757,7 +783,10 @@ type Tarea = Goal['milestones'][number];
 type Paso = NonNullable<Tarea['pasos']>[number];
 const DIAS_SEMANA: { l: string; d: number }[] = [{ l: 'L', d: 1 }, { l: 'M', d: 2 }, { l: 'X', d: 3 }, { l: 'J', d: 4 }, { l: 'V', d: 5 }, { l: 'S', d: 6 }, { l: 'D', d: 0 }];
 
-const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd, onCambiar, onConvertir, extra, repDe, onToggleRep }: {
+const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd, onCambiar, onConvertir, extra, repDe, onToggleRep, onAbrir, detalle }: {
+    // En lista: tocar la tarea abre su pantalla de detalle. `detalle`: se muestra una sola tarea a pantalla completa, sin tarjeta.
+    onAbrir?: (id: number) => void;
+    detalle?: boolean;
     // Pasos ya convertidos en repetitiva: datos de su serie (días, avance) y cómo marcar hoy.
     repDe?: (texto: string) => TareaEnlazada | undefined;
     onToggleRep?: (blockId: number) => void;
@@ -784,7 +813,7 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
     const ordenadas = [...tareas.filter(m => !m.completed), ...tareas.filter(m => m.completed)];
     return (
         <div>
-            {tareas.length > 0 && (
+            {tareas.length > 0 && !detalle && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '6px 0 18px' }}>
                     <div style={{ flex: 1 }}><Barra pct={Math.round((hechas / tareas.length) * 100)} color={color} alto={6} /></div>
                     <span style={{ fontSize: '0.72rem', fontWeight: 700, color: C.outline, fontFamily: MONO }}>{hechas}/{tareas.length}</span>
@@ -795,12 +824,13 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                 const reales = (m.pasos || []).filter(p => !p.repetitiva);
                 const np = reales.length;
                 const pasosHechos = reales.filter(p => p.completed).length;
-                const abierta = panel[m.id] ?? tot > 0;
+                const abierta = detalle || (panel[m.id] ?? tot > 0);
+                const panelVisible = detalle || (!onAbrir && abierta);
                 return (
                 <div
                     key={m.id}
                     onMouseEnter={() => setSobre(m.id)} onMouseLeave={() => setSobre(null)}
-                    style={{
+                    style={detalle ? { padding: 0 } : {
                         padding: movil ? '12px 14px' : '16px 20px', marginBottom: '12px', borderRadius: '16px', boxSizing: 'border-box',
                         background: m.completed ? C.surfaceContainerLow : C.surfaceLowest,
                         border: `1px solid ${abierta || sobre === m.id ? `color-mix(in srgb, ${color} 45%, ${C.outlineVariant})` : C.outlineVariant}`,
@@ -815,10 +845,10 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                                 ? onCambiar(m.id, { completed: !m.completed, pasos: m.pasos.map(p => p.repetitiva ? p : { ...p, completed: !m.completed }) })
                                 : onToggle(m.id)}
                         />
-                        <TareaEditable texto={m.text} completada={m.completed} onGuardar={t => onEditar(m.id, t)} />
-                        {onCambiar && (
+                        <TareaEditable grande={detalle} texto={m.text} completada={m.completed} onGuardar={t => onEditar(m.id, t)} />
+                        {onCambiar && !detalle && (
                             <button
-                                onClick={() => alternarPasos(m.id, abierta)} title={abierta ? 'Ocultar pasos' : 'Ver o agregar pasos'}
+                                onClick={() => (onAbrir ? onAbrir(m.id) : alternarPasos(m.id, abierta))} title={abierta ? 'Ocultar pasos' : 'Ver o agregar pasos'}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.7rem', fontWeight: 700,
                                     padding: '4px 9px 4px 7px', whiteSpace: 'nowrap', flexShrink: 0,
@@ -829,17 +859,18 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                             >
                                 <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>{tot ? (np ? 'checklist' : 'repeat') : 'add'}</span>
                                 <span style={{ fontFamily: np ? MONO : 'inherit' }}>{np ? `${pasosHechos}/${np}` : 'Pasos'}</span>
+                                {onAbrir && <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>chevron_right</span>}
                             </button>
                         )}
-                        <button onClick={() => onRemove(m.id)} title="Quitar tarea" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '2px', flexShrink: 0, opacity: movil || sobre === m.id ? 0.9 : 0, transition: 'opacity 0.12s' }}>
+                        {!detalle && <button onClick={() => onRemove(m.id)} title="Quitar tarea" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '2px', flexShrink: 0, opacity: movil || sobre === m.id ? 0.9 : 0, transition: 'opacity 0.12s' }}>
                             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
-                        </button>
+                        </button>}
                     </div>
                     {np > 0 && !abierta && (
                         <div style={{ margin: '8px 0 0 34px' }}><Barra pct={Math.round((pasosHechos / np) * 100)} color={color} alto={3} /></div>
                     )}
-                    {onCambiar && abierta && (
-                        <div style={{ margin: '14px 0 2px 12px', padding: '2px 0 2px 18px', borderLeft: `3px solid color-mix(in srgb, ${color} 40%, white)` }}>
+                    {onCambiar && panelVisible && (
+                        <div style={{ margin: detalle ? '26px 0 2px 0' : '14px 0 2px 12px', padding: '2px 0 2px 18px', borderLeft: `3px solid color-mix(in srgb, ${color} 40%, white)` }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: tot ? '10px' : '6px' }}>
                                 <span style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color }}>Pasos</span>
                                 {np > 0 && <div style={{ flex: 1 }}><Barra pct={Math.round((pasosHechos / np) * 100)} color={color} alto={5} /></div>}
@@ -941,8 +972,8 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                 </div>
                 );
             })}
-            {extra}
-            <form onSubmit={e => { e.preventDefault(); if (texto.trim()) { onAdd(texto.trim()); setTexto(''); } }} style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+            {!detalle && extra}
+            {!detalle && <form onSubmit={e => { e.preventDefault(); if (texto.trim()) { onAdd(texto.trim()); setTexto(''); } }} style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <input
                     value={texto} onChange={e => setTexto(e.target.value)}
                     placeholder="Nueva tarea…" enterKeyHint="done"
@@ -955,7 +986,7 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                 }}>
                     <span className="material-symbols-outlined">add</span>
                 </button>
-            </form>
+            </form>}
         </div>
     );
 };
@@ -1127,12 +1158,55 @@ interface PlazoModalProps {
     onToggle: (milestoneId: number) => void;
     onRemove: (milestoneId: number) => void;
     onUpdate: (updates: Partial<Goal>) => void;
+    onAbrirTarea?: (milestoneId: number) => void;
     addDailyBlock?: MetasDashboardProps['addDailyBlock'];
     dailyBlocks?: DailyBlock[];
     toggleDailyBlock?: (id: number) => void;
     updateDailyBlock?: (id: number, updates: Partial<DailyBlock>) => void;
     linkTaskToGoal?: (blockId: number, goalId: number | undefined) => void;
 }
+
+// Pantalla completa de UNA tarea: sus pasos, repetitivas y detalles. El menú lateral sigue a la vista.
+const TareaDetalle = ({ goal, tarea, plazo, movil, dailyBlocks, onVolver, onUpdate, onToggle, onRemove, toggleDailyBlock, updateDailyBlock, linkTaskToGoal, addDailyBlock }: {
+    goal: Goal; tarea: Tarea; plazo: GoalHorizon; movil: boolean; dailyBlocks: DailyBlock[];
+    onVolver: () => void; onUpdate: (u: Partial<Goal>) => void; onToggle: (id: number) => void; onRemove: (id: number) => void;
+    toggleDailyBlock?: (id: number) => void; updateDailyBlock?: (id: number, updates: Partial<DailyBlock>) => void;
+    linkTaskToGoal?: (blockId: number, goalId: number | undefined) => void; addDailyBlock?: MetasDashboardProps['addDailyBlock'];
+}) => {
+    const total = tarea.pasos?.filter(p => !p.repetitiva).length || 0;
+    const hechos = tarea.pasos?.filter(p => !p.repetitiva && p.completed).length || 0;
+    return (
+        <div style={{ ...paddingPagina(movil), maxWidth: '860px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+            <button onClick={onVolver} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', color: C.onSurfaceVariant, fontFamily: 'inherit', fontWeight: 700, fontSize: '0.85rem', padding: '4px 0', marginBottom: '18px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>arrow_back</span> Metas
+            </button>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.outline, marginBottom: '10px' }}>
+                {goal.icon} {goal.title} · {nombrePlazo(goal, plazo)}
+            </div>
+            <ListaTareas
+                detalle
+                tareas={[tarea]} color={goal.color} movil={movil}
+                onToggle={onToggle} onRemove={onRemove} onAdd={() => { /* no aplica */ }}
+                onEditar={(id, t) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, text: t } : x) })}
+                onCambiar={(id, u) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, ...u } : x) })}
+                onConvertir={addDailyBlock ? convertirPaso(goal, plazo, onUpdate, addDailyBlock) : undefined}
+                repDe={txt => tareasDeMeta(goal.id, dailyBlocks).find(t => t.repetitiva && t.label.trim().toLowerCase() === txt.trim().toLowerCase())}
+                onToggleRep={toggleDailyBlock}
+            />
+            {total > 0 && (
+                <div style={{ margin: '4px 0 0', fontSize: '0.78rem', color: C.outline, fontFamily: MONO }}>{hechos}/{total} pasos hechos</div>
+            )}
+            <div style={{ marginTop: '34px', paddingTop: '18px', borderTop: `1px solid ${C.outlineVariant}` }}>
+                <button
+                    onClick={() => { if (window.confirm(`¿Borrar la tarea "${tarea.text}"?`)) { onRemove(tarea.id); onVolver(); } }}
+                    style={{ background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', color: C.rojo, fontSize: '0.8rem', fontWeight: 700, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>delete</span> Borrar tarea
+                </button>
+            </div>
+        </div>
+    );
+};
 
 // Saca un paso de su tarea y lo vuelve tarea suelta (misma lista) o repetitiva (bloque de Mi Día ligado a la meta).
 const convertirPaso = (
@@ -1151,7 +1225,7 @@ const convertirPaso = (
     onUpdate({ milestones });
 };
 
-const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, onUpdate, addDailyBlock, dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal }: PlazoModalProps) => {
+const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, onUpdate, addDailyBlock, dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, onAbrirTarea }: PlazoModalProps) => {
     const info = PLAZOS_INFO.find(p => p.k === plazo);
     const pasos = goal && plazo ? goal.milestones.filter(m => (m.plazo ?? 'corto') === plazo) : [];
     return (
@@ -1184,6 +1258,7 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                         onToggle={onToggle} onRemove={onRemove} onAdd={onAdd}
                         onEditar={(id, t) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, text: t } : x) })}
                         onCambiar={(id, u) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, ...u } : x) })}
+                        onAbrir={onAbrirTarea}
                         onConvertir={addDailyBlock ? convertirPaso(goal, plazo, onUpdate, addDailyBlock) : undefined}
                         repDe={txt => tareasDeMeta(goal.id, dailyBlocks).find(t => t.repetitiva && t.label.trim().toLowerCase() === txt.trim().toLowerCase())}
                         onToggleRep={toggleDailyBlock}
