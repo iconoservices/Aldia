@@ -196,7 +196,6 @@ export const MetasDashboard = ({
                 onAbrirSub={id => setSubAbierta(id)}
                 onAbrirPlazo={plazo => setPlazoAbierto({ goalId: goal.id, plazo })}
                 onNuevaSub={plazo => setForm({ tipo: 'sub', padre: goal, inicial: { horizon: plazo } })}
-                onAbrirTarea={(plazo, mid) => setDetalle({ goalId: goal.id, milestoneId: mid, plazo })}
                 onToggleTarea={mid => toggleGoalMilestone(goal.id, mid)}
             />
         );
@@ -832,7 +831,7 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                 const np = reales.length;
                 const pasosHechos = reales.filter(p => p.completed).length;
                 const abierta = detalle || (panel[m.id] ?? tot > 0);
-                const panelVisible = detalle || (!onAbrir && abierta);
+                const panelVisible = detalle || abierta;
                 return (
                 <div
                     key={m.id}
@@ -845,7 +844,12 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                         transition: 'border-color 0.12s, box-shadow 0.12s',
                     }}
                 >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: movil ? '12px' : '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: movil ? '10px' : '12px' }}>
+                        {onCambiar && !detalle && (
+                            <button onClick={() => alternarPasos(m.id, abierta)} title={abierta ? 'Cerrar detalle' : 'Ver detalle'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: 0, marginLeft: '-6px', flexShrink: 0 }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: '22px', transform: abierta ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>chevron_right</span>
+                            </button>
+                        )}
                         <Check
                             marcado={m.completed} color={color} tam={26}
                             onClick={() => m.pasos?.length && onCambiar
@@ -855,7 +859,7 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                         <TareaEditable grande={detalle} texto={m.text} completada={m.completed} onGuardar={t => onEditar(m.id, t)} />
                         {onCambiar && !detalle && (
                             <button
-                                onClick={() => (onAbrir ? onAbrir(m.id) : alternarPasos(m.id, abierta))} title={abierta ? 'Ocultar pasos' : 'Ver o agregar pasos'}
+                                onClick={() => alternarPasos(m.id, abierta)} title={abierta ? 'Ocultar pasos' : 'Ver o agregar pasos'}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.7rem', fontWeight: 700,
                                     padding: '4px 9px 4px 7px', whiteSpace: 'nowrap', flexShrink: 0,
@@ -866,7 +870,6 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                             >
                                 <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>{tot ? (np ? 'checklist' : 'repeat') : 'add'}</span>
                                 <span style={{ fontFamily: np ? MONO : 'inherit' }}>{np ? `${pasosHechos}/${np}` : 'Pasos'}</span>
-                                {onAbrir && <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>chevron_right</span>}
                             </button>
                         )}
                         {!detalle && <button onClick={() => onRemove(m.id)} title="Quitar tarea" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '2px', flexShrink: 0, opacity: movil || sobre === m.id ? 0.9 : 0, transition: 'opacity 0.12s' }}>
@@ -883,6 +886,11 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                                 {np > 0 && <div style={{ flex: 1 }}><Barra pct={Math.round((pasosHechos / np) * 100)} color={color} alto={5} /></div>}
                                 {np > 0 && <span style={{ fontSize: '0.74rem', fontWeight: 700, color: C.outline, fontFamily: MONO }}>{pasosHechos}/{np}</span>}
                                 {tot === 0 && <span style={{ fontSize: '0.78rem', color: C.outline }}>Divide esta tarea en partes más chicas.</span>}
+                                {onAbrir && !detalle && (
+                                    <button onClick={() => onAbrir(m.id)} title="Abrir en pantalla completa" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: C.outline, fontFamily: 'inherit', fontSize: '0.74rem', fontWeight: 700, padding: '2px 4px' }}>
+                                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>open_in_full</span> Abrir
+                                    </button>
+                                )}
                             </div>
                             {(m.pasos || []).map((p, pi) => {
                                 const menu = conv?.paso === p.id ? conv : null;
