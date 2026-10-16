@@ -54,6 +54,8 @@ interface TaskCardProps {
     isDone: boolean;
     projColor: string;
     projName: string;
+    metaNombre?: string; // meta a la que aporta esta tarea
+    metaColor?: string;
     time?: string;
     isDragging?: boolean;
     onToggle: () => void;
@@ -61,7 +63,7 @@ interface TaskCardProps {
 }
 
 const TaskCard = ({
-    id, label, period, isDone, projColor, projName, time,
+    id, label, period, isDone, projColor, projName, metaNombre, metaColor, time,
     isDragging = false, onToggle, onMenuClick,
 }: TaskCardProps) => {
     const {
@@ -162,6 +164,18 @@ const TaskCard = ({
                         <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: projColor, display: 'inline-block' }} />
                         {projName}
                     </span>
+
+                    {metaNombre && (
+                        <span title={`Aporta a la meta: ${metaNombre}`} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '2px', minWidth: 0,
+                            fontSize: '0.64rem', fontWeight: 700, color: metaColor || C.primary,
+                            background: `color-mix(in srgb, ${metaColor || C.primary} 10%, white)`, padding: '1px 6px', borderRadius: '999px',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '11px', flexShrink: 0 }}>flag</span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{metaNombre}</span>
+                        </span>
+                    )}
                 </div>
 
                 {/* Menu */}
@@ -611,6 +625,13 @@ export const ChecklistDiario = ({
         }
     }, [completedToday, totalToday]);
 
+    // Meta a la que aporta una tarea (si la serie está ligada a una), para mostrarla como etiqueta.
+    const metaDeTarea = (label: string, period: Period) => {
+        const b = dailyBlocks.find(x => x.goalId !== undefined && x.period === period && x.label.trim().toLowerCase() === label.trim().toLowerCase());
+        const g = b ? goals.find(x => x.id === b.goalId) : undefined;
+        return g ? { metaNombre: g.title, metaColor: g.color } : {};
+    };
+
     const handleToggle = useCallback((label: string, period: Period) => {
         const existing = dailyBlocks.find(b =>
             b.label.toLowerCase() === label.toLowerCase() && b.period === period && b.date === todayStr
@@ -903,6 +924,7 @@ export const ChecklistDiario = ({
                                                 isDone={isDone}
                                                 projColor={projColor}
                                                 projName={projName}
+                                                {...metaDeTarea(task.label, task.period)}
                                                 time={task.time}
                                                 onToggle={() => handleToggle(task.label, task.period)}
                                                 onMenuClick={handleMenuClick}
@@ -1342,6 +1364,7 @@ export const ChecklistDiario = ({
                                                 isDone={isDone}
                                                 projColor={projColor}
                                                 projName={projName}
+                                                {...metaDeTarea(task.label, task.period)}
                                                 time={task.time}
                                                 onToggle={() => handleToggle(task.label, task.period)}
                                                 onMenuClick={handleMenuClick}
