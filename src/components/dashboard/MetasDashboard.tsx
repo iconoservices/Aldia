@@ -242,6 +242,22 @@ export const MetasDashboard = ({
         );
     };
 
+    if (metaPlazo && plazoAbierto) {
+        return (
+            <PlazoModal pagina
+                goal={metaPlazo} plazo={plazoAbierto?.plazo ?? null} movil={movil}
+                onClose={() => setPlazoAbierto(null)}
+                onAdd={t => metaPlazo && plazoAbierto && addGoalMilestone(metaPlazo.id, t, plazoAbierto.plazo)}
+                onToggle={mid => metaPlazo && toggleGoalMilestone(metaPlazo.id, mid)}
+                onRemove={mid => metaPlazo && removeGoalMilestone(metaPlazo.id, mid)}
+                onUpdate={u => metaPlazo && updateGoal(metaPlazo.id, u)}
+                onAbrirTarea={mid => { if (metaPlazo && plazoAbierto) { setDetalle({ goalId: metaPlazo.id, milestoneId: mid, plazo: plazoAbierto.plazo }); setPlazoAbierto(null); } }}
+                addDailyBlock={addDailyBlock}
+                dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal}
+            />
+        );
+    }
+
     const metaDetalle = detalle ? goals.find(g => g.id === detalle.goalId) : undefined;
     const tareaDetalle = metaDetalle?.milestones.find(m => m.id === detalle?.milestoneId);
     if (detalle && metaDetalle && tareaDetalle) {
@@ -310,18 +326,6 @@ export const MetasDashboard = ({
                 onAddTarea={t => sub && addGoalMilestone(sub.id, t)}
                 onToggleTarea={mid => sub && toggleGoalMilestone(sub.id, mid)}
                 onRemoveTarea={mid => sub && removeGoalMilestone(sub.id, mid)}
-            />
-
-            <PlazoModal
-                goal={metaPlazo} plazo={plazoAbierto?.plazo ?? null} movil={movil}
-                onClose={() => setPlazoAbierto(null)}
-                onAdd={t => metaPlazo && plazoAbierto && addGoalMilestone(metaPlazo.id, t, plazoAbierto.plazo)}
-                onToggle={mid => metaPlazo && toggleGoalMilestone(metaPlazo.id, mid)}
-                onRemove={mid => metaPlazo && removeGoalMilestone(metaPlazo.id, mid)}
-                onUpdate={u => metaPlazo && updateGoal(metaPlazo.id, u)}
-                onAbrirTarea={mid => { if (metaPlazo && plazoAbierto) { setDetalle({ goalId: metaPlazo.id, milestoneId: mid, plazo: plazoAbierto.plazo }); setPlazoAbierto(null); } }}
-                addDailyBlock={addDailyBlock}
-                dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal}
             />
         </div>
     );
@@ -1174,6 +1178,7 @@ interface PlazoModalProps {
     onRemove: (milestoneId: number) => void;
     onUpdate: (updates: Partial<Goal>) => void;
     onAbrirTarea?: (milestoneId: number) => void;
+    pagina?: boolean; // pantalla completa (con el menú lateral visible) en vez de ventana flotante
     addDailyBlock?: MetasDashboardProps['addDailyBlock'];
     dailyBlocks?: DailyBlock[];
     toggleDailyBlock?: (id: number) => void;
@@ -1240,11 +1245,21 @@ const convertirPaso = (
     onUpdate({ milestones });
 };
 
-const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, onUpdate, addDailyBlock, dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, onAbrirTarea }: PlazoModalProps) => {
+const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, onUpdate, addDailyBlock, dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, onAbrirTarea, pagina }: PlazoModalProps) => {
     const info = PLAZOS_INFO.find(p => p.k === plazo);
     const pasos = goal && plazo ? goal.milestones.filter(m => (m.plazo ?? 'corto') === plazo) : [];
-    return (
-        <Hoja abierta={!!goal && !!info} movil={movil} color={goal?.color ?? C.primary} onClose={onClose} ancho={680}>
+    const envolver = (children: React.ReactNode) => pagina ? (
+        <div style={{ ...paddingPagina(movil), maxWidth: '860px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+            <button onClick={onClose} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', color: C.onSurfaceVariant, fontFamily: 'inherit', fontWeight: 700, fontSize: '0.85rem', padding: '4px 0', marginBottom: '18px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>arrow_back</span> Metas
+            </button>
+            {children}
+        </div>
+    ) : (
+        <Hoja abierta={!!goal && !!info} movil={movil} color={goal?.color ?? C.primary} onClose={onClose} ancho={680}>{children}</Hoja>
+    );
+    return envolver(
+        <>
             {goal && plazo && info && (
                 <>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '20px' }}>
@@ -1263,7 +1278,7 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                                 <span style={{ fontWeight: 500, fontSize: '0.85rem', color: C.outline, whiteSpace: 'nowrap' }}>· {info.sub}</span>
                             </div>
                         </div>
-                        <BotonX onClick={onClose} />
+                        {!pagina && <BotonX onClick={onClose} />}
                     </div>
                     <p style={{ margin: '0 0 14px', fontSize: '0.88rem', color: C.onSurfaceVariant }}>
                         {pasos.length === 0 ? 'Tareas sueltas de este plazo. Las de una sub-meta van dentro de ella.' : 'Tareas sueltas de este plazo'}
@@ -1281,6 +1296,6 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                     />
                 </>
             )}
-        </Hoja>
+        </>,
     );
 };
