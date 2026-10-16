@@ -724,8 +724,8 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
     return (
         <div>
             {tareas.length > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                    <div style={{ flex: 1 }}><Barra pct={Math.round((hechas / tareas.length) * 100)} color={color} alto={4} /></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '6px 0 18px' }}>
+                    <div style={{ flex: 1 }}><Barra pct={Math.round((hechas / tareas.length) * 100)} color={color} alto={6} /></div>
                     <span style={{ fontSize: '0.72rem', fontWeight: 700, color: C.outline, fontFamily: MONO }}>{hechas}/{tareas.length}</span>
                 </div>
             )}
@@ -738,16 +738,16 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                     key={m.id}
                     onMouseEnter={() => setSobre(m.id)} onMouseLeave={() => setSobre(null)}
                     style={{
-                        padding: '10px 12px', marginBottom: '8px', borderRadius: '14px', boxSizing: 'border-box',
+                        padding: movil ? '12px 14px' : '16px 20px', marginBottom: '12px', borderRadius: '16px', boxSizing: 'border-box',
                         background: m.completed ? C.surfaceContainerLow : C.surfaceLowest,
                         border: `1px solid ${abierta || sobre === m.id ? `color-mix(in srgb, ${color} 45%, ${C.outlineVariant})` : C.outlineVariant}`,
                         boxShadow: sobre === m.id && !m.completed ? '0 2px 10px rgba(12,42,32,0.06)' : 'none',
                         transition: 'border-color 0.12s, box-shadow 0.12s',
                     }}
                 >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: movil ? '12px' : '16px' }}>
                         <Check
-                            marcado={m.completed} color={color} tam={24}
+                            marcado={m.completed} color={color} tam={26}
                             onClick={() => m.pasos?.length && onCambiar
                                 ? onCambiar(m.id, { completed: !m.completed, pasos: m.pasos.map(p => ({ ...p, completed: !m.completed })) })
                                 : onToggle(m.id)}
@@ -815,14 +815,14 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                 </div>
                 );
             })}
-            <form onSubmit={e => { e.preventDefault(); if (texto.trim()) { onAdd(texto.trim()); setTexto(''); } }} style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+            <form onSubmit={e => { e.preventDefault(); if (texto.trim()) { onAdd(texto.trim()); setTexto(''); } }} style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <input
                     value={texto} onChange={e => setTexto(e.target.value)}
                     placeholder="Nueva tarea…" enterKeyHint="done"
-                    style={{ ...campo(movil), flex: 1, minWidth: 0 }}
+                    style={{ ...campo(movil), flex: 1, minWidth: 0, padding: '13px 16px' }}
                 />
                 <button type="submit" disabled={!texto.trim()} title="Agregar" style={{
-                    width: '44px', flexShrink: 0, border: 'none', borderRadius: '12px', cursor: texto.trim() ? 'pointer' : 'default',
+                    width: '50px', flexShrink: 0, border: 'none', borderRadius: '12px', cursor: texto.trim() ? 'pointer' : 'default',
                     background: texto.trim() ? color : C.surfaceContainerHigh, color: '#fff',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
@@ -834,7 +834,7 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
 };
 
 // Hoja/ventana base para los dos modales de esta pantalla.
-const Hoja = ({ abierta, movil, color, onClose, children }: { abierta: boolean; movil: boolean; color: string; onClose: () => void; children: React.ReactNode }) => {
+const Hoja = ({ abierta, movil, color, onClose, ancho = 480, children }: { abierta: boolean; movil: boolean; color: string; onClose: () => void; ancho?: number; children: React.ReactNode }) => {
     useEffect(() => {
         if (!abierta) return;
         const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -858,8 +858,8 @@ const Hoja = ({ abierta, movil, color, onClose, children }: { abierta: boolean; 
                         initial={{ y: movil ? 60 : 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: movil ? 60 : 20, opacity: 0 }}
                         transition={{ type: 'spring', damping: 28, stiffness: 320 }}
                         style={{
-                            background: C.surfaceLowest, width: '100%', maxWidth: '480px', maxHeight: movil ? '88dvh' : '82dvh', overflowY: 'auto', boxSizing: 'border-box',
-                            borderRadius: movil ? '24px 24px 0 0' : '20px', padding: movil ? '20px 18px 24px' : '22px',
+                            background: C.surfaceLowest, width: '100%', maxWidth: `${ancho}px`, maxHeight: movil ? '88dvh' : '86dvh', overflowY: 'auto', boxSizing: 'border-box',
+                            borderRadius: movil ? '24px 24px 0 0' : '20px', padding: movil ? '20px 18px 24px' : '30px 34px 32px',
                             boxShadow: '0 20px 60px rgba(0,0,0,0.18)', borderTop: `4px solid ${color}`,
                         }}
                     >
@@ -907,7 +907,7 @@ const SubMetaModal = ({ sub, padre, movil, dailyBlocks, toggleDailyBlock, update
     const lograda = sub?.status === 'completado';
     const av = sub ? avance(sub, [], dailyBlocks) : { pct: 0, texto: '' };
     return (
-        <Hoja abierta={!!sub && !!padre} movil={movil} color={color} onClose={onClose}>
+        <Hoja abierta={!!sub && !!padre} movil={movil} color={color} onClose={onClose} ancho={640}>
             {sub && padre && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
@@ -1004,10 +1004,10 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
     const info = PLAZOS_INFO.find(p => p.k === plazo);
     const pasos = goal && plazo ? goal.milestones.filter(m => (m.plazo ?? 'corto') === plazo) : [];
     return (
-        <Hoja abierta={!!goal && !!info} movil={movil} color={goal?.color ?? C.primary} onClose={onClose}>
+        <Hoja abierta={!!goal && !!info} movil={movil} color={goal?.color ?? C.primary} onClose={onClose} ancho={680}>
             {goal && plazo && info && (
                 <>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '20px' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.outline }}>
                                 {goal.icon} {goal.title}
@@ -1018,14 +1018,14 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                                     onChange={e => onUpdate({ nombresPlazo: { ...goal.nombresPlazo, [plazo]: e.target.value } })}
                                     onBlur={() => { if (!(goal.nombresPlazo?.[plazo] ?? '').trim()) onUpdate({ nombresPlazo: { ...goal.nombresPlazo, [plazo]: undefined } }); }}
                                     maxLength={28} title="Toca para cambiar el nombre"
-                                    style={{ minWidth: 0, flex: '0 1 auto', width: `${Math.max(6, (goal.nombresPlazo?.[plazo] ?? info.titulo).length + 1)}ch`, border: 'none', borderBottom: `2px dashed ${C.outlineVariant}`, outline: 'none', background: 'transparent', fontSize: '1.15rem', fontWeight: 800, color: C.onSurface, padding: 0, fontFamily: 'inherit' }}
+                                    style={{ minWidth: 0, flex: '0 1 auto', width: `${Math.max(6, (goal.nombresPlazo?.[plazo] ?? info.titulo).length + 1)}ch`, border: 'none', borderBottom: `2px dashed ${C.outlineVariant}`, outline: 'none', background: 'transparent', fontSize: movil ? '1.15rem' : '1.4rem', fontWeight: 800, color: C.onSurface, padding: 0, fontFamily: 'inherit' }}
                                 />
                                 <span style={{ fontWeight: 500, fontSize: '0.85rem', color: C.outline, whiteSpace: 'nowrap' }}>· {info.sub}</span>
                             </div>
                         </div>
                         <BotonX onClick={onClose} />
                     </div>
-                    <p style={{ margin: '0 0 4px', fontSize: '0.8rem', color: C.onSurfaceVariant }}>
+                    <p style={{ margin: '0 0 14px', fontSize: '0.88rem', color: C.onSurfaceVariant }}>
                         {pasos.length === 0 ? 'Tareas sueltas de este plazo. Las de una sub-meta van dentro de ella.' : 'Tareas sueltas de este plazo'}
                     </p>
                     <ListaTareas
