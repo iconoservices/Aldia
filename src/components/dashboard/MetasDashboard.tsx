@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { NuevaMetaModal, PLAZOS_INFO } from './NuevaMetaModal';
 import type { NuevaMeta } from './NuevaMetaModal';
 import type { DailyBlock, Goal, GoalHorizon, GoalStatus, Project } from '../../hooks/useAlDiaState';
-import { avance, tareasDeMeta, actualVigente, clavePeriodo } from './metasAvance';
+import { avance, tareasDeMeta, actualVigente, clavePeriodo, etiquetaDias } from './metasAvance';
 import {
     C, MONO, useIsMobile,
     paddingPagina, campo,
@@ -302,6 +302,7 @@ export const MetasDashboard = ({
                 onRemove={mid => metaPlazo && removeGoalMilestone(metaPlazo.id, mid)}
                 onUpdate={u => metaPlazo && updateGoal(metaPlazo.id, u)}
                 addDailyBlock={addDailyBlock}
+                dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal}
             />
         </div>
     );
@@ -642,7 +643,7 @@ const TareasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock
                         {t.label}
                         {t.repetitiva && t.semana && (
                             <span style={{ display: 'block', color: C.outline, fontSize: '0.72rem', fontWeight: 600 }}>
-                                {pausada ? 'Pausada · no cuenta en el avance' : `esta semana ${t.semana.hechos}/${t.semana.toca}${t.hecha ? ' · hoy ✓' : ''}`}
+                                {pausada ? 'Pausada · no cuenta en el avance' : `${t.dias?.length ? etiquetaDias(t.dias) + ' · ' : ''}esta semana ${t.semana.hechos}/${t.semana.toca}${t.hecha ? ' · hoy ✓' : ''}`}
                             </span>
                         )}
                     </span>
@@ -1054,6 +1055,10 @@ interface PlazoModalProps {
     onRemove: (milestoneId: number) => void;
     onUpdate: (updates: Partial<Goal>) => void;
     addDailyBlock?: MetasDashboardProps['addDailyBlock'];
+    dailyBlocks?: DailyBlock[];
+    toggleDailyBlock?: (id: number) => void;
+    updateDailyBlock?: (id: number, updates: Partial<DailyBlock>) => void;
+    linkTaskToGoal?: (blockId: number, goalId: number | undefined) => void;
 }
 
 // Saca un paso de su tarea y lo vuelve tarea suelta (misma lista) o repetitiva (bloque de Mi Día ligado a la meta).
@@ -1071,7 +1076,7 @@ const convertirPaso = (
     onUpdate({ milestones });
 };
 
-const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, onUpdate, addDailyBlock }: PlazoModalProps) => {
+const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, onUpdate, addDailyBlock, dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal }: PlazoModalProps) => {
     const info = PLAZOS_INFO.find(p => p.k === plazo);
     const pasos = goal && plazo ? goal.milestones.filter(m => (m.plazo ?? 'corto') === plazo) : [];
     return (
@@ -1106,6 +1111,9 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                         onCambiar={(id, u) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, ...u } : x) })}
                         onConvertir={addDailyBlock ? convertirPaso(goal, plazo, onUpdate, addDailyBlock) : undefined}
                     />
+                    <div style={{ marginTop: '22px' }}>
+                        <TareasEnlazadas goal={goal} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal} movil={movil} />
+                    </div>
                 </>
             )}
         </Hoja>

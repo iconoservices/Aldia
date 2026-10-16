@@ -17,6 +17,15 @@ export const sufijoPeriodo = (g: Goal) => g.periodo === 'semana' ? ' por semana'
 
 export const conUnidad = (n: number, u?: string) => !u ? fmt(n) : u === 'S/' ? `S/ ${fmt(n)}` : u === '%' ? `${fmt(n)}%` : `${fmt(n)} ${u}`;
 
+const NOMBRE_DIA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+// "Todos los días", "Lun a Vie" o "Lun · Mié · Vie".
+export const etiquetaDias = (dias: number[]) => {
+    const orden = [1, 2, 3, 4, 5, 6, 0].filter(d => dias.includes(d));
+    if (orden.length === 7) return 'Todos los días';
+    if (orden.length === 5 && !dias.includes(0) && !dias.includes(6)) return 'Lun a Vie';
+    return orden.map(d => NOMBRE_DIA[d]).join(' · ');
+};
+
 const hoyStr = () => new Date().toLocaleDateString('en-CA');
 const claveSerie = (b: DailyBlock) => `${b.label.trim().toLowerCase()}|${b.period}`;
 
@@ -28,6 +37,7 @@ export interface TareaEnlazada {
     activa: boolean;
     hecha: boolean;        // suelta: completada · repetitiva: hecha hoy
     semana?: { hechos: number; toca: number }; // repetitiva: cumplimiento lunes→hoy
+    dias?: number[];       // repetitiva: días de la semana (getDay, 0 = domingo)
 }
 
 export const tareasDeMeta = (goalId: number, dailyBlocks: DailyBlock[]): TareaEnlazada[] => {
@@ -56,7 +66,7 @@ export const tareasDeMeta = (goalId: number, dailyBlocks: DailyBlock[]): TareaEn
         return {
             id: plantilla.id, label: plantilla.label, repetitiva: true,
             activa: bloques.every(b => b.isActive !== false),
-            hecha: hechas.has(today), semana: { hechos, toca },
+            hecha: hechas.has(today), semana: { hechos, toca }, dias,
         };
     });
     return [
