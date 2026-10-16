@@ -478,6 +478,7 @@ export interface GoalMilestone {
     text: string;
     completed: boolean;
     plazo?: GoalHorizon; // en qué plazo cae este paso dentro de la meta; sin valor = 'corto'
+    pasos?: { id: number; text: string; completed: boolean }[]; // mini-lista dentro de la tarea; al terminar todos, la tarea se completa
 }
 
 export type GoalHorizon = 'corto' | 'mediano' | 'largo';

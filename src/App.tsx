@@ -488,10 +488,12 @@ function App() {
                   projects={state.projects}
                   dailyBlocks={state.dailyBlocks}
                   toggleDailyBlock={state.toggleDailyBlock}
+                  updateDailyBlock={state.updateDailyBlock}
                   linkTaskToGoal={state.linkTaskToGoal}
                   addProject={state.addProject}
                   addGoal={state.addGoal}
                   updateGoal={state.updateGoal}
+                  reorderGoals={state.reorderGoals}
                   removeGoal={state.removeGoal}
                   addGoalMilestone={state.addGoalMilestone}
                   toggleGoalMilestone={state.toggleGoalMilestone}
