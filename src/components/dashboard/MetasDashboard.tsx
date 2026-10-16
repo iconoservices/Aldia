@@ -941,7 +941,7 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                                 <span style={{ fontFamily: np ? MONO : 'inherit' }}>{np ? `${pasosHechos}/${np}` : 'Pasos'}</span>
                             </button>
                         )}
-                        {!detalle && <button onClick={() => onRemove(m.id)} title="Quitar tarea" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '2px', flexShrink: 0, opacity: movil || sobre === m.id ? 0.9 : 0, transition: 'opacity 0.12s' }}>
+                        {!detalle && <button onClick={() => { if (window.confirm(`¿Quitar la tarea "${m.text}"${tot > 0 ? ' y sus pasos' : ''}?`)) onRemove(m.id); }} title="Quitar tarea" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '2px', flexShrink: 0, opacity: movil || sobre === m.id ? 0.9 : 0, transition: 'opacity 0.12s' }}>
                             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
                         </button>}
                     </div>
