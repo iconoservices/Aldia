@@ -109,6 +109,33 @@ export const VidaDashboard = ({
     projects, promoteRoutineItemToProject, only
 }: VidaProps) => {
     const [viewMode, setViewMode] = useState<'hoy' | 'semana'>('hoy');
+    // Arrastre de bloques en la vista Semana: qué bloque se agarra (y de qué día
+    // y hora de la celda) y sobre qué celda está pasando.
+    const [drag, setDrag] = useState<{ id: number; day: number; hour: number } | null>(null);
+    const [dropCell, setDropCell] = useState<{ day: number; hour: number } | null>(null);
+    const toMinutes = (t: string) => { const [h, m] = t.split(':'); return parseInt(h) * 60 + (parseInt(m) || 0); };
+    const fmtMinutes = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+    // Suelta el bloque en (day, hour): el horario se corre las horas que
+    // hay entre la celda agarrada y la de destino (el bloque entero, sus
+    // minutos se conservan) y ese día de la semana pasa al día de destino.
+    const soltarBloque = (day: number, hour: number) => {
+        const d = drag;
+        setDrag(null); setDropCell(null);
+        if (!d) return;
+        const r = rutinas.find(x => x.id === d.id);
+        if (!r || !r.startTime || !r.endTime) return;
+        const delta = (hour - d.hour) * 60;
+        const ns = toMinutes(r.startTime) + delta, ne = toMinutes(r.endTime) + delta;
+        if (ns < 6 * 60 || ne > 24 * 60) return; // fuera de la grilla 06:00–24:00
+        const updates: Partial<Routine> = {};
+        if (delta !== 0) { updates.startTime = fmtMinutes(ns); updates.endTime = ne === 24 * 60 ? '23:59' : fmtMinutes(ne); }
+        if (day !== d.day) {
+            const dias = (r.repeatDays || []).filter(x => x !== d.day);
+            if (!dias.includes(day)) dias.push(day);
+            updates.repeatDays = dias.sort((a, b) => a - b);
+        }
+        if (Object.keys(updates).length) updateRoutine(r.id, updates);
+    };
     const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
     const [linkingItem, setLinkingItem] = useState<{ rId: number, iId: number } | null>(null);
     const [addingBlock, setAddingBlock] = useState(false);
@@ -657,10 +684,21 @@ export const VidaDashboard = ({
                                                 });
                                                 
                                                 return (
-                                                    <div key={day} style={{ height: '40px', background: day === normalizedDay ? 'rgba(15,169,122,0.05)' : '#FBFBFB', borderRadius: '6px', position: 'relative', border: '1px solid #F0F0F0' }}>
+                                                    <div
+                                                        key={day}
+                                                        onDragOver={drag ? (ev) => { ev.preventDefault(); if (dropCell?.day !== day || dropCell?.hour !== h + 6) setDropCell({ day, hour: h + 6 }); } : undefined}
+                                                        onDrop={drag ? (ev) => { ev.preventDefault(); soltarBloque(day, h + 6); } : undefined}
+                                                        style={{ height: '40px', background: day === normalizedDay ? 'rgba(15,169,122,0.05)' : '#FBFBFB', borderRadius: '6px', position: 'relative', border: dropCell?.day === day && dropCell?.hour === h + 6 ? '1px dashed #0FA97A' : '1px solid #F0F0F0' }}>
                                                         {activeRoutines.map(r => (
-                                                            <motion.div
+                                                            <div
                                                                 key={r.id}
+                                                                draggable
+                                                                title="Arrástralo para moverlo de hora o de día"
+                                                                onDragStart={(ev) => { ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', String(r.id)); setDrag({ id: r.id, day, hour: h + 6 }); }}
+                                                                onDragEnd={() => { setDrag(null); setDropCell(null); }}
+                                                                style={{ position: 'absolute', inset: 0, cursor: 'grab', opacity: drag?.id === r.id ? 0.45 : 1 }}
+                                                            >
+                                                            <motion.div
                                                                 initial={{ opacity: 0, scale: 0.8 }}
                                                                 animate={{ opacity: r.isActive ? 0.9 : 0.4, scale: 1 }}
                                                                 whileHover={{ scale: 1.04 }}
@@ -669,12 +707,13 @@ export const VidaDashboard = ({
                                                                 style={{
                                                                     position: 'absolute', inset: '2px', background: r.color, borderRadius: '6px',
                                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                    padding: '4px', cursor: 'pointer'
+                                                                    padding: '4px', cursor: 'grab'
                                                                 }}
                                                                 onClick={() => updateRoutine(r.id, { isActive: !r.isActive })}
                                                             >
                                                                 <span style={{ fontSize: '0.55rem', fontWeight: 800, color: 'white', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{r.title}</span>
                                                             </motion.div>
+                                                            </div>
                                                         ))}
                                                     </div>
                                                 );
