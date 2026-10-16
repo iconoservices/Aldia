@@ -5,6 +5,7 @@ import { NuevaMetaModal, PLAZOS_INFO } from './NuevaMetaModal';
 import type { NuevaMeta } from './NuevaMetaModal';
 import type { DailyBlock, Goal, GoalHorizon, GoalStatus, Project } from '../../hooks/useAlDiaState';
 import { avance, tareasDeMeta, actualVigente, clavePeriodo, etiquetaDias } from './metasAvance';
+import type { TareaEnlazada } from './metasAvance';
 import {
     C, MONO, useIsMobile,
     paddingPagina, campo,
@@ -672,9 +673,13 @@ const TareasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock
 };
 
 // Tarea de Mi Día ligada a la meta, mostrada como una fila más de la lista (repetitiva: con sus días).
-const FilasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock, linkTaskToGoal, movil }: { goal: Goal; dailyBlocks: DailyBlock[]; toggleDailyBlock?: (id: number) => void; updateDailyBlock?: (id: number, updates: Partial<DailyBlock>) => void; linkTaskToGoal?: (blockId: number, goalId: number | undefined) => void; movil: boolean }) => (
+const FilasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock, linkTaskToGoal, movil, incluir, excluir, compacto }: { incluir?: string[]; excluir?: string[]; compacto?: boolean; goal: Goal; dailyBlocks: DailyBlock[]; toggleDailyBlock?: (id: number) => void; updateDailyBlock?: (id: number, updates: Partial<DailyBlock>) => void; linkTaskToGoal?: (blockId: number, goalId: number | undefined) => void; movil: boolean }) => (
     <>
-        {tareasDeMeta(goal.id, dailyBlocks).map(t => {
+        {tareasDeMeta(goal.id, dailyBlocks).filter(t => {
+            const k = t.label.trim().toLowerCase();
+            if (incluir) return incluir.some(x => x.trim().toLowerCase() === k);
+            return !excluir?.some(x => x.trim().toLowerCase() === k);
+        }).map(t => {
             const pausada = t.repetitiva && !t.activa;
             const alternarActiva = () => {
                 const base = dailyBlocks.find(b => b.id === t.id);
@@ -684,8 +689,10 @@ const FilasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock,
                     .forEach(b => updateDailyBlock(b.id, { isActive: pausada }));
             };
             return (
-                <div key={t.id} style={{ padding: movil ? '12px 14px' : '16px 20px', marginBottom: '12px', borderRadius: '16px', boxSizing: 'border-box', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, opacity: pausada ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: movil ? '12px' : '16px' }}>
-                    <Check marcado={t.hecha} color={goal.color} tam={26} onClick={() => toggleDailyBlock?.(t.id)} />
+                <div key={t.id} style={compacto
+                    ? { padding: '8px 0', display: 'flex', alignItems: 'center', gap: '12px', opacity: pausada ? 0.55 : 1 }
+                    : { padding: movil ? '12px 14px' : '16px 20px', marginBottom: '12px', borderRadius: '16px', boxSizing: 'border-box', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, opacity: pausada ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: movil ? '12px' : '16px' }}>
+                    <Check cuadrado={compacto} marcado={t.hecha} color={goal.color} tam={compacto ? 18 : 26} onClick={() => toggleDailyBlock?.(t.id)} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '0.95rem', color: !t.repetitiva && t.hecha ? C.outline : C.onSurface, textDecoration: !t.repetitiva && t.hecha ? 'line-through' : 'none', wordBreak: 'break-word' }}>{t.label}</div>
                         {t.repetitiva && t.semana && (
@@ -750,7 +757,10 @@ type Tarea = Goal['milestones'][number];
 type Paso = NonNullable<Tarea['pasos']>[number];
 const DIAS_SEMANA: { l: string; d: number }[] = [{ l: 'L', d: 1 }, { l: 'M', d: 2 }, { l: 'X', d: 3 }, { l: 'J', d: 4 }, { l: 'V', d: 5 }, { l: 'S', d: 6 }, { l: 'D', d: 0 }];
 
-const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd, onCambiar, onConvertir, extra }: {
+const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd, onCambiar, onConvertir, extra, repDe, onToggleRep }: {
+    // Pasos ya convertidos en repetitiva: datos de su serie (días, avance) y cómo marcar hoy.
+    repDe?: (texto: string) => TareaEnlazada | undefined;
+    onToggleRep?: (blockId: number) => void;
     extra?: React.ReactNode; // filas adicionales (ej. repetitivas enlazadas) dentro de la misma lista
     tareas: Goal['milestones']; color: string; movil: boolean;
     // Convierte un paso en tarea suelta ('suelta') o en tarea repetitiva (días de la semana, getDay).
@@ -768,7 +778,7 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
     const alternarPasos = (id: number, abiertaAhora: boolean) => setPanel(prev => ({ ...prev, [id]: !abiertaAhora }));
     // Cambia los pasos de una tarea; si hay pasos, la tarea queda hecha solo cuando todos lo están.
     const cambiarPasos = (m: Goal['milestones'][number], pasos: NonNullable<Goal['milestones'][number]['pasos']>) =>
-        onCambiar?.(m.id, { pasos, completed: pasos.length ? pasos.every(p => p.completed) : m.completed });
+        { const reales = pasos.filter(p => !p.repetitiva); onCambiar?.(m.id, { pasos, completed: reales.length ? reales.every(p => p.completed) : m.completed }); }
     const hechas = tareas.filter(m => m.completed).length;
     // Pendientes primero, hechas al final (el orden relativo se conserva).
     const ordenadas = [...tareas.filter(m => !m.completed), ...tareas.filter(m => m.completed)];
@@ -781,9 +791,11 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                 </div>
             )}
             {ordenadas.map(m => {
-                const np = m.pasos?.length || 0;
-                const pasosHechos = m.pasos?.filter(p => p.completed).length || 0;
-                const abierta = panel[m.id] ?? np > 0;
+                const tot = m.pasos?.length || 0;
+                const reales = (m.pasos || []).filter(p => !p.repetitiva);
+                const np = reales.length;
+                const pasosHechos = reales.filter(p => p.completed).length;
+                const abierta = panel[m.id] ?? tot > 0;
                 return (
                 <div
                     key={m.id}
@@ -800,7 +812,7 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                         <Check
                             marcado={m.completed} color={color} tam={26}
                             onClick={() => m.pasos?.length && onCambiar
-                                ? onCambiar(m.id, { completed: !m.completed, pasos: m.pasos.map(p => ({ ...p, completed: !m.completed })) })
+                                ? onCambiar(m.id, { completed: !m.completed, pasos: m.pasos.map(p => p.repetitiva ? p : { ...p, completed: !m.completed }) })
                                 : onToggle(m.id)}
                         />
                         <TareaEditable texto={m.text} completada={m.completed} onGuardar={t => onEditar(m.id, t)} />
@@ -810,12 +822,12 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.7rem', fontWeight: 700,
                                     padding: '4px 9px 4px 7px', whiteSpace: 'nowrap', flexShrink: 0,
-                                    color: np ? color : C.outline,
-                                    background: np ? `color-mix(in srgb, ${color} 10%, white)` : 'transparent',
-                                    border: `1px ${np ? 'solid' : 'dashed'} ${np ? `color-mix(in srgb, ${color} 35%, white)` : C.outlineVariant}`,
+                                    color: tot ? color : C.outline,
+                                    background: tot ? `color-mix(in srgb, ${color} 10%, white)` : 'transparent',
+                                    border: `1px ${tot ? 'solid' : 'dashed'} ${tot ? `color-mix(in srgb, ${color} 35%, white)` : C.outlineVariant}`,
                                 }}
                             >
-                                <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>{np ? 'checklist' : 'add'}</span>
+                                <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>{tot ? (np ? 'checklist' : 'repeat') : 'add'}</span>
                                 <span style={{ fontFamily: np ? MONO : 'inherit' }}>{np ? `${pasosHechos}/${np}` : 'Pasos'}</span>
                             </button>
                         )}
@@ -828,29 +840,49 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                     )}
                     {onCambiar && abierta && (
                         <div style={{ margin: '14px 0 2px 12px', padding: '2px 0 2px 18px', borderLeft: `3px solid color-mix(in srgb, ${color} 40%, white)` }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: np ? '10px' : '6px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: tot ? '10px' : '6px' }}>
                                 <span style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color }}>Pasos</span>
                                 {np > 0 && <div style={{ flex: 1 }}><Barra pct={Math.round((pasosHechos / np) * 100)} color={color} alto={5} /></div>}
                                 {np > 0 && <span style={{ fontSize: '0.74rem', fontWeight: 700, color: C.outline, fontFamily: MONO }}>{pasosHechos}/{np}</span>}
-                                {np === 0 && <span style={{ fontSize: '0.78rem', color: C.outline }}>Divide esta tarea en partes más chicas.</span>}
+                                {tot === 0 && <span style={{ fontSize: '0.78rem', color: C.outline }}>Divide esta tarea en partes más chicas.</span>}
                             </div>
                             {(m.pasos || []).map((p, pi) => {
                                 const menu = conv?.paso === p.id ? conv : null;
                                 return (
                                 <div key={p.id} style={{ borderTop: pi > 0 ? `1px solid color-mix(in srgb, ${color} 10%, white)` : 'none' }}>
+                                    {p.repetitiva ? (() => {
+                                        const t = repDe?.(p.text);
+                                        const pausada = !!t && !t.activa;
+                                        return (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '9px 0', opacity: pausada ? 0.55 : 1 }}>
+                                                <Check cuadrado marcado={!!t?.hecha} color={color} tam={18} onClick={() => t && onToggleRep?.(t.id)} />
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ fontSize: '0.92rem', color: C.onSurface, wordBreak: 'break-word' }}>{p.text}</div>
+                                                    <div style={{ marginTop: '2px', fontSize: '0.72rem', fontWeight: 700, color }}>
+                                                        <span style={{ verticalAlign: 'middle', fontSize: '14px' }} className="material-symbols-outlined">repeat</span>{' '}
+                                                        {t ? (pausada ? 'Repetitiva · pausada' : `${t.dias?.length ? etiquetaDias(t.dias) : 'Repetitiva'}${t.semana ? ` · esta semana ${t.semana.hechos}/${t.semana.toca}` : ''}${t.hecha ? ' · hoy ✓' : ''}`) : 'Repetitiva'}
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => cambiarPasos(m, (m.pasos || []).filter(x => x.id !== p.id))} title="Quitar de esta lista (la repetitiva sigue en Mi Día)" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '4px', opacity: 0.7 }}>
+                                                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+                                                </button>
+                                            </div>
+                                        );
+                                    })() : (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '9px 0', opacity: p.completed ? 0.6 : 1 }}>
-                                        <Check cuadrado marcado={p.completed} color={color} tam={18} onClick={() => cambiarPasos(m, (m.pasos || []).map(x => x.id === p.id ? { ...x, completed: !x.completed } : x))} />
-                                        <TareaEditable texto={p.text} completada={p.completed} onGuardar={t => cambiarPasos(m, (m.pasos || []).map(x => x.id === p.id ? { ...x, text: t } : x))} />
-                                        {onConvertir && (
-                                            <button onClick={() => setConv(menu ? null : { paso: p.id, rep: false, dias: [1, 2, 3, 4, 5] })} title="Convertir en tarea suelta o repetitiva" style={{ background: 'none', border: 'none', cursor: 'pointer', color: menu ? color : C.outline, fontFamily: 'inherit', fontSize: '0.74rem', fontWeight: 700, padding: '2px 4px', whiteSpace: 'nowrap', textDecoration: 'underline', textUnderlineOffset: '3px', textDecorationColor: C.outlineVariant }}>
-                                                Convertir
+                                            <Check cuadrado marcado={p.completed} color={color} tam={18} onClick={() => cambiarPasos(m, (m.pasos || []).map(x => x.id === p.id ? { ...x, completed: !x.completed } : x))} />
+                                            <TareaEditable texto={p.text} completada={p.completed} onGuardar={t => cambiarPasos(m, (m.pasos || []).map(x => x.id === p.id ? { ...x, text: t } : x))} />
+                                            {onConvertir && (
+                                                <button onClick={() => setConv(menu ? null : { paso: p.id, rep: false, dias: [1, 2, 3, 4, 5] })} title="Convertir en tarea suelta o repetitiva" style={{ background: 'none', border: 'none', cursor: 'pointer', color: menu ? color : C.outline, fontFamily: 'inherit', fontSize: '0.74rem', fontWeight: 700, padding: '2px 4px', whiteSpace: 'nowrap', textDecoration: 'underline', textUnderlineOffset: '3px', textDecorationColor: C.outlineVariant }}>
+                                                    Convertir
+                                                </button>
+                                            )}
+                                            <button onClick={() => cambiarPasos(m, (m.pasos || []).filter(x => x.id !== p.id))} title="Quitar paso" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '4px', opacity: 0.7 }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
                                             </button>
-                                        )}
-                                        <button onClick={() => cambiarPasos(m, (m.pasos || []).filter(x => x.id !== p.id))} title="Quitar paso" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '4px', opacity: 0.7 }}>
-                                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
-                                        </button>
-                                    </div>
-                                    {menu && onConvertir && (
+                                        </div>
+                                    )}
+                                    {menu && onConvertir && !p.repetitiva && (
                                         <div style={{ margin: '0 0 10px 30px', padding: '4px 0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                             <div style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.outline }}>Convertir este paso en…</div>
                                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -895,12 +927,12 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                                     cambiarPasos(m, [...(m.pasos || []), { id: Date.now() + Math.floor(Math.random() * 1000), text: t, completed: false }]);
                                     setNuevoPaso(prev => ({ ...prev, [m.id]: '' }));
                                 }}
-                                style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: np ? '8px' : 0, padding: '10px 12px', borderRadius: '10px', background: C.surfaceLowest, border: `1px dashed ${C.outlineVariant}` }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: tot ? '8px' : 0, padding: '10px 12px', borderRadius: '10px', background: C.surfaceLowest, border: `1px dashed ${C.outlineVariant}` }}
                             >
                                 <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.outline }}>add</span>
                                 <input
                                     value={nuevoPaso[m.id] || ''} onChange={e => setNuevoPaso(prev => ({ ...prev, [m.id]: e.target.value }))}
-                                    placeholder={np ? 'Agregar otro paso…' : 'Primer paso de esta tarea…'} enterKeyHint="done"
+                                    placeholder={tot ? 'Agregar otro paso…' : 'Primer paso de esta tarea…'} enterKeyHint="done"
                                     style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', padding: 0, fontFamily: 'inherit', fontSize: '0.9rem', color: C.onSurface, outline: 'none' }}
                                 />
                             </form>
@@ -1107,8 +1139,10 @@ const convertirPaso = (
     goal: Goal, plazo: GoalHorizon | undefined, onUpdate: (u: Partial<Goal>) => void,
     addDailyBlock: MetasDashboardProps['addDailyBlock'],
 ) => (t: Tarea, p: Paso, destino: 'suelta' | number[]) => {
-    const quedan = (t.pasos || []).filter(x => x.id !== p.id);
-    const milestones = goal.milestones.map(x => x.id === t.id ? { ...x, pasos: quedan, completed: quedan.length ? quedan.every(q => q.completed) : x.completed } : x);
+    // Suelta: el paso sale de la tarea y pasa a ser una tarea más. Repetitiva: se queda en su lugar, marcado.
+    const pasos = destino === 'suelta' ? (t.pasos || []).filter(x => x.id !== p.id) : (t.pasos || []).map(x => x.id === p.id ? { ...x, repetitiva: true } : x);
+    const reales = pasos.filter(q => !q.repetitiva);
+    const milestones = goal.milestones.map(x => x.id === t.id ? { ...x, pasos, completed: reales.length ? reales.every(q => q.completed) : x.completed } : x);
     if (destino === 'suelta') {
         milestones.push({ id: Date.now() + Math.floor(Math.random() * 1000), text: p.text, completed: p.completed, ...(plazo && { plazo }) });
     } else if (addDailyBlock) {
@@ -1151,7 +1185,9 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                         onEditar={(id, t) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, text: t } : x) })}
                         onCambiar={(id, u) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, ...u } : x) })}
                         onConvertir={addDailyBlock ? convertirPaso(goal, plazo, onUpdate, addDailyBlock) : undefined}
-                        extra={<FilasEnlazadas goal={goal} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal} movil={movil} />}
+                        repDe={txt => tareasDeMeta(goal.id, dailyBlocks).find(t => t.repetitiva && t.label.trim().toLowerCase() === txt.trim().toLowerCase())}
+                        onToggleRep={toggleDailyBlock}
+                        extra={<FilasEnlazadas excluir={goal.milestones.flatMap(m => (m.pasos || []).filter(q => q.repetitiva).map(q => q.text))} goal={goal} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal} movil={movil} />}
                     />
                 </>
             )}
