@@ -510,6 +510,7 @@ export interface Goal {
     periodo?: 'semana' | 'mes'; // si está, `actual` se reinicia cada semana/mes
     periodoClave?: string;      // período al que pertenece `actual` (semana: lunes YYYY-MM-DD; mes: YYYY-MM)
     migradoV2?: boolean;  // ya pasó por la migración de tareas '🎯' → sub-metas
+    inactiva?: boolean;   // meta en pausa: se ve atenuada y sin columnas, y no aparece en Mi Día
 }
 
 export interface Note {

@@ -704,6 +704,9 @@ function App() {
                   updateProject={state.updateProject}
                   onOpenDetail={(id: number) => setSelectedProjectDetailId(id)}
                   reorderProjects={state.reorderProjects}
+                  goals={state.goals}
+                  dailyBlocks={state.dailyBlocks}
+                  onOpenMetas={() => setActiveTab('Metas')}
                 />
               </>
             ) : activeTab === 'Entregas' ? (

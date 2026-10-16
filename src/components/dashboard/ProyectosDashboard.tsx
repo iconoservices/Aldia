@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { GlassCard } from '../ui/GlassCard';
 import { useIsMobile, paddingPagina } from '../../theme';
-import type { Project } from '../../hooks/useAlDiaState';
+import type { Project, Goal, DailyBlock } from '../../hooks/useAlDiaState';
+import { avance } from './metasAvance';
 import { ProjectEditOverlay } from '../features/ProjectEditOverlay';
 
 interface ProyectosProps {
@@ -13,12 +14,15 @@ interface ProyectosProps {
     updateProject: (id: number, updates: Partial<Project>) => void;
     onOpenDetail: (projectId: number) => void;
     reorderProjects: (newOrder: Project[]) => void;
+    goals?: Goal[];
+    dailyBlocks?: DailyBlock[];
+    onOpenMetas?: () => void;
 }
 
 const PROJECT_COLORS = ['#0055FF', '#0FA97A', '#0E9F6E', '#C63C3C', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4'];
 
 export const ProyectosDashboard = ({
-    projects, addProject, deleteProject, updateProject, onOpenDetail, reorderProjects
+    projects, addProject, deleteProject, updateProject, onOpenDetail, reorderProjects, goals = [], dailyBlocks = [], onOpenMetas
 }: ProyectosProps) => {
     const [editingProject, setEditingProject] = useState<Project | null>(null);
     const [showArchived, setShowArchived] = useState(false);
@@ -174,6 +178,9 @@ export const ProyectosDashboard = ({
                             deleteProject={deleteProject}
                             onEdit={() => setEditingProject(project)}
                             onOpenDetail={onOpenDetail}
+                            goals={goals}
+                            dailyBlocks={dailyBlocks}
+                            onOpenMetas={onOpenMetas}
                         />
                     </motion.div>
                 ))}
@@ -246,14 +253,21 @@ export const ProyectosDashboard = ({
 };
 
 const ProjectCard = ({ 
-    project, allProjects, deleteProject, onEdit, onOpenDetail
+    project, allProjects, deleteProject, onEdit, onOpenDetail, goals, dailyBlocks, onOpenMetas
 }: { 
     project: Project, 
     allProjects: Project[],
     deleteProject: (id: number) => void,
     onEdit: () => void,
-    onOpenDetail: (pid: number) => void
+    onOpenDetail: (pid: number) => void,
+    goals: Goal[],
+    dailyBlocks: DailyBlock[],
+    onOpenMetas?: () => void
 }) => {
+    // Metas enlazadas: las metas raíz cuya visión (projectId) es este proyecto, activas primero.
+    const metasEnlazadas = goals
+        .filter(g => !g.parentId && g.projectId === project.id)
+        .sort((a, b) => Number(!!a.inactiva) - Number(!!b.inactiva));
     const subProjects = allProjects.filter(p => p.parentId === project.id);
     const hasSubProjects = subProjects.length > 0;
     
@@ -279,6 +293,7 @@ const ProjectCard = ({
                 gap: '16px',
                 boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
                 borderRadius: '20px',
+                borderTop: `4px solid ${project.color}`,
                 transition: 'transform 0.2s, box-shadow 0.2s'
             }}
             onClick={() => onOpenDetail(project.id)}
@@ -328,7 +343,27 @@ const ProjectCard = ({
                 </div>
             </div>
 
-            <div style={{ marginTop: 'auto', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {metasEnlazadas.length > 0 ? metasEnlazadas.map(g => {
+                    const av = avance(g, goals.filter(x => x.parentId === g.id), dailyBlocks);
+                    return (
+                        <button
+                            key={g.id}
+                            onClick={e => { e.stopPropagation(); onOpenMetas?.(); }}
+                            title="Ver en Metas"
+                            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', borderRadius: '10px', border: 'none', background: '#F7FAF8', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', opacity: g.inactiva ? 0.5 : 1 }}
+                        >
+                            <span style={{ fontSize: '0.9rem' }}>{g.icon}</span>
+                            <span style={{ flex: 1, minWidth: 0, fontSize: '0.78rem', fontWeight: 800, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.title}</span>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 900, color: g.status === 'completado' ? '#0FA97A' : '#6C8079' }}>{g.inactiva ? 'En pausa' : `${Math.round(av.pct)}%`}</span>
+                        </button>
+                    );
+                }) : (
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#9AA9A2' }}>Sin metas enlazadas · asígnala desde Editar meta → Visión</span>
+                )}
+            </div>
+
+            <div style={{ marginTop: 'auto', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#F7FAF8', padding: '4px 10px', borderRadius: '12px' }}>
                         <ListTodo size={14} color="#6C8079" />

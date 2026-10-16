@@ -112,6 +112,7 @@ export const MetasDashboard = ({
         if (grupo) grupo.metas.push(g); else grupos.push({ proyecto: p, metas: [g] });
     });
     grupos.sort((a, b) => (a.proyecto ? 0 : 1) - (b.proyecto ? 0 : 1));
+    grupos.forEach(gr => gr.metas.sort((a, b) => Number(!!a.inactiva) - Number(!!b.inactiva)));
     const conVisiones = grupos.some(g => g.proyecto);
 
     // Meta raíz: sube/baja dentro de su visión; en el borde del grupo, mueve la
@@ -241,7 +242,7 @@ export const MetasDashboard = ({
                 } : undefined}
                 toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal}
             >
-                {movil && columnas}
+                {movil && !goal.inactiva && columnas}
             </TarjetaMeta>
         );
         return movil ? <Fragment key={goal.id}>{tarjeta}</Fragment> : (
@@ -256,7 +257,7 @@ export const MetasDashboard = ({
                 }}
             >
                 <div style={{ width: '260px', flexShrink: 0 }}>{tarjeta}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>{columnas}</div>
+                {!goal.inactiva && <div style={{ flex: 1, minWidth: 0 }}>{columnas}</div>}
             </div>
         );
     };
@@ -401,6 +402,7 @@ const TarjetaMeta = ({ goal, subs, dailyBlocks, movil, expandido, onToggleExpand
                 height: movil ? undefined : '100%', boxSizing: 'border-box', borderRadius: '12px',
                 border: `1px solid ${C.outlineVariant}`,
                 background: goal.status === 'completado' ? 'rgba(16,185,129,0.04)' : C.surfaceContainerLow,
+                opacity: goal.inactiva ? 0.55 : 1,
             }}
         >
             <div style={{ padding: '10px 12px', cursor: movil ? 'pointer' : 'default' }} onClick={onToggleExpand}>
@@ -488,6 +490,7 @@ const TarjetaMeta = ({ goal, subs, dailyBlocks, movil, expandido, onToggleExpand
                                     {/* Subir/Bajar dejan el menú abierto para mover varias posiciones seguidas. */}
                                     {onSubir && <MenuItem icono="arrow_upward" texto="Subir" onClick={onSubir} />}
                                     {onBajar && <MenuItem icono="arrow_downward" texto="Bajar" onClick={onBajar} />}
+                                    <MenuItem icono={goal.inactiva ? 'play_circle' : 'pause_circle'} texto={goal.inactiva ? 'Activar meta' : 'Desactivar meta'} onClick={() => { setMenu(false); onUpdate({ inactiva: !goal.inactiva }); }} />
                                     <MenuItem icono="notes" texto={detalles ? 'Ocultar notas' : 'Notas y tareas'} onClick={() => { setMenu(false); setDetalles(v => !v); }} />
                                     <MenuItem icono="delete" texto="Eliminar" color={C.rojo} onClick={() => { setMenu(false); onRemove(); }} />
                                 </div>

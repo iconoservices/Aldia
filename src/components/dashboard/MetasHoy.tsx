@@ -8,7 +8,7 @@ import { avance, subMetaActiva } from './metasAvance';
 export const MetasHoy = ({ goals, dailyBlocks, onOpenMetas }: { goals: Goal[]; dailyBlocks: DailyBlock[]; onOpenMetas?: () => void }) => {
     const [abierto, setAbierto] = useState(true);
     const filas = goals
-        .filter(m => !m.parentId && m.status !== 'completado')
+        .filter(m => !m.parentId && m.status !== 'completado' && !m.inactiva)
         .map(meta => {
             const sub = subMetaActiva(meta, goals);
             const foco = sub ?? (meta.objetivo ? meta : undefined);
