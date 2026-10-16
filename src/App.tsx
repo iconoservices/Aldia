@@ -482,7 +482,21 @@ function App() {
               />
             ) : activeTab === 'Metas' ? (
               <>
-                <VistasListas activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_METAS} />
+                <VistasListas
+                  activeTab={activeTab} setActiveTab={setActiveTab} vistas={VISTAS_METAS}
+                  extra={
+                    <button
+                      onClick={() => window.dispatchEvent(new Event('aldia:nueva-meta'))}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '6px', flexShrink: 0,
+                        padding: '8px 16px', background: '#0FA97A', border: 'none', borderRadius: '999px',
+                        color: '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'inherit',
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span> Nueva meta
+                    </button>
+                  }
+                />
                 <MetasDashboard
                   goals={state.goals}
                   projects={state.projects}

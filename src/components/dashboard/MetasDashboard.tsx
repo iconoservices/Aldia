@@ -87,6 +87,11 @@ export const MetasDashboard = ({
 }: MetasDashboardProps) => {
     const movil = useIsMobile();
     const [form, setForm] = useState<Form | null>(null);
+    useEffect(() => {
+        const abrir = () => setForm({ tipo: 'meta' });
+        window.addEventListener('aldia:nueva-meta', abrir);
+        return () => window.removeEventListener('aldia:nueva-meta', abrir);
+    }, []);
     const [expandedId, setExpandedId] = useState<number | null>(null);
     const [subAbierta, setSubAbierta] = useState<number | null>(null);
     const [plazoAbierto, setPlazoAbierto] = useState<{ goalId: number; plazo: GoalHorizon } | null>(null);
@@ -235,17 +240,6 @@ export const MetasDashboard = ({
 
     return (
         <div style={paddingPagina(movil)}>
-            <button
-                onClick={() => setForm({ tipo: 'meta' })}
-                style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '6px', alignSelf: 'flex-start', marginBottom: '14px',
-                    padding: '8px 16px', background: C.primary, border: 'none', borderRadius: '999px',
-                    color: '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'inherit',
-                }}
-            >
-                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span> Nueva meta
-            </button>
-
             {raiz.length === 0 && (
                 <div style={{ padding: '2rem 1rem', textAlign: 'center', color: C.onSurfaceVariant }}>
                     <span className="material-symbols-outlined" style={{ fontSize: '36px', color: C.outlineVariant, display: 'block', marginBottom: '8px' }}>flag</span>
