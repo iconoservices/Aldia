@@ -478,6 +478,19 @@ export const DeudasyCobrosDashboard = ({
         setEditingContact(null);
     };
 
+    // Junta dos clientes en uno directo desde la lista: `de` desaparece y sus registros pasan a `a`.
+    const unirContactos = (de: string, a: string) => {
+        if (!setContacts || !window.confirm(`¿Unir "${de}" con "${a}"? Todos sus registros quedarán en "${a}".`)) return;
+        cambiarContactoEnRegistros(de, a);
+        setContacts(prev => {
+            const origen = prev.find(c => norm(c.name) === norm(de));
+            const lista = prev.filter(c => norm(c.name) !== norm(de));
+            const dest = lista.find(c => norm(c.name) === norm(a));
+            if (!dest) return [...lista, { id: Date.now(), name: a, phone: origen?.phone, notes: origen?.notes }];
+            return lista.map(c => c.id === dest.id ? { ...c, phone: c.phone ?? origen?.phone, notes: c.notes ?? origen?.notes } : c);
+        });
+    };
+
     // Junta este cliente con otro: sus deudas/cobros pasan al otro y esta ficha desaparece.
     const unirFicha = () => {
         if (!editingContact || !setContacts || !unirCon) return;
@@ -1114,7 +1127,7 @@ export const DeudasyCobrosDashboard = ({
                                         </div>
                                         {(() => {
                                             const gemelo = cg.contact ? uniqueContacts.find(n => parecidos(n, cg.contact)) : undefined;
-                                            return gemelo ? <div style={{ fontSize: "0.66rem", color: "#8A5A00", fontWeight: 700, marginTop: "2px" }}>⚠ ¿Es el mismo que «{gemelo}»? Abre la ficha para unirlos</div> : null;
+                                            return gemelo ? <div style={{ fontSize: "0.66rem", color: "#8A5A00", fontWeight: 700, marginTop: "2px" }}>⚠ ¿Es el mismo que «{gemelo}»?{setContacts && <button onClick={() => unirContactos(cg.contact, gemelo)} style={{ marginLeft: "8px", border: "1px solid #E8C777", background: "#FFF6E0", color: "#8A5A00", borderRadius: "999px", padding: "2px 10px", fontWeight: 800, fontSize: "0.66rem", cursor: "pointer", fontFamily: "inherit" }}>Unir en «{gemelo}»</button>}</div> : null;
                                         })()}
                                     </div>
                                 </div>
