@@ -21,6 +21,7 @@ interface MetasDashboardProps {
     dailyBlocks?: DailyBlock[];
     toggleDailyBlock?: (id: number) => void;
     linkTaskToGoal?: (blockId: number, goalId: number | undefined) => void;
+    addDailyBlock?: (label: string, period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro', date: string, completed?: boolean, projectId?: number, repeatDays?: number[], time?: string, isActive?: boolean, isHabit?: boolean, goalId?: number) => void;
     addProject?: (name: string, color: string) => number | void;
     addGoal: (title: string, horizon: GoalHorizon, area: string, color: string, icon?: string, targetDate?: string, projectId?: number, milestones?: Goal['milestones'], nombresPlazo?: Goal['nombresPlazo'], extra?: Partial<Goal>) => void;
     updateGoal: (id: number, updates: Partial<Goal>) => void;
@@ -82,7 +83,7 @@ const moverEn = (goals: Goal[], hermanas: Goal[], id: number, dir: -1 | 1): Goal
 };
 
 export const MetasDashboard = ({
-    goals, projects = [], dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, addProject,
+    goals, projects = [], dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, addDailyBlock, addProject,
     addGoal, updateGoal, removeGoal, reorderGoals, addGoalMilestone, toggleGoalMilestone, removeGoalMilestone,
 }: MetasDashboardProps) => {
     const movil = useIsMobile();
@@ -274,7 +275,7 @@ export const MetasDashboard = ({
             />
 
             <SubMetaModal
-                sub={sub} padre={padreDeSub} movil={movil} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal}
+                sub={sub} padre={padreDeSub} movil={movil} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal} addDailyBlock={addDailyBlock}
                 onClose={() => setSubAbierta(null)}
                 onUpdate={u => sub && updateGoal(sub.id, u)}
                 onEditar={() => sub && padreDeSub && setForm({ tipo: 'sub', padre: padreDeSub, goal: sub })}
@@ -300,6 +301,7 @@ export const MetasDashboard = ({
                 onToggle={mid => metaPlazo && toggleGoalMilestone(metaPlazo.id, mid)}
                 onRemove={mid => metaPlazo && removeGoalMilestone(metaPlazo.id, mid)}
                 onUpdate={u => metaPlazo && updateGoal(metaPlazo.id, u)}
+                addDailyBlock={addDailyBlock}
             />
         </div>
     );
@@ -704,8 +706,14 @@ const TareaEditable = ({ texto, completada, onGuardar }: { texto: string; comple
 };
 
 // Lista de tareas con check, edición en línea, quitar y agregar.
-const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd, onCambiar }: {
+type Tarea = Goal['milestones'][number];
+type Paso = NonNullable<Tarea['pasos']>[number];
+const DIAS_SEMANA: { l: string; d: number }[] = [{ l: 'L', d: 1 }, { l: 'M', d: 2 }, { l: 'X', d: 3 }, { l: 'J', d: 4 }, { l: 'V', d: 5 }, { l: 'S', d: 6 }, { l: 'D', d: 0 }];
+
+const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd, onCambiar, onConvertir }: {
     tareas: Goal['milestones']; color: string; movil: boolean;
+    // Convierte un paso en tarea suelta ('suelta') o en tarea repetitiva (días de la semana, getDay).
+    onConvertir?: (tarea: Tarea, paso: Paso, destino: 'suelta' | number[]) => void;
     onToggle: (id: number) => void; onRemove: (id: number) => void; onEditar: (id: number, t: string) => void; onAdd: (t: string) => void;
     onCambiar?: (id: number, updates: Partial<Goal['milestones'][number]>) => void;
 }) => {
@@ -714,6 +722,8 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
     // Panel de pasos: por defecto abierto si la tarea ya tiene pasos; el usuario lo puede plegar/abrir.
     const [panel, setPanel] = useState<Record<number, boolean>>({});
     const [nuevoPaso, setNuevoPaso] = useState<Record<number, string>>({});
+    // Paso con el menú de conversión abierto; `rep` = eligiendo los días de la repetitiva.
+    const [conv, setConv] = useState<{ paso: number; rep: boolean; dias: number[] } | null>(null);
     const alternarPasos = (id: number, abiertaAhora: boolean) => setPanel(prev => ({ ...prev, [id]: !abiertaAhora }));
     // Cambia los pasos de una tarea; si hay pasos, la tarea queda hecha solo cuando todos lo están.
     const cambiarPasos = (m: Goal['milestones'][number], pasos: NonNullable<Goal['milestones'][number]['pasos']>) =>
@@ -776,23 +786,66 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                         <div style={{ margin: '8px 0 0 34px' }}><Barra pct={Math.round((pasosHechos / np) * 100)} color={color} alto={3} /></div>
                     )}
                     {onCambiar && abierta && (
-                        <div style={{ margin: '12px 0 2px 34px', padding: '2px 0 2px 14px', borderLeft: `3px solid ${color}`, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            {np > 0 && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                                    <span style={{ fontSize: '0.64rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.outline }}>Pasos</span>
-                                    <div style={{ flex: 1 }}><Barra pct={Math.round((pasosHechos / np) * 100)} color={color} alto={4} /></div>
-                                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: C.outline, fontFamily: MONO }}>{pasosHechos}/{np}</span>
+                        <div style={{ margin: '14px 0 2px', padding: movil ? '12px' : '14px 16px', borderRadius: '14px', background: `color-mix(in srgb, ${color} 5%, ${C.surfaceLowest})`, border: `1px solid color-mix(in srgb, ${color} 18%, white)` }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: np ? '10px' : '6px' }}>
+                                <span style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color }}>Pasos</span>
+                                {np > 0 && <div style={{ flex: 1 }}><Barra pct={Math.round((pasosHechos / np) * 100)} color={color} alto={5} /></div>}
+                                {np > 0 && <span style={{ fontSize: '0.74rem', fontWeight: 700, color: C.outline, fontFamily: MONO }}>{pasosHechos}/{np}</span>}
+                                {np === 0 && <span style={{ fontSize: '0.78rem', color: C.outline }}>Divide esta tarea en partes más chicas.</span>}
+                            </div>
+                            {(m.pasos || []).map((p, pi) => {
+                                const menu = conv?.paso === p.id ? conv : null;
+                                return (
+                                <div key={p.id} style={{ borderTop: pi > 0 ? `1px solid color-mix(in srgb, ${color} 10%, white)` : 'none' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '9px 0', opacity: p.completed ? 0.6 : 1 }}>
+                                        <Check marcado={p.completed} color={color} tam={22} onClick={() => cambiarPasos(m, (m.pasos || []).map(x => x.id === p.id ? { ...x, completed: !x.completed } : x))} />
+                                        <TareaEditable texto={p.text} completada={p.completed} onGuardar={t => cambiarPasos(m, (m.pasos || []).map(x => x.id === p.id ? { ...x, text: t } : x))} />
+                                        {onConvertir && (
+                                            <button onClick={() => setConv(menu ? null : { paso: p.id, rep: false, dias: [1, 2, 3, 4, 5] })} title="Convertir en tarea" style={{ background: menu ? `color-mix(in srgb, ${color} 14%, white)` : 'none', border: 'none', borderRadius: '8px', cursor: 'pointer', color: menu ? color : C.outline, display: 'flex', padding: '4px' }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>more_horiz</span>
+                                            </button>
+                                        )}
+                                        <button onClick={() => cambiarPasos(m, (m.pasos || []).filter(x => x.id !== p.id))} title="Quitar paso" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '4px', opacity: 0.7 }}>
+                                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+                                        </button>
+                                    </div>
+                                    {menu && onConvertir && (
+                                        <div style={{ margin: '0 0 10px 34px', padding: '10px 12px', borderRadius: '12px', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                            <div style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.outline }}>Convertir este paso en…</div>
+                                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                <button onClick={() => { onConvertir(m, p, 'suelta'); setConv(null); }}
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '999px', border: `1px solid ${C.outlineVariant}`, background: C.surfaceLowest, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.8rem', color: C.onSurface }}>
+                                                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>task_alt</span> Tarea suelta
+                                                </button>
+                                                <button onClick={() => setConv({ ...menu, rep: !menu.rep })}
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '999px', border: `1px solid ${menu.rep ? color : C.outlineVariant}`, background: menu.rep ? `color-mix(in srgb, ${color} 12%, white)` : C.surfaceLowest, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.8rem', color: menu.rep ? color : C.onSurface }}>
+                                                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>repeat</span> Tarea repetitiva
+                                                </button>
+                                            </div>
+                                            {menu.rep && (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                                        {DIAS_SEMANA.map(({ l, d }) => {
+                                                            const on = menu.dias.includes(d);
+                                                            return (
+                                                                <button key={d} onClick={() => setConv({ ...menu, dias: on ? menu.dias.filter(x => x !== d) : [...menu.dias, d] })}
+                                                                    style={{ width: '36px', height: '36px', borderRadius: '50%', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800, fontSize: '0.78rem', background: on ? color : C.surfaceContainer, color: on ? '#fff' : C.onSurfaceVariant }}>
+                                                                    {l}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                    <button disabled={menu.dias.length === 0} onClick={() => { onConvertir(m, p, menu.dias); setConv(null); }}
+                                                        style={{ alignSelf: 'flex-start', padding: '9px 16px', borderRadius: '12px', border: 'none', background: menu.dias.length ? color : C.surfaceContainerHigh, color: '#fff', fontWeight: 800, fontSize: '0.82rem', cursor: menu.dias.length ? 'pointer' : 'default', fontFamily: 'inherit' }}>
+                                                        Crear repetitiva
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                            {(m.pasos || []).map(p => (
-                                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '5px 0', opacity: p.completed ? 0.6 : 1 }}>
-                                    <Check marcado={p.completed} color={color} tam={20} onClick={() => cambiarPasos(m, (m.pasos || []).map(x => x.id === p.id ? { ...x, completed: !x.completed } : x))} />
-                                    <TareaEditable texto={p.text} completada={p.completed} onGuardar={t => cambiarPasos(m, (m.pasos || []).map(x => x.id === p.id ? { ...x, text: t } : x))} />
-                                    <button onClick={() => cambiarPasos(m, (m.pasos || []).filter(x => x.id !== p.id))} title="Quitar paso" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '2px', opacity: 0.7 }}>
-                                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>close</span>
-                                    </button>
-                                </div>
-                            ))}
+                                );
+                            })}
                             <form
                                 onSubmit={e => {
                                     e.preventDefault();
@@ -801,13 +854,13 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                                     cambiarPasos(m, [...(m.pasos || []), { id: Date.now() + Math.floor(Math.random() * 1000), text: t, completed: false }]);
                                     setNuevoPaso(prev => ({ ...prev, [m.id]: '' }));
                                 }}
-                                style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: np ? '6px' : 0, padding: '7px 10px', borderRadius: '10px', background: 'transparent', border: `1px dashed ${C.outlineVariant}` }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: np ? '8px' : 0, padding: '10px 12px', borderRadius: '10px', background: C.surfaceLowest, border: `1px dashed ${C.outlineVariant}` }}
                             >
-                                <span className="material-symbols-outlined" style={{ fontSize: '16px', color: C.outline }}>add</span>
+                                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.outline }}>add</span>
                                 <input
                                     value={nuevoPaso[m.id] || ''} onChange={e => setNuevoPaso(prev => ({ ...prev, [m.id]: e.target.value }))}
                                     placeholder={np ? 'Agregar otro paso…' : 'Primer paso de esta tarea…'} enterKeyHint="done"
-                                    style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', padding: 0, fontFamily: 'inherit', fontSize: '0.84rem', color: C.onSurface, outline: 'none' }}
+                                    style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', padding: 0, fontFamily: 'inherit', fontSize: '0.9rem', color: C.onSurface, outline: 'none' }}
                                 />
                             </form>
                         </div>
@@ -900,9 +953,10 @@ interface SubMetaModalProps {
     onRemoveTarea: (id: number) => void;
     onMover?: (dir: -1 | 1) => void;
     posicion?: { i: number; n: number };
+    addDailyBlock?: MetasDashboardProps['addDailyBlock'];
 }
 
-const SubMetaModal = ({ sub, padre, movil, dailyBlocks, toggleDailyBlock, updateDailyBlock, linkTaskToGoal, onClose, onUpdate, onEditar, onSiguiente, onRemove, onAddTarea, onToggleTarea, onRemoveTarea, onMover, posicion }: SubMetaModalProps) => {
+const SubMetaModal = ({ sub, padre, movil, dailyBlocks, toggleDailyBlock, updateDailyBlock, linkTaskToGoal, addDailyBlock, onClose, onUpdate, onEditar, onSiguiente, onRemove, onAddTarea, onToggleTarea, onRemoveTarea, onMover, posicion }: SubMetaModalProps) => {
     const color = padre?.color ?? C.primary;
     const lograda = sub?.status === 'completado';
     const av = sub ? avance(sub, [], dailyBlocks) : { pct: 0, texto: '' };
@@ -970,6 +1024,7 @@ const SubMetaModal = ({ sub, padre, movil, dailyBlocks, toggleDailyBlock, update
                             onToggle={onToggleTarea} onRemove={onRemoveTarea} onAdd={onAddTarea}
                             onEditar={(id, t) => onUpdate({ milestones: sub.milestones.map(x => x.id === id ? { ...x, text: t } : x) })}
                             onCambiar={(id, u) => onUpdate({ milestones: sub.milestones.map(x => x.id === id ? { ...x, ...u } : x) })}
+                            onConvertir={addDailyBlock ? convertirPaso(sub, undefined, onUpdate, addDailyBlock) : undefined}
                         />
                     </div>
 
@@ -998,9 +1053,25 @@ interface PlazoModalProps {
     onToggle: (milestoneId: number) => void;
     onRemove: (milestoneId: number) => void;
     onUpdate: (updates: Partial<Goal>) => void;
+    addDailyBlock?: MetasDashboardProps['addDailyBlock'];
 }
 
-const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, onUpdate }: PlazoModalProps) => {
+// Saca un paso de su tarea y lo vuelve tarea suelta (misma lista) o repetitiva (bloque de Mi Día ligado a la meta).
+const convertirPaso = (
+    goal: Goal, plazo: GoalHorizon | undefined, onUpdate: (u: Partial<Goal>) => void,
+    addDailyBlock: MetasDashboardProps['addDailyBlock'],
+) => (t: Tarea, p: Paso, destino: 'suelta' | number[]) => {
+    const quedan = (t.pasos || []).filter(x => x.id !== p.id);
+    const milestones = goal.milestones.map(x => x.id === t.id ? { ...x, pasos: quedan, completed: quedan.length ? quedan.every(q => q.completed) : x.completed } : x);
+    if (destino === 'suelta') {
+        milestones.push({ id: Date.now() + Math.floor(Math.random() * 1000), text: p.text, completed: p.completed, ...(plazo && { plazo }) });
+    } else if (addDailyBlock) {
+        addDailyBlock(p.text, 'Otro', new Date().toLocaleDateString('en-CA'), false, undefined, destino, undefined, true, false, goal.id);
+    } else return;
+    onUpdate({ milestones });
+};
+
+const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, onUpdate, addDailyBlock }: PlazoModalProps) => {
     const info = PLAZOS_INFO.find(p => p.k === plazo);
     const pasos = goal && plazo ? goal.milestones.filter(m => (m.plazo ?? 'corto') === plazo) : [];
     return (
@@ -1033,6 +1104,7 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                         onToggle={onToggle} onRemove={onRemove} onAdd={onAdd}
                         onEditar={(id, t) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, text: t } : x) })}
                         onCambiar={(id, u) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, ...u } : x) })}
+                        onConvertir={addDailyBlock ? convertirPaso(goal, plazo, onUpdate, addDailyBlock) : undefined}
                     />
                 </>
             )}

@@ -504,6 +504,7 @@ function App() {
                   toggleDailyBlock={state.toggleDailyBlock}
                   updateDailyBlock={state.updateDailyBlock}
                   linkTaskToGoal={state.linkTaskToGoal}
+                  addDailyBlock={state.addDailyBlock}
                   addProject={state.addProject}
                   addGoal={state.addGoal}
                   updateGoal={state.updateGoal}
