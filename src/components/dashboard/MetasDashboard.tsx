@@ -23,6 +23,7 @@ interface MetasDashboardProps {
     dailyBlocks?: DailyBlock[];
     toggleDailyBlock?: (id: number) => void;
     linkTaskToGoal?: (blockId: number, goalId: number | undefined) => void;
+    removeDailyBlock?: (id: number) => void;
     addDailyBlock?: (label: string, period: 'Mañana' | 'Tarde' | 'Noche' | 'Otro', date: string, completed?: boolean, projectId?: number, repeatDays?: number[], time?: string, isActive?: boolean, isHabit?: boolean, goalId?: number) => void;
     addProject?: (name: string, color: string) => number | void;
     addGoal: (title: string, horizon: GoalHorizon, area: string, color: string, icon?: string, targetDate?: string, projectId?: number, milestones?: Goal['milestones'], nombresPlazo?: Goal['nombresPlazo'], extra?: Partial<Goal>) => void;
@@ -85,7 +86,7 @@ const moverEn = (goals: Goal[], hermanas: Goal[], id: number, dir: -1 | 1): Goal
 };
 
 export const MetasDashboard = ({
-    goals, projects = [], dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, addDailyBlock, addProject,
+    goals, projects = [], dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, addDailyBlock, removeDailyBlock, addProject,
     addGoal, updateGoal, removeGoal, reorderGoals, addGoalMilestone, toggleGoalMilestone, removeGoalMilestone,
 }: MetasDashboardProps) => {
     const movil = useIsMobile();
@@ -245,6 +246,7 @@ export const MetasDashboard = ({
     if (metaPlazo && plazoAbierto) {
         return (
             <PlazoModal pagina
+                removeDailyBlock={removeDailyBlock}
                 onCambiarPlazo={k => setPlazoAbierto({ goalId: metaPlazo.id, plazo: k })}
                 goal={metaPlazo} plazo={plazoAbierto?.plazo ?? null} movil={movil}
                 onClose={() => setPlazoAbierto(null)}
@@ -704,7 +706,7 @@ const TareasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock
 };
 
 // Tarea de Mi Día ligada a la meta, mostrada como una fila más de la lista (repetitiva: con sus días).
-const FilasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock, linkTaskToGoal, movil, incluir, excluir, compacto, asignar, plano }: { plano?: boolean; incluir?: string[]; excluir?: string[]; compacto?: boolean; asignar?: { tareas: Tarea[]; onAsignar: (milestoneId: number, texto: string) => void }; goal: Goal; dailyBlocks: DailyBlock[]; toggleDailyBlock?: (id: number) => void; updateDailyBlock?: (id: number, updates: Partial<DailyBlock>) => void; linkTaskToGoal?: (blockId: number, goalId: number | undefined) => void; movil: boolean }) => (
+const FilasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock, linkTaskToGoal, movil, incluir, excluir, compacto, asignar, plano, onBorrar }: { onBorrar?: (t: TareaEnlazada) => void; plano?: boolean; incluir?: string[]; excluir?: string[]; compacto?: boolean; asignar?: { tareas: Tarea[]; onAsignar: (milestoneId: number, texto: string) => void }; goal: Goal; dailyBlocks: DailyBlock[]; toggleDailyBlock?: (id: number) => void; updateDailyBlock?: (id: number, updates: Partial<DailyBlock>) => void; linkTaskToGoal?: (blockId: number, goalId: number | undefined) => void; movil: boolean }) => (
     <>
         {tareasDeMeta(goal.id, dailyBlocks).filter(t => {
             const k = t.label.trim().toLowerCase();
@@ -742,6 +744,11 @@ const FilasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock,
                     {t.repetitiva && updateDailyBlock && (
                         <button onClick={alternarActiva} title={pausada ? 'Activar' : 'Pausar'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '4px' }}>
                             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{pausada ? 'play_arrow' : 'pause'}</span>
+                        </button>
+                    )}
+                    {onBorrar && (
+                        <button onClick={() => onBorrar(t)} title="Borrar tarea" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.rojo, display: 'flex', padding: '4px' }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>delete</span>
                         </button>
                     )}
                     {linkTaskToGoal && (
@@ -795,7 +802,8 @@ type Tarea = Goal['milestones'][number];
 type Paso = NonNullable<Tarea['pasos']>[number];
 const DIAS_SEMANA: { l: string; d: number }[] = [{ l: 'L', d: 1 }, { l: 'M', d: 2 }, { l: 'X', d: 3 }, { l: 'J', d: 4 }, { l: 'V', d: 5 }, { l: 'S', d: 6 }, { l: 'D', d: 0 }];
 
-const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd, onCambiar, onConvertir, extra, repDe, onToggleRep, onAbrir, detalle, plano }: {
+const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd, onCambiar, onConvertir, extra, repDe, onToggleRep, onAbrir, detalle, plano, onBorrarRep }: {
+    onBorrarRep?: (t: TareaEnlazada | undefined, texto: string) => void; // borra la repetitiva de un paso
     plano?: boolean; // filas planas separadas por una línea, sin tarjetas
     // En lista: tocar la tarea abre su pantalla de detalle. `detalle`: se muestra una sola tarea a pantalla completa, sin tarjeta.
     onAbrir?: (id: number) => void;
@@ -919,6 +927,11 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                                                 <button onClick={() => cambiarPasos(m, (m.pasos || []).filter(x => x.id !== p.id))} title="Quitar de esta lista (la repetitiva sigue en Mi Día)" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '4px', opacity: 0.7 }}>
                                                     <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
                                                 </button>
+                                                {onBorrarRep && (
+                                                    <button onClick={() => { if (window.confirm(`¿Borrar la tarea repetitiva "${p.text}" y todos sus registros?`)) { onBorrarRep(t, p.text); cambiarPasos(m, (m.pasos || []).filter(x => x.id !== p.id)); } }} title="Borrar la tarea repetitiva" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.rojo, display: 'flex', padding: '4px' }}>
+                                                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete</span>
+                                                    </button>
+                                                )}
                                             </div>
                                         );
                                     })() : (
@@ -1182,6 +1195,7 @@ interface PlazoModalProps {
     onUpdate: (updates: Partial<Goal>) => void;
     onAbrirTarea?: (milestoneId: number) => void;
     onCambiarPlazo?: (plazo: GoalHorizon) => void;
+    removeDailyBlock?: (id: number) => void;
     pagina?: boolean; // pantalla completa (con el menú lateral visible) en vez de ventana flotante
     addDailyBlock?: MetasDashboardProps['addDailyBlock'];
     dailyBlocks?: DailyBlock[];
@@ -1249,7 +1263,7 @@ const convertirPaso = (
     onUpdate({ milestones });
 };
 
-const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, onUpdate, addDailyBlock, dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, onAbrirTarea, onCambiarPlazo, pagina }: PlazoModalProps) => {
+const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, onUpdate, addDailyBlock, dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, onAbrirTarea, onCambiarPlazo, removeDailyBlock, pagina }: PlazoModalProps) => {
     const info = PLAZOS_INFO.find(p => p.k === plazo);
     const pasos = goal && plazo ? goal.milestones.filter(m => (m.plazo ?? 'corto') === plazo) : [];
     const envolver = (children: React.ReactNode) => pagina ? (
@@ -1266,27 +1280,6 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
         <>
             {goal && plazo && info && (
                 <>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '20px' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.outline }}>
-                                {goal.icon} {goal.title}
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '2px' }}>
-                                <input
-                                    value={goal.nombresPlazo?.[plazo] ?? info.titulo}
-                                    onChange={e => onUpdate({ nombresPlazo: { ...goal.nombresPlazo, [plazo]: e.target.value } })}
-                                    onBlur={() => { if (!(goal.nombresPlazo?.[plazo] ?? '').trim()) onUpdate({ nombresPlazo: { ...goal.nombresPlazo, [plazo]: undefined } }); }}
-                                    maxLength={28} title="Toca para cambiar el nombre"
-                                    style={{ minWidth: 0, flex: '0 1 auto', width: `${Math.max(6, (goal.nombresPlazo?.[plazo] ?? info.titulo).length + 1)}ch`, border: 'none', borderBottom: `2px dashed ${C.outlineVariant}`, outline: 'none', background: 'transparent', fontSize: movil ? '1.15rem' : '1.4rem', fontWeight: 800, color: C.onSurface, padding: 0, fontFamily: 'inherit' }}
-                                />
-                                <span style={{ fontWeight: 500, fontSize: '0.85rem', color: C.outline, whiteSpace: 'nowrap' }}>· {info.sub}</span>
-                            </div>
-                        </div>
-                        {!pagina && <BotonX onClick={onClose} />}
-                    </div>
-                    <p style={{ margin: '0 0 14px', fontSize: '0.88rem', color: C.onSurfaceVariant }}>
-                        {pasos.length === 0 ? 'Tareas sueltas de este plazo. Las de una sub-meta van dentro de ella.' : 'Tareas sueltas de este plazo'}
-                    </p>
                     <div style={pagina && !movil ? { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: '44px', alignItems: 'start' } : undefined}>
                         <div style={{ minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: pagina ? '8px' : '20px' }}>
@@ -1322,7 +1315,15 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                         onConvertir={addDailyBlock ? convertirPaso(goal, plazo, onUpdate, addDailyBlock) : undefined}
                         repDe={txt => tareasDeMeta(goal.id, dailyBlocks).find(t => t.repetitiva && t.label.trim().toLowerCase() === txt.trim().toLowerCase())}
                         onToggleRep={toggleDailyBlock}
-                        extra={<FilasEnlazadas plano={pagina} asignar={{ tareas: goal.milestones.filter(m => (m.plazo ?? 'corto') === plazo && !m.completed), onAsignar: (mid, txt) => { if (mid) onUpdate({ milestones: goal.milestones.map(x => x.id === mid ? { ...x, pasos: [...(x.pasos || []), { id: Date.now() + Math.floor(Math.random() * 1000), text: txt, completed: false, repetitiva: true }] } : x) }); } }} excluir={goal.milestones.flatMap(m => (m.pasos || []).filter(q => q.repetitiva).map(q => q.text))} goal={goal} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal} movil={movil} />}
+                        onBorrarRep={removeDailyBlock ? (_t, txt) => {
+                            dailyBlocks.filter(b => b.goalId === goal.id && b.repeatDays?.length && b.label.trim().toLowerCase() === txt.trim().toLowerCase()).forEach(b => removeDailyBlock(b.id));
+                        } : undefined}
+                        extra={<FilasEnlazadas plano={pagina} onBorrar={removeDailyBlock ? t => {
+                            if (!window.confirm(`¿Borrar la tarea "${t.label}"${t.repetitiva ? ' y todos sus registros' : ''}?`)) return;
+                            const base = dailyBlocks.find(b => b.id === t.id);
+                            if (!base) return;
+                            dailyBlocks.filter(b => b.goalId === goal.id && b.label.trim().toLowerCase() === base.label.trim().toLowerCase() && (!t.repetitiva || b.period === base.period)).forEach(b => removeDailyBlock(b.id));
+                        } : undefined} asignar={{ tareas: goal.milestones.filter(m => (m.plazo ?? 'corto') === plazo && !m.completed), onAsignar: (mid, txt) => { if (mid) onUpdate({ milestones: goal.milestones.map(x => x.id === mid ? { ...x, pasos: [...(x.pasos || []), { id: Date.now() + Math.floor(Math.random() * 1000), text: txt, completed: false, repetitiva: true }] } : x) }); } }} excluir={goal.milestones.flatMap(m => (m.pasos || []).filter(q => q.repetitiva).map(q => q.text))} goal={goal} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal} movil={movil} />}
                     />
                         </div>
                         {pagina && (() => {
