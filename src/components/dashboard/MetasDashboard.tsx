@@ -670,12 +670,12 @@ const TareasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock
     );
 };
 
-const Check = ({ marcado, color, onClick, tam = 22 }: { marcado: boolean; color: string; onClick: () => void; tam?: number }) => (
+const Check = ({ marcado, color, onClick, tam = 22, cuadrado }: { marcado: boolean; color: string; onClick: () => void; tam?: number; cuadrado?: boolean }) => (
     <button
         onClick={onClick}
         title={marcado ? 'Marcar como pendiente' : 'Marcar como hecha'}
         style={{
-            width: `${tam}px`, height: `${tam}px`, borderRadius: '50%', flexShrink: 0, padding: 0, cursor: 'pointer',
+            width: `${tam}px`, height: `${tam}px`, borderRadius: cuadrado ? '6px' : '50%', flexShrink: 0, padding: 0, cursor: 'pointer',
             background: marcado ? color : 'transparent', border: `2px solid ${marcado ? color : C.outlineVariant}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s, border-color 0.15s',
         }}
@@ -786,7 +786,7 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                         <div style={{ margin: '8px 0 0 34px' }}><Barra pct={Math.round((pasosHechos / np) * 100)} color={color} alto={3} /></div>
                     )}
                     {onCambiar && abierta && (
-                        <div style={{ margin: '14px 0 2px', padding: movil ? '12px' : '14px 16px', borderRadius: '14px', background: `color-mix(in srgb, ${color} 5%, ${C.surfaceLowest})`, border: `1px solid color-mix(in srgb, ${color} 18%, white)` }}>
+                        <div style={{ margin: '14px 0 2px 12px', padding: '2px 0 2px 18px', borderLeft: `3px solid color-mix(in srgb, ${color} 40%, white)` }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: np ? '10px' : '6px' }}>
                                 <span style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color }}>Pasos</span>
                                 {np > 0 && <div style={{ flex: 1 }}><Barra pct={Math.round((pasosHechos / np) * 100)} color={color} alto={5} /></div>}
@@ -798,11 +798,11 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                                 return (
                                 <div key={p.id} style={{ borderTop: pi > 0 ? `1px solid color-mix(in srgb, ${color} 10%, white)` : 'none' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '9px 0', opacity: p.completed ? 0.6 : 1 }}>
-                                        <Check marcado={p.completed} color={color} tam={22} onClick={() => cambiarPasos(m, (m.pasos || []).map(x => x.id === p.id ? { ...x, completed: !x.completed } : x))} />
+                                        <Check cuadrado marcado={p.completed} color={color} tam={18} onClick={() => cambiarPasos(m, (m.pasos || []).map(x => x.id === p.id ? { ...x, completed: !x.completed } : x))} />
                                         <TareaEditable texto={p.text} completada={p.completed} onGuardar={t => cambiarPasos(m, (m.pasos || []).map(x => x.id === p.id ? { ...x, text: t } : x))} />
                                         {onConvertir && (
-                                            <button onClick={() => setConv(menu ? null : { paso: p.id, rep: false, dias: [1, 2, 3, 4, 5] })} title="Convertir en tarea" style={{ background: menu ? `color-mix(in srgb, ${color} 14%, white)` : 'none', border: 'none', borderRadius: '8px', cursor: 'pointer', color: menu ? color : C.outline, display: 'flex', padding: '4px' }}>
-                                                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>more_horiz</span>
+                                            <button onClick={() => setConv(menu ? null : { paso: p.id, rep: false, dias: [1, 2, 3, 4, 5] })} title="Convertir en tarea suelta o repetitiva" style={{ background: 'none', border: 'none', cursor: 'pointer', color: menu ? color : C.outline, fontFamily: 'inherit', fontSize: '0.74rem', fontWeight: 700, padding: '2px 4px', whiteSpace: 'nowrap', textDecoration: 'underline', textUnderlineOffset: '3px', textDecorationColor: C.outlineVariant }}>
+                                                Convertir
                                             </button>
                                         )}
                                         <button onClick={() => cambiarPasos(m, (m.pasos || []).filter(x => x.id !== p.id))} title="Quitar paso" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '4px', opacity: 0.7 }}>
@@ -810,16 +810,16 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                                         </button>
                                     </div>
                                     {menu && onConvertir && (
-                                        <div style={{ margin: '0 0 10px 34px', padding: '10px 12px', borderRadius: '12px', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        <div style={{ margin: '0 0 10px 30px', padding: '4px 0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                             <div style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.outline }}>Convertir este paso en…</div>
                                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                                 <button onClick={() => { onConvertir(m, p, 'suelta'); setConv(null); }}
-                                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '999px', border: `1px solid ${C.outlineVariant}`, background: C.surfaceLowest, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.8rem', color: C.onSurface }}>
-                                                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>task_alt</span> Tarea suelta
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '10px', border: `1px solid ${C.outlineVariant}`, background: C.surfaceLowest, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.8rem', color: C.onSurface }}>
+                                                    Tarea suelta
                                                 </button>
                                                 <button onClick={() => setConv({ ...menu, rep: !menu.rep })}
-                                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '999px', border: `1px solid ${menu.rep ? color : C.outlineVariant}`, background: menu.rep ? `color-mix(in srgb, ${color} 12%, white)` : C.surfaceLowest, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.8rem', color: menu.rep ? color : C.onSurface }}>
-                                                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>repeat</span> Tarea repetitiva
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '10px', border: `1px solid ${menu.rep ? color : C.outlineVariant}`, background: menu.rep ? `color-mix(in srgb, ${color} 12%, white)` : C.surfaceLowest, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.8rem', color: menu.rep ? color : C.onSurface }}>
+                                                    Tarea repetitiva
                                                 </button>
                                             </div>
                                             {menu.rep && (
@@ -829,7 +829,7 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                                                             const on = menu.dias.includes(d);
                                                             return (
                                                                 <button key={d} onClick={() => setConv({ ...menu, dias: on ? menu.dias.filter(x => x !== d) : [...menu.dias, d] })}
-                                                                    style={{ width: '36px', height: '36px', borderRadius: '50%', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800, fontSize: '0.78rem', background: on ? color : C.surfaceContainer, color: on ? '#fff' : C.onSurfaceVariant }}>
+                                                                    style={{ width: '34px', height: '34px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800, fontSize: '0.78rem', background: on ? color : C.surfaceContainer, color: on ? '#fff' : C.onSurfaceVariant }}>
                                                                     {l}
                                                                 </button>
                                                             );
