@@ -17,11 +17,13 @@ export interface NuevaMeta {
     title: string; area: string; icon: string; color: string; targetDate: string;
     objetivo: string; actual: string; unidad: string;
     periodo: '' | 'semana' | 'mes';
+    esTarea?: boolean;     // al agregar dentro de un plazo: tarea (con pasos) en vez de sub-meta
+    pasosTexto?: string;   // pasos de la tarea, uno por línea
     projectId?: number;
     horizon: GoalHorizon;
 }
 
-const VACIA: NuevaMeta = { title: '', area: 'Personal', icon: ICONOS[0], color: COLORES[0], targetDate: '', objetivo: '', actual: '', unidad: '', periodo: '', horizon: 'corto' };
+const VACIA: NuevaMeta = { title: '', area: 'Personal', icon: ICONOS[0], color: COLORES[0], targetDate: '', objetivo: '', actual: '', unidad: '', periodo: '', esTarea: false, pasosTexto: '', horizon: 'corto' };
 
 export const PLAZOS_INFO: { k: GoalHorizon; titulo: string; sub: string }[] = [
     { k: 'corto', titulo: 'Corto plazo', sub: 'este mes' },
@@ -81,6 +83,7 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
     };
     const visiones = projects.filter(p => p.status !== 'completado' || p.id === f.projectId);
     const esSub = tipo === 'sub';
+    const esTarea = esSub && !editando && !!f.esTarea;
 
     return (
         <AnimatePresence>
@@ -110,7 +113,17 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
                     >
                         {padre && (
                             <div style={{ ...etiqueta, marginBottom: '-10px', color: padre.color }}>
-                                Sub-meta de: {padre.title}
+                                {editando ? 'Sub-meta de' : 'Agregar a'}: {padre.title}
+                            </div>
+                        )}
+                        {esSub && !editando && (
+                            <div style={{ display: 'flex', gap: '4px', padding: '4px', background: C.surfaceContainer, borderRadius: RADIO.chip, alignSelf: 'flex-start', marginBottom: '-4px' }}>
+                                {([[true, 'Tarea'], [false, 'Sub-meta']] as const).map(([v, t]) => (
+                                    <button type="button" key={t} onClick={() => set({ esTarea: v })} style={{
+                                        border: 'none', cursor: 'pointer', borderRadius: RADIO.chip, padding: '7px 18px', fontFamily: 'inherit', fontWeight: 800, fontSize: '0.8rem',
+                                        background: !!f.esTarea === v ? f.color : 'transparent', color: !!f.esTarea === v ? '#fff' : C.onSurfaceVariant,
+                                    }}>{t}</button>
+                                ))}
                             </div>
                         )}
                         {/* Cabecera: ícono + título */}
@@ -119,10 +132,10 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
                                 width: '44px', height: '44px', borderRadius: '14px', flexShrink: 0, fontSize: '1.35rem',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 background: `${f.color}22`, border: `2px solid ${f.color}`,
-                            }}>{esSub ? '🎯' : f.icon}</div>
+                            }}>{esTarea ? '✅' : esSub ? '🎯' : f.icon}</div>
                             <input
                                 autoFocus value={f.title} onChange={e => set({ title: e.target.value })}
-                                placeholder={esSub ? 'Paso concreto, ej. Conseguir 20 clientes' : '¿Qué quieres lograr?'} enterKeyHint="done"
+                                placeholder={esTarea ? 'Tarea, ej. Conseguir clientes por Meta ads' : esSub ? 'Paso concreto, ej. Conseguir 20 clientes' : '¿Qué quieres lograr?'} enterKeyHint="done"
                                 style={{
                                     flex: 1, minWidth: 0, border: 'none', borderBottom: `2px solid ${C.outlineVariant}`, outline: 'none',
                                     background: 'transparent', fontSize: '1.1rem', fontWeight: 700, color: C.onSurface,
@@ -134,8 +147,19 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
                             </button>
                         </div>
 
+                        {esTarea && (
+                            <div>
+                                <div style={etiqueta}>Pasos (opcional, uno por línea)</div>
+                                <textarea
+                                    value={f.pasosTexto ?? ''} onChange={e => set({ pasosTexto: e.target.value })} rows={4}
+                                    placeholder={'Crear el anuncio\nElegir público\nLanzar la campaña'}
+                                    style={{ ...campo(movil), width: '100%', boxSizing: 'border-box', background: C.surfaceContainerLow, resize: 'vertical', fontFamily: 'inherit' }}
+                                />
+                            </div>
+                        )}
+
                         {/* Número: cuánto y de qué */}
-                        <div>
+                        {!esTarea && <div>
                             <div style={etiqueta}>¿Cómo la mides? (opcional)</div>
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                                 {editando && (
@@ -164,7 +188,7 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
                                     <button type="button" key={k} onClick={() => set({ periodo: k })} style={chip(f.periodo === k, f.color)}>{t}</button>
                                 ))}
                             </div>
-                        </div>
+                        </div>}
 
                         {esSub ? (
                             <div>
@@ -259,7 +283,7 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
                                 flex: 2, padding: '13px', borderRadius: '14px', border: 'none', fontWeight: 800, fontSize: '0.85rem', fontFamily: 'inherit',
                                 background: puede ? C.primary : C.surfaceContainerHigh, color: puede ? '#fff' : C.onSurfaceVariant,
                                 cursor: puede ? 'pointer' : 'default',
-                            }}>{editando ? 'Guardar cambios' : esSub ? 'Crear sub-meta' : 'Guardar meta'}</button>
+                            }}>{editando ? 'Guardar cambios' : esTarea ? 'Crear tarea' : esSub ? 'Crear sub-meta' : 'Guardar meta'}</button>
                         </div>
                     </motion.form>
                 </motion.div>

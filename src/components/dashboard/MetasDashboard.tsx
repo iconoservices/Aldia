@@ -179,7 +179,11 @@ export const MetasDashboard = ({
             else addGoal(m.title, 'mediano', m.area || 'Personal', m.color, m.icon, m.targetDate || undefined, m.projectId, [], undefined, numeros);
         } else {
             const p = form.padre;
-            if (form.goal) updateGoal(form.goal.id, { title: m.title, horizon: m.horizon, ...numeros });
+            if (m.esTarea && !form.goal) {
+                const base = Date.now();
+                const pasos = (m.pasosTexto ?? '').split('\n').map(t => t.trim()).filter(Boolean).map((t, i) => ({ id: base + i + 1, text: t, completed: false }));
+                updateGoal(p.id, { milestones: [...p.milestones, { id: base, text: m.title, completed: false, plazo: m.horizon, ...(pasos.length && { pasos }) }] });
+            } else if (form.goal) updateGoal(form.goal.id, { title: m.title, horizon: m.horizon, ...numeros });
             else addGoal(m.title, m.horizon, p.area, p.color, '🎯', undefined, undefined, [], undefined, { ...numeros, parentId: p.id });
         }
         setForm(null);
@@ -196,8 +200,7 @@ export const MetasDashboard = ({
                 goal={goal} subs={subs} dailyBlocks={dailyBlocks} movil={movil}
                 onAbrirSub={id => setSubAbierta(id)}
                 onAbrirPlazo={plazo => setPlazoAbierto({ goalId: goal.id, plazo })}
-                onNuevaSub={plazo => setForm({ tipo: 'sub', padre: goal, inicial: { horizon: plazo } })}
-                onAddTarea={(plazo, t) => addGoalMilestone(goal.id, t, plazo)}
+                onNuevaSub={plazo => setForm({ tipo: 'sub', padre: goal, inicial: { horizon: plazo, esTarea: true } })}
                 onToggleTarea={mid => toggleGoalMilestone(goal.id, mid)}
             />
         );
@@ -545,47 +548,6 @@ interface ColumnasProps {
     onAddTarea?: (plazo: GoalHorizon, texto: string) => void;
 }
 
-// Un solo botón "+ Agregar" por columna: elige si es sub-meta o tarea.
-const BotonAgregar = ({ color, onSub, onAddTarea }: { color: string; onSub: () => void; onAddTarea: (t: string) => void }) => {
-    const [abierto, setAbierto] = useState(false);
-    const [texto, setTexto] = useState('');
-    const [agregadas, setAgregadas] = useState(0);
-    const ref = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        if (!abierto) return;
-        const fuera = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) { setAbierto(false); setAgregadas(0); setTexto(''); } };
-        document.addEventListener('mousedown', fuera);
-        return () => document.removeEventListener('mousedown', fuera);
-    }, [abierto]);
-    const opcion: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '8px', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 700, color: C.onSurface, whiteSpace: 'nowrap' };
-    return (
-        <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
-            <button onClick={() => setAbierto(a => !a)} style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', fontSize: '0.74rem', fontWeight: 800, color, fontFamily: 'inherit' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span> Agregar
-            </button>
-            {abierto && (
-                <div style={{ position: 'absolute', left: 0, bottom: 'calc(100% + 4px)', zIndex: 30, background: '#fff', border: `1px solid ${C.outlineVariant}`, borderRadius: '12px', boxShadow: '0 8px 24px rgba(12,42,32,.14)', padding: '4px', minWidth: '230px' }}>
-                    <form onSubmit={e => { e.preventDefault(); const t = texto.trim(); if (!t) return; onAddTarea(t); setTexto(''); setAgregadas(n => n + 1); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 6px 6px' }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: '18px', color }}>task_alt</span>
-                        <input
-                            autoFocus value={texto} onChange={e => setTexto(e.target.value)} placeholder="Nueva tarea…" enterKeyHint="done"
-                            style={{ flex: 1, minWidth: 0, border: 'none', borderBottom: `1px solid ${C.outlineVariant}`, background: 'transparent', outline: 'none', padding: '4px 2px', fontFamily: 'inherit', fontSize: '0.84rem', color: C.onSurface }}
-                        />
-                    </form>
-                    <div style={{ padding: '0 10px 6px 30px', fontSize: '0.68rem', color: agregadas ? color : C.outline, fontWeight: 600 }}>
-                        {agregadas ? `✓ ${agregadas} agregada${agregadas !== 1 ? 's' : ''} · Enter para otra` : 'Enter para agregar, puedes seguir con más'}
-                    </div>
-                    <div style={{ height: '1px', background: C.outlineVariant, margin: '2px 4px' }} />
-                    <button style={opcion} onClick={() => { setAbierto(false); onSub(); }}
-                        onMouseEnter={e => { e.currentTarget.style.background = C.surfaceContainerLow; }} onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: '18px', color }}>flag</span> Sub-meta
-                    </button>
-                </div>
-            )}
-        </div>
-    );
-};
-
 const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, onNuevaSub, onToggleTarea, onAbrirTarea, onAddTarea }: ColumnasProps) => (
     <div style={{ display: 'flex', flexDirection: movil ? 'column' : 'row', alignItems: 'stretch', gap: movil ? '4px' : '0', height: movil ? undefined : '100%' }}>
         {PLAZOS_INFO.map((pl, idx) => {
@@ -642,7 +604,9 @@ const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, on
                         {subsPlazo.length === 0 && tareas.length === 0 && <div style={{ fontSize: '0.78rem', color: C.outline }}>Nada todavía</div>}
 
                         <div style={{ marginTop: 'auto' }}>
-                            <BotonAgregar color={goal.color} onSub={() => onNuevaSub(pl.k)} onAddTarea={t => onAddTarea?.(pl.k, t)} />
+                            <button onClick={() => onNuevaSub(pl.k)} style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', fontSize: '0.74rem', fontWeight: 800, color: goal.color, fontFamily: 'inherit' }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span> Agregar
+                            </button>
                         </div>
                     </div>
                 </Fragment>
