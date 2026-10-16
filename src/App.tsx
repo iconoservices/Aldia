@@ -447,6 +447,7 @@ function App() {
                   updateDailyBlock={state.updateDailyBlock}
                   projects={state.projects}
                   goals={state.goals}
+                  toggleGoalMilestone={state.toggleGoalMilestone}
                 />
               </>
             ) : activeTab === 'Plan' ? (

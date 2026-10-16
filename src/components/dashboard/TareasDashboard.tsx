@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Fragment } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { C, MONO, useIsMobile, paddingPagina } from '../../theme';
 import type { DailyBlock, Goal } from '../../hooks/useAlDiaState';
@@ -29,6 +29,7 @@ interface TareasDashboardProps {
     updateDailyBlock: (id: number, updates: Partial<DailyBlock>) => void;
     projects: Project[];
     goals?: Goal[];
+    toggleGoalMilestone?: (goalId: number, milestoneId: number) => void;
 }
 
 // Selector de meta / sub-meta a la que aporta la tarea (se ve en Metas).
@@ -99,8 +100,33 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     updateDailyBlock,
     projects,
     goals = [],
+    toggleGoalMilestone,
 }) => {
     const metaDe = (b: DailyBlock) => b.goalId !== undefined ? goals.find(g => g.id === b.goalId) : undefined;
+    // Tarea madre de una tarea suelta: la tarea de la meta (con sus pasos) de la que salió como paso enlazado.
+    const madreDe = (b: DailyBlock) => {
+        const g = metaDe(b);
+        const key = b.label.trim().toLowerCase();
+        const m = g?.milestones.find(x => (x.pasos || []).some(p => p.repetitiva && p.text.trim().toLowerCase() === key));
+        if (!g || !m) return undefined;
+        // Tarea simple (su único paso es ella misma): no hace falta cabecera, la fila ya es la tarea.
+        const enlazados = (m.pasos || []).filter(p => p.repetitiva);
+        if ((m.pasos || []).length === 1 && enlazados.length === 1 && enlazados[0].text.trim().toLowerCase() === m.text.trim().toLowerCase()) return undefined;
+        return { g, m };
+    };
+    // Junta las tareas de una misma tarea madre, una al lado de otra, en el lugar de la primera.
+    const agruparPorMadre = (lista: DailyBlock[]) => {
+        const vistas = new Set<number>();
+        const out: DailyBlock[] = [];
+        lista.forEach(b => {
+            const mm = madreDe(b);
+            if (!mm) { out.push(b); return; }
+            if (vistas.has(mm.m.id)) return;
+            vistas.add(mm.m.id);
+            lista.filter(x => madreDe(x)?.m.id === mm.m.id).forEach(x => out.push(x));
+        });
+        return out;
+    };
     const chipMeta = (b: DailyBlock) => {
         const m = metaDe(b);
         return m ? (
@@ -903,7 +929,9 @@ Supermercado:
                                 return (
                                     <div key={g}>
                                         {cabeceraGrupo(clave, g, items.length, g === 'Vencidas' ? C.rojo : g === 'Hoy' ? C.primary : undefined)}
-                                        {!cerrados[clave] && items.map(b => {
+                                        {!cerrados[clave] && agruparPorMadre(items).map(b => {
+                                const madre = madreDe(b);
+                                const primeraDeMadre = !!madre && agruparPorMadre(items).find(x => madreDe(x)?.m.id === madre.m.id) === b;
                                 const project = projects.find(p => p.id === b.projectId);
                                 const esHoy = b.date === todayStr;
 
@@ -911,9 +939,24 @@ Supermercado:
                                 const fechaCorta = b.date ? new Date(b.date + 'T00:00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'short' }).replace('.', '') : '';
 
                                 return (
+                                    <Fragment key={b.id}>
+                                    {primeraDeMadre && madre && (
+                                        <div style={{ padding: '10px 8px 4px 14px', display: 'flex', alignItems: 'center', gap: '10px', borderTop: `1px solid ${C.surfaceContainerHigh}` }}>
+                                            <button
+                                                onClick={() => toggleGoalMilestone?.(madre.g.id, madre.m.id)}
+                                                title="Marcar la tarea completa"
+                                                style={{ width: '22px', height: '22px', borderRadius: '50%', border: `2px solid ${madre.m.completed ? C.primary : C.outlineVariant}`, background: madre.m.completed ? C.primary : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}
+                                            >
+                                                {madre.m.completed && <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#fff' }}>check</span>}
+                                            </button>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontSize: '0.88rem', fontWeight: 800, color: madre.m.completed ? C.outline : C.onSurface, textDecoration: madre.m.completed ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{madre.m.text}</div>
+                                                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: C.outline }}>{madre.g.title}</div>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div
-                                        key={b.id}
-                                        style={{ padding: '8px 8px 8px 14px', borderBottom: `1px solid ${C.surfaceContainerHigh}`, display: 'flex', alignItems: 'center', gap: '10px' }}
+                                        style={{ padding: madre ? '8px 8px 8px 34px' : '8px 8px 8px 14px', borderBottom: `1px solid ${C.surfaceContainerHigh}`, display: 'flex', alignItems: 'center', gap: '10px' }}
                                     >
                                         {/* Checkbox circular */}
                                         <button
@@ -973,6 +1016,7 @@ Supermercado:
 
                                         {menuAcciones(b.id, () => handleStartEdit(b), () => removeDailyBlock(b.id))}
                                     </div>
+                                    </Fragment>
                                 );
                             })}
                                     </div>

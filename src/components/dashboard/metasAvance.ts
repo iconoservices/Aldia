@@ -40,9 +40,12 @@ export interface TareaEnlazada {
     dias?: number[];       // repetitiva: días de la semana (getDay, 0 = domingo)
 }
 
-export const tareasDeMeta = (goalId: number, dailyBlocks: DailyBlock[]): TareaEnlazada[] => {
+// `goal`: si se pasa, las tareas sueltas que ya viven como paso dentro de una tarea de la meta (pasos
+// "enlazados") no se listan aparte ni cuentan doble. `conPasos` las incluye, para mostrarlas en su paso.
+export const tareasDeMeta = (goalId: number, dailyBlocks: DailyBlock[], goal?: Goal, conPasos = false): TareaEnlazada[] => {
     const propias = dailyBlocks.filter(b => b.goalId === goalId);
-    const sueltas = propias.filter(b => !b.repeatDays?.length);
+    const enPasos = new Set(goal ? goal.milestones.flatMap(m => (m.pasos || []).filter(x => x.repetitiva).map(x => x.text.trim().toLowerCase())) : []);
+    const sueltas = propias.filter(b => !b.repeatDays?.length && (conPasos || !enPasos.has(b.label.trim().toLowerCase())));
     const series = new Map<string, DailyBlock[]>();
     propias.filter(b => b.repeatDays?.length).forEach(b => {
         const k = claveSerie(b);
@@ -83,7 +86,7 @@ export const avance = (g: Goal, subs: Goal[], dailyBlocks: DailyBlock[]) => {
         const texto = (g.unidad === 'S/' ? `S/ ${fmt(actual)} / ${fmt(g.objetivo)}` : `${fmt(actual)} / ${conUnidad(g.objetivo, g.unidad)}`) + sufijoPeriodo(g);
         return { pct: Math.max(0, Math.min(100, Math.round((actual / g.objetivo) * 100))), texto };
     }
-    const enlazadas = tareasDeMeta(g.id, dailyBlocks).filter(t => t.activa && (!t.repetitiva || (t.semana?.toca ?? 0) > 0));
+    const enlazadas = tareasDeMeta(g.id, dailyBlocks, g).filter(t => t.activa && (!t.repetitiva || (t.semana?.toca ?? 0) > 0));
     const total = subs.length + g.milestones.length + enlazadas.length;
     const hechos = subs.filter(s => s.status === 'completado').length + g.milestones.filter(m => m.completed).length
         + enlazadas.reduce((acc, t) => acc + (t.repetitiva ? Math.min(1, t.semana!.hechos / t.semana!.toca) : t.hecha ? 1 : 0), 0);
