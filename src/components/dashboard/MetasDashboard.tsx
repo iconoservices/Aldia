@@ -1404,29 +1404,6 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                             {pasos.length === 0 ? 'Tareas sueltas de este plazo. Las de una sub-meta van dentro de ella.' : 'Tareas sueltas de este plazo'}
                         </p>
                     )}
-                    {pagina && subs.some(x => x.horizon === plazo) && (
-                        <div style={{ fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.outline, margin: '16px 0 2px' }}>Tareas sueltas</div>
-                    )}
-                    <ListaTareas
-                        plano={pagina} sinForm
-                        tareas={pasos} color={goal.color} movil={movil}
-                        onToggle={onToggle} onRemove={onRemove} onAdd={onAdd}
-                        onEditar={(id, t) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, text: t } : x) })}
-                        onCambiar={(id, u) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, ...u } : x) })}
-                        onAbrir={onAbrirTarea}
-                        onConvertir={addDailyBlock ? convertirPaso(goal, plazo, onUpdate, addDailyBlock) : undefined}
-                        repDe={txt => tareasDeMeta(goal.id, dailyBlocks).find(t => t.repetitiva && t.label.trim().toLowerCase() === txt.trim().toLowerCase())}
-                        onToggleRep={toggleDailyBlock}
-                        onBorrarRep={removeDailyBlock ? (_t, txt) => {
-                            dailyBlocks.filter(b => b.goalId === goal.id && b.repeatDays?.length && b.label.trim().toLowerCase() === txt.trim().toLowerCase()).forEach(b => removeDailyBlock(b.id));
-                        } : undefined}
-                        extra={<FilasEnlazadas plano={pagina} onBorrar={removeDailyBlock ? t => {
-                            if (!window.confirm(`¿Borrar la tarea "${t.label}"${t.repetitiva ? ' y todos sus registros' : ''}?`)) return;
-                            const base = dailyBlocks.find(b => b.id === t.id);
-                            if (!base) return;
-                            dailyBlocks.filter(b => b.goalId === goal.id && b.label.trim().toLowerCase() === base.label.trim().toLowerCase() && (!t.repetitiva || b.period === base.period)).forEach(b => removeDailyBlock(b.id));
-                        } : undefined} asignar={{ tareas: goal.milestones.filter(m => (m.plazo ?? 'corto') === plazo && !m.completed), onAsignar: (mid, txt) => { if (mid) onUpdate({ milestones: goal.milestones.map(x => x.id === mid ? { ...x, pasos: [...(x.pasos || []), { id: Date.now() + Math.floor(Math.random() * 1000), text: txt, completed: false, repetitiva: true }] } : x) }); } }} excluir={goal.milestones.flatMap(m => (m.pasos || []).filter(q => q.repetitiva).map(q => q.text))} goal={goal} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal} movil={movil} />}
-                    />
                     {subs.filter(x => x.horizon === plazo).map(sub => {
                         const av = avance(sub, [], dailyBlocks);
                         const hechasSub = sub.milestones.filter(t => t.completed).length;
@@ -1464,6 +1441,29 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                             </div>
                         ) : null;
                     })}
+                    {pagina && subs.some(x => x.horizon === plazo) && (
+                        <div style={{ fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.outline, margin: '26px 0 2px' }}>Tareas sueltas</div>
+                    )}
+                    <ListaTareas
+                        plano={pagina} sinForm
+                        tareas={pasos} color={goal.color} movil={movil}
+                        onToggle={onToggle} onRemove={onRemove} onAdd={onAdd}
+                        onEditar={(id, t) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, text: t } : x) })}
+                        onCambiar={(id, u) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, ...u } : x) })}
+                        onAbrir={onAbrirTarea}
+                        onConvertir={addDailyBlock ? convertirPaso(goal, plazo, onUpdate, addDailyBlock) : undefined}
+                        repDe={txt => tareasDeMeta(goal.id, dailyBlocks).find(t => t.repetitiva && t.label.trim().toLowerCase() === txt.trim().toLowerCase())}
+                        onToggleRep={toggleDailyBlock}
+                        onBorrarRep={removeDailyBlock ? (_t, txt) => {
+                            dailyBlocks.filter(b => b.goalId === goal.id && b.repeatDays?.length && b.label.trim().toLowerCase() === txt.trim().toLowerCase()).forEach(b => removeDailyBlock(b.id));
+                        } : undefined}
+                        extra={<FilasEnlazadas plano={pagina} onBorrar={removeDailyBlock ? t => {
+                            if (!window.confirm(`¿Borrar la tarea "${t.label}"${t.repetitiva ? ' y todos sus registros' : ''}?`)) return;
+                            const base = dailyBlocks.find(b => b.id === t.id);
+                            if (!base) return;
+                            dailyBlocks.filter(b => b.goalId === goal.id && b.label.trim().toLowerCase() === base.label.trim().toLowerCase() && (!t.repetitiva || b.period === base.period)).forEach(b => removeDailyBlock(b.id));
+                        } : undefined} asignar={{ tareas: goal.milestones.filter(m => (m.plazo ?? 'corto') === plazo && !m.completed), onAsignar: (mid, txt) => { if (mid) onUpdate({ milestones: goal.milestones.map(x => x.id === mid ? { ...x, pasos: [...(x.pasos || []), { id: Date.now() + Math.floor(Math.random() * 1000), text: txt, completed: false, repetitiva: true }] } : x) }); } }} excluir={goal.milestones.flatMap(m => (m.pasos || []).filter(q => q.repetitiva).map(q => q.text))} goal={goal} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal} movil={movil} />}
+                    />
                     <form onSubmit={e => { e.preventDefault(); const t = nuevaTarea.trim(); if (t) { onAdd(t); setNuevaTarea(''); } }} style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                         <input value={nuevaTarea} onChange={e => setNuevaTarea(e.target.value)} placeholder="Nueva tarea…" enterKeyHint="done" style={{ ...campo(movil), flex: 1, minWidth: 0, padding: '13px 16px' }} />
                         <button type="submit" disabled={!nuevaTarea.trim()} title="Agregar" style={{ width: '50px', flexShrink: 0, border: 'none', borderRadius: '12px', cursor: nuevaTarea.trim() ? 'pointer' : 'default', background: nuevaTarea.trim() ? goal.color : C.surfaceContainerHigh, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
