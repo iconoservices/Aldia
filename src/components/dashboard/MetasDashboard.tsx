@@ -940,7 +940,14 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                                                     <div style={{ fontSize: '0.92rem', color: C.onSurface, wordBreak: 'break-word' }}>{p.text}</div>
                                                     <div style={{ marginTop: '2px', fontSize: '0.72rem', fontWeight: 700, color }}>
                                                         <span style={{ verticalAlign: 'middle', fontSize: '14px' }} className="material-symbols-outlined">repeat</span>{' '}
-                                                        {t ? (pausada ? 'Repetitiva · pausada' : `${t.dias?.length ? etiquetaDias(t.dias) : 'Repetitiva'}${t.semana ? ` · esta semana ${t.semana.hechos}/${t.semana.toca}` : ''}${t.hecha ? ' · hoy ✓' : ''}`) : 'Repetitiva'}
+                                                        {t?.dias?.length ? (
+                                                            <span style={{ display: 'inline-flex', gap: '3px', verticalAlign: 'middle', marginRight: '8px' }}>
+                                                                {DIAS_SEMANA.map(({ l, d }) => (
+                                                                    <span key={d} title={etiquetaDias(t.dias!)} style={{ width: '18px', height: '18px', borderRadius: '5px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.62rem', fontWeight: 800, background: t.dias!.includes(d) ? color : C.surfaceContainer, color: t.dias!.includes(d) ? '#fff' : C.outline }}>{l}</span>
+                                                                ))}
+                                                            </span>
+                                                        ) : null}
+                                                        {t ? (pausada ? 'Pausada' : `${t.dias?.length ? '' : 'Repetitiva'}${t.semana ? `esta semana ${t.semana.hechos}/${t.semana.toca}` : ''}${t.hecha ? ' · hoy ✓' : ''}`) : 'Repetitiva'}
                                                     </div>
                                                 </div>
                                                 <button onClick={() => { if (onBorrarRep) { if (!window.confirm(`¿Quitar "${p.text}" y borrar su tarea repetitiva?`)) return; onBorrarRep(t, p.text); } cambiarPasos(m, (m.pasos || []).filter(x => x.id !== p.id)); }} title="Quitar y borrar la tarea repetitiva" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '4px', opacity: 0.7 }}>
