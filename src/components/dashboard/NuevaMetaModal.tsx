@@ -1,3 +1,4 @@
+import { CampoDesplegable } from '../ui/CampoDesplegable';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { C, RADIO, campo } from '../../theme';
@@ -152,16 +153,11 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
                                     placeholder={esSub ? '20' : '10000'} aria-label="Número objetivo"
                                     style={{ ...campo(movil), width: '100px', boxSizing: 'border-box', background: C.surfaceContainerLow }}
                                 />
-                                <input
-                                    value={f.unidad} onChange={e => set({ unidad: e.target.value })}
-                                    placeholder="unidad" aria-label="Unidad" maxLength={14}
-                                    style={{ ...campo(movil), width: '110px', boxSizing: 'border-box', background: C.surfaceContainerLow }}
+                                <CampoDesplegable
+                                    value={f.unidad} onChange={v => set({ unidad: v })} opciones={UNIDADES}
+                                    placeholder="unidad" ariaLabel="Unidad" maxLength={14} style={{ width: '130px' }}
+                                    inputStyle={{ ...campo(movil), background: C.surfaceContainerLow }}
                                 />
-                            </div>
-                            <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
-                                {UNIDADES.map(u => (
-                                    <button type="button" key={u} onClick={() => set({ unidad: f.unidad === u ? '' : u })} style={{ ...chip(f.unidad === u, f.color), padding: '5px 11px', fontSize: '0.72rem' }}>{u}</button>
-                                ))}
                             </div>
                             <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
                                 {([['', 'En total'], ['semana', 'Por semana'], ['mes', 'Por mes']] as const).map(([k, t]) => (

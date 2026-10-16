@@ -1,3 +1,4 @@
+import { CampoDesplegable } from '../ui/CampoDesplegable';
 import { useState, useMemo, useEffect, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1291,37 +1292,32 @@ export const DeudasyCobrosDashboard = ({
                                     <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                                         {field.label}
                                     </label>
+                                    {field.listId ? (
+                                        <CampoDesplegable
+                                            value={field.value} onChange={field.setter} opciones={uniqueContacts} filtrar
+                                            placeholder={field.placeholder}
+                                            onElegir={c => { const m = findContactByName(c); if (m) setNewPhone(m.phone || ""); }}
+                                            inputStyle={{ padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: "#0C2A20", outline: "none" }}
+                                        />
+                                    ) : (
                                     <input
-                                        type={field.label.includes("Monto") ? "number" : "text"}
-                                        value={field.value}
-                                        onChange={e => {
-                                            field.setter(e.target.value);
-                                            // Al elegir un contacto ya conocido (del datalist o tipeado igual),
-                                            // se trae su teléfono guardado en vez de dejarlo en blanco.
-                                            if (field.listId) {
-                                                const match = findContactByName(e.target.value);
-                                                if (match) setNewPhone(match.phone || "");
-                                            }
-                                        }}
-                                        placeholder={field.placeholder}
-                                        style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: "#0C2A20", boxSizing: "border-box" as const, outline: "none" }}
-                                        onFocus={e => (e.target.style.borderColor = "#0FA97A")}
-                                        onBlur={e => (e.target.style.borderColor = "#DCE7E1")}
-                                    />
-                                    {field.listId && (() => {
-                                        const q = newContact.trim().toLowerCase();
-                                        const sug = uniqueContacts.filter(c => c.toLowerCase() !== q && (!q || c.toLowerCase().includes(q))).slice(0, 8);
-                                        return sug.length > 0 && (
-                                            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px" }}>
-                                                {sug.map(c => (
-                                                    <button key={c} type="button" onClick={() => { setNewContact(c); const m = findContactByName(c); if (m) setNewPhone(m.phone || ""); }}
-                                                        style={{ border: "none", borderRadius: "999px", padding: "5px 12px", background: "#E6EFEA", color: "#4A5F58", fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 700, fontSize: "0.75rem", cursor: "pointer" }}>
-                                                        {c}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        );
-                                    })()}
+                                            type={field.label.includes("Monto") ? "number" : "text"}
+                                            value={field.value}
+                                            onChange={e => {
+                                                field.setter(e.target.value);
+                                                // Al elegir un contacto ya conocido (del datalist o tipeado igual),
+                                                // se trae su teléfono guardado en vez de dejarlo en blanco.
+                                                if (field.listId) {
+                                                    const match = findContactByName(e.target.value);
+                                                    if (match) setNewPhone(match.phone || "");
+                                                }
+                                            }}
+                                            placeholder={field.placeholder}
+                                            style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: "#0C2A20", boxSizing: "border-box" as const, outline: "none" }}
+                                            onFocus={e => (e.target.style.borderColor = "#0FA97A")}
+                                            onBlur={e => (e.target.style.borderColor = "#DCE7E1")}
+                                        />
+                                    )}
                                     {field.listId && newContact.trim() && (
                                         <input
                                             type="tel"
