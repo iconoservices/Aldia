@@ -671,6 +671,45 @@ const TareasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock
     );
 };
 
+// Tarea de Mi Día ligada a la meta, mostrada como una fila más de la lista (repetitiva: con sus días).
+const FilasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock, linkTaskToGoal, movil }: { goal: Goal; dailyBlocks: DailyBlock[]; toggleDailyBlock?: (id: number) => void; updateDailyBlock?: (id: number, updates: Partial<DailyBlock>) => void; linkTaskToGoal?: (blockId: number, goalId: number | undefined) => void; movil: boolean }) => (
+    <>
+        {tareasDeMeta(goal.id, dailyBlocks).map(t => {
+            const pausada = t.repetitiva && !t.activa;
+            const alternarActiva = () => {
+                const base = dailyBlocks.find(b => b.id === t.id);
+                if (!base || !updateDailyBlock) return;
+                dailyBlocks
+                    .filter(b => b.goalId === goal.id && b.label.trim().toLowerCase() === base.label.trim().toLowerCase() && b.period === base.period)
+                    .forEach(b => updateDailyBlock(b.id, { isActive: pausada }));
+            };
+            return (
+                <div key={t.id} style={{ padding: movil ? '12px 14px' : '16px 20px', marginBottom: '12px', borderRadius: '16px', boxSizing: 'border-box', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, opacity: pausada ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: movil ? '12px' : '16px' }}>
+                    <Check marcado={t.hecha} color={goal.color} tam={26} onClick={() => toggleDailyBlock?.(t.id)} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.95rem', color: !t.repetitiva && t.hecha ? C.outline : C.onSurface, textDecoration: !t.repetitiva && t.hecha ? 'line-through' : 'none', wordBreak: 'break-word' }}>{t.label}</div>
+                        {t.repetitiva && t.semana && (
+                            <div style={{ color: C.outline, fontSize: '0.74rem', fontWeight: 600, marginTop: '2px' }}>
+                                🔁 {pausada ? 'Pausada · no cuenta en el avance' : `${t.dias?.length ? etiquetaDias(t.dias) + ' · ' : ''}esta semana ${t.semana.hechos}/${t.semana.toca}${t.hecha ? ' · hoy ✓' : ''}`}
+                            </div>
+                        )}
+                    </div>
+                    {t.repetitiva && updateDailyBlock && (
+                        <button onClick={alternarActiva} title={pausada ? 'Activar' : 'Pausar'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '4px' }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{pausada ? 'play_arrow' : 'pause'}</span>
+                        </button>
+                    )}
+                    {linkTaskToGoal && (
+                        <button onClick={() => linkTaskToGoal(t.id, undefined)} title="Quitar de esta meta" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '4px' }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>link_off</span>
+                        </button>
+                    )}
+                </div>
+            );
+        })}
+    </>
+);
+
 const Check = ({ marcado, color, onClick, tam = 22, cuadrado }: { marcado: boolean; color: string; onClick: () => void; tam?: number; cuadrado?: boolean }) => (
     <button
         onClick={onClick}
@@ -711,7 +750,8 @@ type Tarea = Goal['milestones'][number];
 type Paso = NonNullable<Tarea['pasos']>[number];
 const DIAS_SEMANA: { l: string; d: number }[] = [{ l: 'L', d: 1 }, { l: 'M', d: 2 }, { l: 'X', d: 3 }, { l: 'J', d: 4 }, { l: 'V', d: 5 }, { l: 'S', d: 6 }, { l: 'D', d: 0 }];
 
-const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd, onCambiar, onConvertir }: {
+const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd, onCambiar, onConvertir, extra }: {
+    extra?: React.ReactNode; // filas adicionales (ej. repetitivas enlazadas) dentro de la misma lista
     tareas: Goal['milestones']; color: string; movil: boolean;
     // Convierte un paso en tarea suelta ('suelta') o en tarea repetitiva (días de la semana, getDay).
     onConvertir?: (tarea: Tarea, paso: Paso, destino: 'suelta' | number[]) => void;
@@ -869,6 +909,7 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                 </div>
                 );
             })}
+            {extra}
             <form onSubmit={e => { e.preventDefault(); if (texto.trim()) { onAdd(texto.trim()); setTexto(''); } }} style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <input
                     value={texto} onChange={e => setTexto(e.target.value)}
@@ -1110,10 +1151,8 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                         onEditar={(id, t) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, text: t } : x) })}
                         onCambiar={(id, u) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, ...u } : x) })}
                         onConvertir={addDailyBlock ? convertirPaso(goal, plazo, onUpdate, addDailyBlock) : undefined}
+                        extra={<FilasEnlazadas goal={goal} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal} movil={movil} />}
                     />
-                    <div style={{ marginTop: '22px' }}>
-                        <TareasEnlazadas goal={goal} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal} movil={movil} />
-                    </div>
                 </>
             )}
         </Hoja>
