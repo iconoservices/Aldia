@@ -1404,6 +1404,9 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                             {pasos.length === 0 ? 'Tareas sueltas de este plazo. Las de una sub-meta van dentro de ella.' : 'Tareas sueltas de este plazo'}
                         </p>
                     )}
+                    {pagina && subs.some(x => x.horizon === plazo) && (
+                        <div style={{ fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.outline, margin: '16px 0 2px' }}>Tareas sueltas</div>
+                    )}
                     <ListaTareas
                         plano={pagina} sinForm
                         tareas={pasos} color={goal.color} movil={movil}
@@ -1430,18 +1433,26 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                         const etiq = { texto: `${sub.title} · ${sub.objetivo ? av.texto : `${hechasSub}/${sub.milestones.length} tareas`}`, color: goal.color };
                         if (sub.milestones.length === 0) {
                             return (
-                                <div key={sub.id} style={{ padding: pagina ? '10px 4px' : '8px 0', borderBottom: pagina ? `1px solid ${C.outlineVariant}` : 'none', display: 'flex', alignItems: 'center', gap: '10px', color: C.outline, fontSize: '0.85rem' }}>
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '1px 9px', borderRadius: '999px', background: `color-mix(in srgb, ${goal.color} 12%, white)`, color: goal.color, fontSize: '0.74rem', fontWeight: 700 }}>
-                                        <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>flag</span>{etiq.texto}
-                                    </span>
-                                    Sin tareas todavía
+                                <div key={sub.id} style={{ margin: '22px 0 6px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap', color: goal.color }}>
+                                        <span className="material-symbols-outlined" style={{ fontSize: '16px', alignSelf: 'center' }}>flag</span>
+                                        <span style={{ fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Sub-meta</span>
+                                        <span style={{ fontSize: '1rem', fontWeight: 800, color: C.onSurface }}>{sub.title}</span>
+                                        <span style={{ fontSize: '0.74rem', fontWeight: 700, color: C.outline, fontFamily: MONO }}>{sub.objetivo ? av.texto : 'sin tareas todavía'}</span>
+                                    </div>
                                 </div>
                             );
                         }
                         return onSubUpdate ? (
+                            <div key={sub.id}>
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap', margin: '22px 0 2px', color: goal.color }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: '16px', alignSelf: 'center' }}>flag</span>
+                                <span style={{ fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Sub-meta</span>
+                                <span style={{ fontSize: '1rem', fontWeight: 800, color: C.onSurface }}>{sub.title}</span>
+                                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: C.outline, fontFamily: MONO }}>{sub.objetivo ? av.texto : `${hechasSub}/${sub.milestones.length} tareas`}</span>
+                            </div>
                             <ListaTareas
-                                key={sub.id}
-                                plano={pagina} sinForm etiqueta={etiq}
+                                plano={pagina} sinForm
                                 tareas={sub.milestones} color={goal.color} movil={movil}
                                 onToggle={mid => onSubToggle?.(sub.id, mid)} onRemove={mid => onSubRemove?.(sub.id, mid)} onAdd={t => onSubAdd?.(sub.id, t)}
                                 onEditar={(id, t) => onSubUpdate(sub.id, { milestones: sub.milestones.map(x => x.id === id ? { ...x, text: t } : x) })}
@@ -1450,6 +1461,7 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                                 repDe={txt => tareasDeMeta(sub.id, dailyBlocks).find(t => t.repetitiva && t.label.trim().toLowerCase() === txt.trim().toLowerCase())}
                                 onToggleRep={toggleDailyBlock}
                             />
+                            </div>
                         ) : null;
                     })}
                     <form onSubmit={e => { e.preventDefault(); const t = nuevaTarea.trim(); if (t) { onAdd(t); setNuevaTarea(''); } }} style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
