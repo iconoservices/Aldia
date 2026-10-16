@@ -235,6 +235,17 @@ export const MetasDashboard = ({
 
     return (
         <div style={paddingPagina(movil)}>
+            <button
+                onClick={() => setForm({ tipo: 'meta' })}
+                style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '6px', alignSelf: 'flex-start', marginBottom: '14px',
+                    padding: '8px 16px', background: C.primary, border: 'none', borderRadius: '999px',
+                    color: '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'inherit',
+                }}
+            >
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span> Nueva meta
+            </button>
+
             {raiz.length === 0 && (
                 <div style={{ padding: '2rem 1rem', textAlign: 'center', color: C.onSurfaceVariant }}>
                     <span className="material-symbols-outlined" style={{ fontSize: '36px', color: C.outlineVariant, display: 'block', marginBottom: '8px' }}>flag</span>
@@ -258,16 +269,6 @@ export const MetasDashboard = ({
                         </AnimatePresence>
                     </section>
                 ))}
-                <button
-                    onClick={() => setForm({ tipo: 'meta' })}
-                    style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', minHeight: '52px', width: '100%',
-                        background: 'transparent', border: `2px dashed ${C.outlineVariant}`, borderRadius: '12px',
-                        color: C.onSurfaceVariant, fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', fontFamily: 'inherit',
-                    }}
-                >
-                    <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>add</span> Nueva meta
-                </button>
             </div>
 
             <NuevaMetaModal
