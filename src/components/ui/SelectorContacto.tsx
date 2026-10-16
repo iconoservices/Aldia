@@ -26,6 +26,8 @@ const Avatar = ({ nombre, ambar }: { nombre: string; ambar?: boolean }) => (
 // Selector de cliente/acreedor: lista con detalle, aviso de nombres parecidos y "crear nuevo" explícito.
 export const SelectorContacto = ({ value, onChange, contactos, placeholder, onElegir, onCrear, inputStyle }: Props) => {
     const [pos, setPos] = useState<{ left: number; top: number; width: number } | null>(null);
+    // Lo escrito es solo una búsqueda: el cliente real solo cambia al elegir uno o crear su ficha.
+    const [texto, setTexto] = useState<string | null>(null);
     const caja = useRef<HTMLDivElement>(null);
     const lista = useRef<HTMLDivElement>(null);
 
@@ -38,7 +40,7 @@ export const SelectorContacto = ({ value, onChange, contactos, placeholder, onEl
 
     useEffect(() => {
         if (!pos) return;
-        const cerrar = () => setPos(null);
+        const cerrar = () => { setPos(null); setTexto(null); };
         const fuera = (e: MouseEvent) => {
             const t = e.target as Node;
             if (!caja.current?.contains(t) && !lista.current?.contains(t)) cerrar();
@@ -48,13 +50,14 @@ export const SelectorContacto = ({ value, onChange, contactos, placeholder, onEl
         return () => { document.removeEventListener('mousedown', fuera); window.removeEventListener('resize', cerrar); };
     }, [pos]);
 
-    const q = norm(value);
+    const buscado = texto ?? '';
+    const q = norm(buscado);
     const exacto = contactos.find(c => norm(c.nombre) === q);
     const coinciden = q ? contactos.filter(c => norm(c.nombre).includes(q)) : contactos;
-    const similares = q && !exacto ? contactos.filter(c => parecidos(value, c.nombre) && !coinciden.includes(c)) : [];
+    const similares = q && !exacto ? contactos.filter(c => parecidos(buscado, c.nombre) && !coinciden.includes(c)) : [];
     const parecidosYCoinciden = q && !exacto ? coinciden : [];
 
-    const elegir = (nombre: string) => { onChange(nombre); onElegir?.(nombre); setPos(null); };
+    const elegir = (nombre: string) => { onChange(nombre); onElegir?.(nombre); setTexto(null); setPos(null); };
 
     const fila = (c: ContactoOpcion, ambar?: boolean) => (
         <button
@@ -80,15 +83,21 @@ export const SelectorContacto = ({ value, onChange, contactos, placeholder, onEl
     return (
         <div ref={caja} style={{ position: 'relative' }}>
             <input
-                value={value}
-                onChange={e => { onChange(e.target.value); if (!pos) medir(); }}
+                value={texto ?? value}
+                onChange={e => { setTexto(e.target.value); if (!pos) medir(); }}
                 onFocus={() => { if (!pos) medir(); }}
-                onKeyDown={e => { if (e.key === 'Escape') setPos(null); if (e.key === 'Enter') setPos(null); }}
-                placeholder={placeholder}
-                style={{ ...inputStyle, width: '100%', paddingRight: 34, boxSizing: 'border-box' }}
+                onKeyDown={e => { if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); setPos(null); setTexto(null); } }}
+                placeholder={value ? undefined : (pos ? 'Buscar cliente…' : placeholder)}
+                style={{ ...inputStyle, width: '100%', paddingRight: value && texto === null ? 60 : 34, boxSizing: 'border-box' }}
             />
+            {value && texto === null && (
+                <button type="button" tabIndex={-1} aria-label="Quitar cliente" onClick={() => { onChange(''); onElegir?.(''); }}
+                    style={{ position: 'absolute', right: 32, top: 0, bottom: 0, width: 26, border: 'none', background: 'none', cursor: 'pointer', color: '#6B7F78', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
+                </button>
+            )}
             <button
-                type="button" tabIndex={-1} aria-label="Ver clientes" onClick={() => (pos ? setPos(null) : medir())}
+                type="button" tabIndex={-1} aria-label="Ver clientes" onClick={() => { if (pos) { setPos(null); setTexto(null); } else medir(); }}
                 style={{ position: 'absolute', right: 2, top: 0, bottom: 0, width: 30, border: 'none', background: 'none', cursor: 'pointer', color: '#6B7F78', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
                 <span className="material-symbols-outlined" style={{ fontSize: 20, transform: pos ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>expand_more</span>
@@ -104,15 +113,15 @@ export const SelectorContacto = ({ value, onChange, contactos, placeholder, onEl
                     {coinciden.map(c => fila(c))}
                     {similares.length > 0 && etiqueta('¿Es alguno de estos?', '#8A5A00')}
                     {similares.map(c => fila(c, true))}
-                    {q && coinciden.length + similares.length === 0 && <div style={{ padding: '14px 12px', fontSize: '0.8rem', color: '#6C8079' }}>No encontramos «{value.trim()}».</div>}
+                    {q && coinciden.length + similares.length === 0 && <div style={{ padding: '14px 12px', fontSize: '0.8rem', color: '#6C8079' }}>No encontramos «{buscado.trim()}».</div>}
                     </div>
                     {onCrear && (
                         <button
-                            type="button" onClick={() => { onCrear(exacto ? '' : value.trim()); setPos(null); }}
+                            type="button" onClick={() => { onCrear(exacto ? '' : buscado.trim()); setTexto(null); setPos(null); }}
                             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', border: 'none', borderTop: '1px solid #EDF2EF', padding: '12px', cursor: 'pointer', background: '#F1F9F5', fontFamily: 'inherit', color: '#0A7D5A', fontWeight: 800, fontSize: '0.85rem', flexShrink: 0 }}
                         >
                             <span className="material-symbols-outlined" style={{ fontSize: 20 }}>person_add</span>
-                            Crear nuevo cliente{q && !exacto ? ` «${value.trim()}»` : ''}
+                            Crear nuevo cliente{q && !exacto ? ` «${buscado.trim()}»` : ''}
                         </button>
                     )}
                 </div>,
