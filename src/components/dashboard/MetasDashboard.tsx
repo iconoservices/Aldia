@@ -1310,6 +1310,27 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                             return (
                                 <aside style={{ display: 'flex', flexDirection: 'column', gap: '30px', position: movil ? 'static' : 'sticky', top: '16px', marginTop: movil ? '28px' : 0 }}>
                                     <div>
+                                        <div style={eti}>La meta</div>
+                                        <div style={{ fontSize: '1.05rem', fontWeight: 800, color: C.onSurface, lineHeight: 1.3 }}>{goal.icon} {goal.title}</div>
+                                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginTop: '8px', fontSize: '0.78rem', color: C.onSurfaceVariant }}>
+                                            <span style={{ padding: '2px 10px', borderRadius: '999px', background: STATUS_INFO[goal.status].bg, color: STATUS_INFO[goal.status].color, fontWeight: 700 }}>{STATUS_INFO[goal.status].label}</span>
+                                            <span>{goal.area}</span>
+                                            {(() => { const d = diasRestantes(goal.targetDate); return d === null ? null : <span style={{ fontWeight: 700, color: d < 0 ? C.rojo : C.onSurfaceVariant }}>{d < 0 ? `${-d} d vencida` : d === 0 ? 'Vence hoy' : `${d} d restantes`}</span>; })()}
+                                        </div>
+                                        {goal.objetivo ? (() => {
+                                            const av = avance(goal, [], dailyBlocks);
+                                            return (
+                                                <div style={{ marginTop: '16px' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 700, color: C.onSurfaceVariant, fontFamily: MONO, marginBottom: '6px' }}>
+                                                        <span>{av.texto}</span><span style={{ color: goal.color }}>{av.pct}%</span>
+                                                    </div>
+                                                    <Barra pct={av.pct} color={goal.color} alto={6} />
+                                                    <div style={{ marginTop: '10px' }}><AvanceNumero goal={goal} onUpdate={onUpdate} movil={movil} /></div>
+                                                </div>
+                                            );
+                                        })() : null}
+                                    </div>
+                                    <div>
                                         <div style={eti}>Avance de este plazo</div>
                                         <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                                             <span style={{ fontSize: '2.4rem', fontWeight: 800, color: goal.color, fontFamily: MONO, lineHeight: 1 }}>{pctT}%</span>
