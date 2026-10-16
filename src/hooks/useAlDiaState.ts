@@ -89,6 +89,9 @@ export interface Contact {
     name: string;
     phone?: string;
     notes?: string;
+    dni?: string;
+    email?: string;
+    direccion?: string;
 }
 
 export interface FixedExpense {

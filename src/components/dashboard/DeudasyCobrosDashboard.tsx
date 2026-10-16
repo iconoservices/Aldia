@@ -265,6 +265,9 @@ export const DeudasyCobrosDashboard = ({
     const [editContactPhone, setEditContactPhone] = useState("");
     const [editContactNotes, setEditContactNotes] = useState("");
     const [editContactName, setEditContactName] = useState("");
+    const [editContactDni, setEditContactDni] = useState("");
+    const [editContactEmail, setEditContactEmail] = useState("");
+    const [editContactDir, setEditContactDir] = useState("");
     const [fichaNueva, setFichaNueva] = useState(false);
     const [unirCon, setUnirCon] = useState("");
     const [busquedaContacto, setBusquedaContacto] = useState("");
@@ -440,6 +443,9 @@ export const DeudasyCobrosDashboard = ({
         setEditContactName(existing?.name ?? name);
         setEditContactPhone(existing?.phone || "");
         setEditContactNotes(existing?.notes || "");
+        setEditContactDni(existing?.dni || "");
+        setEditContactEmail(existing?.email || "");
+        setEditContactDir(existing?.direccion || "");
         setFichaNueva(false);
         setUnirCon("");
     };
@@ -451,6 +457,7 @@ export const DeudasyCobrosDashboard = ({
         setEditContactName(name);
         setEditContactPhone("");
         setEditContactNotes("");
+        setEditContactDni(""); setEditContactEmail(""); setEditContactDir("");
         setFichaNueva(true);
         setUnirCon("");
     };
@@ -465,12 +472,13 @@ export const DeudasyCobrosDashboard = ({
         if (!nombre) return;
         const phone = editContactPhone.trim() || undefined;
         const notes = editContactNotes.trim() || undefined;
+        const extra = { dni: editContactDni.trim() || undefined, email: editContactEmail.trim() || undefined, direccion: editContactDir.trim() || undefined };
         const otro = contacts.find(c => c.id !== editingContact.id && norm(c.name) === norm(nombre));
         const destino = otro?.name ?? nombre;
         setContacts(prev => {
             const lista = prev.filter(c => c.id !== editingContact.id);
             const o = lista.find(c => norm(c.name) === norm(nombre));
-            const unido: Contact = { ...(o ?? { id: editingContact.id }), name: o?.name ?? nombre, phone: phone ?? o?.phone, notes: notes ?? o?.notes };
+            const unido: Contact = { ...(o ?? { id: editingContact.id }), name: o?.name ?? nombre, phone: phone ?? o?.phone, notes: notes ?? o?.notes, dni: extra.dni ?? o?.dni, email: extra.email ?? o?.email, direccion: extra.direccion ?? o?.direccion };
             return o ? lista.map(c => c.id === o.id ? unido : c) : [...lista, unido];
         });
         if (!fichaNueva && editingContact.name !== destino) cambiarContactoEnRegistros(editingContact.name, destino);
@@ -487,7 +495,7 @@ export const DeudasyCobrosDashboard = ({
             const lista = prev.filter(c => norm(c.name) !== norm(de));
             const dest = lista.find(c => norm(c.name) === norm(a));
             if (!dest) return [...lista, { id: Date.now(), name: a, phone: origen?.phone, notes: origen?.notes }];
-            return lista.map(c => c.id === dest.id ? { ...c, phone: c.phone ?? origen?.phone, notes: c.notes ?? origen?.notes } : c);
+            return lista.map(c => c.id === dest.id ? { ...c, phone: c.phone ?? origen?.phone, notes: c.notes ?? origen?.notes, dni: c.dni ?? origen?.dni, email: c.email ?? origen?.email, direccion: c.direccion ?? origen?.direccion } : c);
         });
     };
 
@@ -503,7 +511,7 @@ export const DeudasyCobrosDashboard = ({
             const lista = prev.filter(c => c.id !== editingContact.id && norm(c.name) !== norm(de));
             const dest = lista.find(c => norm(c.name) === norm(unirCon));
             if (!dest) return [...lista, { id: Date.now(), name: unirCon, phone, notes }];
-            return lista.map(c => c.id === dest.id ? { ...c, phone: c.phone ?? phone, notes: c.notes ?? notes } : c);
+            return lista.map(c => c.id === dest.id ? { ...c, phone: c.phone ?? phone, notes: c.notes ?? notes, dni: c.dni ?? (editContactDni.trim() || undefined), email: c.email ?? (editContactEmail.trim() || undefined), direccion: c.direccion ?? (editContactDir.trim() || undefined) } : c);
         });
         setEditingContact(null);
     };
@@ -1588,6 +1596,29 @@ export const DeudasyCobrosDashboard = ({
                                             </>
                                         )}
                                     </div>
+                                </div>
+                                <div style={{ display: "flex", gap: "10px", marginBottom: "1rem" }}>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>DNI</label>
+                                        <input type="text" inputMode="numeric" maxLength={12} value={editContactDni} onChange={e => setEditContactDni(e.target.value)} placeholder="12345678"
+                                            style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: "#0C2A20", boxSizing: "border-box" as const, outline: "none" }}
+                                        onFocus={e => (e.target.style.borderColor = "#0FA97A")}
+                                        onBlur={e => (e.target.style.borderColor = "#DCE7E1")} />
+                                    </div>
+                                    <div style={{ flex: 1.4, minWidth: 0 }}>
+                                        <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Correo</label>
+                                        <input type="email" value={editContactEmail} onChange={e => setEditContactEmail(e.target.value)} placeholder="correo@ejemplo.com"
+                                            style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: "#0C2A20", boxSizing: "border-box" as const, outline: "none" }}
+                                        onFocus={e => (e.target.style.borderColor = "#0FA97A")}
+                                        onBlur={e => (e.target.style.borderColor = "#DCE7E1")} />
+                                    </div>
+                                </div>
+                                <div style={{ marginBottom: "1rem" }}>
+                                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Dirección</label>
+                                    <input type="text" value={editContactDir} onChange={e => setEditContactDir(e.target.value)} placeholder="Ej: Av. Principal 123"
+                                        style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: "#0C2A20", boxSizing: "border-box" as const, outline: "none" }}
+                                        onFocus={e => (e.target.style.borderColor = "#0FA97A")}
+                                        onBlur={e => (e.target.style.borderColor = "#DCE7E1")} />
                                 </div>
                                 <div style={{ marginBottom: "1rem" }}>
                                     <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Notas (opcional)</label>
