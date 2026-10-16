@@ -245,6 +245,7 @@ export const MetasDashboard = ({
     if (metaPlazo && plazoAbierto) {
         return (
             <PlazoModal pagina
+                onCambiarPlazo={k => setPlazoAbierto({ goalId: metaPlazo.id, plazo: k })}
                 goal={metaPlazo} plazo={plazoAbierto?.plazo ?? null} movil={movil}
                 onClose={() => setPlazoAbierto(null)}
                 onAdd={t => metaPlazo && plazoAbierto && addGoalMilestone(metaPlazo.id, t, plazoAbierto.plazo)}
@@ -703,7 +704,7 @@ const TareasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock
 };
 
 // Tarea de Mi Día ligada a la meta, mostrada como una fila más de la lista (repetitiva: con sus días).
-const FilasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock, linkTaskToGoal, movil, incluir, excluir, compacto, asignar }: { incluir?: string[]; excluir?: string[]; compacto?: boolean; asignar?: { tareas: Tarea[]; onAsignar: (milestoneId: number, texto: string) => void }; goal: Goal; dailyBlocks: DailyBlock[]; toggleDailyBlock?: (id: number) => void; updateDailyBlock?: (id: number, updates: Partial<DailyBlock>) => void; linkTaskToGoal?: (blockId: number, goalId: number | undefined) => void; movil: boolean }) => (
+const FilasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock, linkTaskToGoal, movil, incluir, excluir, compacto, asignar, plano }: { plano?: boolean; incluir?: string[]; excluir?: string[]; compacto?: boolean; asignar?: { tareas: Tarea[]; onAsignar: (milestoneId: number, texto: string) => void }; goal: Goal; dailyBlocks: DailyBlock[]; toggleDailyBlock?: (id: number) => void; updateDailyBlock?: (id: number, updates: Partial<DailyBlock>) => void; linkTaskToGoal?: (blockId: number, goalId: number | undefined) => void; movil: boolean }) => (
     <>
         {tareasDeMeta(goal.id, dailyBlocks).filter(t => {
             const k = t.label.trim().toLowerCase();
@@ -721,6 +722,7 @@ const FilasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock,
             return (
                 <div key={t.id} style={compacto
                     ? { padding: '8px 0', display: 'flex', alignItems: 'center', gap: '12px', opacity: pausada ? 0.55 : 1 }
+                    : plano ? { padding: movil ? '14px 2px' : '16px 4px', borderBottom: `1px solid ${C.outlineVariant}`, opacity: pausada ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: movil ? '12px' : '16px' }
                     : { padding: movil ? '12px 14px' : '16px 20px', marginBottom: '12px', borderRadius: '16px', boxSizing: 'border-box', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, opacity: pausada ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: movil ? '12px' : '16px' }}>
                     <Check cuadrado={compacto} marcado={t.hecha} color={goal.color} tam={compacto ? 18 : 26} onClick={() => toggleDailyBlock?.(t.id)} />
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -793,7 +795,8 @@ type Tarea = Goal['milestones'][number];
 type Paso = NonNullable<Tarea['pasos']>[number];
 const DIAS_SEMANA: { l: string; d: number }[] = [{ l: 'L', d: 1 }, { l: 'M', d: 2 }, { l: 'X', d: 3 }, { l: 'J', d: 4 }, { l: 'V', d: 5 }, { l: 'S', d: 6 }, { l: 'D', d: 0 }];
 
-const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd, onCambiar, onConvertir, extra, repDe, onToggleRep, onAbrir, detalle }: {
+const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd, onCambiar, onConvertir, extra, repDe, onToggleRep, onAbrir, detalle, plano }: {
+    plano?: boolean; // filas planas separadas por una línea, sin tarjetas
     // En lista: tocar la tarea abre su pantalla de detalle. `detalle`: se muestra una sola tarea a pantalla completa, sin tarjeta.
     onAbrir?: (id: number) => void;
     detalle?: boolean;
@@ -834,13 +837,13 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                 const reales = (m.pasos || []).filter(p => !p.repetitiva);
                 const np = reales.length;
                 const pasosHechos = reales.filter(p => p.completed).length;
-                const abierta = detalle || (panel[m.id] ?? tot > 0);
+                const abierta = detalle || (panel[m.id] ?? (plano ? true : tot > 0));
                 const panelVisible = detalle || abierta;
                 return (
                 <div
                     key={m.id}
                     onMouseEnter={() => setSobre(m.id)} onMouseLeave={() => setSobre(null)}
-                    style={detalle ? { padding: 0 } : {
+                    style={detalle ? { padding: 0 } : plano ? { padding: movil ? '14px 2px' : '16px 4px', borderBottom: `1px solid ${C.outlineVariant}` } : {
                         padding: movil ? '12px 14px' : '16px 20px', marginBottom: '12px', borderRadius: '16px', boxSizing: 'border-box',
                         background: m.completed ? C.surfaceContainerLow : C.surfaceLowest,
                         border: `1px solid ${abierta || sobre === m.id ? `color-mix(in srgb, ${color} 45%, ${C.outlineVariant})` : C.outlineVariant}`,
@@ -1178,6 +1181,7 @@ interface PlazoModalProps {
     onRemove: (milestoneId: number) => void;
     onUpdate: (updates: Partial<Goal>) => void;
     onAbrirTarea?: (milestoneId: number) => void;
+    onCambiarPlazo?: (plazo: GoalHorizon) => void;
     pagina?: boolean; // pantalla completa (con el menú lateral visible) en vez de ventana flotante
     addDailyBlock?: MetasDashboardProps['addDailyBlock'];
     dailyBlocks?: DailyBlock[];
@@ -1245,11 +1249,11 @@ const convertirPaso = (
     onUpdate({ milestones });
 };
 
-const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, onUpdate, addDailyBlock, dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, onAbrirTarea, pagina }: PlazoModalProps) => {
+const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, onUpdate, addDailyBlock, dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, onAbrirTarea, onCambiarPlazo, pagina }: PlazoModalProps) => {
     const info = PLAZOS_INFO.find(p => p.k === plazo);
     const pasos = goal && plazo ? goal.milestones.filter(m => (m.plazo ?? 'corto') === plazo) : [];
     const envolver = (children: React.ReactNode) => pagina ? (
-        <div style={{ ...paddingPagina(movil), maxWidth: '860px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+        <div style={{ ...paddingPagina(movil), maxWidth: '1180px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
             <button onClick={onClose} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', color: C.onSurfaceVariant, fontFamily: 'inherit', fontWeight: 700, fontSize: '0.85rem', padding: '4px 0', marginBottom: '18px' }}>
                 <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>arrow_back</span> Metas
             </button>
@@ -1283,7 +1287,10 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                     <p style={{ margin: '0 0 14px', fontSize: '0.88rem', color: C.onSurfaceVariant }}>
                         {pasos.length === 0 ? 'Tareas sueltas de este plazo. Las de una sub-meta van dentro de ella.' : 'Tareas sueltas de este plazo'}
                     </p>
+                    <div style={pagina && !movil ? { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 280px', gap: '56px', alignItems: 'start' } : undefined}>
+                        <div style={{ minWidth: 0 }}>
                     <ListaTareas
+                        plano={pagina}
                         tareas={pasos} color={goal.color} movil={movil}
                         onToggle={onToggle} onRemove={onRemove} onAdd={onAdd}
                         onEditar={(id, t) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, text: t } : x) })}
@@ -1292,8 +1299,48 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                         onConvertir={addDailyBlock ? convertirPaso(goal, plazo, onUpdate, addDailyBlock) : undefined}
                         repDe={txt => tareasDeMeta(goal.id, dailyBlocks).find(t => t.repetitiva && t.label.trim().toLowerCase() === txt.trim().toLowerCase())}
                         onToggleRep={toggleDailyBlock}
-                        extra={<FilasEnlazadas asignar={{ tareas: goal.milestones.filter(m => (m.plazo ?? 'corto') === plazo && !m.completed), onAsignar: (mid, txt) => { if (mid) onUpdate({ milestones: goal.milestones.map(x => x.id === mid ? { ...x, pasos: [...(x.pasos || []), { id: Date.now() + Math.floor(Math.random() * 1000), text: txt, completed: false, repetitiva: true }] } : x) }); } }} excluir={goal.milestones.flatMap(m => (m.pasos || []).filter(q => q.repetitiva).map(q => q.text))} goal={goal} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal} movil={movil} />}
+                        extra={<FilasEnlazadas plano={pagina} asignar={{ tareas: goal.milestones.filter(m => (m.plazo ?? 'corto') === plazo && !m.completed), onAsignar: (mid, txt) => { if (mid) onUpdate({ milestones: goal.milestones.map(x => x.id === mid ? { ...x, pasos: [...(x.pasos || []), { id: Date.now() + Math.floor(Math.random() * 1000), text: txt, completed: false, repetitiva: true }] } : x) }); } }} excluir={goal.milestones.flatMap(m => (m.pasos || []).filter(q => q.repetitiva).map(q => q.text))} goal={goal} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal} movil={movil} />}
                     />
+                        </div>
+                        {pagina && (() => {
+                            const hechasT = pasos.filter(m => m.completed).length;
+                            const pctT = pasos.length ? Math.round((hechasT / pasos.length) * 100) : 0;
+                            const reps = tareasDeMeta(goal.id, dailyBlocks).filter(t => t.repetitiva && t.activa);
+                            const eti: React.CSSProperties = { fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.outline, marginBottom: '10px' };
+                            return (
+                                <aside style={{ display: 'flex', flexDirection: 'column', gap: '30px', position: movil ? 'static' : 'sticky', top: '16px', marginTop: movil ? '28px' : 0 }}>
+                                    <div>
+                                        <div style={eti}>Avance de este plazo</div>
+                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                                            <span style={{ fontSize: '2.4rem', fontWeight: 800, color: goal.color, fontFamily: MONO, lineHeight: 1 }}>{pctT}%</span>
+                                            <span style={{ fontSize: '0.85rem', color: C.onSurfaceVariant }}>{hechasT} de {pasos.length} tareas</span>
+                                        </div>
+                                        <div style={{ marginTop: '12px' }}><Barra pct={pctT} color={goal.color} alto={6} /></div>
+                                        {reps.length > 0 && (
+                                            <div style={{ marginTop: '14px', fontSize: '0.8rem', color: C.onSurfaceVariant }}>
+                                                {reps.length} repetitiva{reps.length !== 1 ? 's' : ''} · {reps.reduce((a, t) => a + (t.semana?.hechos ?? 0), 0)}/{reps.reduce((a, t) => a + (t.semana?.toca ?? 0), 0)} esta semana
+                                            </div>
+                                        )}
+                                    </div>
+                                    {onCambiarPlazo && (
+                                        <div>
+                                            <div style={eti}>Plazos de esta meta</div>
+                                            {PLAZOS_INFO.map(pl => {
+                                                const n = goal.milestones.filter(m => (m.plazo ?? 'corto') === pl.k).length;
+                                                const activo = pl.k === plazo;
+                                                return (
+                                                    <button key={pl.k} onClick={() => onCambiarPlazo(pl.k)} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px', width: '100%', background: 'none', border: 'none', borderLeft: `3px solid ${activo ? goal.color : 'transparent'}`, padding: '8px 0 8px 12px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                                                        <span style={{ fontSize: '0.9rem', fontWeight: activo ? 800 : 600, color: activo ? C.onSurface : C.onSurfaceVariant }}>{nombrePlazo(goal, pl.k)} <span style={{ fontWeight: 500, fontSize: '0.74rem', color: C.outline }}>· {pl.sub}</span></span>
+                                                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: C.outline, fontFamily: MONO }}>{n}</span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </aside>
+                            );
+                        })()}
+                    </div>
                 </>
             )}
         </>,
