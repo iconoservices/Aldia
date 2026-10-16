@@ -264,6 +264,7 @@ export const MetasDashboard = ({
     if (metaPlazo && plazoAbierto) {
         return (
             <PlazoModal pagina
+                onQuitarSub={id => removeGoal(id)}
                 subs={goals.filter(g => g.parentId === metaPlazo.id)}
                 onSubUpdate={(id, u) => updateGoal(id, u)}
                 onSubToggle={(id, mid) => toggleGoalMilestone(id, mid)}
@@ -1258,6 +1259,7 @@ interface PlazoModalProps {
     onSubToggle?: (id: number, milestoneId: number) => void;
     onSubRemove?: (id: number, milestoneId: number) => void;
     onSubAdd?: (id: number, texto: string) => void;
+    onQuitarSub?: (id: number) => void;
     pagina?: boolean; // pantalla completa (con el menú lateral visible) en vez de ventana flotante
     addDailyBlock?: MetasDashboardProps['addDailyBlock'];
     dailyBlocks?: DailyBlock[];
@@ -1325,7 +1327,7 @@ const convertirPaso = (
     onUpdate({ milestones });
 };
 
-const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, onUpdate, addDailyBlock, dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, onAbrirTarea, onCambiarPlazo, removeDailyBlock, subs = [], onSubUpdate, onSubToggle, onSubRemove, onSubAdd, pagina }: PlazoModalProps) => {
+const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, onUpdate, addDailyBlock, dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, onAbrirTarea, onCambiarPlazo, removeDailyBlock, subs = [], onSubUpdate, onSubToggle, onSubRemove, onSubAdd, onQuitarSub, pagina }: PlazoModalProps) => {
     const [nuevaTarea, setNuevaTarea] = useState('');
     const info = PLAZOS_INFO.find(p => p.k === plazo);
     // Dirección de la animación al pasar de un plazo a otro (+1 siguiente, -1 anterior).
@@ -1416,6 +1418,11 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                                         <span style={{ fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Sub-meta</span>
                                         <span style={{ fontSize: '1rem', fontWeight: 800, color: C.onSurface }}>{sub.title}</span>
                                         <span style={{ fontSize: '0.74rem', fontWeight: 700, color: C.outline, fontFamily: MONO }}>{sub.objetivo ? av.texto : 'sin tareas todavía'}</span>
+                                        {onQuitarSub && (
+                                    <button onClick={() => { if (window.confirm(`¿Quitar la sub-meta "${sub.title}"${sub.milestones.length ? ` y sus ${sub.milestones.length} tarea(s)` : ''}?`)) onQuitarSub(sub.id); }} title="Quitar sub-meta" style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '4px', alignSelf: 'center' }}>
+                                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+                                    </button>
+                                )}
                                     </div>
                                 </div>
                             );
@@ -1427,6 +1434,11 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                                 <span style={{ fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Sub-meta</span>
                                 <span style={{ fontSize: '1rem', fontWeight: 800, color: C.onSurface }}>{sub.title}</span>
                                 <span style={{ fontSize: '0.74rem', fontWeight: 700, color: C.outline, fontFamily: MONO }}>{sub.objetivo ? av.texto : `${hechasSub}/${sub.milestones.length} tareas`}</span>
+                                {onQuitarSub && (
+                                    <button onClick={() => { if (window.confirm(`¿Quitar la sub-meta "${sub.title}"${sub.milestones.length ? ` y sus ${sub.milestones.length} tarea(s)` : ''}?`)) onQuitarSub(sub.id); }} title="Quitar sub-meta" style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '4px', alignSelf: 'center' }}>
+                                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+                                    </button>
+                                )}
                             </div>
                             <ListaTareas
                                 plano={pagina} sinForm
