@@ -569,13 +569,12 @@ interface ColumnasProps {
     onAddTarea?: (plazo: GoalHorizon, texto: string) => void;
 }
 
-const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, onNuevaSub, onToggleTarea, onAbrirTarea, onAddTarea }: ColumnasProps) => (
+const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, onNuevaSub, onAbrirTarea }: ColumnasProps) => (
     <div style={{ display: 'flex', flexDirection: movil ? 'column' : 'row', alignItems: 'stretch', gap: movil ? '4px' : '0', height: movil ? undefined : '100%' }}>
         {PLAZOS_INFO.map((pl, idx) => {
             const subsPlazo = subs.filter(s => s.horizon === pl.k);
             const tareas = goal.milestones.filter(m => (m.plazo ?? 'corto') === pl.k);
             const pendientes = tareas.filter(m => !m.completed);
-            const accion: React.CSSProperties = { background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700, color: goal.color, fontFamily: 'inherit' };
             return (
                 <Fragment key={pl.k}>
                     {idx > 0 && (
@@ -1269,7 +1268,7 @@ interface PlazoModalProps {
 }
 
 // Pantalla completa de UNA tarea: sus pasos, repetitivas y detalles. El menú lateral sigue a la vista.
-const TareaDetalle = ({ goal, tarea, plazo, movil, dailyBlocks, onVolver, onUpdate, onToggle, onRemove, toggleDailyBlock, updateDailyBlock, linkTaskToGoal, addDailyBlock }: {
+const TareaDetalle = ({ goal, tarea, plazo, movil, dailyBlocks, onVolver, onUpdate, onToggle, onRemove, toggleDailyBlock, addDailyBlock }: {
     goal: Goal; tarea: Tarea; plazo: GoalHorizon; movil: boolean; dailyBlocks: DailyBlock[];
     onVolver: () => void; onUpdate: (u: Partial<Goal>) => void; onToggle: (id: number) => void; onRemove: (id: number) => void;
     toggleDailyBlock?: (id: number) => void; updateDailyBlock?: (id: number, updates: Partial<DailyBlock>) => void;
@@ -1409,7 +1408,6 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                     {subs.filter(x => x.horizon === plazo).map(sub => {
                         const av = avance(sub, [], dailyBlocks);
                         const hechasSub = sub.milestones.filter(t => t.completed).length;
-                        const etiq = { texto: `${sub.title} · ${sub.objetivo ? av.texto : `${hechasSub}/${sub.milestones.length} tareas`}`, color: goal.color };
                         if (sub.milestones.length === 0) {
                             return (
                                 <div key={sub.id} style={{ margin: '22px 0 6px' }}>

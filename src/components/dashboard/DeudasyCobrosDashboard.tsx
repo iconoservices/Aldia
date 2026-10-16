@@ -449,7 +449,6 @@ export const DeudasyCobrosDashboard = ({
         setFichaNueva(false);
         setUnirCon("");
     };
-    const openEditContact = abrirFicha;
 
     // Ficha en blanco para un cliente nuevo (desde "Nuevo cliente" o desde el selector).
     const abrirFichaNueva = (name = "") => {
