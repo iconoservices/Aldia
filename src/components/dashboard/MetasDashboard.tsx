@@ -924,14 +924,9 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                                                         {t ? (pausada ? 'Repetitiva · pausada' : `${t.dias?.length ? etiquetaDias(t.dias) : 'Repetitiva'}${t.semana ? ` · esta semana ${t.semana.hechos}/${t.semana.toca}` : ''}${t.hecha ? ' · hoy ✓' : ''}`) : 'Repetitiva'}
                                                     </div>
                                                 </div>
-                                                <button onClick={() => cambiarPasos(m, (m.pasos || []).filter(x => x.id !== p.id))} title="Quitar de esta lista (la repetitiva sigue en Mi Día)" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '4px', opacity: 0.7 }}>
+                                                <button onClick={() => { if (onBorrarRep) { if (!window.confirm(`¿Quitar "${p.text}" y borrar su tarea repetitiva?`)) return; onBorrarRep(t, p.text); } cambiarPasos(m, (m.pasos || []).filter(x => x.id !== p.id)); }} title="Quitar y borrar la tarea repetitiva" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '4px', opacity: 0.7 }}>
                                                     <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
                                                 </button>
-                                                {onBorrarRep && (
-                                                    <button onClick={() => { if (window.confirm(`¿Borrar la tarea repetitiva "${p.text}" y todos sus registros?`)) { onBorrarRep(t, p.text); cambiarPasos(m, (m.pasos || []).filter(x => x.id !== p.id)); } }} title="Borrar la tarea repetitiva" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.rojo, display: 'flex', padding: '4px' }}>
-                                                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete</span>
-                                                    </button>
-                                                )}
                                             </div>
                                         );
                                     })() : (
