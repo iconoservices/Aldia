@@ -1,5 +1,6 @@
-import { CampoDesplegable } from '../ui/CampoDesplegable';
 import { SelectPropio } from '../ui/SelectPropio';
+import { SelectorContacto } from '../ui/SelectorContacto';
+import { norm, parecidos, iniciales } from './contactosUtil';
 import { useState, useMemo, useEffect, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -263,6 +264,10 @@ export const DeudasyCobrosDashboard = ({
     const [editingContact, setEditingContact] = useState<Contact | null>(null);
     const [editContactPhone, setEditContactPhone] = useState("");
     const [editContactNotes, setEditContactNotes] = useState("");
+    const [editContactName, setEditContactName] = useState("");
+    const [fichaNueva, setFichaNueva] = useState(false);
+    const [unirCon, setUnirCon] = useState("");
+    const [busquedaContacto, setBusquedaContacto] = useState("");
 
     // Agrupa cada deuda/cobro con sus abonos ("Pago: X") en un solo saldo neto —
     // misma lógica que activeDebtsAndCollections en FinanzasDashboard, para que
@@ -358,16 +363,22 @@ export const DeudasyCobrosDashboard = ({
     }, [debtGroups, contacts]);
 
     const findContactByName = (name: string) =>
-        contacts.find(c => c.name.trim().toLowerCase() === name.trim().toLowerCase());
+        contacts.find(c => norm(c.name) === norm(name));
 
     // Guarda o actualiza el contacto por nombre (sin id, porque el campo de texto solo
     // conoce el nombre). Si ya existe, solo pisa el teléfono cuando viene uno nuevo —
     // así una deuda futura sin teléfono no borra el que ya se había guardado.
+    // Nombre canónico: si ya existe un cliente igual (sin importar tildes/mayúsculas) se usa el suyo.
+    const canonName = (name: string) => {
+        const t = name.trim();
+        return uniqueContacts.find(n => norm(n) === norm(t)) ?? t;
+    };
+
     const upsertContactByName = (name: string, phone: string) => {
         const trimmed = name.trim();
         if (!trimmed || !setContacts) return;
         setContacts(prev => {
-            const existing = prev.find(c => c.name.trim().toLowerCase() === trimmed.toLowerCase());
+            const existing = prev.find(c => norm(c.name) === norm(trimmed));
             if (existing) {
                 if (!phone.trim()) return prev;
                 return prev.map(c => c.id === existing.id ? { ...c, phone: phone.trim() } : c);
@@ -394,6 +405,27 @@ export const DeudasyCobrosDashboard = ({
         });
     }, [debtGroups]);
 
+    const detalleContacto = (n: string) => {
+        const g = contactGroups.find(x => norm(x.contact) === norm(n));
+        const partes: string[] = [];
+        const tel = findContactByName(n)?.phone;
+        if (tel) partes.push(tel);
+        if (g?.totalDebo) partes.push(`Debo ${formatCurrency(g.totalDebo)}`);
+        if (g?.totalMeDeben) partes.push(`Me deben ${formatCurrency(g.totalMeDeben)}`);
+        return partes.join(" · ") || "Sin movimientos";
+    };
+
+    // Directorio: todos los clientes (con o sin deudas) + los registros sin contacto al final.
+    const directorio = useMemo(() => {
+        const q = norm(busquedaContacto);
+        const porNombre = new Map(contactGroups.filter(g => g.contact).map(g => [norm(g.contact), g]));
+        const filas = uniqueContacts
+            .filter(n => !q || norm(n).includes(q))
+            .map(n => porNombre.get(norm(n)) ?? { contact: n, totalDebo: 0, totalMeDeben: 0, items: [] as DebtGroup[] });
+        const sin = contactGroups.find(g => !g.contact);
+        return sin && !q ? [...filas, sin] : filas;
+    }, [contactGroups, uniqueContacts, busquedaContacto]);
+
     const toggleContactExpanded = (key: string) => {
         setExpandedContacts(prev => {
             const next = new Set(prev);
@@ -402,17 +434,64 @@ export const DeudasyCobrosDashboard = ({
         });
     };
 
-    const openEditContact = (name: string) => {
+    const abrirFicha = (name: string) => {
         const existing = findContactByName(name);
         setEditingContact(existing || { id: Date.now(), name });
+        setEditContactName(existing?.name ?? name);
         setEditContactPhone(existing?.phone || "");
         setEditContactNotes(existing?.notes || "");
+        setFichaNueva(false);
+        setUnirCon("");
+    };
+    const openEditContact = abrirFicha;
+
+    // Ficha en blanco para un cliente nuevo (desde "Nuevo cliente" o desde el selector).
+    const abrirFichaNueva = (name = "") => {
+        setEditingContact({ id: Date.now(), name });
+        setEditContactName(name);
+        setEditContactPhone("");
+        setEditContactNotes("");
+        setFichaNueva(true);
+        setUnirCon("");
+    };
+
+    const cambiarContactoEnRegistros = (de: string, a: string) => {
+        transactions.filter(t => t.contact === de).forEach(t => updateTransaction(t.id, { contact: a }));
     };
 
     const saveEditContact = () => {
         if (!editingContact || !setContacts) return;
-        const updated: Contact = { ...editingContact, phone: editContactPhone.trim() || undefined, notes: editContactNotes.trim() || undefined };
-        setContacts(prev => prev.some(c => c.id === updated.id) ? prev.map(c => c.id === updated.id ? updated : c) : [...prev, updated]);
+        const nombre = editContactName.trim();
+        if (!nombre) return;
+        const phone = editContactPhone.trim() || undefined;
+        const notes = editContactNotes.trim() || undefined;
+        const otro = contacts.find(c => c.id !== editingContact.id && norm(c.name) === norm(nombre));
+        const destino = otro?.name ?? nombre;
+        setContacts(prev => {
+            const lista = prev.filter(c => c.id !== editingContact.id);
+            const o = lista.find(c => norm(c.name) === norm(nombre));
+            const unido: Contact = { ...(o ?? { id: editingContact.id }), name: o?.name ?? nombre, phone: phone ?? o?.phone, notes: notes ?? o?.notes };
+            return o ? lista.map(c => c.id === o.id ? unido : c) : [...lista, unido];
+        });
+        if (!fichaNueva && editingContact.name !== destino) cambiarContactoEnRegistros(editingContact.name, destino);
+        if (fichaNueva) { setNewContact(destino); setNewPhone(phone ?? ""); }
+        setEditingContact(null);
+    };
+
+    // Junta este cliente con otro: sus deudas/cobros pasan al otro y esta ficha desaparece.
+    const unirFicha = () => {
+        if (!editingContact || !setContacts || !unirCon) return;
+        if (!window.confirm(`¿Unir "${editingContact.name}" con "${unirCon}"? Sus registros pasarán a "${unirCon}".`)) return;
+        const de = editingContact.name;
+        const phone = editContactPhone.trim() || undefined;
+        const notes = editContactNotes.trim() || undefined;
+        cambiarContactoEnRegistros(de, unirCon);
+        setContacts(prev => {
+            const lista = prev.filter(c => c.id !== editingContact.id && norm(c.name) !== norm(de));
+            const dest = lista.find(c => norm(c.name) === norm(unirCon));
+            if (!dest) return [...lista, { id: Date.now(), name: unirCon, phone, notes }];
+            return lista.map(c => c.id === dest.id ? { ...c, phone: c.phone ?? phone, notes: c.notes ?? notes } : c);
+        });
         setEditingContact(null);
     };
 
@@ -534,11 +613,11 @@ export const DeudasyCobrosDashboard = ({
             // restar/sumar en Balance/Patrimonio Neto por su cuenta — solo cuenta "Debo/Me Deben".
             true,
             "Deudas",
-            newContact.trim() || undefined,
+            canonName(newContact) || undefined,
             newDueDate || undefined,
             newNotes.trim() || undefined
         );
-        if (newContact.trim()) upsertContactByName(newContact, newPhone);
+        if (newContact.trim()) upsertContactByName(canonName(newContact), newPhone);
         setEditingTx(null);
         setShowAddModal(false);
         setNewText("");
@@ -628,7 +707,7 @@ export const DeudasyCobrosDashboard = ({
             // deuda restaba/sumaba el doble en Balance/Patrimonio Neto.
             true,
             undefined,
-            newContact.trim() || undefined,
+            canonName(newContact) || undefined,
             newDueDate || undefined,
             newNotes.trim() || undefined
         );
@@ -645,10 +724,10 @@ export const DeudasyCobrosDashboard = ({
                 Number(newAccountId),
                 false,
                 "Préstamos",
-                newContact.trim() || undefined
+                canonName(newContact) || undefined
             );
         }
-        if (newContact.trim()) upsertContactByName(newContact, newPhone);
+        if (newContact.trim()) upsertContactByName(canonName(newContact), newPhone);
         setNewText(""); setNewContact(""); setNewPhone(""); setNewNotes(""); setNewAmount(""); setNewAccountId(""); setNewDueDate("");
         setShowAddModal(false);
     };
@@ -994,10 +1073,22 @@ export const DeudasyCobrosDashboard = ({
     // las mismas tarjetas de arriba, solo cambia el agrupamiento.
     const renderContactView = () => (
         <div style={{ display: "flex", flexDirection: "column", gap: movil ? "0.6rem" : "0.85rem" }}>
-            {contactGroups.length === 0 && (
-                <p style={{ textAlign: "center", color: "#6C8079", padding: "2.5rem 0", margin: 0, fontSize: "0.85rem" }}>Sin deudas o cobros registrados 🎉</p>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                {setContacts && (
+                    <button onClick={() => abrirFichaNueva()} style={{ ...BTN_PRIMARY, justifyContent: "center", flexShrink: 0 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>person_add</span> Nuevo cliente
+                    </button>
+                )}
+                <input
+                    value={busquedaContacto} onChange={e => setBusquedaContacto(e.target.value)} placeholder="Buscar cliente…"
+                    style={{ flex: 1, minWidth: "140px", padding: "9px 12px", border: "1px solid #DCE7E1", borderRadius: "10px", fontFamily: "inherit", fontSize: "0.85rem", outline: "none", boxSizing: "border-box" }}
+                />
+                <span style={{ fontSize: "0.72rem", color: "#6C8079", fontWeight: 700 }}>{directorio.filter(d => d.contact).length} clientes</span>
+            </div>
+            {directorio.length === 0 && (
+                <p style={{ textAlign: "center", color: "#6C8079", padding: "2.5rem 0", margin: 0, fontSize: "0.85rem" }}>Todavía no hay clientes. Crea el primero con «Nuevo cliente».</p>
             )}
-            {contactGroups.map(cg => {
+            {directorio.map(cg => {
                 const key = cg.contact || "__sin_contacto__";
                 const isOpen = expandedContacts.has(key);
                 const debtos = cg.items.filter(i => i.isOwe);
@@ -1019,8 +1110,12 @@ export const DeudasyCobrosDashboard = ({
                                             {cg.contact || "Sin contacto"}
                                         </div>
                                         <div style={{ fontSize: "0.68rem", color: "#6C8079" }}>
-                                            {cg.items.length} registro{cg.items.length !== 1 ? "s" : ""}{contactPhone ? ` · ${contactPhone}` : ""}
+                                            {cg.items.length === 0 ? "Sin movimientos" : `${cg.items.length} registro${cg.items.length !== 1 ? "s" : ""}`}{contactPhone ? ` · ${contactPhone}` : ""}
                                         </div>
+                                        {(() => {
+                                            const gemelo = cg.contact ? uniqueContacts.find(n => parecidos(n, cg.contact)) : undefined;
+                                            return gemelo ? <div style={{ fontSize: "0.66rem", color: "#8A5A00", fontWeight: 700, marginTop: "2px" }}>⚠ ¿Es el mismo que «{gemelo}»? Abre la ficha para unirlos</div> : null;
+                                        })()}
                                     </div>
                                 </div>
                                 <div style={{ display: "flex", alignItems: "center", gap: movil ? "8px" : "14px", flexShrink: 0 }}>
@@ -1040,11 +1135,14 @@ export const DeudasyCobrosDashboard = ({
                                 </div>
                             </button>
                             {cg.contact && setContacts && (
-                                <button onClick={() => openEditContact(cg.contact)} title="Editar contacto" style={{ background: "none", border: "none", borderLeft: "1px solid #DCE7E1", cursor: "pointer", color: "#6C8079", padding: "0 14px", display: "flex", alignItems: "center", flexShrink: 0 }}>
-                                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>edit</span>
+                                <button onClick={() => abrirFicha(cg.contact)} title="Ver ficha del cliente" style={{ background: "none", border: "none", borderLeft: "1px solid #DCE7E1", cursor: "pointer", color: "#6C8079", padding: "0 14px", display: "flex", alignItems: "center", flexShrink: 0 }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>badge</span>
                                 </button>
                             )}
                         </div>
+                        {isOpen && cg.items.length === 0 && (
+                            <p style={{ margin: 0, padding: "0.75rem 1.25rem", fontSize: "0.78rem", color: "#6C8079" }}>Sin deudas ni cobros con este cliente.</p>
+                        )}
                         {isOpen && (
                             <div>
                                 {debtos.length > 0 && renderDebtCards(debtos)}
@@ -1294,10 +1392,12 @@ export const DeudasyCobrosDashboard = ({
                                         {field.label}
                                     </label>
                                     {field.listId ? (
-                                        <CampoDesplegable
-                                            value={field.value} onChange={field.setter} opciones={uniqueContacts} filtrar
+                                        <SelectorContacto
+                                            value={field.value} onChange={field.setter}
+                                            contactos={uniqueContacts.map(n => ({ nombre: n, detalle: detalleContacto(n) }))}
                                             placeholder={field.placeholder}
-                                            onElegir={c => { const m = findContactByName(c); if (m) setNewPhone(m.phone || ""); }}
+                                            onElegir={c => { const m = findContactByName(c); setNewPhone(m?.phone || ""); }}
+                                            onCrear={n => abrirFichaNueva(n)}
                                             inputStyle={{ padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: "#0C2A20", outline: "none" }}
                                         />
                                     ) : (
@@ -1434,45 +1534,88 @@ export const DeudasyCobrosDashboard = ({
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                                 transition={{ type: "spring", stiffness: 380, damping: 28 }}
-                                style={{ background: "#fff", borderRadius: "16px", padding: movil ? "1.25rem" : "1.75rem", width: movil ? "92vw" : "min(380px, 90vw)", maxHeight: "100%", overflowY: "auto", boxShadow: "0px 12px 24px rgba(15,23,42,0.12)", pointerEvents: "auto" }}
+                                style={{ background: "#fff", borderRadius: "16px", padding: movil ? "1.25rem" : "1.75rem", width: movil ? "92vw" : "min(440px, 90vw)", maxHeight: "100%", overflowY: "auto", boxShadow: "0px 12px 24px rgba(15,23,42,0.12)", pointerEvents: "auto" }}
                             >
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-                                    <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0C2A20", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{editingContact.name}</h3>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
+                                        <div style={{ width: "44px", height: "44px", borderRadius: "50%", background: "#DFF3E9", color: "#0A7D5A", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>{iniciales(editContactName || "?")}</div>
+                                        <div style={{ minWidth: 0 }}>
+                                            <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 800, color: "#0C2A20", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{fichaNueva ? "Nuevo cliente" : "Ficha de cliente"}</h3>
+                                            {!fichaNueva && <div style={{ fontSize: "0.72rem", color: "#6C8079" }}>{detalleContacto(editingContact.name)}</div>}
+                                        </div>
+                                    </div>
                                     <button onClick={() => setEditingContact(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6C8079", padding: "4px" }}>
                                         <span className="material-symbols-outlined">close</span>
                                     </button>
                                 </div>
                                 <div style={{ marginBottom: "1rem" }}>
-                                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
-                                        Teléfono
-                                    </label>
-                                    <input
-                                        type="tel"
-                                        value={editContactPhone}
-                                        onChange={e => setEditContactPhone(e.target.value)}
-                                        placeholder="Ej: 987 654 321"
+                                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Nombre</label>
+                                    <input type="text" autoFocus={fichaNueva} value={editContactName} onChange={e => setEditContactName(e.target.value)} placeholder="Ej: Carlos Mendoza"
                                         style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: "#0C2A20", boxSizing: "border-box" as const, outline: "none" }}
                                         onFocus={e => (e.target.style.borderColor = "#0FA97A")}
-                                        onBlur={e => (e.target.style.borderColor = "#DCE7E1")}
-                                    />
+                                        onBlur={e => (e.target.style.borderColor = "#DCE7E1")} />
+                                    {(() => {
+                                        const igual = contacts.find(c => c.id !== editingContact.id && norm(c.name) === norm(editContactName));
+                                        if (igual) return <div style={{ marginTop: "6px", fontSize: "0.72rem", color: "#B54708", fontWeight: 700 }}>Ya existe «{igual.name}»: al guardar se unirán.</div>;
+                                        const cerca = uniqueContacts.find(n => n !== editingContact.name && parecidos(n, editContactName));
+                                        return cerca ? <div style={{ marginTop: "6px", fontSize: "0.72rem", color: "#8A5A00", fontWeight: 700 }}>⚠ Se parece a «{cerca}». ¿Es la misma persona?</div> : null;
+                                    })()}
                                 </div>
                                 <div style={{ marginBottom: "1rem" }}>
-                                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
-                                        Notas (opcional)
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={editContactNotes}
-                                        onChange={e => setEditContactNotes(e.target.value)}
-                                        placeholder="Ej: compañero de trabajo"
+                                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Teléfono</label>
+                                    <div style={{ display: "flex", gap: "6px" }}>
+                                        <input type="tel" value={editContactPhone} onChange={e => setEditContactPhone(e.target.value)} placeholder="Ej: 987 654 321"
+                                            style={{ flex: 1, minWidth: 0, padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: "#0C2A20", boxSizing: "border-box" as const, outline: "none" }}
+                                        onFocus={e => (e.target.style.borderColor = "#0FA97A")}
+                                        onBlur={e => (e.target.style.borderColor = "#DCE7E1")} />
+                                        {editContactPhone.replace(/\D/g, "").length >= 7 && (
+                                            <>
+                                                <a href={`tel:${editContactPhone.trim()}`} title="Llamar" style={{ width: "40px", border: "1px solid #DCE7E1", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "#0A7D5A", textDecoration: "none" }}><span className="material-symbols-outlined" style={{ fontSize: "20px" }}>call</span></a>
+                                                <a href={`https://wa.me/${editContactPhone.replace(/\D/g, "").length === 9 ? "51" : ""}${editContactPhone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" title="WhatsApp" style={{ width: "40px", border: "1px solid #DCE7E1", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "#0A7D5A", textDecoration: "none" }}><span className="material-symbols-outlined" style={{ fontSize: "20px" }}>chat</span></a>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                                <div style={{ marginBottom: "1rem" }}>
+                                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Notas (opcional)</label>
+                                    <input type="text" value={editContactNotes} onChange={e => setEditContactNotes(e.target.value)} placeholder="Ej: compañero de trabajo"
                                         style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: "#0C2A20", boxSizing: "border-box" as const, outline: "none" }}
                                         onFocus={e => (e.target.style.borderColor = "#0FA97A")}
-                                        onBlur={e => (e.target.style.borderColor = "#DCE7E1")}
-                                    />
+                                        onBlur={e => (e.target.style.borderColor = "#DCE7E1")} />
                                 </div>
+                                {!fichaNueva && (() => {
+                                    const g = contactGroups.find(x => norm(x.contact) === norm(editingContact.name));
+                                    if (!g || g.items.length === 0) return null;
+                                    return (
+                                        <div style={{ marginBottom: "1rem", background: "#F5F8F6", borderRadius: "12px", padding: "10px 12px" }}>
+                                            <div style={{ display: "flex", gap: "16px", marginBottom: "8px" }}>
+                                                {g.totalDebo > 0 && <div><div style={{ fontSize: "0.6rem", fontWeight: 700, color: "#C63C3C", textTransform: "uppercase" as const }}>Debo</div><b style={{ color: "#C63C3C" }}>{formatCurrency(g.totalDebo)}</b></div>}
+                                                {g.totalMeDeben > 0 && <div><div style={{ fontSize: "0.6rem", fontWeight: 700, color: "#0E9F6E", textTransform: "uppercase" as const }}>Me deben</div><b style={{ color: "#0E9F6E" }}>{formatCurrency(g.totalMeDeben)}</b></div>}
+                                            </div>
+                                            {g.items.map(i => (
+                                                <div key={i.key} style={{ display: "flex", justifyContent: "space-between", gap: "8px", fontSize: "0.78rem", padding: "3px 0", color: "#0C2A20" }}>
+                                                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{i.name}</span>
+                                                    <b style={{ color: i.isOwe ? "#C63C3C" : "#0E9F6E", whiteSpace: "nowrap" }}>{formatCurrency(i.amount)}</b>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    );
+                                })()}
+                                {!fichaNueva && uniqueContacts.length > 1 && (
+                                    <div style={{ marginBottom: "1rem" }}>
+                                        <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>¿Está repetido? Unir con</label>
+                                        <div style={{ display: "flex", gap: "6px" }}>
+                                            <SelectPropio value={unirCon} onChange={e => setUnirCon(e.target.value)} style={{ flex: 1, minWidth: 0, padding: "9px 12px", border: "1px solid #DCE7E1", borderRadius: "8px" }}>
+                                                <option value="">Elegir cliente…</option>
+                                                {[...uniqueContacts.filter(n => n !== editingContact.name)].sort((a, b) => Number(parecidos(b, editingContact.name)) - Number(parecidos(a, editingContact.name))).map(n => <option key={n} value={n}>{parecidos(n, editingContact.name) ? `⚠ ${n} (parecido)` : n}</option>)}
+                                            </SelectPropio>
+                                            <button onClick={unirFicha} disabled={!unirCon} style={{ ...BTN_SECONDARY, opacity: unirCon ? 1 : 0.5, cursor: unirCon ? "pointer" : "default" }}>Unir</button>
+                                        </div>
+                                    </div>
+                                )}
                                 <div style={{ display: "flex", gap: "8px", marginTop: "1.5rem" }}>
                                     <button onClick={() => setEditingContact(null)} style={{ ...BTN_SECONDARY, flex: 1, justifyContent: "center" }}>Cancelar</button>
-                                    <button onClick={saveEditContact} style={{ ...BTN_PRIMARY, flex: 1, justifyContent: "center" }}>Guardar</button>
+                                    <button onClick={saveEditContact} style={{ ...BTN_PRIMARY, flex: 1, justifyContent: "center" }}>{fichaNueva ? "Crear cliente" : "Guardar"}</button>
                                 </div>
                             </motion.div>
                         </div>
