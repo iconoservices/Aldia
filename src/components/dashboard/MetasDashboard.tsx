@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { NuevaMetaModal, PLAZOS_INFO } from './NuevaMetaModal';
 import type { NuevaMeta } from './NuevaMetaModal';
 import type { DailyBlock, Goal, GoalHorizon, GoalStatus, Project } from '../../hooks/useAlDiaState';
+import { SelectPropio } from '../ui/SelectPropio';
 import { avance, tareasDeMeta, actualVigente, clavePeriodo, etiquetaDias } from './metasAvance';
 import type { TareaEnlazada } from './metasAvance';
 import {
@@ -699,7 +700,7 @@ const TareasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock
 };
 
 // Tarea de Mi Día ligada a la meta, mostrada como una fila más de la lista (repetitiva: con sus días).
-const FilasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock, linkTaskToGoal, movil, incluir, excluir, compacto }: { incluir?: string[]; excluir?: string[]; compacto?: boolean; goal: Goal; dailyBlocks: DailyBlock[]; toggleDailyBlock?: (id: number) => void; updateDailyBlock?: (id: number, updates: Partial<DailyBlock>) => void; linkTaskToGoal?: (blockId: number, goalId: number | undefined) => void; movil: boolean }) => (
+const FilasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock, linkTaskToGoal, movil, incluir, excluir, compacto, asignar }: { incluir?: string[]; excluir?: string[]; compacto?: boolean; asignar?: { tareas: Tarea[]; onAsignar: (milestoneId: number, texto: string) => void }; goal: Goal; dailyBlocks: DailyBlock[]; toggleDailyBlock?: (id: number) => void; updateDailyBlock?: (id: number, updates: Partial<DailyBlock>) => void; linkTaskToGoal?: (blockId: number, goalId: number | undefined) => void; movil: boolean }) => (
     <>
         {tareasDeMeta(goal.id, dailyBlocks).filter(t => {
             const k = t.label.trim().toLowerCase();
@@ -727,6 +728,12 @@ const FilasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock,
                             </div>
                         )}
                     </div>
+                    {t.repetitiva && asignar && asignar.tareas.length > 0 && (
+                        <SelectPropio value="" onChange={e => asignar.onAsignar(Number(e.target.value), t.label)} style={{ padding: '6px 10px', border: `1px dashed ${C.outlineVariant}`, borderRadius: '10px', fontSize: '0.74rem', fontWeight: 700, color: C.outline, flexShrink: 0, maxWidth: '190px' }}>
+                            <option value="">Asignar a una tarea…</option>
+                            {asignar.tareas.map(x => <option key={x.id} value={x.id}>{x.text}</option>)}
+                        </SelectPropio>
+                    )}
                     {t.repetitiva && updateDailyBlock && (
                         <button onClick={alternarActiva} title={pausada ? 'Activar' : 'Pausar'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '4px' }}>
                             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{pausada ? 'play_arrow' : 'pause'}</span>
@@ -1262,7 +1269,7 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                         onConvertir={addDailyBlock ? convertirPaso(goal, plazo, onUpdate, addDailyBlock) : undefined}
                         repDe={txt => tareasDeMeta(goal.id, dailyBlocks).find(t => t.repetitiva && t.label.trim().toLowerCase() === txt.trim().toLowerCase())}
                         onToggleRep={toggleDailyBlock}
-                        extra={<FilasEnlazadas excluir={goal.milestones.flatMap(m => (m.pasos || []).filter(q => q.repetitiva).map(q => q.text))} goal={goal} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal} movil={movil} />}
+                        extra={<FilasEnlazadas asignar={{ tareas: goal.milestones.filter(m => (m.plazo ?? 'corto') === plazo && !m.completed), onAsignar: (mid, txt) => { if (mid) onUpdate({ milestones: goal.milestones.map(x => x.id === mid ? { ...x, pasos: [...(x.pasos || []), { id: Date.now() + Math.floor(Math.random() * 1000), text: txt, completed: false, repetitiva: true }] } : x) }); } }} excluir={goal.milestones.flatMap(m => (m.pasos || []).filter(q => q.repetitiva).map(q => q.text))} goal={goal} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal} movil={movil} />}
                     />
                 </>
             )}
