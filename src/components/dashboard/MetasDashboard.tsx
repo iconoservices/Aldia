@@ -38,11 +38,8 @@ const STATUS_INFO: Record<GoalStatus, { label: string; color: string; bg: string
     'completado':   { label: 'Lograda',      color: C.verde,   bg: 'rgba(16,185,129,0.12)' },
 };
 
-const NEXT_STATUS: Record<GoalStatus, GoalStatus> = {
-    'pendiente': 'en-progreso',
-    'en-progreso': 'completado',
-    'completado': 'pendiente',
-};
+const STATUS_ORDEN: GoalStatus[] = ['pendiente', 'en-progreso', 'completado'];
+const STATUS_ICONO: Record<GoalStatus, string> = { 'pendiente': 'radio_button_unchecked', 'en-progreso': 'timelapse', 'completado': 'check_circle' };
 
 const nombrePlazo = (goal: Goal, k: GoalHorizon) =>
     goal.nombresPlazo?.[k]?.trim() || PLAZOS_INFO.find(p => p.k === k)!.titulo;
@@ -198,7 +195,7 @@ export const MetasDashboard = ({
                 goal={goal} subs={subs} dailyBlocks={dailyBlocks} movil={movil}
                 expandido={movil && expandedId === goal.id}
                 onToggleExpand={() => movil && setExpandedId(expandedId === goal.id ? null : goal.id)}
-                onCycleStatus={() => updateGoal(goal.id, { status: NEXT_STATUS[goal.status] })}
+                onSetStatus={status => updateGoal(goal.id, { status })}
                 onEditar={() => setForm({ tipo: 'meta', goal })}
                 onRemove={() => { if (subs.length === 0 || window.confirm(`Se borrará "${goal.title}" y sus ${subs.length} sub-meta(s).`)) removeGoal(goal.id); }}
                 onUpdate={u => updateGoal(goal.id, u)}
@@ -322,7 +319,7 @@ interface TarjetaMetaProps {
     movil: boolean;
     expandido: boolean;
     onToggleExpand: () => void;
-    onCycleStatus: () => void;
+    onSetStatus: (status: GoalStatus) => void;
     onEditar: () => void;
     onRemove: () => void;
     onUpdate: (updates: Partial<Goal>) => void;
@@ -335,12 +332,17 @@ interface TarjetaMetaProps {
     children?: React.ReactNode;
 }
 
-const TarjetaMeta = ({ goal, subs, dailyBlocks, movil, expandido, onToggleExpand, onCycleStatus, onEditar, onRemove, onUpdate, onSubir, onBajar, onArrastrar, toggleDailyBlock, updateDailyBlock, linkTaskToGoal, children }: TarjetaMetaProps) => {
+const TarjetaMeta = ({ goal, subs, dailyBlocks, movil, expandido, onToggleExpand, onSetStatus, onEditar, onRemove, onUpdate, onSubir, onBajar, onArrastrar, toggleDailyBlock, updateDailyBlock, linkTaskToGoal, children }: TarjetaMetaProps) => {
     const [menu, setMenu] = useState(false);
     const [detalles, setDetalles] = useState(false);
     const av = avance(goal, subs, dailyBlocks);
     const restantes = diasRestantes(goal.targetDate);
-    const status = STATUS_INFO[goal.status];
+    // El estado fluye solo: una meta "pendiente" que ya avanzó se ve "en progreso", y cuando llega
+    // al 100% se ofrece marcarla lograda. Lograda solo se marca a propósito (nunca con un clic suelto).
+    const estado: GoalStatus = goal.status === 'pendiente' && av.pct > 0 ? 'en-progreso' : goal.status;
+    const status = STATUS_INFO[estado];
+    const listaParaLograr = goal.status !== 'completado' && av.pct === 100 && !!av.texto;
+    const [estadoAbierto, setEstadoAbierto] = useState(false);
 
     return (
         <motion.div
@@ -363,12 +365,45 @@ const TarjetaMeta = ({ goal, subs, dailyBlocks, movil, expandido, onToggleExpand
                             <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '2px 8px', borderRadius: '999px', background: `${goal.color}22`, color: goal.color }}>
                                 {goal.area}
                             </span>
-                            <button
-                                onClick={e => { e.stopPropagation(); onCycleStatus(); }}
-                                style={{ fontSize: '0.62rem', fontWeight: 700, padding: '2px 8px', borderRadius: '999px', background: status.bg, color: status.color, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                            >
-                                {status.label}
-                            </button>
+                            <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
+                                <button
+                                    onClick={() => setEstadoAbierto(v => !v)}
+                                    title="Cambiar el estado de la meta"
+                                    style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.62rem', fontWeight: 700, padding: '2px 6px 2px 5px', borderRadius: '999px', background: status.bg, color: status.color, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>{STATUS_ICONO[estado]}</span>
+                                    {status.label}
+                                    <span className="material-symbols-outlined" style={{ fontSize: '13px', marginLeft: '-1px' }}>expand_more</span>
+                                </button>
+                                {estadoAbierto && (
+                                    <>
+                                        <div onClick={() => setEstadoAbierto(false)} style={{ position: 'fixed', inset: 0, zIndex: 20 }} />
+                                        <div style={{ position: 'absolute', left: 0, top: '26px', zIndex: 21, minWidth: '160px', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px' }}>
+                                            {STATUS_ORDEN.map(k => (
+                                                <button
+                                                    key={k}
+                                                    onClick={() => { onSetStatus(k); setEstadoAbierto(false); }}
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', background: goal.status === k ? STATUS_INFO[k].bg : 'none', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.8rem', fontWeight: 700, color: STATUS_INFO[k].color }}
+                                                >
+                                                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{STATUS_ICONO[k]}</span>
+                                                    {STATUS_INFO[k].label}
+                                                    {goal.status === k && <span className="material-symbols-outlined" style={{ fontSize: '16px', marginLeft: 'auto' }}>check</span>}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                            {listaParaLograr && (
+                                <button
+                                    onClick={e => { e.stopPropagation(); onSetStatus('completado'); }}
+                                    title="Llegaste al 100%: márcala como lograda"
+                                    style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.62rem', fontWeight: 800, padding: '2px 8px 2px 5px', borderRadius: '999px', background: STATUS_INFO.completado.color, color: '#fff', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>check_circle</span>
+                                    ¡Márcala lograda!
+                                </button>
+                            )}
                             {goal.targetDate && (
                                 <span style={{ fontSize: '0.68rem', color: restantes !== null && restantes < 0 && goal.status !== 'completado' ? C.rojo : C.outline, fontWeight: 600 }}>
                                     {restantes !== null && goal.status !== 'completado'
