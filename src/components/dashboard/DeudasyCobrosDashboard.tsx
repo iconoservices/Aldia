@@ -1,4 +1,5 @@
 import { CampoDesplegable } from '../ui/CampoDesplegable';
+import { SelectPropio } from '../ui/SelectPropio';
 import { useState, useMemo, useEffect, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -198,10 +199,10 @@ const ConvertPanel = ({ item, accounts, cuota, setCuota, dueDay, setDueDay, acco
                 style={{ width: "70px", padding: "5px 6px", borderRadius: "6px", border: "1px solid #DCE7E1", fontSize: "0.68rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
             <input type="number" placeholder="Día" min="1" max="31" value={dueDay ?? ""} onChange={e => setDueDay(e.target.value)}
                 style={{ width: "48px", padding: "5px 6px", borderRadius: "6px", border: "1px solid #DCE7E1", fontSize: "0.68rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
-            <select value={accountId ?? ""} onChange={e => setAccountId(e.target.value)} style={SELECT_MINI} title="¿De qué cuenta sale cada cuota?">
+            <SelectPropio value={accountId ?? ""} onChange={e => setAccountId(e.target.value)} style={SELECT_MINI} title="¿De qué cuenta sale cada cuota?">
                 <option value="">Sin cuenta</option>
                 {accounts.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
+            </SelectPropio>
         </div>
         <div style={{ display: "flex", gap: "4px" }}>
             <button onClick={onConfirm} style={{ background: "#0C8F67", color: "white", border: "none", borderRadius: "6px", padding: "5px 8px", fontWeight: 800, fontSize: "0.64rem", cursor: "pointer" }}>Convertir</button>
@@ -733,10 +734,10 @@ export const DeudasyCobrosDashboard = ({
                                         </div>
                                     ) : abonarId === id ? (
                                         <div style={ABONO_PANEL}>
-                                            <select value={abonarAccountId[id] ?? ""} onChange={e => setAbonarAccountId(m => ({ ...m, [id]: e.target.value }))} style={SELECT_MINI} title={esDeuda ? "¿De qué cuenta sale?" : "¿A qué cuenta entra?"}>
+                                            <SelectPropio value={abonarAccountId[id] ?? ""} onChange={e => setAbonarAccountId(m => ({ ...m, [id]: e.target.value }))} style={SELECT_MINI} title={esDeuda ? "¿De qué cuenta sale?" : "¿A qué cuenta entra?"}>
                                                 <option value="">Sin cuenta</option>
                                                 {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                                            </select>
+                                            </SelectPropio>
                                             <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
                                                 <input type="number" value={abonarAmount[id] ?? item.amount.toFixed(2)} onChange={e => setAbonarAmount(m => ({ ...m, [id]: e.target.value }))}
                                                     style={{ width: "72px", padding: "5px 6px", borderRadius: "6px", border: "1px solid #DCE7E1", fontSize: "0.74rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
@@ -861,10 +862,10 @@ export const DeudasyCobrosDashboard = ({
                             </span>
                             {abonarId === id ? (
                                 <div style={{ ...ABONO_PANEL, flex: "1 1 100%" }}>
-                                    <select value={abonarAccountId[id] ?? ""} onChange={e => setAbonarAccountId(m => ({ ...m, [id]: e.target.value }))} style={SELECT_MINI} title="¿De qué cuenta sale?">
+                                    <SelectPropio value={abonarAccountId[id] ?? ""} onChange={e => setAbonarAccountId(m => ({ ...m, [id]: e.target.value }))} style={SELECT_MINI} title="¿De qué cuenta sale?">
                                         <option value="">Sin cuenta</option>
                                         {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                                    </select>
+                                    </SelectPropio>
                                     <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
                                         <input type="number" value={abonarAmount[id] ?? item.amount.toFixed(2)} onChange={e => setAbonarAmount(m => ({ ...m, [id]: e.target.value }))}
                                             style={{ width: "56px", padding: "5px 6px", borderRadius: "6px", border: "1px solid #DCE7E1", fontSize: "0.68rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
@@ -944,10 +945,10 @@ export const DeudasyCobrosDashboard = ({
                                 </div>
                             ) : abonarId === id ? (
                                 <div style={{ ...ABONO_PANEL, flex: "1 1 100%" }}>
-                                    <select value={abonarAccountId[id] ?? ""} onChange={e => setAbonarAccountId(m => ({ ...m, [id]: e.target.value }))} style={SELECT_MINI} title="¿A qué cuenta entra?">
+                                    <SelectPropio value={abonarAccountId[id] ?? ""} onChange={e => setAbonarAccountId(m => ({ ...m, [id]: e.target.value }))} style={SELECT_MINI} title="¿A qué cuenta entra?">
                                         <option value="">Sin cuenta</option>
                                         {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                                    </select>
+                                    </SelectPropio>
                                     <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
                                         <input type="number" value={abonarAmount[id] ?? item.amount.toFixed(2)} onChange={e => setAbonarAmount(m => ({ ...m, [id]: e.target.value }))}
                                             style={{ width: "56px", padding: "5px 6px", borderRadius: "6px", border: "1px solid #DCE7E1", fontSize: "0.68rem", fontWeight: 700, outline: "none", boxSizing: "border-box" }} />
@@ -1061,7 +1062,7 @@ export const DeudasyCobrosDashboard = ({
 
             {/* ── HEADER ──
                 Antes: título+subtítulo en su fila, 3 tarjetas grandes con borde de
-                color debajo, y una barra de filtro aparte con <select> para el tipo.
+                color debajo, y una barra de filtro aparte con <SelectPropio> para el tipo.
                 Ahora: una sola cápsula compacta (mismo patrón que Finanzas/Entregas/
                 Fijos) con título, los 3 números en línea, el filtro de tipo como
                 toggle de pastillas (igual estilo que el selector de período de
@@ -1091,7 +1092,7 @@ export const DeudasyCobrosDashboard = ({
                 </div>
 
                 {/* Toggle de tipo, mismo estilo de pastillas que el período de Finanzas
-                    (fondo tenue + una pastilla activa sólida) en vez del <select> de antes. */}
+                    (fondo tenue + una pastilla activa sólida) en vez del <SelectPropio> de antes. */}
                 <div style={{ display: "flex", background: "#F1F5F3", borderRadius: "999px", padding: "3px", border: "1px solid #DCE7E1", flexShrink: 0 }}>
                     {([["todos", "Todos"], ["deuda", "Deudas"], ["cobro", "Cobros"]] as [FilterType, string][]).map(([value, label]) => {
                         const activo = filterType === value;
@@ -1114,7 +1115,7 @@ export const DeudasyCobrosDashboard = ({
                     })}
                 </div>
 
-                <select value={filterEstado} onChange={e => setFilterEstado(e.target.value as FilterEstado)}
+                <SelectPropio value={filterEstado} onChange={e => setFilterEstado(e.target.value as FilterEstado)}
                     style={{ background: "#F7FAF8", border: "1px solid #DCE7E1", borderRadius: "999px", padding: "6px 10px", fontSize: movil ? "0.72rem" : "0.78rem", fontFamily: "'Plus Jakarta Sans',sans-serif", color: "#0C2A20", cursor: "pointer", flexShrink: 0 }}>
                     <option value="todos">Todos los Estados</option>
                     <option value="vencido">Vencido</option>
@@ -1123,7 +1124,7 @@ export const DeudasyCobrosDashboard = ({
                     <option value="confirmado">Confirmado</option>
                     <option value="atrasado">Atrasado</option>
                     <option value="programado">Programado</option>
-                </select>
+                </SelectPropio>
 
                 <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
                     <button
@@ -1364,7 +1365,7 @@ export const DeudasyCobrosDashboard = ({
                                     <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                                         ¿A qué cuenta pertenece? (referencia)
                                     </label>
-                                    <select
+                                    <SelectPropio
                                         value={newAccountId}
                                         onChange={e => setNewAccountId(e.target.value)}
                                         style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: "#0C2A20", boxSizing: "border-box" as const, outline: "none", background: "#fff" }}
@@ -1373,7 +1374,7 @@ export const DeudasyCobrosDashboard = ({
                                         {accounts.map(acc => (
                                             <option key={acc.id} value={acc.id}>{acc.name}</option>
                                         ))}
-                                    </select>
+                                    </SelectPropio>
                                     <p style={{ margin: "6px 0 0", fontSize: "0.7rem", color: "#4A5F58" }}>
                                         Solo cambia la referencia — para mover efectivo de verdad usa "Abonar".
                                     </p>
@@ -1385,7 +1386,7 @@ export const DeudasyCobrosDashboard = ({
                                     <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#4A5F58", marginBottom: "6px", textTransform: "uppercase" as const, letterSpacing: "0.04em", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                                         {newType === "gasto" ? "¿A qué cuenta entró el efectivo? (opcional)" : "¿De qué cuenta salió el efectivo? (opcional)"}
                                     </label>
-                                    <select
+                                    <SelectPropio
                                         value={newAccountId}
                                         onChange={e => setNewAccountId(e.target.value)}
                                         style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: "#0C2A20", boxSizing: "border-box" as const, outline: "none", background: "#fff" }}
@@ -1394,7 +1395,7 @@ export const DeudasyCobrosDashboard = ({
                                         {accounts.map(acc => (
                                             <option key={acc.id} value={acc.id}>{acc.name}</option>
                                         ))}
-                                    </select>
+                                    </SelectPropio>
                                     {newAccountId && (
                                         <p style={{ margin: "6px 0 0", fontSize: "0.7rem", color: "#4A5F58" }}>
                                             {newType === "gasto"
