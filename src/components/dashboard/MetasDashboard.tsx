@@ -871,7 +871,26 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                                 ? onCambiar(m.id, { completed: !m.completed, pasos: m.pasos.map(p => p.repetitiva ? p : { ...p, completed: !m.completed }) })
                                 : onToggle(m.id)}
                         />
-                        <TareaEditable grande={detalle} texto={m.text} completada={m.completed} onGuardar={t => onEditar(m.id, t)} />
+                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            <TareaEditable grande={detalle} texto={m.text} completada={m.completed} onGuardar={t => onEditar(m.id, t)} />
+                            {tot > 0 && !detalle && (() => {
+                                const reps = (m.pasos || []).filter(p => p.repetitiva).map(p => repDe?.(p.text));
+                                const dias = reps.filter(Boolean).map(r => r!.dias?.length ? etiquetaDias(r!.dias) : '');
+                                const unicos = [...new Set(dias.filter(Boolean))];
+                                const resumenDias = unicos.length === 1 ? unicos[0] : unicos.length > 1 ? 'varios días' : '';
+                                return (
+                                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.74rem', fontWeight: 700 }}>
+                                        {np > 0 && <span style={{ color: C.outline }}>{pasosHechos}/{np} pasos</span>}
+                                        {reps.length > 0 && (
+                                            <span style={{ color, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>repeat</span>
+                                                {reps.length} repetitiva{reps.length !== 1 ? 's' : ''}{resumenDias ? ` · ${resumenDias}` : ''}
+                                            </span>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+                        </div>
                         {onCambiar && !detalle && (
                             <button
                                 onClick={() => alternarPasos(m.id, abierta)} title={abierta ? 'Ocultar pasos' : 'Ver o agregar pasos'}
