@@ -75,7 +75,7 @@ export const SelectorContacto = ({ value, onChange, contactos, placeholder, onEl
         <div style={{ padding: '6px 10px 2px', fontSize: '0.64rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color }}>{t}</div>
     );
 
-    const hayAlgo = coinciden.length > 0 || similares.length > 0 || (!!q && !exacto);
+    const hayAlgo = true;
 
     return (
         <div ref={caja} style={{ position: 'relative' }}>
@@ -96,20 +96,23 @@ export const SelectorContacto = ({ value, onChange, contactos, placeholder, onEl
             {pos && hayAlgo && createPortal(
                 <div
                     ref={lista} onMouseDown={e => e.preventDefault()}
-                    style={{ position: 'fixed', zIndex: 10000, left: pos.left, top: pos.top, width: pos.width, maxHeight: 280, overflowY: 'auto', background: '#fff', border: '1px solid #DCE7E1', borderRadius: 14, boxShadow: '0 10px 28px rgba(12,42,32,.2)', padding: 4 }}
+                    style={{ position: 'fixed', zIndex: 10000, left: pos.left, top: pos.top, width: pos.width, maxHeight: 320, display: 'flex', flexDirection: 'column', background: '#fff', border: '1px solid #DCE7E1', borderRadius: 14, boxShadow: '0 10px 28px rgba(12,42,32,.2)', overflow: 'hidden' }}
                 >
+                    <div style={{ overflowY: 'auto', padding: 4, flex: 1, minHeight: 0 }}>
                     {!q && etiqueta(`Tus clientes (${contactos.length})`)}
                     {parecidosYCoinciden.length > 0 && etiqueta('Ya existen')}
                     {coinciden.map(c => fila(c))}
                     {similares.length > 0 && etiqueta('¿Es alguno de estos?', '#8A5A00')}
                     {similares.map(c => fila(c, true))}
-                    {q && !exacto && (
+                    {q && coinciden.length + similares.length === 0 && <div style={{ padding: '14px 12px', fontSize: '0.8rem', color: '#6C8079' }}>No encontramos «{value.trim()}».</div>}
+                    </div>
+                    {onCrear && (
                         <button
-                            type="button" onClick={() => { if (onCrear) onCrear(value.trim()); else onChange(value.trim()); setPos(null); }}
-                            style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', border: 'none', borderTop: coinciden.length + similares.length ? '1px solid #EDF2EF' : 'none', borderRadius: 10, padding: '10px', marginTop: 2, cursor: 'pointer', background: 'transparent', fontFamily: 'inherit', color: '#0A7D5A', fontWeight: 800, fontSize: '0.85rem' }}
+                            type="button" onClick={() => { onCrear(exacto ? '' : value.trim()); setPos(null); }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', border: 'none', borderTop: '1px solid #EDF2EF', padding: '12px', cursor: 'pointer', background: '#F1F9F5', fontFamily: 'inherit', color: '#0A7D5A', fontWeight: 800, fontSize: '0.85rem', flexShrink: 0 }}
                         >
-                            <span className="material-symbols-outlined" style={{ fontSize: 22 }}>person_add</span>
-                            {onCrear ? 'Nuevo cliente' : 'Crear nuevo'}: «{value.trim()}»
+                            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>person_add</span>
+                            Crear nuevo cliente{q && !exacto ? ` «${value.trim()}»` : ''}
                         </button>
                     )}
                 </div>,
