@@ -22,6 +22,7 @@ export interface NuevaMeta {
     dias?: number[];       // si tiene días, se crea como tarea repetitiva (getDay)
     metaId?: number;       // dónde va: meta destino
     subId?: number;        // dónde va: dentro de una sub-meta (opcional)
+    comoSub?: boolean;     // crear como sub-meta (un paso grande con sus propias tareas)
     projectId?: number;
     horizon: GoalHorizon;
 }
@@ -97,7 +98,7 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
     // Cuestionario: un solo formulario; lo que respondes define si es tarea, sub-meta o repetitiva.
     const esTarea = esSub && !editando && !!f.esTarea;
     const repite = esTarea && (f.dias?.length ?? 0) > 0;
-    const medido = esTarea && !repite && !f.subId && f.objetivo.trim() !== '';
+    const medido = esTarea && !repite && !f.subId && (!!f.comoSub || f.objetivo.trim() !== '');
     const destino = metas.find(x => x.id === f.metaId);
     const dentroDeSub = esTarea && !!f.subId;
     const tipoFinal = repite ? 'Tarea repetitiva' : medido ? 'Sub-meta' : 'Tarea';
@@ -179,9 +180,22 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
                             </div>
                         )}
 
+                        {esTarea && !repite && !dentroDeSub && (
+                            <div>
+                                <div style={etiqueta}>¿Qué es?</div>
+                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                    <button type="button" onClick={() => set({ comoSub: false })} style={chip(!f.comoSub && f.objetivo.trim() === '', f.color)}>✅ Una tarea</button>
+                                    <button type="button" onClick={() => set({ comoSub: true })} style={chip(!!f.comoSub || f.objetivo.trim() !== '', f.color)}>🎯 Una sub-meta</button>
+                                </div>
+                                <p style={{ margin: '6px 0 0', fontSize: '0.72rem', color: C.outline }}>
+                                    {medido ? 'La sub-meta es un paso grande de la meta, con sus propias tareas (y número si quieres).' : 'La tarea es algo concreto que se hace y se marca.'}
+                                </p>
+                            </div>
+                        )}
+
                         {esTarea && !repite && (
                             <div>
-                                <div style={etiqueta}>Pasos (opcional, uno por línea)</div>
+                                <div style={etiqueta}>{medido ? 'Tareas de la sub-meta (opcional, una por línea)' : 'Pasos (opcional, uno por línea)'}</div>
                                 <textarea
                                     value={f.pasosTexto ?? ''} onChange={e => set({ pasosTexto: e.target.value })} rows={4}
                                     placeholder={'Crear el anuncio\nElegir público\nLanzar la campaña'}

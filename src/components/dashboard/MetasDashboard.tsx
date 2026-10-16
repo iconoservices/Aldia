@@ -191,8 +191,8 @@ export const MetasDashboard = ({
                 } else if (sub) {
                     // Tarea dentro de una sub-meta
                     updateGoal(sub.id, { milestones: [...sub.milestones, { id: base, text: m.title, completed: false, ...(pasos.length && { pasos }) }] });
-                } else if (numeros.objetivo) {
-                    // Con número: sub-meta de la meta elegida (los pasos pasan a ser sus tareas)
+                } else if (m.comoSub || numeros.objetivo) {
+                    // Sub-meta (con número o sin él) de la meta elegida (los pasos pasan a ser sus tareas)
                     addGoal(m.title, m.horizon, meta.area, meta.color, '🎯', undefined, undefined, pasos, undefined, { ...numeros, parentId: meta.id });
                 } else {
                     updateGoal(meta.id, { milestones: [...meta.milestones, { id: base, text: m.title, completed: false, plazo: m.horizon, ...(pasos.length && { pasos }) }] });
