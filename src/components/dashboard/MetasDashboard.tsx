@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NuevaMetaModal, PLAZOS_INFO } from './NuevaMetaModal';
@@ -1286,12 +1286,48 @@ const convertirPaso = (
 
 const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, onUpdate, addDailyBlock, dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, onAbrirTarea, onCambiarPlazo, removeDailyBlock, pagina }: PlazoModalProps) => {
     const info = PLAZOS_INFO.find(p => p.k === plazo);
+    // Dirección de la animación al pasar de un plazo a otro (+1 siguiente, -1 anterior).
+    const ORDEN: GoalHorizon[] = ['corto', 'mediano', 'largo'];
+    const previo = useRef<GoalHorizon | null>(plazo);
+    const dir = plazo && previo.current ? Math.sign(ORDEN.indexOf(plazo) - ORDEN.indexOf(previo.current)) || 1 : 1;
+    useEffect(() => { previo.current = plazo; }, [plazo]);
+    const idx = plazo ? ORDEN.indexOf(plazo) : 0;
+    const irA = (i: number) => { if (goal && onCambiarPlazo && i >= 0 && i < ORDEN.length) onCambiarPlazo(ORDEN[i]); };
+    useEffect(() => {
+        if (!pagina) return;
+        const h = (e: KeyboardEvent) => {
+            const t = e.target as HTMLElement;
+            if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+            if (e.key === 'ArrowRight') irA(idx + 1);
+            if (e.key === 'ArrowLeft') irA(idx - 1);
+        };
+        window.addEventListener('keydown', h);
+        return () => window.removeEventListener('keydown', h);
+    });
     const pasos = goal && plazo ? goal.milestones.filter(m => (m.plazo ?? 'corto') === plazo) : [];
     const envolver = (children: React.ReactNode) => pagina ? (
         <div style={{ ...paddingPagina(movil), maxWidth: '1180px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-            <button onClick={onClose} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', color: C.onSurfaceVariant, fontFamily: 'inherit', fontWeight: 700, fontSize: '0.85rem', padding: '4px 0', marginBottom: '18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '18px' }}>
+            <button onClick={onClose} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', color: C.onSurfaceVariant, fontFamily: 'inherit', fontWeight: 700, fontSize: '0.85rem', padding: '4px 0', marginBottom: 0 }}>
                 <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>arrow_back</span> Metas
             </button>
+                {onCambiarPlazo && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <button onClick={() => irA(idx - 1)} disabled={idx <= 0} title="Plazo anterior (←)" style={{ width: '36px', height: '36px', borderRadius: '50%', border: `1px solid ${C.outlineVariant}`, background: C.surfaceLowest, cursor: idx <= 0 ? 'default' : 'pointer', opacity: idx <= 0 ? 0.35 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.onSurfaceVariant }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>chevron_left</span>
+                        </button>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                            {ORDEN.map((k, i) => (
+                                <button key={k} onClick={() => irA(i)} title={goal ? nombrePlazo(goal, k) : k} style={{ width: i === idx ? '22px' : '8px', height: '8px', borderRadius: '999px', border: 'none', padding: 0, cursor: 'pointer', background: i === idx ? (goal?.color ?? C.primary) : C.outlineVariant, transition: 'width 0.25s, background 0.25s' }} />
+                            ))}
+                        </div>
+                        <button onClick={() => irA(idx + 1)} disabled={idx >= ORDEN.length - 1} title="Plazo siguiente (→)" style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '36px', padding: '0 14px 0 16px', borderRadius: '999px', border: 'none', background: idx >= ORDEN.length - 1 ? C.surfaceContainerHigh : (goal?.color ?? C.primary), color: '#fff', fontFamily: 'inherit', fontWeight: 800, fontSize: '0.82rem', cursor: idx >= ORDEN.length - 1 ? 'default' : 'pointer', opacity: idx >= ORDEN.length - 1 ? 0.5 : 1 }}>
+                            {idx >= ORDEN.length - 1 ? 'Último plazo' : `${goal ? nombrePlazo(goal, ORDEN[idx + 1]) : 'Siguiente'}`}
+                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>arrow_forward</span>
+                        </button>
+                    </div>
+                )}
+            </div>
             {children}
         </div>
     ) : (
@@ -1301,7 +1337,7 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
         <>
             {goal && plazo && info && (
                 <>
-                    <div style={pagina && !movil ? { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: '44px', alignItems: 'start' } : undefined}>
+                    <motion.div key={pagina ? plazo : 'modal'} initial={pagina ? { opacity: 0, x: 48 * dir, scale: 0.985 } : false} animate={{ opacity: 1, x: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 28 }} style={pagina && !movil ? { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: '44px', alignItems: 'start' } : undefined}>
                         <div style={{ minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: pagina ? '8px' : '20px' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -1406,7 +1442,7 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                                 </aside>
                             );
                         })()}
-                    </div>
+                    </motion.div>
                 </>
             )}
         </>,
