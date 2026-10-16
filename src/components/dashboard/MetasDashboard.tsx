@@ -722,7 +722,7 @@ const FilasEnlazadas = ({ goal, dailyBlocks, toggleDailyBlock, updateDailyBlock,
             return (
                 <div key={t.id} style={compacto
                     ? { padding: '8px 0', display: 'flex', alignItems: 'center', gap: '12px', opacity: pausada ? 0.55 : 1 }
-                    : plano ? { padding: movil ? '14px 2px' : '16px 4px', borderBottom: `1px solid ${C.outlineVariant}`, opacity: pausada ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: movil ? '12px' : '16px' }
+                    : plano ? { padding: movil ? '10px 2px' : '10px 4px', borderBottom: `1px solid ${C.outlineVariant}`, opacity: pausada ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: movil ? '12px' : '16px' }
                     : { padding: movil ? '12px 14px' : '16px 20px', marginBottom: '12px', borderRadius: '16px', boxSizing: 'border-box', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, opacity: pausada ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: movil ? '12px' : '16px' }}>
                     <Check cuadrado={compacto} marcado={t.hecha} color={goal.color} tam={compacto ? 18 : 26} onClick={() => toggleDailyBlock?.(t.id)} />
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -826,7 +826,7 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
     const ordenadas = [...tareas.filter(m => !m.completed), ...tareas.filter(m => m.completed)];
     return (
         <div>
-            {tareas.length > 0 && !detalle && (
+            {tareas.length > 0 && !detalle && !plano && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '6px 0 18px' }}>
                     <div style={{ flex: 1 }}><Barra pct={Math.round((hechas / tareas.length) * 100)} color={color} alto={6} /></div>
                     <span style={{ fontSize: '0.72rem', fontWeight: 700, color: C.outline, fontFamily: MONO }}>{hechas}/{tareas.length}</span>
@@ -843,7 +843,7 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                 <div
                     key={m.id}
                     onMouseEnter={() => setSobre(m.id)} onMouseLeave={() => setSobre(null)}
-                    style={detalle ? { padding: 0 } : plano ? { padding: movil ? '14px 2px' : '16px 4px', borderBottom: `1px solid ${C.outlineVariant}` } : {
+                    style={detalle ? { padding: 0 } : plano ? { padding: movil ? '10px 2px' : '10px 4px', borderBottom: `1px solid ${C.outlineVariant}` } : {
                         padding: movil ? '12px 14px' : '16px 20px', marginBottom: '12px', borderRadius: '16px', boxSizing: 'border-box',
                         background: m.completed ? C.surfaceContainerLow : C.surfaceLowest,
                         border: `1px solid ${abierta || sobre === m.id ? `color-mix(in srgb, ${color} 45%, ${C.outlineVariant})` : C.outlineVariant}`,
@@ -887,12 +887,12 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                         <div style={{ margin: '8px 0 0 34px' }}><Barra pct={Math.round((pasosHechos / np) * 100)} color={color} alto={3} /></div>
                     )}
                     {onCambiar && panelVisible && (
-                        <div style={{ margin: detalle ? '26px 0 2px 0' : '14px 0 2px 12px', padding: '2px 0 2px 18px', borderLeft: `3px solid color-mix(in srgb, ${color} 40%, white)` }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: tot ? '10px' : '6px' }}>
+                        <div style={{ margin: detalle ? '26px 0 2px 0' : plano ? '6px 0 4px 38px' : '14px 0 2px 12px', padding: '2px 0 2px 18px', borderLeft: `3px solid color-mix(in srgb, ${color} 40%, white)` }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: tot ? '8px' : '4px' }}>
                                 <span style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color }}>Pasos</span>
                                 {np > 0 && <div style={{ flex: 1 }}><Barra pct={Math.round((pasosHechos / np) * 100)} color={color} alto={5} /></div>}
                                 {np > 0 && <span style={{ fontSize: '0.74rem', fontWeight: 700, color: C.outline, fontFamily: MONO }}>{pasosHechos}/{np}</span>}
-                                {tot === 0 && <span style={{ fontSize: '0.78rem', color: C.outline }}>Divide esta tarea en partes más chicas.</span>}
+                                {tot === 0 && !plano && <span style={{ fontSize: '0.78rem', color: C.outline }}>Divide esta tarea en partes más chicas.</span>}
                                 {onAbrir && !detalle && (
                                     <button onClick={() => onAbrir(m.id)} title="Abrir en pantalla completa" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: C.outline, fontFamily: 'inherit', fontSize: '0.74rem', fontWeight: 700, padding: '2px 4px' }}>
                                         <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>open_in_full</span> Abrir
@@ -1287,8 +1287,31 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                     <p style={{ margin: '0 0 14px', fontSize: '0.88rem', color: C.onSurfaceVariant }}>
                         {pasos.length === 0 ? 'Tareas sueltas de este plazo. Las de una sub-meta van dentro de ella.' : 'Tareas sueltas de este plazo'}
                     </p>
-                    <div style={pagina && !movil ? { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 280px', gap: '56px', alignItems: 'start' } : undefined}>
+                    <div style={pagina && !movil ? { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: '44px', alignItems: 'start' } : undefined}>
                         <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: pagina ? '8px' : '20px' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.outline }}>
+                                {goal.icon} {goal.title}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '2px' }}>
+                                <input
+                                    value={goal.nombresPlazo?.[plazo] ?? info.titulo}
+                                    onChange={e => onUpdate({ nombresPlazo: { ...goal.nombresPlazo, [plazo]: e.target.value } })}
+                                    onBlur={() => { if (!(goal.nombresPlazo?.[plazo] ?? '').trim()) onUpdate({ nombresPlazo: { ...goal.nombresPlazo, [plazo]: undefined } }); }}
+                                    maxLength={28} title="Toca para cambiar el nombre"
+                                    style={{ minWidth: 0, flex: '0 1 auto', width: `${Math.max(6, (goal.nombresPlazo?.[plazo] ?? info.titulo).length + 1)}ch`, border: 'none', borderBottom: `2px dashed ${C.outlineVariant}`, outline: 'none', background: 'transparent', fontSize: movil ? '1.15rem' : '1.4rem', fontWeight: 800, color: C.onSurface, padding: 0, fontFamily: 'inherit' }}
+                                />
+                                <span style={{ fontWeight: 500, fontSize: '0.85rem', color: C.outline, whiteSpace: 'nowrap' }}>· {info.sub}</span>
+                            </div>
+                        </div>
+                        {!pagina && <BotonX onClick={onClose} />}
+                    </div>
+                    {!pagina && (
+                        <p style={{ margin: '0 0 14px', fontSize: '0.88rem', color: C.onSurfaceVariant }}>
+                            {pasos.length === 0 ? 'Tareas sueltas de este plazo. Las de una sub-meta van dentro de ella.' : 'Tareas sueltas de este plazo'}
+                        </p>
+                    )}
                     <ListaTareas
                         plano={pagina}
                         tareas={pasos} color={goal.color} movil={movil}
@@ -1308,7 +1331,7 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                             const reps = tareasDeMeta(goal.id, dailyBlocks).filter(t => t.repetitiva && t.activa);
                             const eti: React.CSSProperties = { fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.outline, marginBottom: '10px' };
                             return (
-                                <aside style={{ display: 'flex', flexDirection: 'column', gap: '30px', position: movil ? 'static' : 'sticky', top: '16px', marginTop: movil ? '28px' : 0 }}>
+                                <aside style={{ display: 'flex', flexDirection: 'column', gap: '24px', position: movil ? 'static' : 'sticky', top: '16px', marginTop: movil ? '28px' : 0 }}>
                                     <div>
                                         <div style={eti}>La meta</div>
                                         <div style={{ fontSize: '1.05rem', fontWeight: 800, color: C.onSurface, lineHeight: 1.3 }}>{goal.icon} {goal.title}</div>
@@ -1351,7 +1374,7 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                                                 const activo = pl.k === plazo;
                                                 return (
                                                     <button key={pl.k} onClick={() => onCambiarPlazo(pl.k)} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px', width: '100%', background: 'none', border: 'none', borderLeft: `3px solid ${activo ? goal.color : 'transparent'}`, padding: '8px 0 8px 12px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
-                                                        <span style={{ fontSize: '0.9rem', fontWeight: activo ? 800 : 600, color: activo ? C.onSurface : C.onSurfaceVariant }}>{nombrePlazo(goal, pl.k)} <span style={{ fontWeight: 500, fontSize: '0.74rem', color: C.outline }}>· {pl.sub}</span></span>
+                                                        <span title={`${nombrePlazo(goal, pl.k)} · ${pl.sub}`} style={{ fontSize: '0.9rem', fontWeight: activo ? 800 : 600, color: activo ? C.onSurface : C.onSurfaceVariant, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nombrePlazo(goal, pl.k)}</span>
                                                         <span style={{ fontSize: '0.78rem', fontWeight: 700, color: C.outline, fontFamily: MONO }}>{n}</span>
                                                     </button>
                                                 );
