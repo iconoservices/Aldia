@@ -100,6 +100,8 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
     const repite = esTarea && (f.dias?.length ?? 0) > 0;
     const medido = esTarea && !repite && !f.subId && (!!f.comoSub || f.objetivo.trim() !== '');
     const destino = metas.find(x => x.id === f.metaId);
+    // En el cuestionario las secciones siguen la jerarquía: Meta › Plazo › Qué es › Dentro de › detalles.
+    const ord = (n: number): React.CSSProperties => (esTarea ? { order: n } : {});
     const dentroDeSub = esTarea && !!f.subId;
     const tipoFinal = repite ? 'Tarea repetitiva' : medido ? 'Sub-meta' : 'Tarea';
 
@@ -155,14 +157,26 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
                             </button>
                         </div>
 
-                        {esTarea && (
-                            <div style={{ marginTop: '-6px', fontSize: '0.78rem', color: C.onSurfaceVariant }}>
-                                Se creará como: <b style={{ color: f.color }}>{tipoFinal}</b>
-                            </div>
-                        )}
+                        {esTarea && (() => {
+                            const nm = (destino ?? padre)?.title ?? 'Meta';
+                            const pl = PLAZOS_INFO.find(x => x.k === f.horizon);
+                            const nPlazo = (destino ?? padre)?.nombresPlazo?.[f.horizon]?.trim() || pl?.titulo || 'Plazo';
+                            const sub = destino?.subs.find(x => x.id === f.subId);
+                            const partes = [nm, ...(sub ? [sub.title] : [nPlazo]), tipoFinal];
+                            return (
+                                <div style={{ ...ord(1), marginTop: '-6px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '0.78rem', color: C.onSurfaceVariant }}>
+                                    {partes.map((t, i) => (
+                                        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: i === partes.length - 1 ? 800 : 600, color: i === partes.length - 1 ? f.color : C.onSurfaceVariant }}>
+                                            {i > 0 && <span className="material-symbols-outlined" style={{ fontSize: '14px', color: C.outlineVariant }}>chevron_right</span>}
+                                            {t}
+                                        </span>
+                                    ))}
+                                </div>
+                            );
+                        })()}
 
                         {esTarea && (
-                            <div>
+                            <div style={ord(6)}>
                                 <div style={etiqueta}>¿Se repite? (opcional)</div>
                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                     {DIAS_FORM.map(({ l, d }) => {
@@ -181,7 +195,7 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
                         )}
 
                         {esTarea && !repite && !dentroDeSub && (
-                            <div>
+                            <div style={ord(4)}>
                                 <div style={etiqueta}>¿Qué es?</div>
                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                     <button type="button" onClick={() => set({ comoSub: false })} style={chip(!f.comoSub && f.objetivo.trim() === '', f.color)}>✅ Una tarea</button>
@@ -194,7 +208,7 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
                         )}
 
                         {esTarea && !repite && (
-                            <div>
+                            <div style={ord(7)}>
                                 <div style={etiqueta}>{medido ? 'Tareas de la sub-meta (opcional, una por línea)' : 'Pasos (opcional, uno por línea)'}</div>
                                 <textarea
                                     value={f.pasosTexto ?? ''} onChange={e => set({ pasosTexto: e.target.value })} rows={4}
@@ -205,7 +219,7 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
                         )}
 
                         {/* Número: cuánto y de qué */}
-                        {!repite && !dentroDeSub && <div>
+                        {!repite && !dentroDeSub && <div style={ord(8)}>
                             <div style={etiqueta}>{esTarea ? '¿Lo puedes medir con un número? (opcional)' : '¿Cómo la mides? (opcional)'}</div>
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                                 {editando && (
@@ -237,7 +251,7 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
                         </div>}
 
                         {esTarea && metas.length > 0 && (
-                            <div>
+                            <div style={ord(2)}>
                                 <div style={etiqueta}>¿Dónde va? · Meta</div>
                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                     {metas.map(x => (
@@ -250,8 +264,8 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
                         )}
 
                         {esSub ? (
-                            <div style={dentroDeSub ? { display: 'none' } : undefined}>
-                                <div style={etiqueta}>¿En qué plazo?</div>
+                            <div style={{ ...(dentroDeSub ? { display: 'none' } : {}), ...ord(3) }}>
+                                <div style={etiqueta}>{esTarea ? '¿En qué plazo?' : '¿En qué plazo?'}</div>
                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                     {PLAZOS_INFO.map(pl => (
                                         <button type="button" key={pl.k} onClick={() => set({ horizon: pl.k })} style={chip(f.horizon === pl.k, f.color)}>
@@ -334,7 +348,7 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
                         )}
 
                         {esTarea && destino && destino.subs.length > 0 && (
-                            <div>
+                            <div style={ord(5)}>
                                 <div style={etiqueta}>¿Dentro de una sub-meta? (opcional)</div>
                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                     <button type="button" onClick={() => set({ subId: undefined })} style={chip(!f.subId, f.color)}>Directo en el plazo</button>
@@ -346,7 +360,7 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
                             </div>
                         )}
 
-                        <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ display: 'flex', gap: '10px', ...ord(99) }}>
                             <button type="button" onClick={onClose} style={{
                                 flex: 1, padding: '13px', borderRadius: '14px', border: `2px solid ${C.outlineVariant}`, background: C.surfaceLowest,
                                 color: C.onSurfaceVariant, fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer', fontFamily: 'inherit',
