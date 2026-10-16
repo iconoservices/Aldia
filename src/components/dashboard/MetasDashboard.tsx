@@ -828,7 +828,9 @@ type Tarea = Goal['milestones'][number];
 type Paso = NonNullable<Tarea['pasos']>[number];
 const DIAS_SEMANA: { l: string; d: number }[] = [{ l: 'L', d: 1 }, { l: 'M', d: 2 }, { l: 'X', d: 3 }, { l: 'J', d: 4 }, { l: 'V', d: 5 }, { l: 'S', d: 6 }, { l: 'D', d: 0 }];
 
-const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd, onCambiar, onConvertir, extra, repDe, onToggleRep, onAbrir, detalle, plano, onBorrarRep }: {
+const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd, onCambiar, onConvertir, extra, repDe, onToggleRep, onAbrir, detalle, plano, onBorrarRep, etiqueta, sinForm }: {
+    etiqueta?: { texto: string; color: string }; // sub-meta a la que pertenecen estas tareas, como etiqueta
+    sinForm?: boolean; // oculta el campo "Nueva tarea"
     onBorrarRep?: (t: TareaEnlazada | undefined, texto: string) => void; // borra la repetitiva de un paso
     plano?: boolean; // filas planas separadas por una línea, sin tarjetas
     // En lista: tocar la tarea abre su pantalla de detalle. `detalle`: se muestra una sola tarea a pantalla completa, sin tarjeta.
@@ -899,13 +901,19 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                         />
                         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
                             <TareaEditable grande={detalle} texto={m.text} completada={m.completed} onGuardar={t => onEditar(m.id, t)} />
-                            {tot > 0 && !detalle && (() => {
+                            {(tot > 0 || !!etiqueta) && !detalle && (() => {
                                 const reps = (m.pasos || []).filter(p => p.repetitiva).map(p => repDe?.(p.text));
                                 const dias = reps.filter(Boolean).map(r => r!.dias?.length ? etiquetaDias(r!.dias) : '');
                                 const unicos = [...new Set(dias.filter(Boolean))];
                                 const resumenDias = unicos.length === 1 ? unicos[0] : unicos.length > 1 ? 'varios días' : '';
                                 return (
                                     <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.74rem', fontWeight: 700 }}>
+                                        {etiqueta && (
+                                            <span title={`Sub-meta: ${etiqueta.texto}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '1px 9px', borderRadius: '999px', background: `color-mix(in srgb, ${etiqueta.color} 12%, white)`, color: etiqueta.color, maxWidth: '100%' }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>flag</span>
+                                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{etiqueta.texto}</span>
+                                            </span>
+                                        )}
                                         {np > 0 && <span style={{ color: C.outline }}>{pasosHechos}/{np} pasos</span>}
                                         {reps.length > 0 && (
                                             <span style={{ color, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
@@ -1055,7 +1063,7 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                 );
             })}
             {!detalle && extra}
-            {!detalle && <form onSubmit={e => { e.preventDefault(); if (texto.trim()) { onAdd(texto.trim()); setTexto(''); } }} style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+            {!detalle && !sinForm && <form onSubmit={e => { e.preventDefault(); if (texto.trim()) { onAdd(texto.trim()); setTexto(''); } }} style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <input
                     value={texto} onChange={e => setTexto(e.target.value)}
                     placeholder="Nueva tarea…" enterKeyHint="done"
@@ -1317,7 +1325,7 @@ const convertirPaso = (
 };
 
 const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, onUpdate, addDailyBlock, dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, onAbrirTarea, onCambiarPlazo, removeDailyBlock, subs = [], onSubUpdate, onSubToggle, onSubRemove, onSubAdd, pagina }: PlazoModalProps) => {
-    const [subCerradas, setSubCerradas] = useState<Record<number, boolean>>({});
+    const [nuevaTarea, setNuevaTarea] = useState('');
     const info = PLAZOS_INFO.find(p => p.k === plazo);
     // Dirección de la animación al pasar de un plazo a otro (+1 siguiente, -1 anterior).
     const ORDEN: GoalHorizon[] = ['corto', 'mediano', 'largo'];
@@ -1395,57 +1403,8 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                             {pasos.length === 0 ? 'Tareas sueltas de este plazo. Las de una sub-meta van dentro de ella.' : 'Tareas sueltas de este plazo'}
                         </p>
                     )}
-                    {(() => {
-                        const delPlazo = subs.filter(x => x.horizon === plazo);
-                        if (delPlazo.length === 0) return null;
-                        const etiq: React.CSSProperties = { fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.outline, margin: '14px 0 4px' };
-                        return (
-                            <div>
-                                <div style={etiq}>Sub-metas</div>
-                                {delPlazo.map(sub => {
-                                    const av = avance(sub, [], dailyBlocks);
-                                    const abierta = !subCerradas[sub.id];
-                                    const hechas = sub.milestones.filter(t => t.completed).length;
-                                    return (
-                                        <div key={sub.id} style={{ borderBottom: `1px solid ${C.outlineVariant}`, padding: '10px 4px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                <button onClick={() => setSubCerradas(v => ({ ...v, [sub.id]: abierta }))} title={abierta ? 'Cerrar' : 'Ver tareas'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: 0, marginLeft: '-6px' }}>
-                                                    <span className="material-symbols-outlined" style={{ fontSize: '22px', transform: abierta ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>chevron_right</span>
-                                                </button>
-                                                <span style={{ fontSize: '1.05rem' }}>🎯</span>
-                                                <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{ fontSize: '0.98rem', fontWeight: 700, color: C.onSurface, textDecoration: sub.status === 'completado' ? 'line-through' : 'none', wordBreak: 'break-word' }}>{sub.title}</div>
-                                                    <div style={{ fontSize: '0.74rem', fontWeight: 700, color: C.outline, fontFamily: MONO, marginTop: '2px' }}>
-                                                        {sub.objetivo ? av.texto : sub.milestones.length ? `${hechas}/${sub.milestones.length} tareas` : 'Sin tareas todavía'}
-                                                    </div>
-                                                </div>
-                                                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: goal.color, fontFamily: MONO }}>{av.pct}%</span>
-                                            </div>
-                                            <div style={{ margin: '8px 0 0 32px' }}><Barra pct={av.pct} color={goal.color} alto={4} /></div>
-                                            {abierta && onSubUpdate && (
-                                                <div style={{ margin: '10px 0 0 32px' }}>
-                                                    <ListaTareas
-                                                        plano={pagina}
-                                                        tareas={sub.milestones} color={goal.color} movil={movil}
-                                                        onToggle={mid => onSubToggle?.(sub.id, mid)} onRemove={mid => onSubRemove?.(sub.id, mid)} onAdd={t => onSubAdd?.(sub.id, t)}
-                                                        onEditar={(id, t) => onSubUpdate(sub.id, { milestones: sub.milestones.map(x => x.id === id ? { ...x, text: t } : x) })}
-                                                        onCambiar={(id, u) => onSubUpdate(sub.id, { milestones: sub.milestones.map(x => x.id === id ? { ...x, ...u } : x) })}
-                                                        onConvertir={addDailyBlock ? convertirPaso(sub, undefined, u => onSubUpdate(sub.id, u), addDailyBlock) : undefined}
-                                                        repDe={txt => tareasDeMeta(sub.id, dailyBlocks).find(t => t.repetitiva && t.label.trim().toLowerCase() === txt.trim().toLowerCase())}
-                                                        onToggleRep={toggleDailyBlock}
-                                                        extra={<FilasEnlazadas plano={pagina} excluir={sub.milestones.flatMap(m => (m.pasos || []).filter(q => q.repetitiva).map(q => q.text))} goal={sub} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal} movil={movil} />}
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                                <div style={etiq}>Tareas sueltas</div>
-                            </div>
-                        );
-                    })()}
                     <ListaTareas
-                        plano={pagina}
+                        plano={pagina} sinForm
                         tareas={pasos} color={goal.color} movil={movil}
                         onToggle={onToggle} onRemove={onRemove} onAdd={onAdd}
                         onEditar={(id, t) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, text: t } : x) })}
@@ -1464,6 +1423,39 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                             dailyBlocks.filter(b => b.goalId === goal.id && b.label.trim().toLowerCase() === base.label.trim().toLowerCase() && (!t.repetitiva || b.period === base.period)).forEach(b => removeDailyBlock(b.id));
                         } : undefined} asignar={{ tareas: goal.milestones.filter(m => (m.plazo ?? 'corto') === plazo && !m.completed), onAsignar: (mid, txt) => { if (mid) onUpdate({ milestones: goal.milestones.map(x => x.id === mid ? { ...x, pasos: [...(x.pasos || []), { id: Date.now() + Math.floor(Math.random() * 1000), text: txt, completed: false, repetitiva: true }] } : x) }); } }} excluir={goal.milestones.flatMap(m => (m.pasos || []).filter(q => q.repetitiva).map(q => q.text))} goal={goal} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal} movil={movil} />}
                     />
+                    {subs.filter(x => x.horizon === plazo).map(sub => {
+                        const av = avance(sub, [], dailyBlocks);
+                        const etiq = { texto: sub.objetivo ? `${sub.title} · ${av.texto}` : sub.title, color: goal.color };
+                        if (sub.milestones.length === 0) {
+                            return (
+                                <div key={sub.id} style={{ padding: pagina ? '10px 4px' : '8px 0', borderBottom: pagina ? `1px solid ${C.outlineVariant}` : 'none', display: 'flex', alignItems: 'center', gap: '10px', color: C.outline, fontSize: '0.85rem' }}>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '1px 9px', borderRadius: '999px', background: `color-mix(in srgb, ${goal.color} 12%, white)`, color: goal.color, fontSize: '0.74rem', fontWeight: 700 }}>
+                                        <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>flag</span>{etiq.texto}
+                                    </span>
+                                    Sin tareas todavía
+                                </div>
+                            );
+                        }
+                        return onSubUpdate ? (
+                            <ListaTareas
+                                key={sub.id}
+                                plano={pagina} sinForm etiqueta={etiq}
+                                tareas={sub.milestones} color={goal.color} movil={movil}
+                                onToggle={mid => onSubToggle?.(sub.id, mid)} onRemove={mid => onSubRemove?.(sub.id, mid)} onAdd={t => onSubAdd?.(sub.id, t)}
+                                onEditar={(id, t) => onSubUpdate(sub.id, { milestones: sub.milestones.map(x => x.id === id ? { ...x, text: t } : x) })}
+                                onCambiar={(id, u) => onSubUpdate(sub.id, { milestones: sub.milestones.map(x => x.id === id ? { ...x, ...u } : x) })}
+                                onConvertir={addDailyBlock ? convertirPaso(sub, undefined, u => onSubUpdate(sub.id, u), addDailyBlock) : undefined}
+                                repDe={txt => tareasDeMeta(sub.id, dailyBlocks).find(t => t.repetitiva && t.label.trim().toLowerCase() === txt.trim().toLowerCase())}
+                                onToggleRep={toggleDailyBlock}
+                            />
+                        ) : null;
+                    })}
+                    <form onSubmit={e => { e.preventDefault(); const t = nuevaTarea.trim(); if (t) { onAdd(t); setNuevaTarea(''); } }} style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                        <input value={nuevaTarea} onChange={e => setNuevaTarea(e.target.value)} placeholder="Nueva tarea…" enterKeyHint="done" style={{ ...campo(movil), flex: 1, minWidth: 0, padding: '13px 16px' }} />
+                        <button type="submit" disabled={!nuevaTarea.trim()} title="Agregar" style={{ width: '50px', flexShrink: 0, border: 'none', borderRadius: '12px', cursor: nuevaTarea.trim() ? 'pointer' : 'default', background: nuevaTarea.trim() ? goal.color : C.surfaceContainerHigh, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span className="material-symbols-outlined">add</span>
+                        </button>
+                    </form>
                         </div>
                         {pagina && (() => {
                             const hechasT = pasos.filter(m => m.completed).length;
