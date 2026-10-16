@@ -264,6 +264,11 @@ export const MetasDashboard = ({
     if (metaPlazo && plazoAbierto) {
         return (
             <PlazoModal pagina
+                subs={goals.filter(g => g.parentId === metaPlazo.id)}
+                onSubUpdate={(id, u) => updateGoal(id, u)}
+                onSubToggle={(id, mid) => toggleGoalMilestone(id, mid)}
+                onSubRemove={(id, mid) => removeGoalMilestone(id, mid)}
+                onSubAdd={(id, t) => addGoalMilestone(id, t)}
                 removeDailyBlock={removeDailyBlock}
                 onCambiarPlazo={k => setPlazoAbierto({ goalId: metaPlazo.id, plazo: k })}
                 goal={metaPlazo} plazo={plazoAbierto?.plazo ?? null} movil={movil}
@@ -1238,6 +1243,12 @@ interface PlazoModalProps {
     onAbrirTarea?: (milestoneId: number) => void;
     onCambiarPlazo?: (plazo: GoalHorizon) => void;
     removeDailyBlock?: (id: number) => void;
+    // Sub-metas de la meta (se muestran las de este plazo, con sus tareas)
+    subs?: Goal[];
+    onSubUpdate?: (id: number, u: Partial<Goal>) => void;
+    onSubToggle?: (id: number, milestoneId: number) => void;
+    onSubRemove?: (id: number, milestoneId: number) => void;
+    onSubAdd?: (id: number, texto: string) => void;
     pagina?: boolean; // pantalla completa (con el menú lateral visible) en vez de ventana flotante
     addDailyBlock?: MetasDashboardProps['addDailyBlock'];
     dailyBlocks?: DailyBlock[];
@@ -1305,7 +1316,8 @@ const convertirPaso = (
     onUpdate({ milestones });
 };
 
-const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, onUpdate, addDailyBlock, dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, onAbrirTarea, onCambiarPlazo, removeDailyBlock, pagina }: PlazoModalProps) => {
+const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, onUpdate, addDailyBlock, dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, onAbrirTarea, onCambiarPlazo, removeDailyBlock, subs = [], onSubUpdate, onSubToggle, onSubRemove, onSubAdd, pagina }: PlazoModalProps) => {
+    const [subCerradas, setSubCerradas] = useState<Record<number, boolean>>({});
     const info = PLAZOS_INFO.find(p => p.k === plazo);
     // Dirección de la animación al pasar de un plazo a otro (+1 siguiente, -1 anterior).
     const ORDEN: GoalHorizon[] = ['corto', 'mediano', 'largo'];
@@ -1383,6 +1395,55 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                             {pasos.length === 0 ? 'Tareas sueltas de este plazo. Las de una sub-meta van dentro de ella.' : 'Tareas sueltas de este plazo'}
                         </p>
                     )}
+                    {(() => {
+                        const delPlazo = subs.filter(x => x.horizon === plazo);
+                        if (delPlazo.length === 0) return null;
+                        const etiq: React.CSSProperties = { fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.outline, margin: '14px 0 4px' };
+                        return (
+                            <div>
+                                <div style={etiq}>Sub-metas</div>
+                                {delPlazo.map(sub => {
+                                    const av = avance(sub, [], dailyBlocks);
+                                    const abierta = !subCerradas[sub.id];
+                                    const hechas = sub.milestones.filter(t => t.completed).length;
+                                    return (
+                                        <div key={sub.id} style={{ borderBottom: `1px solid ${C.outlineVariant}`, padding: '10px 4px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                <button onClick={() => setSubCerradas(v => ({ ...v, [sub.id]: abierta }))} title={abierta ? 'Cerrar' : 'Ver tareas'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: 0, marginLeft: '-6px' }}>
+                                                    <span className="material-symbols-outlined" style={{ fontSize: '22px', transform: abierta ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>chevron_right</span>
+                                                </button>
+                                                <span style={{ fontSize: '1.05rem' }}>🎯</span>
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ fontSize: '0.98rem', fontWeight: 700, color: C.onSurface, textDecoration: sub.status === 'completado' ? 'line-through' : 'none', wordBreak: 'break-word' }}>{sub.title}</div>
+                                                    <div style={{ fontSize: '0.74rem', fontWeight: 700, color: C.outline, fontFamily: MONO, marginTop: '2px' }}>
+                                                        {sub.objetivo ? av.texto : sub.milestones.length ? `${hechas}/${sub.milestones.length} tareas` : 'Sin tareas todavía'}
+                                                    </div>
+                                                </div>
+                                                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: goal.color, fontFamily: MONO }}>{av.pct}%</span>
+                                            </div>
+                                            <div style={{ margin: '8px 0 0 32px' }}><Barra pct={av.pct} color={goal.color} alto={4} /></div>
+                                            {abierta && onSubUpdate && (
+                                                <div style={{ margin: '10px 0 0 32px' }}>
+                                                    <ListaTareas
+                                                        plano={pagina}
+                                                        tareas={sub.milestones} color={goal.color} movil={movil}
+                                                        onToggle={mid => onSubToggle?.(sub.id, mid)} onRemove={mid => onSubRemove?.(sub.id, mid)} onAdd={t => onSubAdd?.(sub.id, t)}
+                                                        onEditar={(id, t) => onSubUpdate(sub.id, { milestones: sub.milestones.map(x => x.id === id ? { ...x, text: t } : x) })}
+                                                        onCambiar={(id, u) => onSubUpdate(sub.id, { milestones: sub.milestones.map(x => x.id === id ? { ...x, ...u } : x) })}
+                                                        onConvertir={addDailyBlock ? convertirPaso(sub, undefined, u => onSubUpdate(sub.id, u), addDailyBlock) : undefined}
+                                                        repDe={txt => tareasDeMeta(sub.id, dailyBlocks).find(t => t.repetitiva && t.label.trim().toLowerCase() === txt.trim().toLowerCase())}
+                                                        onToggleRep={toggleDailyBlock}
+                                                        extra={<FilasEnlazadas plano={pagina} excluir={sub.milestones.flatMap(m => (m.pasos || []).filter(q => q.repetitiva).map(q => q.text))} goal={sub} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal} movil={movil} />}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                                <div style={etiq}>Tareas sueltas</div>
+                            </div>
+                        );
+                    })()}
                     <ListaTareas
                         plano={pagina}
                         tareas={pasos} color={goal.color} movil={movil}
@@ -1449,7 +1510,7 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                                         <div>
                                             <div style={eti}>Plazos de esta meta</div>
                                             {PLAZOS_INFO.map(pl => {
-                                                const n = goal.milestones.filter(m => (m.plazo ?? 'corto') === pl.k).length;
+                                                const n = goal.milestones.filter(m => (m.plazo ?? 'corto') === pl.k).length + subs.filter(x => x.horizon === pl.k).length;
                                                 const activo = pl.k === plazo;
                                                 return (
                                                     <button key={pl.k} onClick={() => onCambiarPlazo(pl.k)} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px', width: '100%', background: 'none', border: 'none', borderLeft: `3px solid ${activo ? goal.color : 'transparent'}`, padding: '8px 0 8px 12px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
