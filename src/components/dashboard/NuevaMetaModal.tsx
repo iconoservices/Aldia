@@ -10,7 +10,7 @@ import type { GoalHorizon, Project } from '../../hooks/useAlDiaState';
 export const ICONOS = ['🎯', '💰', '🏠', '💻', '🌱', '❤️', '📚', '✈️', '🏆', '🛠️'];
 export const COLORES = ['#0FA97A', '#4858ab', '#0E9F6E', '#B9760A', '#C77DFF', '#C63C3C', '#4D96FF', '#06D6A0'];
 export const AREAS = ['Negocio', 'Finanzas', 'Salud', 'Personal', 'Aprendizaje', 'Familia'];
-export const UNIDADES = ['S/', 'clientes', 'kg', 'ventas', '%'];
+export const UNIDADES = ['S/', 'clientes', 'personas', 'ventas', 'veces', 'horas', 'kg', '%'];
 
 export interface NuevaMeta {
     title: string; area: string; icon: string; color: string; targetDate: string;
@@ -153,11 +153,15 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
                                     style={{ ...campo(movil), width: '100px', boxSizing: 'border-box', background: C.surfaceContainerLow }}
                                 />
                                 <input
-                                    value={f.unidad} onChange={e => set({ unidad: e.target.value })} list="unidades-meta"
+                                    value={f.unidad} onChange={e => set({ unidad: e.target.value })}
                                     placeholder="unidad" aria-label="Unidad" maxLength={14}
                                     style={{ ...campo(movil), width: '110px', boxSizing: 'border-box', background: C.surfaceContainerLow }}
                                 />
-                                <datalist id="unidades-meta">{UNIDADES.map(u => <option key={u} value={u} />)}</datalist>
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+                                {UNIDADES.map(u => (
+                                    <button type="button" key={u} onClick={() => set({ unidad: f.unidad === u ? '' : u })} style={{ ...chip(f.unidad === u, f.color), padding: '5px 11px', fontSize: '0.72rem' }}>{u}</button>
+                                ))}
                             </div>
                             <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
                                 {([['', 'En total'], ['semana', 'Por semana'], ['mes', 'Por mes']] as const).map(([k, t]) => (

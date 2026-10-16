@@ -1304,16 +1304,24 @@ export const DeudasyCobrosDashboard = ({
                                             }
                                         }}
                                         placeholder={field.placeholder}
-                                        list={field.listId}
                                         style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCE7E1", borderRadius: "8px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: "#0C2A20", boxSizing: "border-box" as const, outline: "none" }}
                                         onFocus={e => (e.target.style.borderColor = "#0FA97A")}
                                         onBlur={e => (e.target.style.borderColor = "#DCE7E1")}
                                     />
-                                    {field.listId && (
-                                        <datalist id={field.listId}>
-                                            {uniqueContacts.map(c => <option key={c} value={c} />)}
-                                        </datalist>
-                                    )}
+                                    {field.listId && (() => {
+                                        const q = newContact.trim().toLowerCase();
+                                        const sug = uniqueContacts.filter(c => c.toLowerCase() !== q && (!q || c.toLowerCase().includes(q))).slice(0, 8);
+                                        return sug.length > 0 && (
+                                            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px" }}>
+                                                {sug.map(c => (
+                                                    <button key={c} type="button" onClick={() => { setNewContact(c); const m = findContactByName(c); if (m) setNewPhone(m.phone || ""); }}
+                                                        style={{ border: "none", borderRadius: "999px", padding: "5px 12px", background: "#E6EFEA", color: "#4A5F58", fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 700, fontSize: "0.75rem", cursor: "pointer" }}>
+                                                        {c}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        );
+                                    })()}
                                     {field.listId && newContact.trim() && (
                                         <input
                                             type="tel"
