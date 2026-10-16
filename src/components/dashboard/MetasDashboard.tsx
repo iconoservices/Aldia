@@ -543,6 +543,38 @@ interface ColumnasProps {
     onAbrirTarea?: (plazo: GoalHorizon, milestoneId: number) => void;
 }
 
+// Un solo botón "+ Agregar" por columna: elige si es sub-meta o tarea.
+const BotonAgregar = ({ color, onSub, onTarea }: { color: string; onSub: () => void; onTarea: () => void }) => {
+    const [abierto, setAbierto] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!abierto) return;
+        const fuera = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setAbierto(false); };
+        document.addEventListener('mousedown', fuera);
+        return () => document.removeEventListener('mousedown', fuera);
+    }, [abierto]);
+    const opcion: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '8px', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 700, color: C.onSurface, whiteSpace: 'nowrap' };
+    return (
+        <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+            <button onClick={() => setAbierto(a => !a)} style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', fontSize: '0.74rem', fontWeight: 800, color, fontFamily: 'inherit' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span> Agregar
+            </button>
+            {abierto && (
+                <div style={{ position: 'absolute', left: 0, bottom: 'calc(100% + 4px)', zIndex: 30, background: '#fff', border: `1px solid ${C.outlineVariant}`, borderRadius: '12px', boxShadow: '0 8px 24px rgba(12,42,32,.14)', padding: '4px', minWidth: '150px' }}>
+                    <button style={opcion} onClick={() => { setAbierto(false); onTarea(); }}
+                        onMouseEnter={e => { e.currentTarget.style.background = C.surfaceContainerLow; }} onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px', color }}>task_alt</span> Tarea
+                    </button>
+                    <button style={opcion} onClick={() => { setAbierto(false); onSub(); }}
+                        onMouseEnter={e => { e.currentTarget.style.background = C.surfaceContainerLow; }} onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px', color }}>flag</span> Sub-meta
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, onNuevaSub, onToggleTarea, onAbrirTarea }: ColumnasProps) => (
     <div style={{ display: 'flex', flexDirection: movil ? 'column' : 'row', alignItems: 'stretch', gap: movil ? '4px' : '0', height: movil ? undefined : '100%' }}>
         {PLAZOS_INFO.map((pl, idx) => {
@@ -598,9 +630,8 @@ const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, on
                         {tareas.length > 0 && pendientes.length === 0 && <div style={{ fontSize: '0.76rem', color: C.outline }}>✓ Todo hecho</div>}
                         {subsPlazo.length === 0 && tareas.length === 0 && <div style={{ fontSize: '0.78rem', color: C.outline }}>Nada todavía</div>}
 
-                        <div style={{ display: 'flex', gap: '12px', marginTop: 'auto', flexWrap: 'wrap' }}>
-                            <button onClick={() => onNuevaSub(pl.k)} style={accion}>+ Sub-meta</button>
-                            <button onClick={() => onAbrirPlazo(pl.k)} style={{ ...accion, color: C.outline }}>{tareas.length ? 'Tareas' : '+ Tarea'}</button>
+                        <div style={{ marginTop: 'auto' }}>
+                            <BotonAgregar color={goal.color} onSub={() => onNuevaSub(pl.k)} onTarea={() => onAbrirPlazo(pl.k)} />
                         </div>
                     </div>
                 </Fragment>
