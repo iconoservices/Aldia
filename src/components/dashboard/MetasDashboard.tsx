@@ -575,7 +575,7 @@ const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, on
                         {pendientes.slice(0, 3).map(m => (
                             <Fragment key={m.id}>
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '2px 0' }}>
-                                <Check marcado={false} color={goal.color} tam={16} onClick={() => onToggleTarea?.(m.id)} />
+                                <span onClick={() => (onAbrirTarea ? onAbrirTarea(pl.k, m.id) : onAbrirPlazo(pl.k))} title="Abrir para marcarla" style={{ width: '16px', height: '16px', borderRadius: '50%', border: `2px solid ${C.outlineVariant}`, boxSizing: 'border-box', flexShrink: 0, cursor: 'pointer' }} />
                                 <span onClick={() => (onAbrirTarea ? onAbrirTarea(pl.k, m.id) : onAbrirPlazo(pl.k))} title={m.text} style={{ flex: 1, minWidth: 0, fontSize: '0.8rem', lineHeight: 1.3, color: C.onSurface, cursor: 'pointer', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>{m.text}</span>
                                 {!!m.pasos?.some(p => !p.repetitiva) && <span style={{ fontSize: '0.66rem', fontWeight: 700, color: C.outline, fontFamily: MONO, whiteSpace: 'nowrap' }}>{m.pasos.filter(p => !p.repetitiva && p.completed).length}/{m.pasos.filter(p => !p.repetitiva).length}</span>}
                                 {!!m.pasos?.some(p => p.repetitiva) && <span className="material-symbols-outlined" title="Tiene tareas repetitivas" style={{ fontSize: '14px', color: goal.color }}>repeat</span>}
