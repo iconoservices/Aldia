@@ -909,8 +909,9 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                                 return (
                                     <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.74rem', fontWeight: 700 }}>
                                         {etiqueta && (
-                                            <span title={`Sub-meta: ${etiqueta.texto}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '1px 9px', borderRadius: '999px', background: `color-mix(in srgb, ${etiqueta.color} 12%, white)`, color: etiqueta.color, maxWidth: '100%' }}>
-                                                <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>flag</span>
+                                            <span title={`Esta tarea es de la sub-meta: ${etiqueta.texto}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '2px 11px 2px 8px', borderRadius: '999px', background: `color-mix(in srgb, ${etiqueta.color} 14%, white)`, border: `1px solid color-mix(in srgb, ${etiqueta.color} 35%, white)`, color: etiqueta.color, fontSize: '0.78rem', maxWidth: '100%' }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>flag</span>
+                                                <span style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.64rem' }}>Sub-meta</span>
                                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{etiqueta.texto}</span>
                                             </span>
                                         )}
@@ -1425,7 +1426,8 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                     />
                     {subs.filter(x => x.horizon === plazo).map(sub => {
                         const av = avance(sub, [], dailyBlocks);
-                        const etiq = { texto: sub.objetivo ? `${sub.title} · ${av.texto}` : sub.title, color: goal.color };
+                        const hechasSub = sub.milestones.filter(t => t.completed).length;
+                        const etiq = { texto: `${sub.title} · ${sub.objetivo ? av.texto : `${hechasSub}/${sub.milestones.length} tareas`}`, color: goal.color };
                         if (sub.milestones.length === 0) {
                             return (
                                 <div key={sub.id} style={{ padding: pagina ? '10px 4px' : '8px 0', borderBottom: pagina ? `1px solid ${C.outlineVariant}` : 'none', display: 'flex', alignItems: 'center', gap: '10px', color: C.outline, fontSize: '0.85rem' }}>
