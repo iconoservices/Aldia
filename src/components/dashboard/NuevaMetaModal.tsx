@@ -15,11 +15,12 @@ export const UNIDADES = ['S/', 'clientes', 'kg', 'ventas', '%'];
 export interface NuevaMeta {
     title: string; area: string; icon: string; color: string; targetDate: string;
     objetivo: string; actual: string; unidad: string;
+    periodo: '' | 'semana' | 'mes';
     projectId?: number;
     horizon: GoalHorizon;
 }
 
-const VACIA: NuevaMeta = { title: '', area: 'Personal', icon: ICONOS[0], color: COLORES[0], targetDate: '', objetivo: '', actual: '', unidad: '', horizon: 'corto' };
+const VACIA: NuevaMeta = { title: '', area: 'Personal', icon: ICONOS[0], color: COLORES[0], targetDate: '', objetivo: '', actual: '', unidad: '', periodo: '', horizon: 'corto' };
 
 export const PLAZOS_INFO: { k: GoalHorizon; titulo: string; sub: string }[] = [
     { k: 'corto', titulo: 'Corto plazo', sub: 'este mes' },
@@ -157,6 +158,11 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
                                     style={{ ...campo(movil), width: '110px', boxSizing: 'border-box', background: C.surfaceContainerLow }}
                                 />
                                 <datalist id="unidades-meta">{UNIDADES.map(u => <option key={u} value={u} />)}</datalist>
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+                                {([['', 'En total'], ['semana', 'Por semana'], ['mes', 'Por mes']] as const).map(([k, t]) => (
+                                    <button type="button" key={k} onClick={() => set({ periodo: k })} style={chip(f.periodo === k, f.color)}>{t}</button>
+                                ))}
                             </div>
                         </div>
 

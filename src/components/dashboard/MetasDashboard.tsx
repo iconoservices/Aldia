@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { NuevaMetaModal, PLAZOS_INFO } from './NuevaMetaModal';
 import type { NuevaMeta } from './NuevaMetaModal';
 import type { DailyBlock, Goal, GoalHorizon, GoalStatus, Project } from '../../hooks/useAlDiaState';
-import { avance, tareasDeMeta } from './metasAvance';
+import { avance, tareasDeMeta, actualVigente, clavePeriodo } from './metasAvance';
 import {
     C, MONO, useIsMobile,
     paddingPagina, campo,
@@ -64,8 +64,8 @@ type Form =
 
 const aForm = (g: Goal): Partial<NuevaMeta> => ({
     title: g.title, area: g.area, icon: g.icon, color: g.color, targetDate: g.targetDate || '',
-    objetivo: g.objetivo != null ? String(g.objetivo) : '', actual: g.actual != null ? String(g.actual) : '',
-    unidad: g.unidad || '', projectId: g.projectId, horizon: g.horizon,
+    objetivo: g.objetivo != null ? String(g.objetivo) : '', actual: g.actual != null || g.periodo ? String(actualVigente(g)) : '',
+    unidad: g.unidad || '', periodo: g.periodo ?? '', projectId: g.projectId, horizon: g.horizon,
 });
 const num = (s: string) => { const n = parseFloat(s); return isFinite(n) ? n : undefined; };
 
@@ -168,7 +168,7 @@ export const MetasDashboard = ({
 
     const guardarForm = (m: NuevaMeta) => {
         if (!form) return;
-        const numeros = { objetivo: num(m.objetivo), actual: num(m.actual), unidad: m.unidad || undefined };
+        const numeros = { objetivo: num(m.objetivo), actual: num(m.actual), unidad: m.unidad || undefined, periodo: m.periodo || undefined, periodoClave: m.periodo ? clavePeriodo(m.periodo) : undefined };
         if (form.tipo === 'meta') {
             if (form.goal) updateGoal(form.goal.id, { title: m.title, area: m.area, icon: m.icon, color: m.color, targetDate: m.targetDate || undefined, projectId: m.projectId, ...numeros });
             else addGoal(m.title, 'mediano', m.area || 'Personal', m.color, m.icon, m.targetDate || undefined, m.projectId, [], undefined, numeros);
@@ -478,9 +478,9 @@ const MenuItem = ({ icono, texto, onClick, color = C.onSurface }: { icono: strin
 // "Llevo [ 3200 ] de S/ 10,000" con − / + para avanzar rápido.
 const AvanceNumero = ({ goal, onUpdate, movil }: { goal: Goal; onUpdate: (u: Partial<Goal>) => void; movil: boolean }) => {
     const [txt, setTxt] = useState<string | null>(null);
-    const actual = goal.actual ?? 0;
+    const actual = actualVigente(goal);
     const paso = (goal.objetivo ?? 0) >= 1000 ? 100 : 1;
-    const fijar = (n: number) => onUpdate({ actual: Math.max(0, n), status: goal.objetivo && n >= goal.objetivo ? 'completado' : goal.status === 'completado' ? 'en-progreso' : goal.status });
+    const fijar = (n: number) => onUpdate({ actual: Math.max(0, n), periodoClave: goal.periodo ? clavePeriodo(goal.periodo) : undefined, status: goal.objetivo && !goal.periodo && n >= goal.objetivo ? 'completado' : goal.status === 'completado' ? 'en-progreso' : goal.status });
     const boton: React.CSSProperties = { width: '32px', height: '32px', borderRadius: '8px', border: `1px solid ${C.outlineVariant}`, background: C.surfaceLowest, color: C.onSurfaceVariant, cursor: 'pointer', fontWeight: 800, fontSize: '1rem', fontFamily: 'inherit', flexShrink: 0 };
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

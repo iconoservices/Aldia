@@ -504,6 +504,8 @@ export interface Goal {
     objetivo?: number;    // número a alcanzar (ej. 10000, 20 clientes, 5 kg)
     actual?: number;      // avance hacia `objetivo`
     unidad?: string;      // 'S/', 'clientes', 'kg'...
+    periodo?: 'semana' | 'mes'; // si está, `actual` se reinicia cada semana/mes
+    periodoClave?: string;      // período al que pertenece `actual` (semana: lunes YYYY-MM-DD; mes: YYYY-MM)
     migradoV2?: boolean;  // ya pasó por la migración de tareas '🎯' → sub-metas
 }
 

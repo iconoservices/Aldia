@@ -3,6 +3,18 @@ import type { DailyBlock, Goal, GoalHorizon } from '../../hooks/useAlDiaState';
 /* Cálculos de Metas compartidos por Metas, Tareas y Mi Día. */
 
 export const fmt = (n: number) => n.toLocaleString('es-PE', { maximumFractionDigits: 2 });
+export type Periodo = 'semana' | 'mes';
+// Clave del período en curso: el lunes de esta semana, o el mes.
+export const clavePeriodo = (p: Periodo, d = new Date()) => {
+    if (p === 'mes') return d.toLocaleDateString('en-CA').slice(0, 7);
+    const l = new Date(d); l.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return l.toLocaleDateString('en-CA');
+};
+// Avance que cuenta hoy: si la meta es por semana/mes y ya cambió el período, vuelve a 0.
+export const actualVigente = (g: Goal) =>
+    g.periodo && g.periodoClave !== clavePeriodo(g.periodo) ? 0 : (g.actual ?? 0);
+export const sufijoPeriodo = (g: Goal) => g.periodo === 'semana' ? ' por semana' : g.periodo === 'mes' ? ' por mes' : '';
+
 export const conUnidad = (n: number, u?: string) => !u ? fmt(n) : u === 'S/' ? `S/ ${fmt(n)}` : u === '%' ? `${fmt(n)}%` : `${fmt(n)} ${u}`;
 
 const hoyStr = () => new Date().toLocaleDateString('en-CA');
@@ -57,8 +69,8 @@ export const tareasDeMeta = (goalId: number, dailyBlocks: DailyBlock[]): TareaEn
 // logradas + tareas propias + tareas enlazadas (cada repetitiva vale su % de la semana).
 export const avance = (g: Goal, subs: Goal[], dailyBlocks: DailyBlock[]) => {
     if (g.objetivo && g.objetivo > 0) {
-        const actual = g.actual ?? 0;
-        const texto = g.unidad === 'S/' ? `S/ ${fmt(actual)} / ${fmt(g.objetivo)}` : `${fmt(actual)} / ${conUnidad(g.objetivo, g.unidad)}`;
+        const actual = actualVigente(g);
+        const texto = (g.unidad === 'S/' ? `S/ ${fmt(actual)} / ${fmt(g.objetivo)}` : `${fmt(actual)} / ${conUnidad(g.objetivo, g.unidad)}`) + sufijoPeriodo(g);
         return { pct: Math.max(0, Math.min(100, Math.round((actual / g.objetivo) * 100))), texto };
     }
     const enlazadas = tareasDeMeta(g.id, dailyBlocks).filter(t => t.activa && (!t.repetitiva || (t.semana?.toca ?? 0) > 0));
