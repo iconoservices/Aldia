@@ -584,7 +584,8 @@ export const DeudasyCobrosDashboard = ({
     // Anota cada fila con si es la primera/última de su racha de mismo contacto (ya
     // vienen juntas gracias a sortByContact) y el conteo/total del grupo, para poder
     // no repetir el avatar y mostrar un subtotal al cerrar el grupo.
-    const annotateGroups = (items: DebtGroup[]) => {
+    const annotateGroups = (items: DebtGroup[], flat = false) => {
+        if (flat) return items.map(item => ({ item, groupCount: 1, groupTotal: item.amount, isFirstOfGroup: true, isLastOfGroup: true }));
         const counts: Record<string, { count: number; total: number }> = {};
         items.forEach(i => {
             if (!i.contact) return;
@@ -657,7 +658,7 @@ export const DeudasyCobrosDashboard = ({
 
     // Lista compacta (escritorio): una fila por deuda/cobro. Lo principal a la vista
     // (concepto, monto, fecha, estado, un botón) y lo demás en el menú de tres puntos.
-    const renderLista = (items: DebtGroup[], tipo: "deuda" | "cobro") => {
+    const renderLista = (items: DebtGroup[], tipo: "deuda" | "cobro", nested = false) => {
         const esDeuda = tipo === "deuda";
         const colorMonto = esDeuda ? "#C63C3C" : "#0E9F6E";
         const verbo = esDeuda ? "Abonar" : "Cobrar";
@@ -671,7 +672,7 @@ export const DeudasyCobrosDashboard = ({
         );
         return (
             <div>
-                {annotateGroups(items).map(({ item, groupCount, groupTotal, isFirstOfGroup, isLastOfGroup }) => {
+                {annotateGroups(items, nested).map(({ item, groupCount, groupTotal, isFirstOfGroup, isLastOfGroup }) => {
                     const badge = getEstadoBadge(item.originalTx);
                     const iconC = getIconColor(badge);
                     const icon = getContactIcon(item.contact || item.name, esDeuda ? "gasto" : "ingreso");
@@ -679,8 +680,8 @@ export const DeudasyCobrosDashboard = ({
                     const abierta = abonarId === id || convertId === id || confirmPayId === id;
                     return (
                         <Fragment key={item.key}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 16px", borderBottom: isLastOfGroup && groupCount <= 1 ? "1px solid #EDF3F0" : "1px solid transparent", position: "relative" }}>
-                                {isFirstOfGroup ? (
+                            <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: nested ? "9px 16px 9px 28px" : "10px 16px", borderBottom: isLastOfGroup && groupCount <= 1 ? "1px solid #EDF3F0" : "1px solid transparent", position: "relative" }}>
+                                {nested ? null : isFirstOfGroup ? (
                                     <div style={{ width: "34px", height: "34px", borderRadius: "50%", background: iconC.bg, color: iconC.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                         <span className="material-symbols-outlined" style={{ fontSize: "17px" }}>{icon}</span>
                                     </div>
@@ -722,7 +723,7 @@ export const DeudasyCobrosDashboard = ({
                             </div>
 
                             {abierta && (
-                                <div style={{ padding: "0 16px 12px 62px", borderBottom: "1px solid #EDF3F0" }}>
+                                <div style={{ padding: nested ? "0 16px 12px 28px" : "0 16px 12px 62px", borderBottom: "1px solid #EDF3F0" }}>
                                     {confirmPayId === id ? (
                                         <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                                             <span style={{ fontSize: "0.8rem", color: "#4A5F58" }}>¿Marcar como cobrado?</span>
@@ -761,17 +762,73 @@ export const DeudasyCobrosDashboard = ({
             </div>
         );
     };
-    const renderDebtTable = (items: DebtGroup[]) => renderLista(items, "deuda");
-    const renderCobroTable = (items: DebtGroup[]) => renderLista(items, "cobro");
+
+    // Resumen por contacto: una fila por persona (nombre, n.º de deudas, total y estado más
+    // urgente). Arranca plegada; al tocarla se despliegan sus deudas individuales.
+    const URGENCIA: Record<string, number> = { Vencido: 0, Atrasado: 0, "Próximo": 1, Confirmado: 2 };
+    const renderAgrupado = (items: DebtGroup[], tipo: "deuda" | "cobro") => {
+        const esDeuda = tipo === "deuda";
+        if (items.length === 0) return renderLista(items, tipo);
+        const colorMonto = esDeuda ? "#C63C3C" : "#0E9F6E";
+        const plural = esDeuda ? "deudas" : "cobros";
+        const singular = esDeuda ? "deuda" : "cobro";
+        const grupos: { contact?: string; items: DebtGroup[] }[] = [];
+        items.forEach(it => {
+            const last = grupos[grupos.length - 1];
+            if (it.contact && last && last.contact === it.contact) last.items.push(it);
+            else grupos.push({ contact: it.contact, items: [it] });
+        });
+        const renderHijos = (its: DebtGroup[], nested: boolean) => movil
+            ? (esDeuda ? renderDebtCards(its, nested) : renderCobroCards(its, nested))
+            : renderLista(its, tipo, nested);
+        return (
+            <div style={{ display: "flex", flexDirection: "column" }}>
+                {grupos.map((g, idx) => {
+                    if (!g.contact) return <Fragment key={`sc-${g.items[0].key}`}>{renderHijos(g.items, false)}</Fragment>;
+                    const gkey = `${tipo}:${g.contact}`;
+                    const abierto = expandedContacts.has(gkey);
+                    const total = g.items.reduce((acc, i) => acc + i.amount, 0);
+                    const badge = g.items.map(i => getEstadoBadge(i.originalTx)).reduce((a, b) => (URGENCIA[b.label] ?? 3) < (URGENCIA[a.label] ?? 3) ? b : a);
+                    const iconC = getIconColor(badge);
+                    const n = g.items.length;
+                    return (
+                        <div key={gkey} style={{ borderBottom: idx < grupos.length - 1 ? "1px solid #EDF3F0" : "none" }}>
+                            <button onClick={() => toggleContactExpanded(gkey)} aria-expanded={abierto} style={{ width: "100%", display: "flex", alignItems: "center", gap: movil ? "10px" : "12px", padding: movil ? "12px 12px" : "12px 16px", background: abierto ? "#F7FAF8" : "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+                                <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: iconC.bg, color: iconC.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>person</span>
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: movil ? "0.9rem" : "0.95rem", fontWeight: 700, color: "#0C2A20", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.contact}</div>
+                                    <div style={{ fontSize: "0.72rem", color: "#6C8079" }}>{n} {n === 1 ? singular : plural}</div>
+                                </div>
+                                <div style={{ display: "flex", flexDirection: movil ? "column" : "row", alignItems: movil ? "flex-end" : "center", gap: movil ? "4px" : "14px", flexShrink: 0 }}>
+                                    <span style={{ fontFamily: MONO, fontSize: movil ? "0.92rem" : "1rem", fontWeight: 800, letterSpacing: "-0.02em", color: colorMonto, whiteSpace: "nowrap" }}>{formatCurrency(total)}</span>
+                                    <span style={{ padding: "3px 10px", borderRadius: "999px", background: badge.bg, color: badge.text, fontSize: "0.62rem", fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{badge.label}</span>
+                                </div>
+                                <span className="material-symbols-outlined" style={{ fontSize: "22px", color: "#6C8079", flexShrink: 0, transition: "transform .2s", transform: abierto ? "rotate(180deg)" : "none" }}>expand_more</span>
+                            </button>
+                            {abierto && (
+                                <div style={{ background: "#FBFDFC", borderTop: "1px solid #EDF3F0", paddingBottom: movil ? 0 : "4px" }}>
+                                    {renderHijos(g.items, true)}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+    const renderDebtTable = (items: DebtGroup[]) => renderAgrupado(items, "deuda");
+    const renderCobroTable = (items: DebtGroup[]) => renderAgrupado(items, "cobro");
 
     // Vista móvil: la tabla de 5 columnas no entra en una pantalla angosta,
     // así que cada fila se convierte en una tarjeta apilada (mismo dato, otro layout).
-    const renderDebtCards = (items: DebtGroup[]) => (
+    const renderDebtCards = (items: DebtGroup[], flat = false) => (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", padding: "0.75rem" }}>
             {items.length === 0 && (
                 <p style={{ textAlign: "center", color: "#6C8079", padding: "2rem 0", margin: 0, fontSize: "0.85rem" }}>Sin deudas registradas 🎉</p>
             )}
-            {annotateGroups(items).map(({ item, groupCount, groupTotal, isFirstOfGroup, isLastOfGroup }) => {
+            {annotateGroups(items, flat).map(({ item, groupCount, groupTotal, isFirstOfGroup, isLastOfGroup }) => {
                 const badge = getEstadoBadge(item.originalTx);
                 const iconC = getIconColor(badge);
                 const icon = getContactIcon(item.contact || item.name, "gasto");
@@ -785,11 +842,11 @@ export const DeudasyCobrosDashboard = ({
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
                                 {isFirstOfGroup ? (
-                                    <div style={{ fontWeight: 700, fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.contact || item.name}{groupCount > 1 ? ` (${groupCount})` : ""}</div>
+                                    <div style={{ fontWeight: 700, fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{flat ? item.name : (item.contact || item.name)}{groupCount > 1 ? ` (${groupCount})` : ""}</div>
                                 ) : (
                                     <div style={{ fontSize: "0.7rem", color: "#6C8079", fontWeight: 700 }}>↳ mismo contacto</div>
                                 )}
-                                {item.contact && <div style={{ fontSize: "0.66rem", color: "#6C8079", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>}
+                                {item.contact && !flat && <div style={{ fontSize: "0.66rem", color: "#6C8079", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>}
                                 {item.originalTx.notes && <div style={{ fontSize: "0.64rem", color: "#6C8079", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.originalTx.notes}</div>}
                             </div>
                             <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -844,12 +901,12 @@ export const DeudasyCobrosDashboard = ({
         </div>
     );
 
-    const renderCobroCards = (items: DebtGroup[]) => (
+    const renderCobroCards = (items: DebtGroup[], flat = false) => (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", padding: "0.75rem" }}>
             {items.length === 0 && (
                 <p style={{ textAlign: "center", color: "#6C8079", padding: "2rem 0", margin: 0, fontSize: "0.85rem" }}>Sin cobros registrados</p>
             )}
-            {annotateGroups(items).map(({ item, groupCount, groupTotal, isFirstOfGroup, isLastOfGroup }) => {
+            {annotateGroups(items, flat).map(({ item, groupCount, groupTotal, isFirstOfGroup, isLastOfGroup }) => {
                 const badge = getEstadoBadge(item.originalTx);
                 const iconC = getIconColor(badge);
                 const icon = getContactIcon(item.contact || item.name, "ingreso");
@@ -863,11 +920,11 @@ export const DeudasyCobrosDashboard = ({
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
                                 {isFirstOfGroup ? (
-                                    <div style={{ fontWeight: 700, fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.contact || item.name}{groupCount > 1 ? ` (${groupCount})` : ""}</div>
+                                    <div style={{ fontWeight: 700, fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{flat ? item.name : (item.contact || item.name)}{groupCount > 1 ? ` (${groupCount})` : ""}</div>
                                 ) : (
                                     <div style={{ fontSize: "0.7rem", color: "#6C8079", fontWeight: 700 }}>↳ mismo contacto</div>
                                 )}
-                                {item.contact && <div style={{ fontSize: "0.66rem", color: "#6C8079", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>}
+                                {item.contact && !flat && <div style={{ fontSize: "0.66rem", color: "#6C8079", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>}
                                 {item.originalTx.notes && <div style={{ fontSize: "0.64rem", color: "#6C8079", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.originalTx.notes}</div>}
                             </div>
                             <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -1134,7 +1191,7 @@ export const DeudasyCobrosDashboard = ({
                                         })}
                                     </div>
                                 )}
-                                {movil ? renderDebtCards(filteredDebts) : renderDebtTable(filteredDebts)}
+                                {renderDebtTable(filteredDebts)}
                             </section>
                         </div>
                     )}
@@ -1176,7 +1233,7 @@ export const DeudasyCobrosDashboard = ({
                                         })}
                                     </div>
                                 )}
-                                {movil ? renderCobroCards(filteredCobros) : renderCobroTable(filteredCobros)}
+                                {renderCobroTable(filteredCobros)}
                             </section>
                         </div>
                     )}
