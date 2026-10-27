@@ -220,9 +220,13 @@ export const PlanMaestroCard = ({
 
     const [colapsado, setColapsado] = useState<boolean>(() => {
         try {
-            return localStorage.getItem('aldia_plan_maestro_colapsado') === 'true';
+            const saved = localStorage.getItem('aldia_plan_maestro_colapsado');
+            if (saved !== null) {
+                return saved === 'true';
+            }
+            return true; // Oculto / colapsado por defecto
         } catch {
-            return false;
+            return true;
         }
     });
 
