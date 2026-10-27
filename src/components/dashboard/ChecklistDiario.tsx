@@ -25,6 +25,7 @@ import { MetasHoy } from './MetasHoy';
 
 import { C, bento as bentoCard, useIsMobile, MONO, paddingPagina } from '../../theme';
 import { RegistroMovimiento } from '../features/RegistroMovimiento';
+import { getDiasPausa, toggleDiaPausa } from '../../lib/diasPausa';
 
 /* ─── Period ────────────────────────────────────────────────────
    El Checklist ya no muestra franjas (Mañana/Tarde/Noche). El campo
@@ -468,6 +469,9 @@ interface ChecklistDiarioProps {
     pauseSporadicTimer?: (id: number) => void;
     goals?: Goal[];
     onOpenMetas?: () => void;
+    selectedDateStr?: string;
+    onChangeDate?: (date: string) => void;
+    onOpenFullCalendar?: () => void;
 }
 
 const SORT_STORAGE_KEY = 'aldia-checklist-custom-order';
@@ -479,15 +483,22 @@ export const ChecklistDiario = ({
     onOpenBandeja, notes = [], updateNote, goals = [], onOpenMetas,
     sporadicProjects = [], calendarEvents = [], onOpenEntregas,
     startSporadicTimer, pauseSporadicTimer,
+    selectedDateStr, onChangeDate, onOpenFullCalendar,
 }: ChecklistDiarioProps) => {
-    /* La fecha se recalcula sola: si la app queda abierta y pasa medianoche,
-       el checklist salta al día nuevo sin necesidad de recargar. */
-    const [todayStr, setTodayStr] = useState(() => new Date().toLocaleDateString('en-CA'));
+    const realToday = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
+    const [todayStr, setTodayStr] = useState(() => selectedDateStr || realToday);
 
+    useEffect(() => {
+        if (selectedDateStr && selectedDateStr !== todayStr) {
+            setTodayStr(selectedDateStr);
+        }
+    }, [selectedDateStr]);
+
+    /* La fecha se recalcula sola a medianoche solo si el usuario está en "hoy". */
     useEffect(() => {
         const tick = () => {
             const now = new Date().toLocaleDateString('en-CA');
-            setTodayStr(prev => (prev === now ? prev : now));
+            setTodayStr(prev => (prev === realToday ? now : prev));
         };
         const timer = setInterval(tick, 60_000);
         document.addEventListener('visibilitychange', tick);
@@ -495,12 +506,84 @@ export const ChecklistDiario = ({
             clearInterval(timer);
             document.removeEventListener('visibilitychange', tick);
         };
+    }, [realToday]);
+
+    const esHoy = todayStr === realToday;
+
+    const cambiarDia = useCallback((delta: number) => {
+        const [y, m, d] = todayStr.split('-').map(Number);
+        const dt = new Date(y, m - 1, d);
+        dt.setDate(dt.getDate() + delta);
+        const nueva = dt.toLocaleDateString('en-CA');
+        setTodayStr(nueva);
+        onChangeDate?.(nueva);
+    }, [todayStr, onChangeDate]);
+
+    const irAHoy = useCallback(() => {
+        const hoy = new Date().toLocaleDateString('en-CA');
+        setTodayStr(hoy);
+        onChangeDate?.(hoy);
+    }, [onChangeDate]);
+
+    const seleccionarFecha = useCallback((fecha: string) => {
+        setTodayStr(fecha);
+        onChangeDate?.(fecha);
+        setCalendarOpen(false);
+    }, [onChangeDate]);
+
+    const badgeOffset = useMemo(() => {
+        if (esHoy) return null;
+        const [y1, m1, d1] = realToday.split('-').map(Number);
+        const [y2, m2, d2] = todayStr.split('-').map(Number);
+        const dt1 = new Date(y1, m1 - 1, d1).getTime();
+        const dt2 = new Date(y2, m2 - 1, d2).getTime();
+        const diffDays = Math.round((dt2 - dt1) / 86400000);
+        if (diffDays === -1) return 'Ayer';
+        if (diffDays === 1) return 'Mañana';
+        if (diffDays < 0) return `${Math.abs(diffDays)}d antes`;
+        return `en ${diffDays}d`;
+    }, [esHoy, realToday, todayStr]);
+
+    const [calendarOpen, setCalendarOpen] = useState(false);
+    const [pickerMonth, setPickerMonth] = useState(() => {
+        const [y, m] = (selectedDateStr || realToday).split('-').map(Number);
+        return new Date(y, m - 1, 1);
+    });
+
+    useEffect(() => {
+        if (calendarOpen) {
+            const [y, m] = todayStr.split('-').map(Number);
+            setPickerMonth(new Date(y, m - 1, 1));
+        }
+    }, [calendarOpen, todayStr]);
+
+    // Eventos y citas del calendario agendadas para el día visualizado
+    const eventosDelDia = useMemo(() => {
+        return calendarEvents.filter(e => e.date === todayStr);
+    }, [calendarEvents, todayStr]);
+
+    const [diasPausa, setDiasPausa] = useState<string[]>(() => getDiasPausa());
+    useEffect(() => {
+        const sync = () => setDiasPausa(getDiasPausa());
+        window.addEventListener('aldia_pausa_change', sync);
+        window.addEventListener('storage', sync);
+        return () => {
+            window.removeEventListener('aldia_pausa_change', sync);
+            window.removeEventListener('storage', sync);
+        };
     }, []);
+
+    const esPausaHoy = diasPausa.includes(todayStr);
+    const handleTogglePausa = () => {
+        toggleDiaPausa(todayStr);
+    };
 
     // Mismos índices que Tareas (donde se crean las repetitivas): lunes = 1 … sábado = 6, domingo = 0.
     const todayIndex = useMemo(() => new Date(`${todayStr}T00:00:00`).getDay(), [todayStr]);
-    const todayLabel = useMemo(() =>
-        new Date(`${todayStr}T00:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }), [todayStr]);
+    const todayLabel = useMemo(() => {
+        const raw = new Date(`${todayStr}T00:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+        return raw.charAt(0).toUpperCase() + raw.slice(1);
+    }, [todayStr]);
 
     const [groupByProject,  setGroupByProject]   = useState(false);
     const [pendientesFirst, setPendientesFirst]  = useState(true);
@@ -1155,52 +1238,427 @@ export const ChecklistDiario = ({
                 }} onClick={() => setEditingTask(null)} />
             )}
 
+            {/* ── Modal de Calendario para elegir día ── */}
+            <AnimatePresence>
+                {calendarOpen && (
+                    <div style={{
+                        position: 'fixed', inset: 0, zIndex: 9998,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        padding: '1rem',
+                    }}>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(3px)' }}
+                            onClick={() => setCalendarOpen(false)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            transition={{ duration: 0.18 }}
+                            style={{
+                                position: 'relative', width: '100%', maxWidth: '400px',
+                                background: '#FFFFFF', borderRadius: '20px', padding: '1.25rem',
+                                boxShadow: '0 20px 45px rgba(0,0,0,0.18)', border: `1px solid ${C.outlineVariant}`,
+                                zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '0.9rem'
+                            }}
+                        >
+                            {/* Cabecera del calendario modal */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: '22px', color: C.primary }}>
+                                        calendar_month
+                                    </span>
+                                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: C.onSurface, textTransform: 'capitalize' }}>
+                                        {pickerMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                                    </h3>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <button
+                                        onClick={() => setPickerMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
+                                        title="Mes anterior"
+                                        style={{
+                                            background: C.surfaceContainer, border: 'none', borderRadius: '8px',
+                                            width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            cursor: 'pointer', color: C.onSurface
+                                        }}
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>chevron_left</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setPickerMonth(new Date())}
+                                        title="Mes actual"
+                                        style={{
+                                            background: C.surfaceContainer, border: 'none', borderRadius: '8px',
+                                            padding: '4px 8px', fontSize: '0.72rem', fontWeight: 700,
+                                            cursor: 'pointer', color: C.onSurface, fontFamily: 'inherit'
+                                        }}
+                                    >
+                                        Hoy
+                                    </button>
+                                    <button
+                                        onClick={() => setPickerMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
+                                        title="Mes siguiente"
+                                        style={{
+                                            background: C.surfaceContainer, border: 'none', borderRadius: '8px',
+                                            width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            cursor: 'pointer', color: C.onSurface
+                                        }}
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>chevron_right</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Días de la semana */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center' }}>
+                                {['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'].map(dia => (
+                                    <div key={dia} style={{ fontSize: '0.72rem', fontWeight: 800, color: C.onSurfaceVariant, padding: '2px 0' }}>
+                                        {dia}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Grilla de días */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
+                                {(() => {
+                                    const y = pickerMonth.getFullYear();
+                                    const m = pickerMonth.getMonth();
+                                    const primerDiaSemana = (new Date(y, m, 1).getDay() + 6) % 7; // Lunes = 0
+                                    const totalDiasMes = new Date(y, m + 1, 0).getDate();
+                                    const cells = [];
+
+                                    for (let i = 0; i < primerDiaSemana; i++) {
+                                        cells.push(<div key={`pad-${i}`} style={{ height: '38px' }} />);
+                                    }
+
+                                    for (let d = 1; d <= totalDiasMes; d++) {
+                                        const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                                        const isSelected = dateStr === todayStr;
+                                        const isCurrentToday = dateStr === realToday;
+                                        const dayOfWeek = new Date(y, m, d).getDay();
+
+                                        const hasTasks = uniqueTemplates.some(t =>
+                                            (t.repeatDays && t.repeatDays.includes(dayOfWeek)) || t.date === dateStr
+                                        );
+                                        const hasEvents = calendarEvents.some(e => e.date === dateStr);
+
+                                        cells.push(
+                                            <button
+                                                key={`day-${d}`}
+                                                onClick={() => seleccionarFecha(dateStr)}
+                                                style={{
+                                                    height: '40px',
+                                                    border: isSelected ? 'none' : isCurrentToday ? `2px solid ${C.primary}` : '1px solid transparent',
+                                                    borderRadius: '10px',
+                                                    background: isSelected ? C.primary : isCurrentToday ? 'rgba(15, 169, 122, 0.08)' : C.surfaceLowest,
+                                                    color: isSelected ? '#FFFFFF' : isCurrentToday ? C.primary : C.onSurface,
+                                                    fontWeight: isSelected || isCurrentToday ? 800 : 600,
+                                                    fontSize: '0.82rem',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    position: 'relative',
+                                                    fontFamily: 'inherit',
+                                                    transition: 'all 0.15s',
+                                                }}
+                                            >
+                                                <span>{d}</span>
+                                                <div style={{ display: 'flex', gap: '3px', marginTop: '1px', height: '4px' }}>
+                                                    {hasTasks && (
+                                                        <span style={{
+                                                            width: '4px', height: '4px', borderRadius: '50%',
+                                                            background: isSelected ? '#FFFFFF' : C.primary,
+                                                        }} />
+                                                    )}
+                                                    {hasEvents && (
+                                                        <span style={{
+                                                            width: '4px', height: '4px', borderRadius: '50%',
+                                                            background: isSelected ? '#FFD700' : '#F59E0B',
+                                                        }} />
+                                                    )}
+                                                </div>
+                                            </button>
+                                        );
+                                    }
+                                    return cells;
+                                })()}
+                            </div>
+
+                            {/* Leyenda y botón cerrar */}
+                            <div style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                paddingTop: '8px', borderTop: `1px solid ${C.outlineVariant}`,
+                                flexWrap: 'wrap', gap: '8px'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.72rem', color: C.onSurfaceVariant }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: C.primary }} />
+                                        Tareas
+                                    </span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#F59E0B' }} />
+                                        Citas
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    {onOpenFullCalendar && (
+                                        <button
+                                            onClick={() => {
+                                                setCalendarOpen(false);
+                                                onOpenFullCalendar();
+                                            }}
+                                            style={{
+                                                background: 'none', border: 'none', color: C.primary,
+                                                fontSize: '0.74rem', fontWeight: 800, cursor: 'pointer',
+                                                textDecoration: 'underline', fontFamily: 'inherit'
+                                            }}
+                                        >
+                                            Ver Agenda
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => setCalendarOpen(false)}
+                                        style={{
+                                            background: C.surfaceContainerHigh, border: 'none',
+                                            borderRadius: '8px', padding: '6px 12px',
+                                            fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer',
+                                            color: C.onSurface, fontFamily: 'inherit'
+                                        }}
+                                    >
+                                        Cerrar
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
             {/* ── Header ── */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-                <div>
-                    <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: C.onSurface, letterSpacing: '-0.01em' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.85rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 800, color: C.onSurface, letterSpacing: '-0.02em' }}>
                         Mi Día
                     </h2>
-                    <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: C.onSurfaceVariant, textTransform: 'capitalize' }}>
-                        {todayLabel}
-                    </p>
+
+                    {/* Cápsula de fecha y navegación unificada y espaciosa */}
+                    <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        background: '#FFFFFF',
+                        border: `1px solid ${C.outlineVariant}`,
+                        borderRadius: '999px',
+                        padding: '3px 6px',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                        gap: '2px',
+                    }}>
+                        {/* Chevron día anterior */}
+                        <button
+                            onClick={() => cambiarDia(-1)}
+                            title="Día anterior"
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                borderRadius: '999px',
+                                width: '28px', height: '28px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                cursor: 'pointer', color: C.onSurfaceVariant,
+                                transition: 'all 0.15s',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = C.surfaceContainer; e.currentTarget.style.color = C.onSurface; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.onSurfaceVariant; }}
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>chevron_left</span>
+                        </button>
+
+                        {/* Botón de fecha para abrir calendario */}
+                        <button
+                            onClick={() => setCalendarOpen(true)}
+                            title="Abrir calendario para saltar a otra fecha"
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                borderRadius: '999px',
+                                padding: '4px 8px',
+                                display: 'flex', alignItems: 'center', gap: '6px',
+                                cursor: 'pointer', fontFamily: 'inherit',
+                                transition: 'background 0.15s',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(15, 169, 122, 0.08)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: '16px', color: esHoy ? C.primary : '#F59E0B' }}>
+                                calendar_today
+                            </span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: C.onSurface, letterSpacing: '-0.01em' }}>
+                                {todayLabel}
+                            </span>
+                            {badgeOffset && (
+                                <span style={{
+                                    fontSize: '0.66rem', fontWeight: 700,
+                                    padding: '2px 7px', borderRadius: '999px',
+                                    background: '#FEF3C7', color: '#92400E',
+                                    letterSpacing: '0.01em',
+                                }}>
+                                    {badgeOffset}
+                                </span>
+                            )}
+                        </button>
+
+                        {/* Botón Hoy cuando está en otro día */}
+                        {!esHoy && (
+                            <button
+                                onClick={irAHoy}
+                                title="Volver al día de hoy"
+                                style={{
+                                    background: 'rgba(15, 169, 122, 0.12)',
+                                    color: C.primary,
+                                    border: 'none',
+                                    borderRadius: '999px',
+                                    padding: '3px 9px',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    fontFamily: 'inherit',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px',
+                                    transition: 'all 0.15s',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.color = '#FFFFFF'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(15, 169, 122, 0.12)'; e.currentTarget.style.color = C.primary; }}
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>today</span>
+                                Hoy
+                            </button>
+                        )}
+
+                        {/* Chevron día siguiente */}
+                        <button
+                            onClick={() => cambiarDia(1)}
+                            title="Día siguiente"
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                borderRadius: '999px',
+                                width: '28px', height: '28px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                cursor: 'pointer', color: C.onSurfaceVariant,
+                                transition: 'all 0.15s',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = C.surfaceContainer; e.currentTarget.style.color = C.onSurface; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.onSurfaceVariant; }}
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>chevron_right</span>
+                        </button>
+                    </div>
                 </div>
 
-                {/* Bandeja ya no va en el menú: se abre desde acá */}
-                {onOpenBandeja && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    {/* Botón de Pausa / Día de Descanso */}
                     <button
-                        onClick={onOpenBandeja}
-                        title="Abrir la Bandeja"
+                        onClick={handleTogglePausa}
+                        title={esPausaHoy ? "Reanudar día normal" : "Tomarse el día libre / descanso (no penaliza en el calendario)"}
                         style={{
                             display: 'flex', alignItems: 'center', gap: '6px',
-                            background: C.surfaceContainerHigh, color: C.onSurfaceVariant,
-                            border: 'none', borderRadius: '999px', padding: '7px 14px',
-                            fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                            background: esPausaHoy ? 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)' : C.surfaceContainerHigh,
+                            color: esPausaHoy ? '#92400E' : C.onSurfaceVariant,
+                            border: esPausaHoy ? '1px solid #FCD34D' : 'none',
+                            borderRadius: '999px', padding: '7px 14px',
+                            fontSize: '0.78rem', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+                            transition: 'all 0.15s ease',
+                            boxShadow: esPausaHoy ? '0 2px 6px rgba(245, 158, 11, 0.2)' : 'none',
                         }}
                     >
-                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>inbox</span>
-                        Bandeja
+                        <span className="material-symbols-outlined" style={{ fontSize: '16px', color: esPausaHoy ? '#D97706' : undefined }}>
+                            {esPausaHoy ? 'coffee' : 'bed'}
+                        </span>
+                        {esPausaHoy ? 'Día en Pausa ☕' : 'Pausa / Descanso'}
                     </button>
-                )}
 
-                {/* Registrar dinero sin salir del día */}
-                {addTransaction && (
-                    <RegistroRapido
-                        addTransaction={addTransaction} accounts={accounts}
-                        incomeCategories={incomeCategories} expenseCategories={expenseCategories}
-                        categoryAccountScope={categoryAccountScope}
-                        categoryGroups={categoryGroups} groupAccountScope={groupAccountScope}
-                    />
-                )}
+                    {/* Bandeja ya no va en el menú: se abre desde acá */}
+                    {onOpenBandeja && (
+                        <button
+                            onClick={onOpenBandeja}
+                            title="Abrir la Bandeja"
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '6px',
+                                background: C.surfaceContainerHigh, color: C.onSurfaceVariant,
+                                border: 'none', borderRadius: '999px', padding: '7px 14px',
+                                fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                            }}
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>inbox</span>
+                            Bandeja
+                        </button>
+                    )}
+
+                    {/* Registrar dinero sin salir del día */}
+                    {addTransaction && (
+                        <RegistroRapido
+                            addTransaction={addTransaction} accounts={accounts}
+                            incomeCategories={incomeCategories} expenseCategories={expenseCategories}
+                            categoryAccountScope={categoryAccountScope}
+                            categoryGroups={categoryGroups} groupAccountScope={groupAccountScope}
+                        />
+                    )}
+                </div>
             </div>
 
             {/* ── Contenido ── */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
+                {/* Banner de Modo Descanso / Pausa */}
+                {esPausaHoy && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        style={{
+                            ...bentoTarea,
+                            background: 'linear-gradient(135deg, rgba(254, 243, 199, 0.6) 0%, rgba(253, 230, 138, 0.35) 100%)',
+                            border: '1px solid rgba(245, 158, 11, 0.35)',
+                            padding: '0.85rem 1.15rem',
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            gap: '1rem',
+                            borderRadius: '14px',
+                            flexWrap: 'wrap',
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>☕</span>
+                            <div>
+                                <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#92400E' }}>
+                                    ¡Modo Descanso activado para este día!
+                                </div>
+                                <div style={{ fontSize: '0.76rem', color: '#B45309', fontWeight: 600 }}>
+                                    Tómate un respiro con total tranquilidad. Tus tareas de hoy no bajarán tu porcentaje en el calendario.
+                                </div>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleTogglePausa}
+                            style={{
+                                background: '#FFFFFF', border: '1px solid rgba(245, 158, 11, 0.4)',
+                                borderRadius: '999px', padding: '5px 12px',
+                                fontSize: '0.72rem', fontWeight: 800, color: '#B45309',
+                                cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                            }}
+                        >
+                            Reanudar día
+                        </button>
+                    </motion.div>
+                )}
+
                 {/* Progreso Diario — compacto */}
                 <section style={{
                     ...bentoTarea, border: 'none',
-                    background: 'rgba(15, 169, 122,0.06)',
+                    background: esPausaHoy ? 'rgba(245, 158, 11, 0.08)' : 'rgba(15, 169, 122,0.06)',
                     padding: '0.45rem 0.85rem', position: 'relative', overflow: 'hidden',
                     display: 'flex', alignItems: 'center', gap: '0.75rem',
                 }}>
@@ -1332,6 +1790,58 @@ export const ChecklistDiario = ({
                         startSporadicTimer={startSporadicTimer}
                         pauseSporadicTimer={pauseSporadicTimer}
                     />
+
+                    {/* ── Citas y Sesiones de Agenda del día ── */}
+                    {eventosDelDia.length > 0 && (
+                        <div style={{
+                            ...bentoTarea,
+                            background: 'rgba(245, 158, 11, 0.05)',
+                            border: '1px solid rgba(245, 158, 11, 0.25)',
+                            padding: '0.75rem 1rem',
+                            display: 'flex', flexDirection: 'column', gap: '8px',
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#D97706' }}>event</span>
+                                    <span style={{ fontSize: '0.86rem', fontWeight: 800, color: '#92400E' }}>
+                                        Citas y Sesiones de este día ({eventosDelDia.length})
+                                    </span>
+                                </div>
+                                {onOpenFullCalendar && (
+                                    <button
+                                        onClick={onOpenFullCalendar}
+                                        style={{ background: 'none', border: 'none', color: '#B45309', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
+                                    >
+                                        Ir a Calendario
+                                    </button>
+                                )}
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {eventosDelDia.map(ev => (
+                                    <div key={ev.id} style={{
+                                        display: 'flex', alignItems: 'center', gap: '8px',
+                                        padding: '6px 10px', borderRadius: '8px', background: '#FFFFFF',
+                                        border: '1px solid rgba(245, 158, 11, 0.15)',
+                                    }}>
+                                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#B45309', minWidth: '45px' }}>
+                                            {ev.startTime || 'Todo el día'}
+                                        </span>
+                                        <span style={{ flex: 1, minWidth: 0, fontSize: '0.84rem', fontWeight: 600, color: C.onSurface }}>
+                                            {ev.title}
+                                        </span>
+                                        {ev.notionEstado && (
+                                            <span style={{
+                                                fontSize: '0.66rem', fontWeight: 700, padding: '2px 8px', borderRadius: '999px',
+                                                background: 'rgba(15, 169, 122, 0.1)', color: '#0FA97A'
+                                            }}>
+                                                {ev.notionEstado}
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* DnD List */}
                     <div style={{ background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: '12px', overflow: 'hidden' }}>

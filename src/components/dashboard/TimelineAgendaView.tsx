@@ -5,6 +5,7 @@ import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, useDro
 import type { DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { getDiasPausa } from '../../lib/diasPausa';
 
 // Envoltorio sortable de FOCO: la fila/cabecera entera es el asa de arrastre
 // (se le pasan ref + estilo + handleProps). Un tap normal sigue funcionando
@@ -56,6 +57,7 @@ interface TimelineAgendaViewProps {
     toggleDailyBlock?: (id: number) => void;
     updateDailyBlock?: (id: number, updates: Record<string, any>) => void;
     removeDailyBlock?: (ids: number | number[]) => void;
+    onNavigateToDay?: (date: string) => void;
 }
 
 const DIAS_CORTOS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
@@ -911,7 +913,7 @@ export const TableroSemanal = ({
 export const TimelineAgendaView = ({
     calendarEvents, projects = [], rutinas = [], missions = [], habits = [], dailyBlocks = [],
     onRemoveEvent, onToggleMission, updateRoutine, updateCalendarEvent, addRoutine, addCalendarEvent,
-    addDailyBlock, toggleDailyBlock, updateDailyBlock, removeDailyBlock
+    addDailyBlock, toggleDailyBlock, updateDailyBlock, removeDailyBlock, onNavigateToDay
 }: TimelineAgendaViewProps) => {
     const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768);
     useEffect(() => {
@@ -922,6 +924,16 @@ export const TimelineAgendaView = ({
     }, []);
     const [viewMode, setViewMode] = useState<'timeline' | 'month' | 'appointments' | 'tasks'>('month');
     const [selectedDate, setSelectedDate] = useState(new Date());
+    const [diasPausa, setDiasPausa] = useState<string[]>(() => getDiasPausa());
+    useEffect(() => {
+        const sync = () => setDiasPausa(getDiasPausa());
+        window.addEventListener('aldia_pausa_change', sync);
+        window.addEventListener('storage', sync);
+        return () => {
+            window.removeEventListener('aldia_pausa_change', sync);
+            window.removeEventListener('storage', sync);
+        };
+    }, []);
     const [editingItem, setEditingItem] = useState<{ type: 'calendar' | 'routine' | 'timeblock' | 'new', data: any } | null>(null);
     // Arranca oculto: el usuario todavía no decidió cómo ordenar este panel
     // (mini-calendario + Categorías + Notion). Se abre con el botón de la cabecera.
@@ -1888,6 +1900,87 @@ export const TimelineAgendaView = ({
         else addDailyBlock?.(t.block.label, t.block.period || 'Otro', t.date, true, t.block.projectId, t.block.repeatDays);
     };
 
+    // Helper de color de progreso de tareas según porcentaje:
+    // Días futuros en 0%: gris neutro (#9AAAA3)
+    // Pasados/Hoy: < 40%: rojo | 40 a 59%: naranja | 60 a 79%: amarillo | ≥ 80%: verde
+    const getTaskProgressColor = (pct: number, isFuture: boolean = false) => {
+        if (isFuture && pct === 0) return '#9AAAA3';
+        if (pct >= 80) return '#0FA97A'; // Verde
+        if (pct >= 60) return '#EAB308'; // Amarillo
+        if (pct >= 40) return '#F97316'; // Naranja
+        return '#EF4444'; // Rojo (< 40%)
+    };
+
+    // Estadísticas de tareas por día del mes seleccionado
+    const taskStatsByDate = useMemo(() => {
+        const stats: Record<string, { total: number; done: number; pct: number }> = {};
+        const y = selectedDate.getFullYear();
+        const m = selectedDate.getMonth();
+        const diasMes = new Date(y, m + 1, 0).getDate();
+
+        // 1. Plantillas repetitivas
+        const plantillas: { label: string; period: string; repeatDays: number[] }[] = [];
+        const vistas = new Set<string>();
+        (dailyBlocks || []).forEach((b: any) => {
+            if (b.repeatDays?.length && b.isActive !== false) {
+                const k = `${b.label.trim().toLowerCase()}||${b.period || 'Otro'}`;
+                if (!vistas.has(k)) {
+                    vistas.add(k);
+                    plantillas.push({ label: b.label.trim().toLowerCase(), period: b.period || 'Otro', repeatDays: b.repeatDays });
+                }
+            }
+        });
+
+        // 2. Mapeo por cada día del mes
+        for (let d = 1; d <= diasMes; d++) {
+            const fecha = new Date(y, m, d);
+            const ds = fecha.toLocaleDateString('en-CA');
+            const jsDia = fecha.getDay();
+
+            const repHoy = plantillas.filter(p => p.repeatDays.includes(jsDia));
+            const sueltasHoy = (dailyBlocks || []).filter((b: any) => {
+                if (b.repeatDays?.length) return false;
+                return b.date === ds;
+            });
+
+            const total = repHoy.length + sueltasHoy.length;
+
+            let done = 0;
+            repHoy.forEach(r => {
+                const completada = (dailyBlocks || []).some((b: any) =>
+                    b.label.trim().toLowerCase() === r.label &&
+                    (b.period || 'Otro') === r.period &&
+                    b.date === ds &&
+                    b.completed
+                );
+                if (completada) done++;
+            });
+
+            sueltasHoy.forEach((b: any) => {
+                if (b.completed) done++;
+            });
+
+            const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+            stats[ds] = { total, done, pct };
+        }
+
+        return stats;
+    }, [selectedDate, dailyBlocks]);
+
+    // Estadísticas globales del mes
+    const monthTaskSummary = useMemo(() => {
+        let total = 0;
+        let done = 0;
+        Object.entries(taskStatsByDate).forEach(([ds, s]) => {
+            // Si el día está en pausa y no se completó ninguna tarea, se excluye de la meta del mes
+            if (diasPausa.includes(ds) && s.done === 0) return;
+            total += s.total;
+            done += s.done;
+        });
+        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+        return { total, done, pct };
+    }, [taskStatsByDate, diasPausa]);
+
     const currentMin = (currentTime.getHours() * 60) + currentTime.getMinutes();
     const currentPos = tlY(currentMin);
 
@@ -2349,61 +2442,162 @@ export const TimelineAgendaView = ({
                         </div>
                     )}
                     {viewMode === 'month' && (
-                        <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
-                            {dayNames.map(d => <div key={d} style={{ textAlign: 'center', fontSize: '0.7rem', fontWeight: 900 }}>{d}</div>)}
-                            {monthDays.padding.map((_, i) => <div key={`pad-${i}`} />)}
-                            {monthDays.days.map(d => {
-                                const cellDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), d);
-                                const cellStr = cellDate.toLocaleDateString('en-CA');
-                                const isToday = cellStr === new Date().toLocaleDateString('en-CA');
-                                const evs = monthEventsByDate[cellStr] || [];
-                                return (
-                                    <div
-                                        key={`day-${d}`}
-                                        onClick={() => { setSelectedDate(cellDate); setViewMode('timeline'); }}
-                                        style={{
-                                            minHeight: '84px', background: 'white', borderRadius: '12px', padding: '6px',
-                                            display: 'flex', flexDirection: 'column', gap: '3px', cursor: 'pointer',
-                                            border: isToday ? '2px solid var(--domain-orange)' : '1px solid #F7FAF8', overflow: 'hidden'
-                                        }}
-                                    >
-                                        <div style={{ fontSize: '0.72rem', fontWeight: 900, color: isToday ? 'var(--domain-orange)' : '#6C8079', textAlign: 'right', flexShrink: 0 }}>{d}</div>
-                                        {evs.slice(0, 3).map((e: any) => e.isTask ? (
-                                            <div
-                                                key={e.id}
-                                                title={`${e.startTime ? e.startTime + ' · ' : ''}${e.title} — clic para marcar`}
-                                                onClick={ev => { ev.stopPropagation(); marcarTareaDeCelda(e.task); }}
-                                                style={{
-                                                    display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.6rem', fontWeight: 700, lineHeight: 1.25,
-                                                    borderRadius: '5px', padding: '2px 4px', background: e.done ? '#F1F5F3' : 'rgba(245,158,11,0.12)',
-                                                    color: e.done ? '#9AAAA3' : '#7A4B06', textDecoration: e.done ? 'line-through' : 'none',
-                                                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                                                }}
-                                            >
-                                                <span style={{ width: '9px', height: '9px', borderRadius: '50%', flexShrink: 0, border: `1.5px solid ${e.done ? '#0FA97A' : '#F59E0B'}`, background: e.done ? '#0FA97A' : 'transparent' }} />
-                                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.startTime ? `${e.startTime} ` : ''}{e.title}</span>
-                                            </div>
-                                        ) : (
-                                            <div
-                                                key={e.id}
-                                                title={e.raw ? `${e.startTime ? e.startTime + ' · ' : ''}${e.title} — clic para ver detalle` : `${e.startTime ? e.startTime + ' · ' : ''}${e.title}`}
-                                                onClick={ev => { if (e.raw) { ev.stopPropagation(); setEditingItem({ type: 'calendar', data: e.raw }); } }}
-                                                style={{
-                                                    fontSize: '0.6rem', fontWeight: 800, lineHeight: 1.25, borderRadius: '5px',
-                                                    padding: '2px 4px', color: 'white', background: e.color,
-                                                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                                                    opacity: e.isDelivery ? 0.85 : 1
-                                                }}
-                                            >
-                                                {e.startTime ? `${e.startTime} ` : ''}{e.title}
-                                            </div>
-                                        ))}
-                                        {evs.length > 3 && (
-                                            <div style={{ fontSize: '0.58rem', fontWeight: 800, color: '#6C8079' }}>+{evs.length - 3} más</div>
-                                        )}
+                        <div>
+                            {/* Barra de progreso global del mes seleccionado */}
+                            <div style={{ padding: '0.75rem 1rem 0' }}>
+                                <div style={{
+                                    background: '#FFFFFF',
+                                    border: '1px solid #E5EFEA',
+                                    borderRadius: '12px',
+                                    padding: '0.65rem 1rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    flexWrap: 'wrap',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: getTaskProgressColor(monthTaskSummary.pct) }}>
+                                            task_alt
+                                        </span>
+                                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--text-carbon)' }}>
+                                            Tareas de {monthNames[selectedDate.getMonth()]}:
+                                        </span>
+                                        <span style={{ fontSize: '0.85rem', fontWeight: 900, color: getTaskProgressColor(monthTaskSummary.pct) }}>
+                                            {monthTaskSummary.done} de {monthTaskSummary.total} completadas ({monthTaskSummary.pct}%)
+                                        </span>
                                     </div>
-                                );
-                            })}
+                                    <div style={{ flex: 1, minWidth: '140px', height: '8px', background: '#F1F5F3', borderRadius: '999px', overflow: 'hidden' }}>
+                                        <div style={{ width: `${monthTaskSummary.pct}%`, height: '100%', background: getTaskProgressColor(monthTaskSummary.pct), borderRadius: '999px', transition: 'width 0.3s ease' }} />
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.65rem', fontWeight: 700, color: '#6C8079' }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}><span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#EF4444' }} /> &lt;40%</span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}><span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#F97316' }} /> 40-59%</span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}><span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#EAB308' }} /> 60-79%</span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}><span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#0FA97A' }} /> ≥80%</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ padding: '0.75rem 1rem 1rem', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
+                                {dayNames.map(d => <div key={d} style={{ textAlign: 'center', fontSize: '0.7rem', fontWeight: 900, color: '#6C8079' }}>{d}</div>)}
+                                {monthDays.padding.map((_, i) => <div key={`pad-${i}`} />)}
+                                {monthDays.days.map(d => {
+                                    const cellDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), d);
+                                    const cellStr = cellDate.toLocaleDateString('en-CA');
+                                    const isToday = cellStr === new Date().toLocaleDateString('en-CA');
+                                    const evs = monthEventsByDate[cellStr] || [];
+                                    const stats = taskStatsByDate[cellStr];
+                                    const isPausa = diasPausa.includes(cellStr);
+                                    return (
+                                        <div
+                                            key={`day-${d}`}
+                                            onClick={() => {
+                                                if (onNavigateToDay) {
+                                                    onNavigateToDay(cellStr);
+                                                } else {
+                                                    setSelectedDate(cellDate);
+                                                    setViewMode('timeline');
+                                                }
+                                            }}
+                                            title={isPausa ? `Día de descanso (${cellStr}) — clic para ir a Mi Día` : `Ver pendientes de este día en Mi Día (${cellStr})`}
+                                            style={{
+                                                minHeight: '88px', background: isPausa ? '#FFFDF7' : 'white', borderRadius: '12px', padding: '6px',
+                                                display: 'flex', flexDirection: 'column', gap: '3px', cursor: 'pointer',
+                                                border: isToday ? '2px solid var(--domain-orange)' : isPausa ? '1px dashed #FCD34D' : '1px solid #F7FAF8', overflow: 'hidden',
+                                                transition: 'box-shadow 0.15s, border-color 0.15s'
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                                                {isPausa ? (
+                                                    <span style={{ fontSize: '0.65rem' }} title="Día en modo pausa / descanso">☕</span>
+                                                ) : <span />}
+                                                <div style={{ fontSize: '0.72rem', fontWeight: 900, color: isToday ? 'var(--domain-orange)' : '#6C8079', textAlign: 'right' }}>{d}</div>
+                                            </div>
+                                            {evs.slice(0, 3).map((e: any) => e.isTask ? (
+                                                <div
+                                                    key={e.id}
+                                                    title={`${e.startTime ? e.startTime + ' · ' : ''}${e.title} — clic para marcar`}
+                                                    onClick={ev => { ev.stopPropagation(); marcarTareaDeCelda(e.task); }}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.6rem', fontWeight: 700, lineHeight: 1.25,
+                                                        borderRadius: '5px', padding: '2px 4px', background: e.done ? '#F1F5F3' : 'rgba(245,158,11,0.12)',
+                                                        color: e.done ? '#9AAAA3' : '#7A4B06', textDecoration: e.done ? 'line-through' : 'none',
+                                                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                                    }}
+                                                >
+                                                    <span style={{ width: '9px', height: '9px', borderRadius: '50%', flexShrink: 0, border: `1.5px solid ${e.done ? '#0FA97A' : '#F59E0B'}`, background: e.done ? '#0FA97A' : 'transparent' }} />
+                                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.startTime ? `${e.startTime} ` : ''}{e.title}</span>
+                                                </div>
+                                            ) : (
+                                                <div
+                                                    key={e.id}
+                                                    title={e.raw ? `${e.startTime ? e.startTime + ' · ' : ''}${e.title} — clic para ver detalle` : `${e.startTime ? e.startTime + ' · ' : ''}${e.title}`}
+                                                    onClick={ev => { if (e.raw) { ev.stopPropagation(); setEditingItem({ type: 'calendar', data: e.raw }); } }}
+                                                    style={{
+                                                        fontSize: '0.6rem', fontWeight: 800, lineHeight: 1.25, borderRadius: '5px',
+                                                        padding: '2px 4px', color: 'white', background: e.color,
+                                                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                                        opacity: e.isDelivery ? 0.85 : 1
+                                                    }}
+                                                >
+                                                    {e.startTime ? `${e.startTime} ` : ''}{e.title}
+                                                </div>
+                                            ))}
+                                            {evs.length > 3 && (
+                                                <div style={{ fontSize: '0.58rem', fontWeight: 800, color: '#6C8079' }}>+{evs.length - 3} más</div>
+                                            )}
+
+                                            {/* Si está en pausa o barra de progreso de tareas del día */}
+                                            {isPausa ? (
+                                                <div style={{
+                                                    marginTop: 'auto', paddingTop: '3px',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    gap: '3px', background: 'rgba(245, 158, 11, 0.12)',
+                                                    borderRadius: '6px', padding: '2px 4px',
+                                                    border: '1px solid rgba(245, 158, 11, 0.25)',
+                                                }}>
+                                                    <span style={{ fontSize: '0.62rem' }}>☕</span>
+                                                    <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#B45309' }}>
+                                                        Descanso {stats && stats.done > 0 ? `(${stats.done}/${stats.total})` : ''}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                stats && stats.total > 0 && (() => {
+                                                    const isFuture = cellStr > new Date().toLocaleDateString('en-CA');
+                                                    const cellColor = getTaskProgressColor(stats.pct, isFuture);
+                                                    return (
+                                                        <div style={{ marginTop: 'auto', paddingTop: '3px', borderTop: '1px solid #F7FAF8' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.6rem', fontWeight: 800, color: cellColor, lineHeight: 1 }}>
+                                                                {isFuture && stats.pct === 0 ? (
+                                                                    <>
+                                                                        <span>{stats.total} {stats.total === 1 ? 'tarea' : 'tareas'}</span>
+                                                                        <span style={{ fontSize: '0.55rem', fontWeight: 700, color: '#9AAAA3' }}>prog.</span>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <span>{stats.done}/{stats.total}</span>
+                                                                        <span>{stats.pct}%</span>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                            <div style={{ width: '100%', height: '4px', background: '#F1F5F3', borderRadius: '999px', overflow: 'hidden', marginTop: '2px' }}>
+                                                                <div style={{
+                                                                    width: isFuture && stats.pct === 0 ? '100%' : `${stats.pct}%`,
+                                                                    height: '100%',
+                                                                    background: isFuture && stats.pct === 0 ? '#E2E8E5' : cellColor,
+                                                                    borderRadius: '999px',
+                                                                    transition: 'width 0.25s ease'
+                                                                }} />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     )}
                     {viewMode === 'tasks' && (

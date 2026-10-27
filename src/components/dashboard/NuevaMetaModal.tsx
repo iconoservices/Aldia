@@ -25,9 +25,10 @@ export interface NuevaMeta {
     comoSub?: boolean;     // crear como sub-meta (un paso grande con sus propias tareas)
     projectId?: number;
     horizon: GoalHorizon;
+    nivel?: number;        // 1: Oxígeno, 2: Flujo, 3: Expansión, 4: Salto
 }
 
-const VACIA: NuevaMeta = { title: '', area: 'Personal', icon: ICONOS[0], color: COLORES[0], targetDate: '', objetivo: '', actual: '', unidad: '', periodo: '', esTarea: false, pasosTexto: '', dias: [], horizon: 'corto' };
+const VACIA: NuevaMeta = { title: '', area: 'Personal', icon: ICONOS[0], color: COLORES[0], targetDate: '', objetivo: '', actual: '', unidad: '', periodo: '', esTarea: false, pasosTexto: '', dias: [], horizon: 'corto', nivel: 1 };
 const DIAS_FORM: { l: string; d: number }[] = [{ l: 'L', d: 1 }, { l: 'M', d: 2 }, { l: 'X', d: 3 }, { l: 'J', d: 4 }, { l: 'V', d: 5 }, { l: 'S', d: 6 }, { l: 'D', d: 0 }];
 
 export const PLAZOS_INFO: { k: GoalHorizon; titulo: string; sub: string }[] = [
@@ -301,6 +302,34 @@ export const NuevaMetaModal = ({ open, movil, tipo, inicial, editando = false, p
                                         </div>
                                     )}
                                     <p style={{ margin: '6px 0 0', fontSize: '0.72rem', color: C.outline }}>El norte al que apunta: sin número ni fecha. Son tus Proyectos.</p>
+                                </div>
+
+                                <div>
+                                    <div style={etiqueta}>Paso del Plan</div>
+                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                        {[
+                                            { n: 1, label: 'Paso 1: Oxígeno', color: '#EF4444' },
+                                            { n: 2, label: 'Paso 2: Flujo', color: '#F59E0B' },
+                                            { n: 3, label: 'Paso 3: Expansión', color: '#10B981' },
+                                            { n: 4, label: 'Paso 4: Salto', color: '#3B82F6' },
+                                        ].map(lvl => (
+                                            <button
+                                                type="button"
+                                                key={lvl.n}
+                                                onClick={() => set({ nivel: lvl.n })}
+                                                style={{
+                                                    ...chip((f.nivel ?? 1) === lvl.n, lvl.color),
+                                                    display: 'flex', alignItems: 'center', gap: '5px',
+                                                }}
+                                            >
+                                                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: (f.nivel ?? 1) === lvl.n ? '#fff' : lvl.color }} />
+                                                {lvl.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p style={{ margin: '6px 0 0', fontSize: '0.72rem', color: C.outline }}>
+                                        A qué fase de tu plan multinegocio suma esta meta.
+                                    </p>
                                 </div>
 
                                 <div>

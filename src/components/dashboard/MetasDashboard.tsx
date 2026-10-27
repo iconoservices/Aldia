@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NuevaMetaModal, PLAZOS_INFO } from './NuevaMetaModal';
 import type { NuevaMeta } from './NuevaMetaModal';
+import { PlanMaestroCard } from './PlanMaestroCard';
 import type { DailyBlock, Goal, GoalHorizon, GoalStatus, Project } from '../../hooks/useAlDiaState';
 import { SelectPropio } from '../ui/SelectPropio';
 import { avance, tareasDeMeta, actualVigente, clavePeriodo, etiquetaDias } from './metasAvance';
@@ -45,6 +46,68 @@ const STATUS_INFO: Record<GoalStatus, { label: string; color: string; bg: string
 const STATUS_ORDEN: GoalStatus[] = ['pendiente', 'en-progreso', 'completado'];
 const STATUS_ICONO: Record<GoalStatus, string> = { 'pendiente': 'radio_button_unchecked', 'en-progreso': 'timelapse', 'completado': 'check_circle' };
 
+const NIVELES_ESTRATEGICOS: Record<number, {
+    numero: number;
+    titulo: string;
+    subtitulo: string;
+    horizonte: string;
+    color: string;
+    icono: string;
+}> = {
+    1: {
+        numero: 1,
+        titulo: 'PASO 1: OXÍGENO Y RESPIRO',
+        subtitulo: 'El dinero de HOY · Salir de deudas y generar liquidez inmediata',
+        horizonte: 'Próximos 15-30 días',
+        color: '#EF4444',
+        icono: 'emergency',
+    },
+    2: {
+        numero: 2,
+        titulo: 'PASO 2: FLUJO ASEGURADO Y FORMALIDAD',
+        subtitulo: 'Ingresos recurrentes mes a mes sin corretear clientes todos los días',
+        horizonte: 'Meses 2 al 6',
+        color: '#F59E0B',
+        icono: 'cached',
+    },
+    3: {
+        numero: 3,
+        titulo: 'PASO 3: EXPANSIÓN Y ACTIVOS DIGITALES',
+        subtitulo: 'Multiplicar alcance, automatizar y monetizar en dólares',
+        horizonte: 'Meses 6 al 12',
+        color: '#10B981',
+        icono: 'trending_up',
+    },
+    4: {
+        numero: 4,
+        titulo: 'PASO 4: EL SALTO GRANDE',
+        subtitulo: 'Geopolítica, viajes, alianzas y poder real',
+        horizonte: 'Año 2 en adelante',
+        color: '#3B82F6',
+        icono: 'flight_takeoff',
+    },
+};
+
+const getNivelMeta = (g: Goal): number => {
+    if (g.nivel && g.nivel >= 1 && g.nivel <= 4) return g.nivel;
+    const txt = `${g.title} ${g.description || ''} ${g.area || ''}`.toLowerCase();
+    if (txt.includes('auspiciador') || txt.includes('foto') || txt.includes('facebook') || txt.includes('whatsapp') || txt.includes('oxígeno') || txt.includes('respiro')) {
+        return 1;
+    }
+    if (txt.includes('crecer') || txt.includes('ruc') || txt.includes('boga') || txt.includes('delva') || txt.includes('tienda') || txt.includes('marketplace') || txt.includes('tesis')) {
+        return 2;
+    }
+    if (txt.includes('ojo') || txt.includes('capibara') || txt.includes('terreno') || txt.includes('activo') || txt.includes('dólar') || txt.includes('dolar')) {
+        return 3;
+    }
+    if (txt.includes('viaje') || txt.includes('brasil') || txt.includes('frontera') || txt.includes('produce') || txt.includes('salto')) {
+        return 4;
+    }
+    if (g.horizon === 'corto') return 1;
+    if (g.horizon === 'mediano') return 2;
+    return 3;
+};
+
 const nombrePlazo = (goal: Goal, k: GoalHorizon) =>
     goal.nombresPlazo?.[k]?.trim() || PLAZOS_INFO.find(p => p.k === k)!.titulo;
 
@@ -63,13 +126,14 @@ const Barra = ({ pct, color, alto = 4 }: { pct: number; color: string; alto?: nu
 
 // Qué formulario está abierto: crear/editar meta, o crear/editar sub-meta.
 type Form =
-    | { tipo: 'meta'; goal?: Goal }
+    | { tipo: 'meta'; goal?: Goal; inicial?: Partial<NuevaMeta> }
     | { tipo: 'sub'; padre: Goal; goal?: Goal; inicial?: Partial<NuevaMeta> };
 
 const aForm = (g: Goal): Partial<NuevaMeta> => ({
     title: g.title, area: g.area, icon: g.icon, color: g.color, targetDate: g.targetDate || '',
     objetivo: g.objetivo != null ? String(g.objetivo) : '', actual: g.actual != null || g.periodo ? String(actualVigente(g)) : '',
     unidad: g.unidad || '', periodo: g.periodo ?? '', projectId: g.projectId, horizon: g.horizon,
+    nivel: g.nivel ?? getNivelMeta(g),
 });
 const num = (s: string) => { const n = parseFloat(s); return isFinite(n) ? n : undefined; };
 
@@ -96,7 +160,15 @@ export const MetasDashboard = ({
         window.addEventListener('aldia:nueva-meta', abrir);
         return () => window.removeEventListener('aldia:nueva-meta', abrir);
     }, []);
-    const [expandedId, setExpandedId] = useState<number | null>(null);
+    const [metasColapsadas, setMetasColapsadas] = useState<Set<number>>(new Set());
+    const toggleColapso = (id: number) => {
+        setMetasColapsadas(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
     const [subAbierta, setSubAbierta] = useState<number | null>(null);
     const [plazoAbierto, setPlazoAbierto] = useState<{ goalId: number; plazo: GoalHorizon } | null>(null);
     const [detalle, setDetalle] = useState<{ goalId: number; milestoneId: number; plazo: GoalHorizon } | null>(null);
@@ -104,7 +176,32 @@ export const MetasDashboard = ({
     const raiz = goals.filter(g => !g.parentId);
     const subsDe = (id: number) => goals.filter(g => g.parentId === id);
 
-    // Agrupar por visión (proyecto). Las metas sin visión van al final.
+    // Jerarquía: Niveles por encima de los proyectos
+    // Nivel (1..4) -> Proyectos / Visiones -> Metas
+    const gruposNiveles = [1, 2, 3, 4].map(nNum => {
+        const info = NIVELES_ESTRATEGICOS[nNum];
+        const metasNivel = raiz.filter(g => getNivelMeta(g) === nNum);
+        metasNivel.sort((a, b) => Number(!!a.inactiva) - Number(!!b.inactiva));
+
+        const gruposProyecto: { proyecto?: Project; metas: Goal[] }[] = [];
+        metasNivel.forEach(g => {
+            const p = projects.find(x => x.id === g.projectId);
+            const exist = gruposProyecto.find(gr => gr.proyecto?.id === p?.id);
+            if (exist) exist.metas.push(g);
+            else gruposProyecto.push({ proyecto: p, metas: [g] });
+        });
+        gruposProyecto.sort((a, b) => (a.proyecto ? 0 : 1) - (b.proyecto ? 0 : 1));
+
+        return {
+            nivelNum: nNum,
+            info,
+            gruposProyecto,
+            totalMetas: metasNivel.length,
+            completadas: metasNivel.filter(g => g.status === 'completado').length,
+        };
+    }).filter(gn => gn.totalMetas > 0 || gn.nivelNum === 1 || gn.nivelNum === 2);
+
+    // Compatibilidad plana para drag and drop
     const grupos: { proyecto?: Project; metas: Goal[] }[] = [];
     raiz.forEach(g => {
         const p = projects.find(x => x.id === g.projectId);
@@ -113,29 +210,32 @@ export const MetasDashboard = ({
     });
     grupos.sort((a, b) => (a.proyecto ? 0 : 1) - (b.proyecto ? 0 : 1));
     grupos.forEach(gr => gr.metas.sort((a, b) => Number(!!a.inactiva) - Number(!!b.inactiva)));
-    const conVisiones = grupos.some(g => g.proyecto);
 
     // Meta raíz: sube/baja dentro de su visión; en el borde del grupo, mueve la
     // visión entera con respecto a la vecina (así también se pueden ordenar las
     // metas cuando cada visión tiene una sola). "Sin visión" siempre queda al final.
     const grupoVecino = (gi: number, dir: -1 | 1) => {
         const g = grupos[gi], v = grupos[gi + dir];
-        return v && !!g.proyecto === !!v.proyecto ? v : undefined;
+        return g && v && !!g.proyecto === !!v.proyecto ? v : undefined;
     };
     const puedeMover = (gi: number, i: number, dir: -1 | 1) => {
-        const n = grupos[gi].metas.length;
+        const gr = grupos[gi];
+        if (!gr || !gr.metas) return false;
+        const n = gr.metas.length;
         return dir === -1 ? i > 0 || !!grupoVecino(gi, -1) : i < n - 1 || !!grupoVecino(gi, 1);
     };
     const mover = (gi: number, id: number, dir: -1 | 1) => {
         if (!reorderGoals) return;
-        const metas = grupos[gi].metas;
+        const gr = grupos[gi];
+        if (!gr || !gr.metas) return;
+        const metas = gr.metas;
         const i = metas.findIndex(g => g.id === id);
         const dentro = i + dir >= 0 && i + dir < metas.length;
         if (dentro) { const nuevo = moverEn(goals, metas, id, dir); if (nuevo) reorderGoals(nuevo); return; }
         if (!grupoVecino(gi, dir)) return;
         const orden = [...grupos];
         [orden[gi], orden[gi + dir]] = [orden[gi + dir], orden[gi]];
-        const planas = orden.flatMap(gr => gr.metas);
+        const planas = orden.flatMap(g => g.metas);
         let k = 0;
         reorderGoals(goals.map(g => (g.parentId ? g : planas[k++])));
     };
@@ -176,8 +276,8 @@ export const MetasDashboard = ({
         if (!form) return;
         const numeros = { objetivo: num(m.objetivo), actual: num(m.actual), unidad: m.unidad || undefined, periodo: m.periodo || undefined, periodoClave: m.periodo ? clavePeriodo(m.periodo) : undefined };
         if (form.tipo === 'meta') {
-            if (form.goal) updateGoal(form.goal.id, { title: m.title, area: m.area, icon: m.icon, color: m.color, targetDate: m.targetDate || undefined, projectId: m.projectId, ...numeros });
-            else addGoal(m.title, 'mediano', m.area || 'Personal', m.color, m.icon, m.targetDate || undefined, m.projectId, [], undefined, numeros);
+            if (form.goal) updateGoal(form.goal.id, { title: m.title, area: m.area, icon: m.icon, color: m.color, targetDate: m.targetDate || undefined, projectId: m.projectId, nivel: m.nivel, ...numeros });
+            else addGoal(m.title, 'mediano', m.area || 'Personal', m.color, m.icon, m.targetDate || undefined, m.projectId, [], undefined, { ...numeros, nivel: m.nivel });
         } else {
             const p = form.padre;
             if (m.esTarea && !form.goal) {
@@ -208,8 +308,10 @@ export const MetasDashboard = ({
     const padreDeSub = sub ? goals.find(g => g.id === sub.parentId) : undefined;
     const metaPlazo = plazoAbierto ? goals.find(g => g.id === plazoAbierto.goalId) : undefined;
 
-    const filaMeta = (goal: Goal, i: number, gi: number) => {
+    const filaMeta = (goal: Goal) => {
         const subs = subsDe(goal.id);
+        const gi = grupos.findIndex(gr => gr.metas.some(m => m.id === goal.id));
+        const i = gi >= 0 ? grupos[gi].metas.findIndex(m => m.id === goal.id) : 0;
         const columnas = (
             <Columnas
                 goal={goal} subs={subs} dailyBlocks={dailyBlocks} movil={movil}
@@ -219,17 +321,18 @@ export const MetasDashboard = ({
                 onToggleTarea={mid => toggleGoalMilestone(goal.id, mid)}
             />
         );
+        const expandido = !metasColapsadas.has(goal.id);
         const tarjeta = (
             <TarjetaMeta
                 goal={goal} subs={subs} dailyBlocks={dailyBlocks} movil={movil}
-                expandido={movil && expandedId === goal.id}
-                onToggleExpand={() => movil && setExpandedId(expandedId === goal.id ? null : goal.id)}
+                expandido={expandido}
+                onToggleExpand={() => toggleColapso(goal.id)}
                 onSetStatus={status => updateGoal(goal.id, { status })}
                 onEditar={() => setForm({ tipo: 'meta', goal })}
                 onRemove={() => { if (subs.length === 0 || window.confirm(`Se borrará "${goal.title}" y sus ${subs.length} sub-meta(s).`)) removeGoal(goal.id); }}
                 onUpdate={u => updateGoal(goal.id, u)}
-                onSubir={reorderGoals && puedeMover(gi, i, -1) ? () => mover(gi, goal.id, -1) : undefined}
-                onBajar={reorderGoals && puedeMover(gi, i, 1) ? () => mover(gi, goal.id, 1) : undefined}
+                onSubir={reorderGoals && gi >= 0 && puedeMover(gi, i, -1) ? () => mover(gi, goal.id, -1) : undefined}
+                onBajar={reorderGoals && gi >= 0 && puedeMover(gi, i, 1) ? () => mover(gi, goal.id, 1) : undefined}
                 onArrastrar={reorderGoals && !movil ? {
                     start: ev => {
                         ev.dataTransfer.effectAllowed = 'move';
@@ -242,22 +345,23 @@ export const MetasDashboard = ({
                 } : undefined}
                 toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal}
             >
-                {movil && !goal.inactiva && columnas}
+                {!goal.inactiva && columnas}
             </TarjetaMeta>
         );
-        return movil ? <Fragment key={goal.id}>{tarjeta}</Fragment> : (
+        return (
             <div
                 key={goal.id} data-meta-fila
                 onDragOver={arrastrando != null ? ev => { ev.preventDefault(); if (sobreMeta !== goal.id) setSobreMeta(goal.id); } : undefined}
                 onDrop={arrastrando != null ? ev => { ev.preventDefault(); soltarMeta(goal.id); } : undefined}
                 style={{
-                    display: 'flex', gap: '12px', alignItems: 'stretch', borderRadius: '16px',
+                    borderRadius: '16px',
                     opacity: arrastrando === goal.id ? 0.45 : 1,
                     outline: sobreMeta === goal.id && arrastrando !== goal.id ? `2px dashed ${C.primary}` : 'none', outlineOffset: '4px',
+                    marginBottom: '10px',
+                    width: '100%',
                 }}
             >
-                <div style={{ width: '260px', flexShrink: 0 }}>{tarjeta}</div>
-                {!goal.inactiva && <div style={{ flex: 1, minWidth: 0 }}>{columnas}</div>}
+                {tarjeta}
             </div>
         );
     };
@@ -310,27 +414,175 @@ export const MetasDashboard = ({
                 </div>
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-                {grupos.map((gr, gi) => (
-                    <section key={gr.proyecto?.id ?? 'sin'} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {conVisiones && (
-                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.outline }}>
-                                    {gr.proyecto ? '🧭 Visión' : 'Sin visión'}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {/* 🌟 Plan Maestro · Supermetas Multinegocio y Niveles Estratégicos */}
+                <PlanMaestroCard
+                    projects={projects}
+                    movil={movil}
+                />
+
+                {gruposNiveles.map(gn => (
+                    <section key={gn.nivelNum} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '6px' }}>
+                        {/* Cabecera del Nivel (por encima de los proyectos) */}
+                        <div style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            background: `${gn.info.color}0D`,
+                            border: `1px solid ${gn.info.color}35`,
+                            borderLeftWidth: '5px',
+                            borderLeftColor: gn.info.color,
+                            borderRadius: '14px',
+                            padding: movil ? '10px 12px' : '12px 18px',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: '22px', color: gn.info.color }}>
+                                    {gn.info.icono}
                                 </span>
-                                {gr.proyecto && <span style={{ fontSize: '0.95rem', fontWeight: 800, color: gr.proyecto.color || C.onSurface }}>{gr.proyecto.name}</span>}
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: '0.94rem', fontWeight: 900, color: gn.info.color, letterSpacing: '0.04em' }}>
+                                            {gn.info.titulo}
+                                        </span>
+                                        <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '1px 8px', borderRadius: '999px', background: `${gn.info.color}20`, color: gn.info.color }}>
+                                            {gn.info.horizonte}
+                                        </span>
+                                    </div>
+                                    <div style={{ fontSize: '0.76rem', color: C.onSurfaceVariant, marginTop: '2px', fontWeight: 500 }}>
+                                        {gn.info.subtitulo}
+                                    </div>
+                                </div>
                             </div>
-                        )}
-                        <AnimatePresence initial={false}>
-                            {gr.metas.map((g, i) => filaMeta(g, i, gi))}
-                        </AnimatePresence>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{
+                                    fontSize: '0.72rem', fontWeight: 800, padding: '3px 10px', borderRadius: '999px',
+                                    background: gn.completadas === gn.totalMetas && gn.totalMetas > 0 ? '#10B981' : C.surfaceLowest,
+                                    color: gn.completadas === gn.totalMetas && gn.totalMetas > 0 ? '#fff' : C.onSurface,
+                                    border: `1px solid ${C.outlineVariant}`,
+                                }}>
+                                    {gn.completadas}/{gn.totalMetas} metas logradas
+                                </span>
+                                <button
+                                    onClick={() => setForm({ tipo: 'meta', inicial: { nivel: gn.nivelNum, color: gn.info.color } })}
+                                    title={`Agregar meta al Paso ${gn.nivelNum}`}
+                                    style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: '3px',
+                                        fontSize: '0.72rem', fontWeight: 800, padding: '3px 10px', borderRadius: '999px',
+                                        background: `${gn.info.color}15`, color: gn.info.color,
+                                        border: `1px solid ${gn.info.color}35`, cursor: 'pointer', fontFamily: 'inherit',
+                                    }}
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>add</span>
+                                    <span>Meta</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Visiones / Proyectos dentro de este Nivel */}
+                        {gn.gruposProyecto.map(gr => (
+                            <div key={gr.proyecto?.id ?? 'sin'} style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: movil ? '2px' : '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap', marginTop: '2px' }}>
+                                    <span style={{ fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.outline }}>
+                                        {gr.proyecto ? '🧭 Visión' : 'Otras metas'}
+                                    </span>
+                                    {gr.proyecto && (
+                                        <span style={{ fontSize: '0.92rem', fontWeight: 800, color: gr.proyecto.color || C.onSurface }}>
+                                            {gr.proyecto.name}
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div style={{
+                                    display: 'flex',
+                                    flexDirection: movil ? 'column' : 'row',
+                                    flexWrap: 'wrap',
+                                    gap: '14px',
+                                    alignItems: 'stretch',
+                                }}>
+                                    <AnimatePresence initial={false}>
+                                        {gr.metas.map(g => (
+                                            <div
+                                                key={g.id}
+                                                style={{
+                                                    flex: gr.metas.length === 1 && !movil ? '1 1 580px' : '1 1 450px',
+                                                    minWidth: movil ? '100%' : '380px',
+                                                    maxWidth: '100%',
+                                                    display: 'flex',
+                                                }}
+                                            >
+                                                {filaMeta(g)}
+                                            </div>
+                                        ))}
+                                    </AnimatePresence>
+
+                                    {/* Tarjeta "+ Agregar meta" al costado */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setForm({
+                                            tipo: 'meta',
+                                            inicial: {
+                                                projectId: gr.proyecto?.id,
+                                                nivel: gn.nivelNum,
+                                                color: gr.proyecto?.color || gn.info.color,
+                                                area: gr.proyecto?.name ? 'Negocio' : 'Personal',
+                                            }
+                                        })}
+                                        style={{
+                                            flex: movil ? '1 1 auto' : '0 0 200px',
+                                            minHeight: movil ? '50px' : '140px',
+                                            borderRadius: '14px',
+                                            border: `1.5px dashed ${gr.proyecto?.color ? `${gr.proyecto.color}60` : C.outlineVariant}`,
+                                            background: gr.proyecto?.color ? `${gr.proyecto.color}06` : 'rgba(0,0,0,0.015)',
+                                            display: 'flex',
+                                            flexDirection: movil ? 'row' : 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '8px',
+                                            cursor: 'pointer',
+                                            padding: movil ? '10px 14px' : '18px 14px',
+                                            color: gr.proyecto?.color || C.primary,
+                                            fontFamily: 'inherit',
+                                            transition: 'all 0.18s ease',
+                                            boxSizing: 'border-box',
+                                            marginBottom: '10px',
+                                        }}
+                                        onMouseEnter={e => {
+                                            e.currentTarget.style.borderColor = gr.proyecto?.color || C.primary;
+                                            e.currentTarget.style.background = gr.proyecto?.color ? `${gr.proyecto.color}15` : 'rgba(15,169,122,0.08)';
+                                        }}
+                                        onMouseLeave={e => {
+                                            e.currentTarget.style.borderColor = gr.proyecto?.color ? `${gr.proyecto.color}60` : C.outlineVariant;
+                                            e.currentTarget.style.background = gr.proyecto?.color ? `${gr.proyecto.color}06` : 'rgba(0,0,0,0.015)';
+                                        }}
+                                        title={`Agregar otra meta a ${gr.proyecto?.name || 'este paso'}`}
+                                    >
+                                        <div style={{
+                                            width: '34px', height: '34px', borderRadius: '50%',
+                                            background: gr.proyecto?.color ? `${gr.proyecto.color}18` : `${C.primary}18`,
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            flexShrink: 0,
+                                        }}>
+                                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>add</span>
+                                        </div>
+                                        <div style={{ textAlign: movil ? 'left' : 'center' }}>
+                                            <div style={{ fontSize: '0.82rem', fontWeight: 800 }}>+ Agregar meta</div>
+                                            {!movil && (
+                                                <div style={{ fontSize: '0.66rem', color: C.outline, marginTop: '2px' }}>
+                                                    {gr.proyecto ? gr.proyecto.name : `Paso ${gn.nivelNum}`}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
                     </section>
                 ))}
             </div>
 
             <NuevaMetaModal
                 open={!!form} movil={movil} tipo={form?.tipo ?? 'meta'} editando={!!form?.goal}
-                inicial={form?.goal ? aForm(form.goal) : form?.tipo === 'sub' ? form.inicial : undefined}
+                inicial={form?.goal ? aForm(form.goal) : form?.inicial}
                 padre={form?.tipo === 'sub' ? form.padre : undefined}
                 metas={goals.filter(g => !g.parentId && g.status !== 'completado').map(g => ({ id: g.id, title: g.title, color: g.color, icon: g.icon, nombresPlazo: g.nombresPlazo, subs: goals.filter(x => x.parentId === g.id && x.status !== 'completado').map(x => ({ id: x.id, title: x.title, horizon: x.horizon })) }))}
                 projects={projects} onCrearVision={addProject}
@@ -382,140 +634,291 @@ interface TarjetaMetaProps {
     children?: React.ReactNode;
 }
 
-const TarjetaMeta = ({ goal, subs, dailyBlocks, movil, expandido, onToggleExpand, onSetStatus, onEditar, onRemove, onUpdate, onSubir, onBajar, onArrastrar, toggleDailyBlock, updateDailyBlock, linkTaskToGoal, children }: TarjetaMetaProps) => {
+const TarjetaMeta = ({ goal, subs, dailyBlocks, movil, expandido = true, onToggleExpand, onSetStatus, onEditar, onRemove, onUpdate, onSubir, onBajar, onArrastrar, toggleDailyBlock, updateDailyBlock, linkTaskToGoal, children }: TarjetaMetaProps) => {
     const [menu, setMenu] = useState(false);
     const [detalles, setDetalles] = useState(false);
     const av = avance(goal, subs, dailyBlocks);
     const restantes = diasRestantes(goal.targetDate);
-    // El estado fluye solo: una meta "pendiente" que ya avanzó se ve "en progreso", y cuando llega
-    // al 100% se ofrece marcarla lograda. Lograda solo se marca a propósito (nunca con un clic suelto).
     const estado: GoalStatus = goal.status === 'pendiente' && av.pct > 0 ? 'en-progreso' : goal.status;
     const status = STATUS_INFO[estado];
     const listaParaLograr = goal.status !== 'completado' && av.pct === 100 && !!av.texto;
     const [estadoAbierto, setEstadoAbierto] = useState(false);
+    const [nivelAbierto, setNivelAbierto] = useState(false);
+    const nivelNum = getNivelMeta(goal);
+    const nivelInfo = NIVELES_ESTRATEGICOS[nivelNum] || NIVELES_ESTRATEGICOS[1];
+    const isDone = goal.status === 'completado';
 
     return (
         <motion.div
             layout
             initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}
             style={{
-                height: movil ? undefined : '100%', boxSizing: 'border-box', borderRadius: '12px',
+                width: '100%', boxSizing: 'border-box', borderRadius: '14px',
                 border: `1px solid ${C.outlineVariant}`,
-                background: goal.status === 'completado' ? 'rgba(16,185,129,0.04)' : C.surfaceContainerLow,
+                background: isDone ? 'rgba(16,185,129,0.04)' : C.surfaceContainerLow,
                 opacity: goal.inactiva ? 0.55 : 1,
+                overflow: 'hidden',
+                transition: 'box-shadow 0.2s',
             }}
         >
-            <div style={{ padding: '10px 12px', cursor: movil ? 'pointer' : 'default' }} onClick={onToggleExpand}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                    <span style={{ fontSize: '1.2rem', flexShrink: 0, lineHeight: 1.3 }}>{goal.icon}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: C.onSurface, textDecoration: goal.status === 'completado' ? 'line-through' : 'none', wordBreak: 'break-word' }}>
-                            {goal.title}
-                        </div>
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '2px 8px', borderRadius: '999px', background: `${goal.color}22`, color: goal.color }}>
-                                {goal.area}
-                            </span>
-                            <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
-                                <button
-                                    onClick={() => setEstadoAbierto(v => !v)}
-                                    title="Cambiar el estado de la meta"
-                                    style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.62rem', fontWeight: 700, padding: '2px 6px 2px 5px', borderRadius: '999px', background: status.bg, color: status.color, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                                >
-                                    <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>{STATUS_ICONO[estado]}</span>
-                                    {status.label}
-                                    <span className="material-symbols-outlined" style={{ fontSize: '13px', marginLeft: '-1px' }}>expand_more</span>
-                                </button>
-                                {estadoAbierto && (
-                                    <>
-                                        <div onClick={() => setEstadoAbierto(false)} style={{ position: 'fixed', inset: 0, zIndex: 20 }} />
-                                        <div style={{ position: 'absolute', left: 0, top: '26px', zIndex: 21, minWidth: '160px', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px' }}>
-                                            {STATUS_ORDEN.map(k => (
-                                                <button
-                                                    key={k}
-                                                    onClick={() => { onSetStatus(k); setEstadoAbierto(false); }}
-                                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', background: goal.status === k ? STATUS_INFO[k].bg : 'none', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.8rem', fontWeight: 700, color: STATUS_INFO[k].color }}
-                                                >
-                                                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{STATUS_ICONO[k]}</span>
-                                                    {STATUS_INFO[k].label}
-                                                    {goal.status === k && <span className="material-symbols-outlined" style={{ fontSize: '16px', marginLeft: 'auto' }}>check</span>}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                            {listaParaLograr && (
-                                <button
-                                    onClick={e => { e.stopPropagation(); onSetStatus('completado'); }}
-                                    title="Llegaste al 100%: márcala como lograda"
-                                    style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.62rem', fontWeight: 800, padding: '2px 8px 2px 5px', borderRadius: '999px', background: STATUS_INFO.completado.color, color: '#fff', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                                >
-                                    <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>check_circle</span>
-                                    ¡Márcala lograda!
-                                </button>
+            {/* Cabecera de la meta (arriba de los pasos) */}
+            <div
+                style={{
+                    padding: movil ? '10px 12px' : '10px 16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                    cursor: 'pointer',
+                    background: isDone ? 'rgba(16,185,129,0.02)' : 'transparent',
+                }}
+                onClick={onToggleExpand}
+            >
+                {/* Fila 1: Checkbox, Ícono, Título y Acciones rápidas a la derecha */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                        {/* Checkbox redondeado estilo lista */}
+                        <button
+                            type="button"
+                            onClick={e => {
+                                e.stopPropagation();
+                                onSetStatus(isDone ? 'en-progreso' : 'completado');
+                            }}
+                            title={isDone ? 'Marcar como pendiente/en progreso' : 'Marcar meta como lograda'}
+                            style={{
+                                width: '22px', height: '22px', borderRadius: '7px',
+                                border: isDone ? 'none' : `2px solid ${C.outlineVariant}`,
+                                background: isDone ? '#10B981' : '#ffffff',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                cursor: 'pointer', flexShrink: 0, padding: 0,
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+                                transition: 'all 0.15s ease',
+                            }}
+                        >
+                            {isDone && (
+                                <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#fff', fontWeight: 800 }}>check</span>
                             )}
-                            {goal.targetDate && (
-                                <span style={{ fontSize: '0.68rem', color: restantes !== null && restantes < 0 && goal.status !== 'completado' ? C.rojo : C.outline, fontWeight: 600 }}>
-                                    {restantes !== null && goal.status !== 'completado'
-                                        ? restantes >= 0 ? `${restantes}d restantes` : `${Math.abs(restantes)}d de retraso`
-                                        : new Date(goal.targetDate + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                </span>
-                            )}
-                        </div>
-                        {(av.texto || goal.objetivo) && (
-                            <div style={{ marginTop: '8px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '6px', fontSize: '0.72rem', fontWeight: 700, color: C.onSurfaceVariant, fontFamily: MONO, marginBottom: '4px' }}>
-                                    <span>{av.texto}</span><span style={{ color: goal.color }}>{av.pct}%</span>
-                                </div>
-                                <Barra pct={av.pct} color={goal.color} />
-                            </div>
+                        </button>
+
+                        {/* Icono de la meta */}
+                        {goal.icon && (
+                            <span style={{ fontSize: '1.2rem', lineHeight: 1, flexShrink: 0 }}>{goal.icon}</span>
                         )}
+
+                        {/* Título de la meta */}
+                        <span style={{
+                            fontSize: '0.94rem', fontWeight: 700, color: C.onSurface,
+                            textDecoration: isDone ? 'line-through' : 'none',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                            {goal.title}
+                        </span>
                     </div>
-                    <div style={{ position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '2px' }} onClick={e => e.stopPropagation()}>
+
+                    {/* Acciones del extremo derecho */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                        {/* Switch activa/inactiva */}
                         <button
                             role="switch" aria-checked={!goal.inactiva}
                             onClick={() => onUpdate({ inactiva: !goal.inactiva })}
                             title={goal.inactiva ? 'Meta desactivada · tocá para activarla' : 'Meta activa · tocá para desactivarla'}
-                            style={{ background: goal.inactiva ? C.outlineVariant : C.primary, border: 'none', cursor: 'pointer', width: '30px', height: '18px', borderRadius: '999px', padding: 0, position: 'relative', flexShrink: 0, transition: 'background 0.15s' }}>
-                            <span style={{ position: 'absolute', top: '2px', left: goal.inactiva ? '2px' : '14px', width: '14px', height: '14px', borderRadius: '50%', background: '#fff', transition: 'left 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.25)' }} />
+                            style={{ background: goal.inactiva ? C.outlineVariant : C.primary, border: 'none', cursor: 'pointer', width: '28px', height: '16px', borderRadius: '999px', padding: 0, position: 'relative', flexShrink: 0, transition: 'background 0.15s' }}>
+                            <span style={{ position: 'absolute', top: '2px', left: goal.inactiva ? '2px' : '14px', width: '12px', height: '12px', borderRadius: '50%', background: '#fff', transition: 'left 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.25)' }} />
                         </button>
+
+                        {/* Menú de opciones */}
+                        <div style={{ position: 'relative' }}>
+                            <button
+                                onClick={() => setMenu(m => !m)}
+                                title={onArrastrar ? 'Opciones · arrástrala para ordenar' : 'Opciones'}
+                                draggable={!!onArrastrar}
+                                onDragStart={onArrastrar?.start}
+                                onDragEnd={onArrastrar?.end}
+                                style={{ background: 'none', border: 'none', cursor: onArrastrar ? 'grab' : 'pointer', color: C.outline, width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>more_vert</span>
+                            </button>
+                            {menu && (
+                                <>
+                                    <div onClick={() => setMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 20 }} />
+                                    <div style={{ position: 'absolute', right: 0, top: '30px', zIndex: 21, minWidth: '170px', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px' }}>
+                                        <MenuItem icono="edit" texto="Editar meta" onClick={() => { setMenu(false); onEditar(); }} />
+                                        {onSubir && <MenuItem icono="arrow_upward" texto="Subir" onClick={onSubir} />}
+                                        {onBajar && <MenuItem icono="arrow_downward" texto="Bajar" onClick={onBajar} />}
+                                        <MenuItem icono="notes" texto={detalles ? 'Ocultar notas' : 'Notas y tareas'} onClick={() => { setMenu(false); setDetalles(v => !v); }} />
+                                        <MenuItem icono="delete" texto="Eliminar" color={C.rojo} onClick={() => { setMenu(false); onRemove(); }} />
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Botón para expandir/colapsar pasos */}
                         <button
-                            onClick={() => setMenu(m => !m)}
-                            title={onArrastrar ? 'Opciones · arrástrala para ordenar' : 'Opciones'}
-                            draggable={!!onArrastrar}
-                            onDragStart={onArrastrar?.start}
-                            onDragEnd={onArrastrar?.end}
-                            style={{ background: 'none', border: 'none', cursor: onArrastrar ? 'grab' : 'pointer', color: C.outline, width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>more_vert</span>
+                            onClick={onToggleExpand}
+                            title={expandido ? 'Ocultar pasos' : 'Ver pasos'}
+                            style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                color: C.outline, width: '28px', height: '28px', borderRadius: '6px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                transition: 'transform 0.2s ease',
+                                transform: expandido ? 'rotate(180deg)' : 'rotate(0deg)',
+                                padding: 0,
+                            }}
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>expand_more</span>
                         </button>
-                        {menu && (
-                            <>
-                                <div onClick={() => setMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 20 }} />
-                                <div style={{ position: 'absolute', right: 0, top: '34px', zIndex: 21, minWidth: '170px', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px' }}>
-                                    <MenuItem icono="edit" texto="Editar meta" onClick={() => { setMenu(false); onEditar(); }} />
-                                    {/* Subir/Bajar dejan el menú abierto para mover varias posiciones seguidas. */}
-                                    {onSubir && <MenuItem icono="arrow_upward" texto="Subir" onClick={onSubir} />}
-                                    {onBajar && <MenuItem icono="arrow_downward" texto="Bajar" onClick={onBajar} />}
-                                    <MenuItem icono="notes" texto={detalles ? 'Ocultar notas' : 'Notas y tareas'} onClick={() => { setMenu(false); setDetalles(v => !v); }} />
-                                    <MenuItem icono="delete" texto="Eliminar" color={C.rojo} onClick={() => { setMenu(false); onRemove(); }} />
-                                </div>
-                            </>
-                        )}
                     </div>
                 </div>
-                {goal.objetivo ? (
-                    <div onClick={e => e.stopPropagation()} style={{ marginTop: '8px' }}>
-                        <AvanceNumero goal={goal} onUpdate={onUpdate} movil={movil} />
+
+                {/* Fila 2: Chips de metadatos (Área, Paso, Estado) y Avance a la derecha */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
+                        {goal.area && (
+                            <span style={{
+                                fontSize: '0.66rem', fontWeight: 700, padding: '2px 7px', borderRadius: '6px',
+                                background: `${goal.color}18`, color: goal.color,
+                            }}>
+                                {goal.area}
+                            </span>
+                        )}
+
+                        {/* Selector de Paso Estratégico */}
+                        <div style={{ position: 'relative' }}>
+                            <button
+                                onClick={() => setNivelAbierto(v => !v)}
+                                title="Cambiar paso del plan"
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '4px',
+                                    fontSize: '0.64rem', fontWeight: 800, padding: '2px 7px', borderRadius: '6px',
+                                    background: `${nivelInfo.color}15`, color: nivelInfo.color,
+                                    border: `1px solid ${nivelInfo.color}35`, cursor: 'pointer', fontFamily: 'inherit',
+                                }}
+                            >
+                                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: nivelInfo.color }} />
+                                Paso {nivelNum}
+                                <span className="material-symbols-outlined" style={{ fontSize: '13px', marginLeft: '-2px' }}>expand_more</span>
+                            </button>
+                            {nivelAbierto && (
+                                <>
+                                    <div onClick={() => setNivelAbierto(false)} style={{ position: 'fixed', inset: 0, zIndex: 20 }} />
+                                    <div style={{
+                                        position: 'absolute', left: 0, top: '26px', zIndex: 22, minWidth: '220px',
+                                        background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`,
+                                        borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px',
+                                    }}>
+                                        {[1, 2, 3, 4].map(n => {
+                                            const inf = NIVELES_ESTRATEGICOS[n];
+                                            const sel = nivelNum === n;
+                                            return (
+                                                <button
+                                                    key={n}
+                                                    onClick={() => { onUpdate({ nivel: n }); setNivelAbierto(false); }}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
+                                                        padding: '6px 8px', background: sel ? `${inf.color}15` : 'none',
+                                                        border: 'none', borderRadius: '8px', cursor: 'pointer',
+                                                        fontFamily: 'inherit', fontSize: '0.78rem', fontWeight: 700,
+                                                        color: sel ? inf.color : C.onSurface, textAlign: 'left',
+                                                    }}
+                                                >
+                                                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: inf.color, flexShrink: 0 }} />
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div>{inf.titulo}</div>
+                                                        <div style={{ fontSize: '0.64rem', color: C.outline, fontWeight: 500 }}>{inf.horizonte}</div>
+                                                    </div>
+                                                    {sel && <span className="material-symbols-outlined" style={{ fontSize: '15px', color: inf.color }}>check</span>}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Estado */}
+                        <div style={{ position: 'relative' }}>
+                            <button
+                                onClick={() => setEstadoAbierto(v => !v)}
+                                title="Cambiar estado"
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '3px',
+                                    fontSize: '0.64rem', fontWeight: 700, padding: '2px 7px', borderRadius: '6px',
+                                    background: status.bg, color: status.color, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                                }}
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>{STATUS_ICONO[estado]}</span>
+                                {status.label}
+                                <span className="material-symbols-outlined" style={{ fontSize: '13px', marginLeft: '-1px' }}>expand_more</span>
+                            </button>
+                            {estadoAbierto && (
+                                <>
+                                    <div onClick={() => setEstadoAbierto(false)} style={{ position: 'fixed', inset: 0, zIndex: 20 }} />
+                                    <div style={{ position: 'absolute', left: 0, top: '26px', zIndex: 21, minWidth: '160px', background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px' }}>
+                                        {STATUS_ORDEN.map(k => (
+                                            <button
+                                                key={k}
+                                                onClick={() => { onSetStatus(k); setEstadoAbierto(false); }}
+                                                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', background: goal.status === k ? STATUS_INFO[k].bg : 'none', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.8rem', fontWeight: 700, color: STATUS_INFO[k].color }}
+                                            >
+                                                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{STATUS_ICONO[k]}</span>
+                                                {STATUS_INFO[k].label}
+                                                {goal.status === k && <span className="material-symbols-outlined" style={{ fontSize: '16px', marginLeft: 'auto' }}>check</span>}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Fecha objetivo */}
+                        {goal.targetDate && (
+                            <span style={{ fontSize: '0.66rem', color: restantes !== null && restantes < 0 && goal.status !== 'completado' ? C.rojo : C.outline, fontWeight: 600 }}>
+                                {restantes !== null && goal.status !== 'completado'
+                                    ? restantes >= 0 ? `${restantes}d restantes` : `${Math.abs(restantes)}d de retraso`
+                                    : new Date(goal.targetDate + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
+                            </span>
+                        )}
+
+                        {listaParaLograr && (
+                            <button
+                                onClick={e => { e.stopPropagation(); onSetStatus('completado'); }}
+                                title="¡Llegaste al 100%! Márcala lograda"
+                                style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.64rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px', background: STATUS_INFO.completado.color, color: '#fff', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>check_circle</span>
+                                ¡Lograda!
+                            </button>
+                        )}
                     </div>
-                ) : null}
+
+                    {/* Extremo derecho: Avance número o % */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={e => e.stopPropagation()}>
+                        {goal.objetivo ? (
+                            <AvanceNumero goal={goal} onUpdate={onUpdate} movil={movil} />
+                        ) : (av.texto || av.pct > 0) ? (
+                            <span style={{
+                                fontSize: '0.68rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px',
+                                background: '#dcfce7', color: '#15803d',
+                            }}>
+                                {av.texto ? `${av.texto} ` : ''}{av.pct > 0 ? `· ${av.pct}%` : ''}
+                            </span>
+                        ) : null}
+                    </div>
+                </div>
+
+                {/* Subtítulo / Descripción si existe */}
+                {goal.description && (
+                    <div style={{ fontSize: '0.8rem', color: C.outline, lineHeight: 1.35, marginTop: '2px' }}>
+                        {goal.description}
+                    </div>
+                )}
             </div>
 
-            {(detalles || (movil && expandido)) && (
-                <div onClick={e => e.stopPropagation()} style={{ padding: '10px 12px 12px', borderTop: `1px solid ${C.outlineVariant}`, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {movil && expandido && children}
-                    {(detalles || (movil && expandido)) && (
-                        <>
+            {/* Pasos / Columnas de la meta (debajo de la cabecera) */}
+            {expandido && (
+                <div style={{ borderTop: `1px solid ${C.outlineVariant}`, padding: movil ? '12px' : '14px 16px', background: C.surfaceLowest }}>
+                    {children}
+
+                    {detalles && (
+                        <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }} onClick={e => e.stopPropagation()}>
                             <textarea
                                 value={goal.description || ''}
                                 onChange={e => onUpdate({ description: e.target.value })}
@@ -524,7 +927,7 @@ const TarjetaMeta = ({ goal, subs, dailyBlocks, movil, expandido, onToggleExpand
                                 style={{ ...campo(movil), width: '100%', resize: 'vertical', boxSizing: 'border-box' }}
                             />
                             <TareasEnlazadas goal={goal} dailyBlocks={dailyBlocks} toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal} movil={movil} />
-                        </>
+                        </div>
                     )}
                 </div>
             )}
@@ -578,71 +981,130 @@ interface ColumnasProps {
     onAddTarea?: (plazo: GoalHorizon, texto: string) => void;
 }
 
-const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, onNuevaSub, onAbrirTarea }: ColumnasProps) => (
-    <div style={{ display: 'flex', flexDirection: movil ? 'column' : 'row', alignItems: 'stretch', gap: movil ? '4px' : '0', height: movil ? undefined : '100%' }}>
-        {PLAZOS_INFO.map((pl, idx) => {
-            const subsPlazo = subs.filter(s => s.horizon === pl.k);
-            const tareas = goal.milestones.filter(m => (m.plazo ?? 'corto') === pl.k);
-            const pendientes = tareas.filter(m => !m.completed);
-            return (
-                <Fragment key={pl.k}>
-                    {idx > 0 && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: goal.color, flexShrink: 0, padding: movil ? '0' : '0 8px' }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{movil ? 'arrow_downward' : 'arrow_forward'}</span>
-                        </div>
-                    )}
-                    <div style={{
-                        flex: 1, minWidth: 0, padding: '10px', borderRadius: '10px', boxSizing: 'border-box',
-                        background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderTop: `3px solid ${goal.color}`,
-                        display: 'flex', flexDirection: 'column', gap: '6px',
-                    }}>
-                        <button onClick={() => onAbrirPlazo(pl.k)} title="Ver tareas sueltas y renombrar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '6px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
-                            <span style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.outline }}>
-                                {nombrePlazo(goal, pl.k)} <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>· {pl.sub}</span>
-                            </span>
-                            {tareas.length > 0 && <span style={{ fontSize: '0.68rem', fontWeight: 700, color: C.outline, fontFamily: MONO }}>{tareas.length - pendientes.length}/{tareas.length}</span>}
-                        </button>
-                        {tareas.length > 0 && <Barra pct={Math.round(((tareas.length - pendientes.length) / tareas.length) * 100)} color={goal.color} alto={3} />}
+const STORAGE_KEY_PLAZOS = 'aldia_metas_plazos_visibles';
+const getPlazosGuardados = (goalId: number): GoalHorizon[] => {
+    try {
+        const raw = localStorage.getItem(`${STORAGE_KEY_PLAZOS}_${goalId}`);
+        return raw ? JSON.parse(raw) : [];
+    } catch {
+        return [];
+    }
+};
+const savePlazosGuardados = (goalId: number, list: GoalHorizon[]) => {
+    try {
+        localStorage.setItem(`${STORAGE_KEY_PLAZOS}_${goalId}`, JSON.stringify(list));
+    } catch {}
+};
 
-                        {subsPlazo.map(s => <SubMetaChip key={s.id} sub={s} color={goal.color} dailyBlocks={dailyBlocks} onClick={() => onAbrirSub(s.id)} />)}
+const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, onNuevaSub, onAbrirTarea }: ColumnasProps) => {
+    const [plazosExtra, setPlazosExtra] = useState<GoalHorizon[]>(() => getPlazosGuardados(goal.id));
+    // Plazos que actualmente tienen contenido (tareas o sub-metas)
+    const plazosConContenido = PLAZOS_INFO.filter(pl => {
+        const subsPlazo = subs.filter(s => s.horizon === pl.k);
+        const tareas = goal.milestones.filter(m => (m.plazo ?? 'corto') === pl.k);
+        return subsPlazo.length > 0 || tareas.length > 0;
+    }).map(pl => pl.k);
 
-                        {pendientes.slice(0, 3).map(m => (
-                            <Fragment key={m.id}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '2px 0' }}>
-                                
-                                <span onClick={() => (onAbrirTarea ? onAbrirTarea(pl.k, m.id) : onAbrirPlazo(pl.k))} title={m.text} style={{ flex: 1, minWidth: 0, fontSize: '0.8rem', lineHeight: 1.3, color: C.onSurface, cursor: 'pointer', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>{m.text}</span>
-                                {!!m.pasos?.some(p => !p.repetitiva) && <span style={{ fontSize: '0.66rem', fontWeight: 700, color: C.outline, fontFamily: MONO, whiteSpace: 'nowrap' }}>{m.pasos.filter(p => !p.repetitiva && p.completed).length}/{m.pasos.filter(p => !p.repetitiva).length}</span>}
-                                {!!m.pasos?.some(p => p.repetitiva) && <span className="material-symbols-outlined" title="Tiene tareas repetitivas" style={{ fontSize: '14px', color: goal.color }}>repeat</span>}
+    // Unir los que tienen contenido con los que el usuario desplegó manualmente
+    const todosActivos = Array.from(new Set([...plazosConContenido, ...plazosExtra]));
+    // Si la meta está 100% vacía en todos los plazos, por defecto mostramos únicamente 'corto'
+    const activosFinales = todosActivos.length > 0 ? todosActivos : ['corto'];
+
+    const plazosAMostrar = PLAZOS_INFO.filter(pl => activosFinales.includes(pl.k));
+
+    const quitarPlazo = (k: GoalHorizon) => {
+        const updated = plazosExtra.filter(x => x !== k);
+        setPlazosExtra(updated);
+        savePlazosGuardados(goal.id, updated);
+    };
+
+    return (
+        <div style={{ display: 'flex', flexDirection: movil ? 'column' : 'row', alignItems: 'stretch', gap: movil ? '8px' : '0', height: movil ? undefined : '100%', flexWrap: 'nowrap' }}>
+            {plazosAMostrar.map((pl, idx) => {
+                const subsPlazo = subs.filter(s => s.horizon === pl.k);
+                const tareas = goal.milestones.filter(m => (m.plazo ?? 'corto') === pl.k);
+                const pendientes = tareas.filter(m => !m.completed);
+                return (
+                    <Fragment key={pl.k}>
+                        {idx > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: goal.color, flexShrink: 0, padding: movil ? '0' : '0 8px' }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{movil ? 'arrow_downward' : 'arrow_forward'}</span>
                             </div>
-                            {m.pasos?.filter(p => p.repetitiva || !p.completed).slice(0, 3).map(p => {
-                                const rep = p.repetitiva ? tareasDeMeta(goal.id, dailyBlocks, undefined, true).find(t => t.label.trim().toLowerCase() === p.text.trim().toLowerCase()) : undefined;
-                                return (
-                                <div key={p.id} onClick={() => (onAbrirTarea ? onAbrirTarea(pl.k, m.id) : onAbrirPlazo(pl.k))} style={{ display: 'flex', alignItems: 'center', gap: '7px', margin: '-2px 0 0 10px', fontSize: '0.74rem', color: C.onSurfaceVariant, cursor: 'pointer', minWidth: 0 }}>
-                                    {p.repetitiva
-                                        ? <span className="material-symbols-outlined" style={{ fontSize: '12px', color: goal.color, flexShrink: 0 }}>repeat</span>
-                                        : <span style={{ width: '10px', height: '10px', borderRadius: '3px', border: `1.5px solid ${goal.color}`, flexShrink: 0, opacity: 0.8 }} />}
-                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.text}</span>
-                                    {rep?.dias?.length ? <span style={{ fontSize: '0.64rem', fontWeight: 700, color: goal.color, whiteSpace: 'nowrap' }}>{etiquetaDias(rep.dias)}</span> : null}
-                                </div>
-                                );
-                            })}
-                            </Fragment>
-                        ))}
-                        {pendientes.length > 3 && <button onClick={() => onAbrirPlazo(pl.k)} style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.72rem', fontWeight: 600, color: C.outline }}>+{pendientes.length - 3} más</button>}
-                        {tareas.length > 0 && pendientes.length === 0 && <div style={{ fontSize: '0.76rem', color: C.outline }}>✓ Todo hecho</div>}
-                        {subsPlazo.length === 0 && tareas.length === 0 && <div style={{ fontSize: '0.78rem', color: C.outline }}>Nada todavía</div>}
+                        )}
+                        <div style={{
+                            flex: 1,
+                            minWidth: movil ? undefined : '220px',
+                            padding: '10px', borderRadius: '10px', boxSizing: 'border-box',
+                            background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderTop: `3px solid ${goal.color}`,
+                            display: 'flex', flexDirection: 'column', gap: '6px',
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
+                                <button onClick={() => onAbrirPlazo(pl.k)} title="Ver tareas sueltas y renombrar" style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '6px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
+                                    <span style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.outline, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {nombrePlazo(goal, pl.k)} <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>· {pl.sub}</span>
+                                    </span>
+                                    {tareas.length > 0 && <span style={{ fontSize: '0.68rem', fontWeight: 700, color: C.outline, fontFamily: MONO, flexShrink: 0 }}>{tareas.length - pendientes.length}/{tareas.length}</span>}
+                                </button>
+                                {/* Botón para ocultar/cerrar si está vacío y hay al menos otro cuadro visible */}
+                                {plazosAMostrar.length > 1 && subsPlazo.length === 0 && tareas.length === 0 && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); quitarPlazo(pl.k); }}
+                                        title="Ocultar este cuadro vacío"
+                                        style={{
+                                            background: 'transparent', border: 'none', borderRadius: '6px',
+                                            width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            cursor: 'pointer', color: C.outline, padding: 0, flexShrink: 0, transition: 'all 0.15s'
+                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.color = '#EF4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.color = C.outline; e.currentTarget.style.background = 'transparent'; }}
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>close</span>
+                                    </button>
+                                )}
+                            </div>
 
-                        <div style={{ marginTop: 'auto' }}>
-                            <button onClick={() => onNuevaSub(pl.k)} style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', fontSize: '0.74rem', fontWeight: 800, color: goal.color, fontFamily: 'inherit' }}>
-                                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span> Agregar
-                            </button>
+                            {tareas.length > 0 && <Barra pct={Math.round(((tareas.length - pendientes.length) / tareas.length) * 100)} color={goal.color} alto={3} />}
+
+                            {subsPlazo.map(s => <SubMetaChip key={s.id} sub={s} color={goal.color} dailyBlocks={dailyBlocks} onClick={() => onAbrirSub(s.id)} />)}
+
+                            {pendientes.slice(0, 3).map(m => (
+                                <Fragment key={m.id}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '2px 0' }}>
+                                    
+                                    <span onClick={() => (onAbrirTarea ? onAbrirTarea(pl.k, m.id) : onAbrirPlazo(pl.k))} title={m.text} style={{ flex: 1, minWidth: 0, fontSize: '0.8rem', lineHeight: 1.3, color: C.onSurface, cursor: 'pointer', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>{m.text}</span>
+                                    {!!m.pasos?.some(p => !p.repetitiva) && <span style={{ fontSize: '0.66rem', fontWeight: 700, color: C.outline, fontFamily: MONO, whiteSpace: 'nowrap' }}>{m.pasos.filter(p => !p.repetitiva && p.completed).length}/{m.pasos.filter(p => !p.repetitiva).length}</span>}
+                                    {!!m.pasos?.some(p => p.repetitiva) && <span className="material-symbols-outlined" title="Tiene tareas repetitivas" style={{ fontSize: '14px', color: goal.color }}>repeat</span>}
+                                </div>
+                                {m.pasos?.filter(p => p.repetitiva || !p.completed).slice(0, 3).map(p => {
+                                    const rep = p.repetitiva ? tareasDeMeta(goal.id, dailyBlocks, undefined, true).find(t => t.label.trim().toLowerCase() === p.text.trim().toLowerCase()) : undefined;
+                                    return (
+                                    <div key={p.id} onClick={() => (onAbrirTarea ? onAbrirTarea(pl.k, m.id) : onAbrirPlazo(pl.k))} style={{ display: 'flex', alignItems: 'center', gap: '7px', margin: '-2px 0 0 10px', fontSize: '0.74rem', color: C.onSurfaceVariant, cursor: 'pointer', minWidth: 0 }}>
+                                        {p.repetitiva
+                                            ? <span className="material-symbols-outlined" style={{ fontSize: '12px', color: goal.color, flexShrink: 0 }}>repeat</span>
+                                            : <span style={{ width: '10px', height: '10px', borderRadius: '3px', border: `1.5px solid ${goal.color}`, flexShrink: 0, opacity: 0.8 }} />}
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.text}</span>
+                                        {rep?.dias?.length ? <span style={{ fontSize: '0.64rem', fontWeight: 700, color: goal.color, whiteSpace: 'nowrap' }}>{etiquetaDias(rep.dias)}</span> : null}
+                                    </div>
+                                    );
+                                })}
+                                </Fragment>
+                            ))}
+                            {pendientes.length > 3 && <button onClick={() => onAbrirPlazo(pl.k)} style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.72rem', fontWeight: 600, color: C.outline }}>+{pendientes.length - 3} más</button>}
+                            {tareas.length > 0 && pendientes.length === 0 && <div style={{ fontSize: '0.76rem', color: C.outline }}>✓ Todo hecho</div>}
+                            {subsPlazo.length === 0 && tareas.length === 0 && <div style={{ fontSize: '0.78rem', color: C.outline }}>Nada todavía</div>}
+
+                            <div style={{ marginTop: 'auto' }}>
+                                <button onClick={() => onNuevaSub(pl.k)} style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', fontSize: '0.74rem', fontWeight: 800, color: goal.color, fontFamily: 'inherit' }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span> Agregar
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                </Fragment>
-            );
-        })}
-    </div>
-);
+                    </Fragment>
+                );
+            })}
+        </div>
+    );
+};
 
 const SubMetaChip = ({ sub, color, dailyBlocks, onClick }: { sub: Goal; color: string; dailyBlocks: DailyBlock[]; onClick: () => void }) => {
     const av = avance(sub, [], dailyBlocks);

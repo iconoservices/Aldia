@@ -228,6 +228,11 @@ function App() {
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [selectedProjectDetailId, setSelectedProjectDetailId] = useState<number | null>(null);
+  const [miDiaSelectedDate, setMiDiaSelectedDate] = useState<string>(() => new Date().toLocaleDateString('en-CA'));
+  const irAMiDia = useCallback((fechaStr: string) => {
+    setMiDiaSelectedDate(fechaStr);
+    setActiveTab('Checklist');
+  }, [setActiveTab]);
   const abrirPerfil = useCallback(() => setIsProfileOpen(true), []);
   const abrirPapelera = useCallback(() => setIsTrashOpen(true), []);
   // Los overlays (perfil, papelera, edición, línea de tiempo) no se montan hasta la
@@ -375,6 +380,7 @@ function App() {
                 toggleDailyBlock={state.toggleDailyBlock}
                 updateDailyBlock={state.updateDailyBlock}
                 removeDailyBlock={state.removeDailyBlock}
+                onNavigateToDay={irAMiDia}
               />
             ) : (activeTab === 'Rutina' || activeTab === 'Horario' || activeTab === 'Vida' || activeTab === 'Bloques') ? (
               <VidaBloquesDashboard
@@ -413,6 +419,9 @@ function App() {
               />
             ) : activeTab === 'Checklist' ? (
               <ChecklistDiario
+                selectedDateStr={miDiaSelectedDate}
+                onChangeDate={setMiDiaSelectedDate}
+                onOpenFullCalendar={() => setActiveTab('Calendario')}
                 dailyBlocks={state.dailyBlocks}
                 addDailyBlock={state.addDailyBlock}
                 toggleDailyBlock={state.toggleDailyBlock}

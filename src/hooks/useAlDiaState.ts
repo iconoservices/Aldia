@@ -511,6 +511,7 @@ export interface Goal {
     periodoClave?: string;      // período al que pertenece `actual` (semana: lunes YYYY-MM-DD; mes: YYYY-MM)
     migradoV2?: boolean;  // ya pasó por la migración de tareas '🎯' → sub-metas
     inactiva?: boolean;   // meta en pausa: se ve atenuada y sin columnas, y no aparece en Mi Día
+    nivel?: number;       // Nivel macro / estratégico (1: Oxígeno, 2: Flujo Asegurado, 3: Expansión, 4: Salto Grande)
 }
 
 export interface Note {
