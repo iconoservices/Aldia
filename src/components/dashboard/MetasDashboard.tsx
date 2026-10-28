@@ -423,6 +423,7 @@ export const MetasDashboard = ({
 
                 {gruposNiveles.map(gn => (
                     <section key={gn.nivelNum} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '6px' }}>
+
                         {/* Cabecera del Nivel (por encima de los proyectos) */}
                         <div style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -478,7 +479,7 @@ export const MetasDashboard = ({
                             </div>
                         </div>
 
-                        {/* Visiones / Proyectos dentro de este Nivel */}
+
                         {gn.gruposProyecto.map(gr => (
                             <div key={gr.proyecto?.id ?? 'sin'} style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: movil ? '2px' : '8px' }}>
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap', marginTop: '2px' }}>
@@ -1034,8 +1035,8 @@ const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, on
                         <div style={{
                             flex: 1,
                             minWidth: movil ? undefined : '220px',
-                            padding: '10px', borderRadius: '10px', boxSizing: 'border-box',
-                            background: C.surfaceLowest, border: `1px solid ${C.outlineVariant}`, borderTop: `3px solid ${goal.color}`,
+                            padding: '10px 4px', borderRadius: '0', boxSizing: 'border-box',
+                            background: 'transparent', border: 'none', borderTop: `2px solid ${goal.color}20`,
                             display: 'flex', flexDirection: 'column', gap: '6px',
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
