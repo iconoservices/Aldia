@@ -211,7 +211,7 @@ const NotaDesplegable = ({ nota, titulo, soloPendientes, updateNote }: {
     soloPendientes: boolean;
     updateNote?: (id: number, updates: Partial<Note>) => void;
 }) => {
-    const [abierto, setAbierto] = useState(true);
+    const [abierto, setAbierto] = useState(false);
     const pendientes = nota.items.filter(i => !i.completed);
     const visibles = soloPendientes ? pendientes : nota.items;
 
@@ -296,8 +296,7 @@ const EntregasEnDesarrollo = ({ sporadicProjects, calendarEvents, todayStr, onOp
     startSporadicTimer?: (id: number) => void;
     pauseSporadicTimer?: (id: number) => void;
 }) => {
-    const [abierto, setAbierto] = useState(true);
-    const [mostrarTodas, setMostrarTodas] = useState(false);
+    const [abierto, setAbierto] = useState(false);
 
     const activas = useMemo(() =>
         sporadicProjects.filter(p =>
@@ -395,47 +394,33 @@ const EntregasEnDesarrollo = ({ sporadicProjects, calendarEvents, todayStr, onOp
         );
     };
 
+    const principal = activas[0];
+
     return (
-        <div style={{ ...bentoCard, padding: '0.5rem 0.85rem' }}>
+        <div style={{ ...bentoCard, padding: abierto ? '0.5rem 0.85rem' : '0.42rem 0.85rem' }}>
             <button
                 onClick={() => setAbierto(v => !v)}
                 style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', fontFamily: 'inherit', color: C.onSurface }}
             >
-                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#B9760A' }}>local_fire_department</span>
-                <span style={{ fontSize: '0.85rem', fontWeight: 800, textAlign: 'left' }}>Entregas en desarrollo</span>
-                <span style={{ fontSize: '0.68rem', fontWeight: 800, background: 'rgba(185, 118, 10, 0.10)', color: '#B9760A', borderRadius: '999px', padding: '1px 8px' }}>{activas.length}</span>
-                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.outline, marginLeft: 'auto', transform: abierto ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>expand_more</span>
+                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#B9760A', flexShrink: 0 }}>
+                    {principal?.activeSince ? 'timer' : 'local_fire_department'}
+                </span>
+                <span style={{
+                    fontSize: '0.85rem', fontWeight: 800, textAlign: 'left',
+                    flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                    {principal ? principal.title : 'Entregas'}
+                </span>
+                <span style={{ fontSize: '0.68rem', fontWeight: 800, background: 'rgba(185, 118, 10, 0.10)', color: '#B9760A', borderRadius: '999px', padding: '1px 8px', flexShrink: 0 }}>
+                    {activas.length}
+                </span>
+                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.outline, marginLeft: 'auto', transform: abierto ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }}>
+                    expand_more
+                </span>
             </button>
             {abierto && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '4px' }}>
-                    {/* Solo la primera visible por defecto */}
-                    {activas.slice(0, activas.length <= 3 ? 3 : 1).map(p => renderItem(p))}
-
-                    {/* El resto es desplegable */}
-                    {activas.length > 3 && (
-                        <>
-                            {mostrarTodas && activas.slice(1).map(p => renderItem(p))}
-
-                            <button
-                                onClick={() => setMostrarTodas(v => !v)}
-                                style={{
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
-                                    background: 'none', border: 'none',
-                                    color: C.outline, fontSize: '0.72rem', fontWeight: 700,
-                                    cursor: 'pointer', padding: '4px 0', marginTop: '2px',
-                                    fontFamily: 'inherit',
-                                    transition: 'color 0.15s',
-                                }}
-                            >
-                                <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>
-                                    {mostrarTodas ? 'expand_less' : 'expand_more'}
-                                </span>
-                                {mostrarTodas
-                                    ? 'Mostrar menos'
-                                    : `Ver ${activas.length - 1} más`}
-                            </button>
-                        </>
-                    )}
+                    {activas.map(p => renderItem(p))}
                 </div>
             )}
         </div>
@@ -842,73 +827,36 @@ export const ChecklistDiario = ({
     /* ────────────────────────────────────────────────────────── */
     if (isMobile) {
         return (
-            <div style={{ padding: '12px 12px 150px', minHeight: '100%' }}>
+            <div style={{ padding: '8px 10px 140px', minHeight: '100%' }}>
 
-                {/* Progress Card */}
+                {/* Progress Card Compacta */}
                 <div style={{
                     background: '#ffffff',
                     border: `1px solid ${C.outlineVariant}`,
-                    borderRadius: '1rem',
-                    padding: '0.8rem 1rem',
-                    boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
-                    marginBottom: '0.75rem'
+                    borderRadius: '0.85rem',
+                    padding: '0.65rem 0.85rem',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                    marginBottom: '0.45rem'
                 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <div>
-                            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: C.onSurface }}>
-                                Tu progreso hoy
-                            </h3>
-                            <p style={{ margin: '1px 0 0', fontSize: '0.72rem', color: C.onSurfaceVariant, fontWeight: 500 }}>
-                                {progressPct === 100 ? '¡Jornada completada! 🎉' : 
-                                 progressPct >= 75 ? '¡Casi terminas tu jornada!' : 
-                                 progressPct >= 50 ? '¡Vas por la mitad, sigue así!' : 
-                                 progressPct > 0 ? '¡Buen comienzo, adelante!' : 
-                                 'Sin tareas completadas hoy.'}
-                            </p>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'baseline', color: C.primary, fontFamily: MONO }}>
-                            <span style={{ fontSize: '1.6rem', fontWeight: 600 }}>{progressPct}</span>
-                            <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>%</span>
-                        </div>
-                    </div>
-
-                    <div style={{ width: '100%', height: '6px', background: C.surfaceContainer, borderRadius: '999px', overflow: 'hidden', marginBottom: '10px' }}>
-                        <motion.div
-                            animate={{ width: `${progressPct}%` }}
-                            transition={{ duration: 0.7, ease: 'easeOut' }}
-                            style={{ height: '100%', background: '#3ED9A0', borderRadius: '999px' }}
-                        />
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <div style={{
-                            display: 'flex', alignItems: 'center', gap: '6px',
-                            background: 'rgba(15, 169, 122,0.08)', color: C.primary,
-                            padding: '4px 6px', borderRadius: '999px', whiteSpace: 'nowrap',
-                            fontSize: '0.7rem', fontWeight: 700,
-                        }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: '14px', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                            {completedToday} hechas
-                        </div>
-                        <div style={{
-                            display: 'flex', alignItems: 'center', gap: '6px',
-                            background: C.surfaceContainer, color: C.onSurfaceVariant,
-                            padding: '4px 6px', borderRadius: '999px', whiteSpace: 'nowrap',
-                            fontSize: '0.7rem', fontWeight: 700,
-                        }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>schedule</span>
-                            {totalToday - completedToday} por hacer
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                            <span style={{ fontSize: '0.86rem', fontWeight: 800, color: C.onSurface }}>
+                                Progreso hoy
+                            </span>
+                            <span style={{ fontSize: '1rem', fontWeight: 800, color: C.primary, fontFamily: MONO }}>
+                                {progressPct}%
+                            </span>
                         </div>
 
-                        {/* Filtros, en la misma fila que los contadores */}
-                        <div style={{ display: 'flex', gap: '4px', marginLeft: 'auto' }}>
+                        {/* Filtros compactos */}
+                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                             {onOpenBandeja && (
                                 <button
                                     onClick={onOpenBandeja}
                                     title="Abrir la Bandeja"
                                     style={{
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        background: C.surfaceContainerHigh, border: '1.5px solid transparent',
+                                        background: C.surfaceContainerHigh, border: '1px solid transparent',
                                         borderRadius: '999px', width: '26px', height: '26px', padding: 0,
                                         cursor: 'pointer', flexShrink: 0,
                                     }}
@@ -922,7 +870,7 @@ export const ChecklistDiario = ({
                                 style={{
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     background: pendientesFirst ? 'rgba(15, 169, 122,0.10)' : C.surfaceContainerHigh,
-                                    border: `1.5px solid ${pendientesFirst ? C.primary : C.outlineVariant}`,
+                                    border: `1px solid ${pendientesFirst ? C.primary : C.outlineVariant}`,
                                     borderRadius: '999px', width: '26px', height: '26px', padding: 0,
                                     cursor: 'pointer', flexShrink: 0,
                                 }}
@@ -937,7 +885,7 @@ export const ChecklistDiario = ({
                                 style={{
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     background: groupByProject ? 'rgba(15, 169, 122,0.10)' : C.surfaceContainerHigh,
-                                    border: `1.5px solid ${groupByProject ? C.primary : 'transparent'}`,
+                                    border: `1px solid ${groupByProject ? C.primary : 'transparent'}`,
                                     borderRadius: '999px', width: '26px', height: '26px', padding: 0,
                                     cursor: 'pointer', flexShrink: 0,
                                 }}
@@ -959,6 +907,28 @@ export const ChecklistDiario = ({
                                 </button>
                             )}
                         </div>
+                    </div>
+
+                    {/* Barra de progreso fina */}
+                    <div style={{ width: '100%', height: '4px', background: C.surfaceContainer, borderRadius: '999px', overflow: 'hidden', margin: '7px 0 6px' }}>
+                        <motion.div
+                            animate={{ width: `${progressPct}%` }}
+                            transition={{ duration: 0.7, ease: 'easeOut' }}
+                            style={{ height: '100%', background: '#3ED9A0', borderRadius: '999px' }}
+                        />
+                    </div>
+
+                    {/* Contadores en una línea compacta */}
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', fontSize: '0.72rem', color: C.onSurfaceVariant }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: completedToday > 0 ? C.primary : C.onSurfaceVariant, fontWeight: 700 }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '13px', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                            {completedToday} {completedToday === 1 ? 'hecha' : 'hechas'}
+                        </span>
+                        <span style={{ color: C.outlineVariant }}>•</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>schedule</span>
+                            {totalToday - completedToday} por hacer
+                        </span>
                     </div>
                 </div>
 
