@@ -6,7 +6,7 @@ import { avance, subMetaActiva } from './metasAvance';
 /* Mi Día: el escalón activo de cada meta (la primera sub-meta sin lograr, o la
    meta misma si no tiene sub-metas pero sí número) con su avance. Tocar abre Metas. */
 export const MetasHoy = ({ goals, dailyBlocks, onOpenMetas }: { goals: Goal[]; dailyBlocks: DailyBlock[]; onOpenMetas?: () => void }) => {
-    const [abierto, setAbierto] = useState(true);
+    const [abierto, setAbierto] = useState(false);
     const filas = goals
         .filter(m => !m.parentId && m.status !== 'completado' && !m.inactiva)
         .map(meta => {
