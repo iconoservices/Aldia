@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { NuevaMetaModal, PLAZOS_INFO } from './NuevaMetaModal';
 import type { NuevaMeta } from './NuevaMetaModal';
 import { PlanMaestroCard } from './PlanMaestroCard';
+import { VistaListaMetas } from './VistaListaMetas';
 import type { DailyBlock, Goal, GoalHorizon, GoalStatus, Project } from '../../hooks/useAlDiaState';
 import { SelectPropio } from '../ui/SelectPropio';
 import { avance, tareasDeMeta, actualVigente, clavePeriodo, etiquetaDias } from './metasAvance';
@@ -172,6 +173,13 @@ export const MetasDashboard = ({
     const [subAbierta, setSubAbierta] = useState<number | null>(null);
     const [plazoAbierto, setPlazoAbierto] = useState<{ goalId: number; plazo: GoalHorizon } | null>(null);
     const [detalle, setDetalle] = useState<{ goalId: number; milestoneId: number; plazo: GoalHorizon } | null>(null);
+    const [modoVista, setModoVista] = useState<'tarjetas' | 'lista'>(() => {
+        return (localStorage.getItem('aldia_metas_vista_modo') as 'tarjetas' | 'lista') || 'tarjetas';
+    });
+
+    useEffect(() => {
+        localStorage.setItem('aldia_metas_vista_modo', modoVista);
+    }, [modoVista]);
 
     const raiz = goals.filter(g => !g.parentId);
     const subsDe = (id: number) => goals.filter(g => g.parentId === id);
@@ -415,11 +423,99 @@ export const MetasDashboard = ({
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {/* 🌟 Plan Maestro · Supermetas Multinegocio y Niveles Estratégicos */}
-                <PlanMaestroCard
-                    projects={projects}
-                    movil={movil}
-                />
+                {/* Selector de Modo de Vista: 🎴 Tarjetas vs 📋 Lista */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '12px',
+                }}>
+                    <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        padding: '3px',
+                        background: C.surfaceContainer,
+                        borderRadius: '12px',
+                        border: `1px solid ${C.outlineVariant}`,
+                    }}>
+                        <button
+                            type="button"
+                            onClick={() => setModoVista('tarjetas')}
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '6px 14px',
+                                borderRadius: '9px',
+                                border: 'none',
+                                background: modoVista === 'tarjetas' ? '#fff' : 'transparent',
+                                color: modoVista === 'tarjetas' ? C.onSurface : C.onSurfaceVariant,
+                                fontWeight: modoVista === 'tarjetas' ? 800 : 600,
+                                fontSize: '0.82rem',
+                                cursor: 'pointer',
+                                boxShadow: modoVista === 'tarjetas' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                transition: 'all 0.15s ease',
+                            }}
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: modoVista === 'tarjetas' ? '#0FA97A' : 'inherit' }}>
+                                dashboard
+                            </span>
+                            <span>Tarjetas</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setModoVista('lista')}
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '6px 14px',
+                                borderRadius: '9px',
+                                border: 'none',
+                                background: modoVista === 'lista' ? '#fff' : 'transparent',
+                                color: modoVista === 'lista' ? C.onSurface : C.onSurfaceVariant,
+                                fontWeight: modoVista === 'lista' ? 800 : 600,
+                                fontSize: '0.82rem',
+                                cursor: 'pointer',
+                                boxShadow: modoVista === 'lista' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                transition: 'all 0.15s ease',
+                            }}
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: modoVista === 'lista' ? '#0FA97A' : 'inherit' }}>
+                                format_list_bulleted
+                            </span>
+                            <span>Lista estructurada</span>
+                        </button>
+                    </div>
+                </div>
+
+                {modoVista === 'lista' ? (
+                    <VistaListaMetas
+                        goals={goals}
+                        projects={projects}
+                        dailyBlocks={dailyBlocks}
+                        movil={movil}
+                        gruposNiveles={gruposNiveles}
+                        onToggleMilestone={toggleGoalMilestone}
+                        onRemoveMilestone={removeGoalMilestone}
+                        onAddMilestone={(gid, txt, plz) => addGoalMilestone(gid, txt, plz)}
+                        onUpdateGoal={updateGoal}
+                        onEditarMeta={g => setForm({ tipo: 'meta', goal: g })}
+                        onAbrirPlazo={(gid, plz) => setPlazoAbierto({ goalId: gid, plazo: plz })}
+                        onAbrirDetalle={(gid, mid, plz) => setDetalle({ goalId: gid, milestoneId: mid, plazo: plz })}
+                        setForm={setForm}
+                        updateDailyBlock={updateDailyBlock}
+                        addDailyBlock={addDailyBlock}
+                    />
+                ) : (
+                    <>
+                        {/* 🌟 Plan Maestro · Supermetas Multinegocio y Niveles Estratégicos */}
+                        <PlanMaestroCard
+                            projects={projects}
+                            movil={movil}
+                        />
 
                 {gruposNiveles.map(gn => (
                     <section key={gn.nivelNum} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '6px' }}>
@@ -609,6 +705,8 @@ export const MetasDashboard = ({
                         ))}
                     </section>
                 ))}
+                </>
+            )}
             </div>
 
             <NuevaMetaModal
@@ -1454,57 +1552,57 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                             </button>
                         )}
                                                 {(() => {
-                            const repPrincipal = repDe ? (repDe(m.text) || (m.pasos || []).map(p => repDe(p.text)).find(Boolean)) : undefined;
-                            if (repPrincipal && repPrincipal.repetitiva) {
+                            const textosAfectados = new Set([
+                                m.text.trim().toLowerCase(),
+                                ...(m.pasos || []).map(p => p.text.trim().toLowerCase())
+                            ]);
+                            const bloquesRelacionados = (dailyBlocks || []).filter(b => b.goalId === goalId && textosAfectados.has(b.label.trim().toLowerCase()) && !!(b.repeatDays && b.repeatDays.length > 0));
+                            if (bloquesRelacionados.length > 0) {
+                                const algunaActiva = bloquesRelacionados.some(b => b.isActive !== false);
                                 return (
                                     <button
                                         type="button"
                                         role="switch"
-                                        aria-checked={repPrincipal.activa}
+                                        aria-checked={algunaActiva}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            if (updateDailyBlock && dailyBlocks && goalId) {
-                                                const base = dailyBlocks.find(b => b.id === repPrincipal.id);
-                                                if (base) {
-                                                    const nuevoEstado = !repPrincipal.activa;
-                                                    dailyBlocks
-                                                        .filter(b => b.goalId === goalId && b.label.trim().toLowerCase() === base.label.trim().toLowerCase())
-                                                        .forEach(b => updateDailyBlock(b.id, { isActive: nuevoEstado }));
-                                                }
+                                            if (updateDailyBlock) {
+                                                const nuevoEstado = !algunaActiva;
+                                                bloquesRelacionados.forEach(b => updateDailyBlock(b.id, { isActive: nuevoEstado }));
                                             }
                                         }}
-                                        title={repPrincipal.activa ? 'Tarea repetitiva activa · Toca para desactivar/pausar' : 'Tarea repetitiva desactivada · Toca para activar'}
+                                        title={algunaActiva ? 'Tareas repetitivas activas · Toca para pausar todas' : 'Tareas repetitivas pausadas · Toca para activar todas'}
                                         style={{
                                             display: 'inline-flex',
                                             alignItems: 'center',
                                             gap: '5px',
                                             padding: '2px 8px 2px 5px',
                                             borderRadius: '999px',
-                                            border: `1px solid ${repPrincipal.activa ? color : C.outlineVariant}`,
-                                            background: repPrincipal.activa ? `color-mix(in srgb, ${color} 10%, white)` : C.surfaceContainerLow,
+                                            border: `1px solid ${algunaActiva ? color : C.outlineVariant}`,
+                                            background: algunaActiva ? `color-mix(in srgb, ${color} 10%, white)` : C.surfaceContainerLow,
                                             cursor: 'pointer',
                                             fontSize: '0.68rem',
                                             fontWeight: 700,
-                                            color: repPrincipal.activa ? color : C.outline,
+                                            color: algunaActiva ? color : C.outline,
                                             fontFamily: 'inherit',
                                             flexShrink: 0,
                                         }}
                                     >
                                         <span style={{
                                             width: '20px', height: '12px', borderRadius: '999px',
-                                            background: repPrincipal.activa ? color : C.outlineVariant,
+                                            background: algunaActiva ? color : C.outlineVariant,
                                             position: 'relative', display: 'inline-block',
                                             transition: 'background 0.15s ease',
                                         }}>
                                             <span style={{
                                                 position: 'absolute', top: '1px',
-                                                left: repPrincipal.activa ? '9px' : '1px',
+                                                left: algunaActiva ? '9px' : '1px',
                                                 width: '10px', height: '10px', borderRadius: '50%',
                                                 background: '#fff', transition: 'left 0.15s ease',
                                                 boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
                                             }} />
                                         </span>
-                                        {repPrincipal.activa ? 'Activa' : 'Desactivada'}
+                                        {algunaActiva ? 'Activa' : 'Desactivada'}
                                     </button>
                                 );
                             }
