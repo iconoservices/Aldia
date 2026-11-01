@@ -894,7 +894,23 @@ Supermercado:
                                 const project = projects.find(p => p.id === b.projectId);
                                 const isEncendida = b.isActive !== false;
                                 const toca = tocaHoy(b);
-                                const hecha = toca && hechaHoy(b);
+                                const hecha = hechaHoy(b);
+                                const todasHechas = subtareasDeMadre.length > 0 && subtareasDeMadre.every(s => hechaHoy(s));
+                                const toggleTodasSubtareas = (e: React.MouseEvent) => {
+                                    e.stopPropagation();
+                                    if (todasHechas) {
+                                        subtareasDeMadre.forEach(s => {
+                                            const ext = dailyBlocks.find(x => mismaTarea(x, s) && x.date === todayStr);
+                                            if (ext && ext.completed) toggleDailyBlock(ext.id);
+                                        });
+                                        if (madre && madre.m.completed) toggleGoalMilestone?.(madre.g.id, madre.m.id);
+                                    } else {
+                                        subtareasDeMadre.forEach(s => {
+                                            if (!hechaHoy(s)) marcarHoy(s);
+                                        });
+                                        if (madre && !madre.m.completed) toggleGoalMilestone?.(madre.g.id, madre.m.id);
+                                    }
+                                };
 
                                 return (
                                     <Fragment key={b.id}>
@@ -926,23 +942,31 @@ Supermercado:
 
                                             <button
                                                 type="button"
-                                                onClick={(e) => { e.stopPropagation(); toggleGoalMilestone?.(madre.g.id, madre.m.id); }}
-                                                title="Marcar tarea completa"
-                                                style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${madre.m.completed ? C.primary : C.outlineVariant}`, background: madre.m.completed ? C.primary : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}
+                                                onClick={toggleTodasSubtareas}
+                                                title={todasHechas ? 'Desmarcar todas las subtareas' : 'Marcar todas las subtareas como hechas hoy'}
+                                                style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${todasHechas || madre.m.completed ? C.primary : C.outlineVariant}`, background: todasHechas || madre.m.completed ? C.primary : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}
                                             >
-                                                {madre.m.completed && <span className="material-symbols-outlined" style={{ fontSize: '13px', color: '#fff' }}>check</span>}
+                                                {(todasHechas || madre.m.completed) && <span className="material-symbols-outlined" style={{ fontSize: '13px', color: '#fff' }}>check</span>}
                                             </button>
 
                                             <div style={{ flex: 1, minWidth: 0 }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                                    <span style={{ fontSize: '0.88rem', fontWeight: 800, color: madre.m.completed ? C.outline : C.onSurface, textDecoration: madre.m.completed ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    <span style={{ fontSize: '0.88rem', fontWeight: 800, color: (todasHechas || madre.m.completed) ? C.outline : C.onSurface, textDecoration: (todasHechas || madre.m.completed) ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                         {madre.m.text}
                                                     </span>
                                                     <span style={{ fontSize: '0.68rem', fontWeight: 800, color: C.primary, background: 'rgba(15, 169, 122, 0.12)', borderRadius: '999px', padding: '1px 8px' }}>
-                                                        {subtareasDeMadre.filter(s => s.completed || (tocaHoy(s) && hechaHoy(s))).length}/{subtareasDeMadre.length} subtareas
+                                                        {subtareasDeMadre.filter(s => hechaHoy(s) || s.completed).length}/{subtareasDeMadre.length} subtareas
                                                     </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={toggleTodasSubtareas}
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.68rem', fontWeight: 700, color: C.primary, textDecoration: 'underline', padding: '0 4px' }}
+                                                        title={todasHechas ? 'Desmarcar todas' : 'Marcar todas'}
+                                                    >
+                                                        {todasHechas ? 'Desmarcar todas' : 'Marcar todas'}
+                                                    </button>
                                                 </div>
-                                                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: C.outline }}>
+                                                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: C.outline }}>
                                                     🎯 {madre.g.title}
                                                 </div>
                                             </div>
@@ -969,20 +993,19 @@ Supermercado:
                                             borderBottom: `1px solid ${C.surfaceContainerHigh}`,
                                             borderLeft: madre ? `3px solid color-mix(in srgb, ${C.primary} 35%, transparent)` : 'none',
                                             display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
-                                            opacity: !toca || !isEncendida ? 0.5 : 1,
+                                            opacity: !isEncendida ? 0.45 : !toca ? 0.75 : 1,
                                             background: hecha ? 'rgba(15, 169, 122, 0.06)' : 'transparent',
                                         }}
                                     >
-                                        {/* Círculo: hecha hoy (solo se puede si hoy toca) */}
+                                        {/* Círculo: hecha hoy (siempre activo para marcar) */}
                                         <button
-                                            onClick={() => toca && marcarHoy(b)}
-                                            disabled={!toca}
-                                            title={!toca ? 'Hoy no toca' : hecha ? 'Hecha hoy (clic para desmarcar)' : 'Marcar como hecha hoy'}
+                                            onClick={() => marcarHoy(b)}
+                                            title={hecha ? 'Hecha hoy (clic para desmarcar)' : 'Marcar como hecha hoy'}
                                             style={{
                                                 width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0, padding: 0,
-                                                border: `2px solid ${hecha ? C.primary : toca ? C.outlineVariant : C.surfaceContainerHigh}`,
+                                                border: `2px solid ${hecha ? C.primary : C.outlineVariant}`,
                                                 background: hecha ? C.primary : 'transparent',
-                                                cursor: toca ? 'pointer' : 'default',
+                                                cursor: 'pointer',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                             }}
                                         >
@@ -1163,22 +1186,37 @@ Supermercado:
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={(e) => { e.stopPropagation(); toggleGoalMilestone?.(madre.g.id, madre.m.id); }}
-                                                title="Marcar la tarea completa"
-                                                style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${madre.m.completed ? C.primary : C.outlineVariant}`, background: madre.m.completed ? C.primary : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const todasHechas = subtareasDeMadre.length > 0 && subtareasDeMadre.every(s => s.completed);
+                                                    subtareasDeMadre.forEach(s => {
+                                                        if (todasHechas ? s.completed : !s.completed) {
+                                                            if ((s as any).esDeMeta && toggleGoalMilestone && s.goalId) {
+                                                                toggleGoalMilestone(s.goalId, (s as any).milestoneId || s.id);
+                                                            } else {
+                                                                toggleDailyBlock(s.id);
+                                                            }
+                                                        }
+                                                    });
+                                                    if (todasHechas ? madre.m.completed : !madre.m.completed) {
+                                                        toggleGoalMilestone?.(madre.g.id, madre.m.id);
+                                                    }
+                                                }}
+                                                title="Marcar o desmarcar todas las subtareas"
+                                                style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${(subtareasDeMadre.length > 0 && subtareasDeMadre.every(s => s.completed)) || madre.m.completed ? C.primary : C.outlineVariant}`, background: (subtareasDeMadre.length > 0 && subtareasDeMadre.every(s => s.completed)) || madre.m.completed ? C.primary : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}
                                             >
-                                                {madre.m.completed && <span className="material-symbols-outlined" style={{ fontSize: '13px', color: '#fff' }}>check</span>}
+                                                {((subtareasDeMadre.length > 0 && subtareasDeMadre.every(s => s.completed)) || madre.m.completed) && <span className="material-symbols-outlined" style={{ fontSize: '13px', color: '#fff' }}>check</span>}
                                             </button>
                                             <div style={{ flex: 1, minWidth: 0 }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                                    <span style={{ fontSize: '0.88rem', fontWeight: 800, color: madre.m.completed ? C.outline : C.onSurface, textDecoration: madre.m.completed ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    <span style={{ fontSize: '0.88rem', fontWeight: 800, color: ((subtareasDeMadre.length > 0 && subtareasDeMadre.every(s => s.completed)) || madre.m.completed) ? C.outline : C.onSurface, textDecoration: ((subtareasDeMadre.length > 0 && subtareasDeMadre.every(s => s.completed)) || madre.m.completed) ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                         {madre.m.text}
                                                     </span>
                                                     <span style={{ fontSize: '0.68rem', fontWeight: 800, color: C.primary, background: 'rgba(15, 169, 122, 0.12)', borderRadius: '999px', padding: '1px 8px' }}>
                                                         {subtareasDeMadre.filter(s => s.completed).length}/{subtareasDeMadre.length} subtareas
                                                     </span>
                                                 </div>
-                                                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: C.outline }}>{madre.g.title}</div>
+                                                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: C.outline }}>{madre.g.title}</div>
                                             </div>
                                         </div>
                                     )}
