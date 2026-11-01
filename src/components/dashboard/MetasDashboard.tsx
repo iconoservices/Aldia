@@ -482,14 +482,42 @@ export const MetasDashboard = ({
 
                         {gn.gruposProyecto.map(gr => (
                             <div key={gr.proyecto?.id ?? 'sin'} style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: movil ? '2px' : '8px' }}>
-                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap', marginTop: '2px' }}>
-                                    <span style={{ fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.outline }}>
-                                        {gr.proyecto ? '🧭 Visión' : 'Otras metas'}
-                                    </span>
-                                    {gr.proyecto && (
-                                        <span style={{ fontSize: '0.92rem', fontWeight: 800, color: gr.proyecto.color || C.onSurface }}>
-                                            {gr.proyecto.name}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '2px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.outline }}>
+                                            {gr.proyecto ? '🧭 Visión' : 'Otras metas'}
                                         </span>
+                                        {gr.proyecto && (
+                                            <span style={{ fontSize: '0.92rem', fontWeight: 800, color: gr.proyecto.color || C.onSurface }}>
+                                                {gr.proyecto.name}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {movil && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setForm({
+                                                tipo: 'meta',
+                                                inicial: {
+                                                    projectId: gr.proyecto?.id,
+                                                    nivel: gn.nivelNum,
+                                                    color: gr.proyecto?.color || gn.info.color,
+                                                    area: gr.proyecto?.name ? 'Negocio' : 'Personal',
+                                                }
+                                            })}
+                                            title={`Agregar meta a ${gr.proyecto?.name || 'esta visión'}`}
+                                            style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: '3px',
+                                                fontSize: '0.68rem', fontWeight: 800, padding: '2px 9px', borderRadius: '999px',
+                                                background: gr.proyecto?.color ? `${gr.proyecto.color}15` : `${C.primary}15`,
+                                                color: gr.proyecto?.color || C.primary,
+                                                border: `1px solid ${gr.proyecto?.color ? `${gr.proyecto.color}35` : `${C.primary}35`}`,
+                                                cursor: 'pointer', fontFamily: 'inherit',
+                                            }}
+                                        >
+                                            <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>add</span>
+                                            <span>Meta</span>
+                                        </button>
                                     )}
                                 </div>
 
@@ -516,7 +544,8 @@ export const MetasDashboard = ({
                                         ))}
                                     </AnimatePresence>
 
-                                    {/* Tarjeta "+ Agregar meta" al costado */}
+                                    {/* Tarjeta "+ Agregar meta" al costado (en móvil se usa el botón compacto en la cabecera) */}
+                                    {(!movil || gr.metas.length === 0) && (
                                     <button
                                         type="button"
                                         onClick={() => setForm({
@@ -574,6 +603,7 @@ export const MetasDashboard = ({
                                             )}
                                         </div>
                                     </button>
+                                    )}
                                 </div>
                             </div>
                         ))}
