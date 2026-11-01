@@ -545,7 +545,7 @@ export const MetasDashboard = ({
                                     </AnimatePresence>
 
                                     {/* Tarjeta "+ Agregar meta" al costado (en móvil se usa el botón compacto en la cabecera) */}
-                                    {(!movil || gr.metas.length === 0) && (
+                                    {gr.metas.length === 0 && (
                                     <button
                                         type="button"
                                         onClick={() => setForm({
@@ -686,7 +686,8 @@ const TarjetaMeta = ({ goal, subs, dailyBlocks, movil, expandido = true, onToggl
             style={{
                 width: '100%', boxSizing: 'border-box', borderRadius: '14px',
                 border: `1px solid ${C.outlineVariant}`,
-                background: isDone ? 'rgba(16,185,129,0.04)' : C.surfaceContainerLow,
+                background: isDone ? 'rgba(16,185,129,0.04)' : C.surfaceLowest,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
                 opacity: goal.inactiva ? 0.55 : 1,
                 overflow: 'hidden',
                 transition: 'box-shadow 0.2s',
@@ -945,7 +946,7 @@ const TarjetaMeta = ({ goal, subs, dailyBlocks, movil, expandido = true, onToggl
 
             {/* Pasos / Columnas de la meta (debajo de la cabecera) */}
             {expandido && (
-                <div style={{ borderTop: `1px solid ${C.outlineVariant}`, padding: movil ? '12px' : '14px 16px', background: C.surfaceLowest }}>
+                <div style={{ padding: movil ? '2px 12px 14px' : '2px 16px 14px', background: 'transparent' }}>
                     {children}
 
                     {detalles && (
@@ -1027,7 +1028,7 @@ const savePlazosGuardados = (goalId: number, list: GoalHorizon[]) => {
     } catch {}
 };
 
-const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, onNuevaSub, onAbrirTarea }: ColumnasProps) => {
+const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, onNuevaSub: _onNuevaSub, onAbrirTarea }: ColumnasProps) => {
     const [plazosExtra, setPlazosExtra] = useState<GoalHorizon[]>(() => getPlazosGuardados(goal.id));
     // Plazos que actualmente tienen contenido (tareas o sub-metas)
     const plazosConContenido = PLAZOS_INFO.filter(pl => {
@@ -1066,7 +1067,7 @@ const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, on
                             flex: 1,
                             minWidth: movil ? undefined : '180px',
                             padding: '10px 4px', borderRadius: '0', boxSizing: 'border-box',
-                            background: 'transparent', border: 'none', borderTop: `2px solid ${goal.color}20`,
+                            background: 'transparent', border: 'none',
                             display: 'flex', flexDirection: 'column', gap: '6px',
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
@@ -1094,7 +1095,9 @@ const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, on
                                 )}
                             </div>
 
-                            {tareas.length > 0 && <Barra pct={Math.round(((tareas.length - pendientes.length) / tareas.length) * 100)} color={goal.color} alto={3} />}
+                            {tareas.length > 0 && (tareas.length - pendientes.length) > 0 && (
+                                <Barra pct={Math.round(((tareas.length - pendientes.length) / tareas.length) * 100)} color={goal.color} alto={2.5} />
+                            )}
 
                             {subsPlazo.map(s => <SubMetaChip key={s.id} sub={s} color={goal.color} dailyBlocks={dailyBlocks} onClick={() => onAbrirSub(s.id)} />)}
 
@@ -1124,11 +1127,7 @@ const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, on
                             {tareas.length > 0 && pendientes.length === 0 && <div style={{ fontSize: '0.76rem', color: C.outline }}>✓ Todo hecho</div>}
                             {subsPlazo.length === 0 && tareas.length === 0 && <div style={{ fontSize: '0.78rem', color: C.outline }}>Nada todavía</div>}
 
-                            <div style={{ marginTop: 'auto' }}>
-                                <button onClick={() => onNuevaSub(pl.k)} style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', fontSize: '0.74rem', fontWeight: 800, color: goal.color, fontFamily: 'inherit' }}>
-                                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span> Agregar
-                                </button>
-                            </div>
+                            
                         </div>
                     </Fragment>
                 );
@@ -1383,7 +1382,7 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                 const reales = (m.pasos || []).filter(p => !enlazado(p));
                 const np = reales.length;
                 const pasosHechos = reales.filter(p => p.completed).length;
-                const abierta = detalle || (panel[m.id] ?? (plano ? true : tot > 0));
+                const abierta = detalle || (panel[m.id] ?? false);
                 const panelVisible = detalle || abierta;
                 return (
                 <div
@@ -1398,7 +1397,7 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                     }}
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: movil ? '10px' : '12px' }}>
-                        {onCambiar && !detalle && (
+                        {onCambiar && !detalle && (!plano || tot > 0) && (
                             <button onClick={() => alternarPasos(m.id, abierta)} title={abierta ? 'Cerrar detalle' : 'Ver detalle'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: 0, marginLeft: '-6px', flexShrink: 0 }}>
                                 <span className="material-symbols-outlined" style={{ fontSize: '22px', transform: abierta ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>chevron_right</span>
                             </button>
@@ -1451,7 +1450,7 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                                 <span style={{ fontFamily: np ? MONO : 'inherit' }}>{np ? `${pasosHechos}/${np}` : 'Pasos'}</span>
                             </button>
                         )}
-                        {!detalle && onConvertirTarea && !m.completed && (tot === 0 || (m.pasos || []).some(p => !p.completed && !enlazado(p))) && (
+                        {!detalle && !plano && onConvertirTarea && !m.completed && (tot === 0 || (m.pasos || []).some(p => !p.completed && !enlazado(p))) && (
                             <button onClick={() => setConvT(convT?.id === m.id ? null : { id: m.id, rep: false, dias: [1, 2, 3, 4, 5] })} title="Convertir en tarea suelta o repetitiva"
                                 style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.72rem', fontWeight: 700, padding: '4px 10px 4px 7px', borderRadius: '999px', border: `1px solid ${convT?.id === m.id ? color : C.outlineVariant}`, background: convT?.id === m.id ? `color-mix(in srgb, ${color} 12%, white)` : C.surfaceLowest, color: convT?.id === m.id ? color : C.onSurfaceVariant }}>
                                 <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>event_available</span>
@@ -1951,6 +1950,162 @@ const reenlazarPaso = (
     }
 };
 
+
+/* ─── Ideas / Cosas que podría hacer (aún no son tareas) ─── */
+interface IdeasMetaProps {
+    goal: Goal;
+    onUpdate: (u: Partial<Goal>) => void;
+    onConvertirATarea: (texto: string) => void;
+}
+
+const IdeasMeta = ({ goal, onUpdate, onConvertirATarea }: IdeasMetaProps) => {
+    const [nuevaIdea, setNuevaIdea] = useState('');
+    const items = goal.listaSimple || [];
+    const color = goal.color || C.primary;
+
+    const agregar = (e: React.FormEvent) => {
+        e.preventDefault();
+        const t = nuevaIdea.trim();
+        if (!t) return;
+        const nuevo = {
+            id: Date.now() + Math.random(),
+            text: t,
+            completed: false,
+        };
+        onUpdate({ listaSimple: [...items, nuevo] });
+        setNuevaIdea('');
+    };
+
+    const eliminar = (id: number) => {
+        onUpdate({ listaSimple: items.filter(it => it.id !== id) });
+    };
+
+    const pasarATarea = (id: number, text: string) => {
+        onConvertirATarea(text);
+        eliminar(id);
+    };
+
+    return (
+        <div style={{
+            marginTop: '32px',
+            paddingLeft: '16px',
+            borderLeft: `3px solid color-mix(in srgb, ${color} 50%, white)`,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px', color }}>lightbulb</span>
+                    <span style={{ fontSize: '0.74rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.onSurface }}>
+                        Ideas / Cosas que podría hacer
+                    </span>
+                    <span style={{ fontSize: '0.7rem', color: C.outline, fontWeight: 500 }}>
+                        (aún no son tareas)
+                    </span>
+                </div>
+                {items.length > 0 && (
+                    <span style={{ fontSize: '0.72rem', color: C.outline, fontWeight: 700, fontFamily: MONO }}>
+                        {items.length} idea{items.length !== 1 ? 's' : ''}
+                    </span>
+                )}
+            </div>
+
+            {items.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {items.map(it => (
+                        <div
+                            key={it.id}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                padding: '6px 10px',
+                                borderRadius: '8px',
+                                background: 'rgba(0,0,0,0.02)',
+                                fontSize: '0.86rem',
+                                color: C.onSurface,
+                            }}
+                        >
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: color, flexShrink: 0 }} />
+                            <span style={{ flex: 1, minWidth: 0, wordBreak: 'break-word', lineHeight: 1.35 }}>
+                                {it.text}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => pasarATarea(it.id, it.text)}
+                                title="Convertir en tarea formal de este plazo"
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px',
+                                    background: `${color}14`,
+                                    color: color,
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    padding: '3px 8px',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    fontFamily: 'inherit',
+                                    flexShrink: 0,
+                                }}
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>arrow_upward</span>
+                                Pasar a tarea
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => eliminar(it.id)}
+                                title="Borrar idea"
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: C.outline,
+                                    cursor: 'pointer',
+                                    padding: '2px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    opacity: 0.6,
+                                    flexShrink: 0,
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.color = '#EF4444'; e.currentTarget.style.opacity = '1'; }}
+                                onMouseLeave={e => { e.currentTarget.style.color = C.outline; e.currentTarget.style.opacity = '0.6'; }}
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>close</span>
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <form onSubmit={agregar} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: C.outline, flexShrink: 0 }}>edit_note</span>
+                <input
+                    type="text"
+                    value={nuevaIdea}
+                    onChange={e => setNuevaIdea(e.target.value)}
+                    placeholder="Anotar algo que podría hacer... (presiona Enter)"
+                    style={{
+                        flex: 1,
+                        minWidth: 0,
+                        border: 'none',
+                        borderBottom: `1px dashed ${C.outlineVariant}`,
+                        background: 'transparent',
+                        padding: '6px 2px',
+                        fontSize: '0.84rem',
+                        color: C.onSurface,
+                        outline: 'none',
+                        fontFamily: 'inherit',
+                    }}
+                    onFocus={e => { e.currentTarget.style.borderBottomColor = color; }}
+                    onBlur={e => { e.currentTarget.style.borderBottomColor = C.outlineVariant; }}
+                />
+            </form>
+        </div>
+    );
+};
+
 const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, onUpdate, addDailyBlock, dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, onAbrirTarea, onCambiarPlazo, removeDailyBlock, subs = [], onSubUpdate, onSubToggle, onSubRemove, onSubAdd, onQuitarSub, pagina }: PlazoModalProps) => {
     const [nuevaTarea, setNuevaTarea] = useState('');
     const info = PLAZOS_INFO.find(p => p.k === plazo);
@@ -2109,6 +2264,9 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                             <span className="material-symbols-outlined">add</span>
                         </button>
                     </form>
+
+                    <IdeasMeta goal={goal} onUpdate={onUpdate} onConvertirATarea={onAdd} />
+
                         </div>
                         {pagina && (() => {
                             const hechasT = pasos.filter(m => m.completed).length;
