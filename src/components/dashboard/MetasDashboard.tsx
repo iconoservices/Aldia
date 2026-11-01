@@ -505,9 +505,9 @@ export const MetasDashboard = ({
                                             <div
                                                 key={g.id}
                                                 style={{
-                                                    flex: gr.metas.length === 1 && !movil ? '1 1 580px' : '1 1 450px',
-                                                    minWidth: movil ? '100%' : '380px',
-                                                    maxWidth: '100%',
+                                                    flex: movil ? '1 1 100%' : '0 1 430px',
+                                                    minWidth: movil ? '100%' : '300px',
+                                                    maxWidth: movil ? '100%' : '440px',
                                                     display: 'flex',
                                                 }}
                                             >
@@ -529,7 +529,7 @@ export const MetasDashboard = ({
                                             }
                                         })}
                                         style={{
-                                            flex: movil ? '1 1 auto' : '0 0 200px',
+                                            flex: movil ? '1 1 auto' : '0 0 170px',
                                             minHeight: movil ? '50px' : '140px',
                                             borderRadius: '14px',
                                             border: `1.5px dashed ${gr.proyecto?.color ? `${gr.proyecto.color}60` : C.outlineVariant}`,
@@ -1020,7 +1020,7 @@ const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, on
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: movil ? 'column' : 'row', alignItems: 'stretch', gap: movil ? '8px' : '0', height: movil ? undefined : '100%', flexWrap: 'nowrap' }}>
+        <div style={{ display: 'flex', flexDirection: movil ? 'column' : 'row', alignItems: 'stretch', gap: movil ? '8px' : '0', height: movil ? undefined : '100%', flexWrap: 'wrap' }}>
             {plazosAMostrar.map((pl, idx) => {
                 const subsPlazo = subs.filter(s => s.horizon === pl.k);
                 const tareas = goal.milestones.filter(m => (m.plazo ?? 'corto') === pl.k);
@@ -1034,7 +1034,7 @@ const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, on
                         )}
                         <div style={{
                             flex: 1,
-                            minWidth: movil ? undefined : '220px',
+                            minWidth: movil ? undefined : '180px',
                             padding: '10px 4px', borderRadius: '0', boxSizing: 'border-box',
                             background: 'transparent', border: 'none', borderTop: `2px solid ${goal.color}20`,
                             display: 'flex', flexDirection: 'column', gap: '6px',
