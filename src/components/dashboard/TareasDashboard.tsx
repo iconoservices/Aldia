@@ -30,6 +30,8 @@ interface TareasDashboardProps {
     projects: Project[];
     goals?: Goal[];
     toggleGoalMilestone?: (goalId: number, milestoneId: number) => void;
+    removeGoalMilestone?: (goalId: number, milestoneId: number) => void;
+    updateGoal?: (goalId: number, updates: Partial<Goal>) => void;
 }
 
 // Selector de meta / sub-meta a la que aporta la tarea (se ve en Metas).
@@ -101,6 +103,8 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     projects,
     goals = [],
     toggleGoalMilestone,
+    removeGoalMilestone,
+    updateGoal,
 }) => {
     const metaDe = (b: DailyBlock) => b.goalId !== undefined ? goals.find(g => g.id === b.goalId) : undefined;
     // Tarea madre de una tarea suelta: la tarea de la meta (con sus pasos) de la que salió como paso enlazado.
@@ -158,7 +162,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     const marcarHoy = (b: DailyBlock) => {
         const existente = dailyBlocks.find(x => mismaTarea(x, b) && x.date === todayStr);
         if (existente) toggleDailyBlock(existente.id);
-        else addDailyBlock(b.label, (b.period ?? 'Otro') as any, todayStr, true, b.projectId, b.repeatDays, b.time, b.isActive);
+        else addDailyBlock(b.label, (b.period ?? 'Otro') as any, todayStr, true, b.projectId, b.repeatDays, b.time, b.isActive, undefined, b.goalId);
     };
     // Un hábito es una repetitiva marcada como hábito: lleva racha (días seguidos que tocaban y se hicieron)
     const esHabito = (b: DailyBlock) => dailyBlocks.some(x => x.isHabit && mismaTarea(x, b));
@@ -292,7 +296,7 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
         const seen = new Map<string, DailyBlock>();
         dailyBlocks.forEach(b => {
             if (b.repeatDays && b.repeatDays.length > 0) {
-                const key = `${b.label.trim().toLowerCase()}_${b.period}`;
+                const key = `${b.label.trim().toLowerCase()}_${b.period || 'Otro'}`;
                 if (!seen.has(key)) {
                     seen.set(key, b);
                 } else {
@@ -304,8 +308,46 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
                 }
             }
         });
+
+        // Aseguramos que cualquier paso de metas marcado como repetitivo se visualice en Tareas Repetitivas
+        (goals || []).forEach(g => {
+            (g.milestones || []).forEach(m => {
+                const repetitivos = (m.pasos || []).filter(p => p.repetitiva);
+                repetitivos.forEach(p => {
+                    const key = `${p.text.trim().toLowerCase()}_Otro`;
+                    if (!seen.has(key)) {
+                        seen.set(key, {
+                            id: p.id,
+                            label: p.text,
+                            completed: p.completed,
+                            period: 'Otro',
+                            date: todayStr,
+                            repeatDays: [1, 2, 3, 4, 5],
+                            isActive: true,
+                            goalId: g.id,
+                        });
+                    }
+                });
+                if ((!m.pasos || m.pasos.length === 0) && (m as any).repetitiva) {
+                    const key = `${m.text.trim().toLowerCase()}_Otro`;
+                    if (!seen.has(key)) {
+                        seen.set(key, {
+                            id: m.id,
+                            label: m.text,
+                            completed: m.completed,
+                            period: 'Otro',
+                            date: todayStr,
+                            repeatDays: [1, 2, 3, 4, 5],
+                            isActive: true,
+                            goalId: g.id,
+                        });
+                    }
+                }
+            });
+        });
+
         return Array.from(seen.values());
-    }, [dailyBlocks]);
+    }, [dailyBlocks, goals, todayStr]);
     // Orden: pausadas siempre al final; luego las que tocan hoy primero; luego por hora.
     const pausada = (b: typeof repetitivas[number]) => b.isActive === false;
     const repetitivasOrdenadas = [...repetitivas].sort((a, b) =>
@@ -315,10 +357,52 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     const tocanHoy = repetitivas.filter(tocaHoy).length;
     const hechasHoy = repetitivas.filter(b => tocaHoy(b) && hechaHoy(b)).length;
 
-    // Tareas de una sola vez (sueltas): sin repeatDays
+    // Tareas de Metas integradas para que estén visibles y sincronizadas
+    const tareasDeMetas = useMemo(() => {
+        const out: (DailyBlock & { esDeMeta?: boolean; milestoneId?: number })[] = [];
+        (goals || []).forEach(g => {
+            (g.milestones || []).forEach(m => {
+                // Si la tarea de la meta tiene pasos, cada paso que NO sea repetitivo es una tarea suelta
+                if (m.pasos && m.pasos.length > 0) {
+                    const pasosSueltos = m.pasos.filter(p => !p.repetitiva);
+                    pasosSueltos.forEach(p => {
+                        out.push({
+                            id: p.id,
+                            label: p.text,
+                            completed: p.completed,
+                            period: 'Otro',
+                            date: g.targetDate || '',
+                            goalId: g.id,
+                            esDeMeta: true,
+                            milestoneId: m.id,
+                        });
+                    });
+                } else if (!(m as any).repetitiva) {
+                    // Si no tiene pasos ni está marcada repetitiva, la tarea misma es la tarea suelta
+                    out.push({
+                        id: m.id,
+                        label: m.text,
+                        completed: m.completed,
+                        period: 'Otro',
+                        date: g.targetDate || '',
+                        goalId: g.id,
+                        esDeMeta: true,
+                        milestoneId: m.id,
+                    });
+                }
+            });
+        });
+        return out;
+    }, [goals]);
+
+    // Tareas de una sola vez (sueltas): sin repeatDays + tareas de metas no duplicadas
     const sueltas = useMemo(() => {
-        return dailyBlocks.filter(b => !b.repeatDays || b.repeatDays.length === 0);
-    }, [dailyBlocks]);
+        const bloquesSueltos = dailyBlocks.filter(b => !b.repeatDays || b.repeatDays.length === 0);
+        const metasNoDuplicadas = tareasDeMetas.filter(tm =>
+            !bloquesSueltos.some(b => b.goalId === tm.goalId && b.label.trim().toLowerCase() === tm.label.trim().toLowerCase())
+        );
+        return [...bloquesSueltos, ...metasNoDuplicadas];
+    }, [dailyBlocks, tareasDeMetas]);
 
     const sueltasFiltradas = useMemo(() => {
         let list = [...sueltas];
@@ -401,17 +485,48 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     const toggleAlarmaActiva = (block: DailyBlock) => {
         const nuevoEstado = block.isActive === false ? true : false;
         // Si hay varios bloques con el mismo label y period (históricos), actualizamos todos
-        dailyBlocks
-            .filter(b => b.label.trim().toLowerCase() === block.label.trim().toLowerCase() && b.period === block.period)
-            .forEach(b => updateDailyBlock(b.id, { isActive: nuevoEstado }));
+        const bloques = dailyBlocks.filter(b => b.label.trim().toLowerCase() === block.label.trim().toLowerCase() && (b.period || 'Otro') === (block.period || 'Otro'));
+        if (bloques.length > 0) {
+            bloques.forEach(b => updateDailyBlock(b.id, { isActive: nuevoEstado }));
+        } else {
+            addDailyBlock(block.label, (block.period ?? 'Otro') as any, todayStr, false, block.projectId, block.repeatDays || [1, 2, 3, 4, 5], block.time, nuevoEstado, undefined, block.goalId);
+        }
     };
 
     const handleDeleteRepetitiva = (block: DailyBlock) => {
         if (!confirm(`¿Eliminar la tarea repetitiva "${block.label}"?`)) return;
+        const targetLabel = block.label?.trim().toLowerCase();
+        if (!targetLabel) {
+            removeDailyBlock(block.id);
+            return;
+        }
         const ids = dailyBlocks
-            .filter(b => b.label.trim().toLowerCase() === block.label.trim().toLowerCase() && b.period === block.period)
+            .filter(b => b.label?.trim().toLowerCase() === targetLabel && (b.period || 'Otro') === (block.period || 'Otro'))
             .map(b => b.id);
-        removeDailyBlock(ids);
+        if (ids.length) {
+            removeDailyBlock(ids);
+        } else {
+            removeDailyBlock(block.id);
+        }
+        // Si pertenece a una meta, desmarcar repetitiva en el milestone o paso
+        if (block.goalId && updateGoal) {
+            const goal = goals.find(g => g.id === block.goalId);
+            if (goal) {
+                const nuevosMilestones = goal.milestones.map(m => {
+                    if (m.pasos) {
+                        return {
+                            ...m,
+                            pasos: m.pasos.map(p => p.text.trim().toLowerCase() === targetLabel ? { ...p, repetitiva: false } : p)
+                        };
+                    }
+                    if (m.text.trim().toLowerCase() === targetLabel) {
+                        return { ...m, repetitiva: false };
+                    }
+                    return m;
+                });
+                updateGoal(goal.id, { milestones: nuevosMilestones });
+            }
+        }
     };
 
     return (
@@ -960,7 +1075,13 @@ Supermercado:
                                     >
                                         {/* Checkbox circular */}
                                         <button
-                                            onClick={() => toggleDailyBlock(b.id)}
+                                            onClick={() => {
+                                                if ((b as any).esDeMeta && toggleGoalMilestone && b.goalId) {
+                                                    toggleGoalMilestone(b.goalId, (b as any).milestoneId || b.id);
+                                                } else {
+                                                    toggleDailyBlock(b.id);
+                                                }
+                                            }}
                                             style={{
                                                 width: '22px', height: '22px', borderRadius: '50%',
                                                 border: `2px solid ${b.completed ? C.primary : C.outlineVariant}`,
@@ -1014,7 +1135,17 @@ Supermercado:
                                             </div>
                                         </div>
 
-                                        {menuAcciones(b.id, () => handleStartEdit(b), () => removeDailyBlock(b.id))}
+                                        {menuAcciones(
+                                            b.id,
+                                            () => handleStartEdit(b),
+                                            () => {
+                                                if ((b as any).esDeMeta && removeGoalMilestone && b.goalId) {
+                                                    removeGoalMilestone(b.goalId, (b as any).milestoneId || b.id);
+                                                } else {
+                                                    removeDailyBlock(b.id);
+                                                }
+                                            }
+                                        )}
                                     </div>
                                     </Fragment>
                                 );

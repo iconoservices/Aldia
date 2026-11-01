@@ -457,6 +457,8 @@ function App() {
                   projects={state.projects}
                   goals={state.goals}
                   toggleGoalMilestone={state.toggleGoalMilestone}
+                  removeGoalMilestone={state.removeGoalMilestone}
+                  updateGoal={state.updateGoal}
                 />
               </>
             ) : activeTab === 'Plan' ? (

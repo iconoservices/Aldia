@@ -163,12 +163,44 @@ export const VistaListaMetas: React.FC<VistaListaMetasProps> = ({
     const convertirTarea = (goalId: number, m: GoalMilestone, dias?: number[]) => {
         if (!addDailyBlock) return;
         const hoy = new Date().toLocaleDateString('en-CA');
-        if (m.pasos?.length) {
-            m.pasos.filter(p => !p.completed).forEach(p => {
-                addDailyBlock(p.text, 'Otro', hoy, false, undefined, dias, undefined, true, false, goalId);
+        const goal = goals.find(g => g.id === goalId);
+        if (!goal) return;
+
+        const esRepetitiva = !!(dias && dias.length > 0);
+        const pasosActuales = m.pasos || [];
+        const noCompletados = pasosActuales.filter(p => !p.completed);
+        const candidatos = noCompletados.length > 0 ? noCompletados : pasosActuales;
+
+        if (candidatos.length > 0) {
+            candidatos.forEach(p => {
+                const clave = p.text.trim().toLowerCase();
+                const existente = dailyBlocks?.find(b => b.goalId === goalId && b.label.trim().toLowerCase() === clave);
+                if (existente && updateDailyBlock) {
+                    updateDailyBlock(existente.id, { repeatDays: dias, isActive: true, date: hoy });
+                } else {
+                    addDailyBlock(p.text, 'Otro', hoy, false, undefined, dias, undefined, true, false, goalId);
+                }
+            });
+            const nuevosPasos = pasosActuales.map(p =>
+                candidatos.some(q => q.id === p.id) ? { ...p, repetitiva: esRepetitiva } : p
+            );
+            onUpdateGoal(goalId, {
+                milestones: goal.milestones.map(x => x.id === m.id ? { ...x, pasos: nuevosPasos } : x)
             });
         } else {
-            addDailyBlock(m.text, 'Otro', hoy, false, undefined, dias, undefined, true, false, goalId);
+            const clave = m.text.trim().toLowerCase();
+            const existente = dailyBlocks?.find(b => b.goalId === goalId && b.label.trim().toLowerCase() === clave);
+            if (existente && updateDailyBlock) {
+                updateDailyBlock(existente.id, { repeatDays: dias, isActive: true, date: hoy });
+            } else {
+                addDailyBlock(m.text, 'Otro', hoy, false, undefined, dias, undefined, true, false, goalId);
+            }
+            onUpdateGoal(goalId, {
+                milestones: goal.milestones.map(x => x.id === m.id ? {
+                    ...x,
+                    pasos: [{ id: Date.now(), text: m.text, completed: false, repetitiva: esRepetitiva }]
+                } : x)
+            });
         }
     };
 
@@ -758,7 +790,7 @@ export const VistaListaMetas: React.FC<VistaListaMetasProps> = ({
                                                                                                                 type="text"
                                                                                                                 value={nuevoPasoTexto[m.id] || ''}
                                                                                                                 onChange={e => setNuevoPasoTexto(prev => ({ ...prev, [m.id]: e.target.value }))}
-                                                                                                                placeholder="Paso..."
+                                                                                                                placeholder="Escribir paso... (Enter)"
                                                                                                                 style={{
                                                                                                                     border: 'none',
                                                                                                                     background: 'transparent',
@@ -855,7 +887,7 @@ export const VistaListaMetas: React.FC<VistaListaMetasProps> = ({
                                                                                     type="text"
                                                                                     value={nuevaIdeaTexto[g.id] || ''}
                                                                                     onChange={e => setNuevaIdeaTexto(prev => ({ ...prev, [g.id]: e.target.value }))}
-                                                                                    placeholder="Idea..."
+                                                                                    placeholder="Anotar idea que podría hacer... (Enter)"
                                                                                     style={{
                                                                                         border: 'none',
                                                                                         background: 'transparent',

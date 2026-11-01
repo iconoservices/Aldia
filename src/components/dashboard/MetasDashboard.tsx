@@ -1976,7 +1976,7 @@ const SubMetaModal = ({ sub, padre, movil, dailyBlocks, toggleDailyBlock, update
                             onEditar={(id, t) => onUpdate({ milestones: sub.milestones.map(x => x.id === id ? { ...x, text: t } : x) })}
                             onCambiar={(id, u) => onUpdate({ milestones: sub.milestones.map(x => x.id === id ? { ...x, ...u } : x) })}
                             onConvertir={addDailyBlock ? convertirPaso(sub, undefined, onUpdate, addDailyBlock) : undefined}
-                            onConvertirTarea={addDailyBlock ? convertirTarea(sub, onUpdate, addDailyBlock) : undefined}
+                            onConvertirTarea={addDailyBlock ? convertirTarea(sub, onUpdate, addDailyBlock, dailyBlocks, updateDailyBlock) : undefined}
                         />
                     </div>
 
@@ -2048,7 +2048,7 @@ const TareaDetalle = ({ goal, tarea, plazo, movil, dailyBlocks, onVolver, onUpda
                 onEditar={(id, t) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, text: t } : x) })}
                 onCambiar={(id, u) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, ...u } : x) })}
                 onConvertir={addDailyBlock ? convertirPaso(goal, plazo, onUpdate, addDailyBlock) : undefined}
-                onConvertirTarea={addDailyBlock ? convertirTarea(goal, onUpdate, addDailyBlock) : undefined}
+                onConvertirTarea={addDailyBlock ? convertirTarea(goal, onUpdate, addDailyBlock, dailyBlocks, updateDailyBlock) : undefined}
                 onReenlazar={addDailyBlock ? reenlazarPaso(goal, dailyBlocks, removeDailyBlock, onUpdate, addDailyBlock) : undefined}
                 repDe={txt => tareasDeMeta(goal.id, dailyBlocks, undefined, true).find(t => t.label.trim().toLowerCase() === txt.trim().toLowerCase())}
                 onToggleRep={toggleDailyBlock}
@@ -2093,19 +2093,42 @@ const convertirPaso = (
 const convertirTarea = (
     goal: Goal, onUpdate: (u: Partial<Goal>) => void,
     addDailyBlock: MetasDashboardProps['addDailyBlock'],
+    dailyBlocks?: DailyBlock[],
+    updateDailyBlock?: MetasDashboardProps['updateDailyBlock']
 ) => (t: Tarea, dias?: number[]) => {
     if (!addDailyBlock) return;
     const hoy = new Date().toLocaleDateString('en-CA');
     const base = Date.now();
     const pasosActuales = t.pasos || [];
-    const pendientes = pasosActuales.filter(p => !p.completed && !p.repetitiva);
-    const textos = pendientes.length ? pendientes.map(p => p.text) : pasosActuales.length ? [] : [t.text];
-    if (!textos.length) return;
-    textos.forEach(txt => addDailyBlock(txt, 'Otro', hoy, false, undefined, dias, undefined, true, false, goal.id));
-    const pasos = pendientes.length
-        ? pasosActuales.map(p => pendientes.some(q => q.id === p.id) ? { ...p, repetitiva: true } : p)
-        : [{ id: base, text: t.text, completed: false, repetitiva: true }];
-    onUpdate({ milestones: goal.milestones.map(x => x.id === t.id ? { ...x, pasos } : x) });
+    const noCompletados = pasosActuales.filter(p => !p.completed);
+    const candidatos = noCompletados.length > 0 ? noCompletados : pasosActuales;
+    const esRepetitiva = !!(dias && dias.length > 0);
+
+    if (candidatos.length > 0) {
+        candidatos.forEach(p => {
+            const clave = p.text.trim().toLowerCase();
+            const existente = dailyBlocks?.find(b => b.goalId === goal.id && b.label.trim().toLowerCase() === clave);
+            if (existente && updateDailyBlock) {
+                updateDailyBlock(existente.id, { repeatDays: dias, isActive: true, date: hoy });
+            } else {
+                addDailyBlock(p.text, 'Otro', hoy, false, undefined, dias, undefined, true, false, goal.id);
+            }
+        });
+        const pasos = pasosActuales.map(p =>
+            candidatos.some(q => q.id === p.id) ? { ...p, repetitiva: esRepetitiva } : p
+        );
+        onUpdate({ milestones: goal.milestones.map(x => x.id === t.id ? { ...x, pasos } : x) });
+    } else {
+        const clave = t.text.trim().toLowerCase();
+        const existente = dailyBlocks?.find(b => b.goalId === goal.id && b.label.trim().toLowerCase() === clave);
+        if (existente && updateDailyBlock) {
+            updateDailyBlock(existente.id, { repeatDays: dias, isActive: true, date: hoy });
+        } else {
+            addDailyBlock(t.text, 'Otro', hoy, false, undefined, dias, undefined, true, false, goal.id);
+        }
+        const pasos = [{ id: base, text: t.text, completed: false, repetitiva: esRepetitiva }];
+        onUpdate({ milestones: goal.milestones.map(x => x.id === t.id ? { ...x, pasos } : x) });
+    }
 };
 
 // Cambia cómo está enlazado un paso: borra sus tareas de Tareas y crea la nueva (hoy / repetitiva), o lo deja como paso normal.
@@ -2399,7 +2422,7 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                                 onEditar={(id, t) => onSubUpdate(sub.id, { milestones: sub.milestones.map(x => x.id === id ? { ...x, text: t } : x) })}
                                 onCambiar={(id, u) => onSubUpdate(sub.id, { milestones: sub.milestones.map(x => x.id === id ? { ...x, ...u } : x) })}
                                 onConvertir={addDailyBlock ? convertirPaso(sub, undefined, u => onSubUpdate(sub.id, u), addDailyBlock) : undefined}
-                                onConvertirTarea={addDailyBlock ? convertirTarea(sub, u => onSubUpdate(sub.id, u), addDailyBlock) : undefined}
+                                onConvertirTarea={addDailyBlock ? convertirTarea(sub, u => onSubUpdate(sub.id, u), addDailyBlock, dailyBlocks, updateDailyBlock) : undefined}
                                 onReenlazar={addDailyBlock ? reenlazarPaso(sub, dailyBlocks, removeDailyBlock, u => onSubUpdate(sub.id, u), addDailyBlock) : undefined}
                                 repDe={txt => tareasDeMeta(sub.id, dailyBlocks, undefined, true).find(t => t.label.trim().toLowerCase() === txt.trim().toLowerCase())}
                                 onToggleRep={toggleDailyBlock}
@@ -2421,7 +2444,7 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                         onCambiar={(id, u) => onUpdate({ milestones: goal.milestones.map(x => x.id === id ? { ...x, ...u } : x) })}
                         onAbrir={onAbrirTarea}
                         onConvertir={addDailyBlock ? convertirPaso(goal, plazo, onUpdate, addDailyBlock) : undefined}
-                        onConvertirTarea={addDailyBlock ? convertirTarea(goal, onUpdate, addDailyBlock) : undefined}
+                        onConvertirTarea={addDailyBlock ? convertirTarea(goal, onUpdate, addDailyBlock, dailyBlocks, updateDailyBlock) : undefined}
                         onReenlazar={addDailyBlock ? reenlazarPaso(goal, dailyBlocks, removeDailyBlock, onUpdate, addDailyBlock) : undefined}
                         repDe={txt => tareasDeMeta(goal.id, dailyBlocks, undefined, true).find(t => t.label.trim().toLowerCase() === txt.trim().toLowerCase())}
                         onToggleRep={toggleDailyBlock}
