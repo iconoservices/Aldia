@@ -1329,7 +1329,7 @@ type Tarea = Goal['milestones'][number];
 type Paso = NonNullable<Tarea['pasos']>[number];
 const DIAS_SEMANA: { l: string; d: number }[] = [{ l: 'L', d: 1 }, { l: 'M', d: 2 }, { l: 'X', d: 3 }, { l: 'J', d: 4 }, { l: 'V', d: 5 }, { l: 'S', d: 6 }, { l: 'D', d: 0 }];
 
-const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd, onCambiar, onConvertir, onConvertirTarea, onReenlazar, extra, repDe, onToggleRep, onAbrir, detalle, plano, onBorrarRep, etiqueta, sinForm }: {
+const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd, onCambiar, onConvertir, onConvertirTarea, onReenlazar, extra, repDe, onToggleRep, onAbrir, detalle, plano, onBorrarRep, etiqueta, sinForm, dailyBlocks, updateDailyBlock, goalId }: {
     etiqueta?: { texto: string; color: string }; // sub-meta a la que pertenecen estas tareas, como etiqueta
     sinForm?: boolean; // oculta el campo "Nueva tarea"
     onBorrarRep?: (t: TareaEnlazada | undefined, texto: string) => void; // borra la repetitiva de un paso
@@ -1350,6 +1350,9 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
     onConvertirTarea?: (tarea: Tarea, dias?: number[]) => void; // sin días = tarea suelta de hoy; con días = repetitiva
     onToggle: (id: number) => void; onRemove: (id: number) => void; onEditar: (id: number, t: string) => void; onAdd: (t: string) => void;
     onCambiar?: (id: number, updates: Partial<Goal['milestones'][number]>) => void;
+    dailyBlocks?: DailyBlock[];
+    updateDailyBlock?: (id: number, updates: Partial<DailyBlock>) => void;
+    goalId?: number;
 }) => {
     const [texto, setTexto] = useState('');
     const [sobre, setSobre] = useState<number | null>(null);
@@ -1450,13 +1453,83 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                                 <span style={{ fontFamily: np ? MONO : 'inherit' }}>{np ? `${pasosHechos}/${np}` : 'Pasos'}</span>
                             </button>
                         )}
-                        {!detalle && !plano && onConvertirTarea && !m.completed && (tot === 0 || (m.pasos || []).some(p => !p.completed && !enlazado(p))) && (
-                            <button onClick={() => setConvT(convT?.id === m.id ? null : { id: m.id, rep: false, dias: [1, 2, 3, 4, 5] })} title="Convertir en tarea suelta o repetitiva"
-                                style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.72rem', fontWeight: 700, padding: '4px 10px 4px 7px', borderRadius: '999px', border: `1px solid ${convT?.id === m.id ? color : C.outlineVariant}`, background: convT?.id === m.id ? `color-mix(in srgb, ${color} 12%, white)` : C.surfaceLowest, color: convT?.id === m.id ? color : C.onSurfaceVariant }}>
-                                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>event_available</span>
-                                Convertir
-                            </button>
-                        )}
+                                                {(() => {
+                            const repPrincipal = repDe ? (repDe(m.text) || (m.pasos || []).map(p => repDe(p.text)).find(Boolean)) : undefined;
+                            if (repPrincipal && repPrincipal.repetitiva) {
+                                return (
+                                    <button
+                                        type="button"
+                                        role="switch"
+                                        aria-checked={repPrincipal.activa}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (updateDailyBlock && dailyBlocks && goalId) {
+                                                const base = dailyBlocks.find(b => b.id === repPrincipal.id);
+                                                if (base) {
+                                                    const nuevoEstado = !repPrincipal.activa;
+                                                    dailyBlocks
+                                                        .filter(b => b.goalId === goalId && b.label.trim().toLowerCase() === base.label.trim().toLowerCase())
+                                                        .forEach(b => updateDailyBlock(b.id, { isActive: nuevoEstado }));
+                                                }
+                                            }
+                                        }}
+                                        title={repPrincipal.activa ? 'Tarea repetitiva activa · Toca para desactivar/pausar' : 'Tarea repetitiva desactivada · Toca para activar'}
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '5px',
+                                            padding: '2px 8px 2px 5px',
+                                            borderRadius: '999px',
+                                            border: `1px solid ${repPrincipal.activa ? color : C.outlineVariant}`,
+                                            background: repPrincipal.activa ? `color-mix(in srgb, ${color} 10%, white)` : C.surfaceContainerLow,
+                                            cursor: 'pointer',
+                                            fontSize: '0.68rem',
+                                            fontWeight: 700,
+                                            color: repPrincipal.activa ? color : C.outline,
+                                            fontFamily: 'inherit',
+                                            flexShrink: 0,
+                                        }}
+                                    >
+                                        <span style={{
+                                            width: '20px', height: '12px', borderRadius: '999px',
+                                            background: repPrincipal.activa ? color : C.outlineVariant,
+                                            position: 'relative', display: 'inline-block',
+                                            transition: 'background 0.15s ease',
+                                        }}>
+                                            <span style={{
+                                                position: 'absolute', top: '1px',
+                                                left: repPrincipal.activa ? '9px' : '1px',
+                                                width: '10px', height: '10px', borderRadius: '50%',
+                                                background: '#fff', transition: 'left 0.15s ease',
+                                                boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+                                            }} />
+                                        </span>
+                                        {repPrincipal.activa ? 'Activa' : 'Desactivada'}
+                                    </button>
+                                );
+                            }
+                            if (!detalle && onConvertirTarea && !m.completed) {
+                                return (
+                                    <button
+                                        type="button"
+                                        onClick={() => setConvT(convT?.id === m.id ? null : { id: m.id, rep: false, dias: [1, 2, 3, 4, 5] })}
+                                        title="Convertir en tarea de hoy o repetitiva"
+                                        style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: '3px', flexShrink: 0,
+                                            cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.7rem', fontWeight: 700,
+                                            padding: '3px 8px', borderRadius: '999px',
+                                            border: `1px solid ${convT?.id === m.id ? color : C.outlineVariant}`,
+                                            background: convT?.id === m.id ? `color-mix(in srgb, ${color} 12%, white)` : 'transparent',
+                                            color: convT?.id === m.id ? color : C.onSurfaceVariant,
+                                        }}
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: '15px', color }}>event_available</span>
+                                        <span>Convertir</span>
+                                    </button>
+                                );
+                            }
+                            return null;
+                        })()}
                         {!detalle && <button onClick={() => { if (window.confirm(`¿Quitar la tarea "${m.text}"${tot > 0 ? ' y sus pasos' : ''}?`)) onRemove(m.id); }} title="Quitar tarea" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, display: 'flex', padding: '2px', flexShrink: 0, opacity: movil || sobre === m.id ? 0.9 : 0.55, transition: 'opacity 0.12s' }}>
                             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
                         </button>}
@@ -1853,7 +1926,7 @@ interface PlazoModalProps {
 }
 
 // Pantalla completa de UNA tarea: sus pasos, repetitivas y detalles. El menú lateral sigue a la vista.
-const TareaDetalle = ({ goal, tarea, plazo, movil, dailyBlocks, onVolver, onUpdate, onToggle, onRemove, toggleDailyBlock, addDailyBlock, removeDailyBlock }: {
+const TareaDetalle = ({ goal, tarea, plazo, movil, dailyBlocks, onVolver, onUpdate, onToggle, onRemove, toggleDailyBlock, addDailyBlock, removeDailyBlock, updateDailyBlock }: {
     goal: Goal; tarea: Tarea; plazo: GoalHorizon; movil: boolean; dailyBlocks: DailyBlock[];
     onVolver: () => void; onUpdate: (u: Partial<Goal>) => void; onToggle: (id: number) => void; onRemove: (id: number) => void;
     toggleDailyBlock?: (id: number) => void; updateDailyBlock?: (id: number, updates: Partial<DailyBlock>) => void;
@@ -1881,6 +1954,9 @@ const TareaDetalle = ({ goal, tarea, plazo, movil, dailyBlocks, onVolver, onUpda
                 onReenlazar={addDailyBlock ? reenlazarPaso(goal, dailyBlocks, removeDailyBlock, onUpdate, addDailyBlock) : undefined}
                 repDe={txt => tareasDeMeta(goal.id, dailyBlocks, undefined, true).find(t => t.label.trim().toLowerCase() === txt.trim().toLowerCase())}
                 onToggleRep={toggleDailyBlock}
+                        dailyBlocks={dailyBlocks}
+                        updateDailyBlock={updateDailyBlock}
+                        goalId={goal.id}
             />
             {total > 0 && (
                 <div style={{ margin: '4px 0 0', fontSize: '0.78rem', color: C.outline, fontFamily: MONO }}>{hechos}/{total} pasos hechos</div>
@@ -2229,6 +2305,9 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                                 onReenlazar={addDailyBlock ? reenlazarPaso(sub, dailyBlocks, removeDailyBlock, u => onSubUpdate(sub.id, u), addDailyBlock) : undefined}
                                 repDe={txt => tareasDeMeta(sub.id, dailyBlocks, undefined, true).find(t => t.label.trim().toLowerCase() === txt.trim().toLowerCase())}
                                 onToggleRep={toggleDailyBlock}
+                        dailyBlocks={dailyBlocks}
+                        updateDailyBlock={updateDailyBlock}
+                        goalId={goal.id}
                             />
                             </div>
                         ) : null;
@@ -2248,6 +2327,9 @@ const PlazoModal = ({ goal, plazo, movil, onClose, onAdd, onToggle, onRemove, on
                         onReenlazar={addDailyBlock ? reenlazarPaso(goal, dailyBlocks, removeDailyBlock, onUpdate, addDailyBlock) : undefined}
                         repDe={txt => tareasDeMeta(goal.id, dailyBlocks, undefined, true).find(t => t.label.trim().toLowerCase() === txt.trim().toLowerCase())}
                         onToggleRep={toggleDailyBlock}
+                        dailyBlocks={dailyBlocks}
+                        updateDailyBlock={updateDailyBlock}
+                        goalId={goal.id}
                         onBorrarRep={removeDailyBlock ? (_t, txt) => {
                             dailyBlocks.filter(b => b.goalId === goal.id && b.repeatDays?.length && b.label.trim().toLowerCase() === txt.trim().toLowerCase()).forEach(b => removeDailyBlock(b.id));
                         } : undefined}
