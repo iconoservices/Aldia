@@ -758,7 +758,7 @@ export const VistaListaMetas: React.FC<VistaListaMetasProps> = ({
                                                                                                                 type="text"
                                                                                                                 value={nuevoPasoTexto[m.id] || ''}
                                                                                                                 onChange={e => setNuevoPasoTexto(prev => ({ ...prev, [m.id]: e.target.value }))}
-                                                                                                                placeholder="Escribir paso... (Enter)"
+                                                                                                                placeholder="Paso..."
                                                                                                                 style={{
                                                                                                                     border: 'none',
                                                                                                                     background: 'transparent',
@@ -785,20 +785,20 @@ export const VistaListaMetas: React.FC<VistaListaMetasProps> = ({
                                                                                             onAddMilestone(g.id, t, plazo);
                                                                                             setNuevaTareaTexto(prev => ({ ...prev, [keyInput]: '' }));
                                                                                         }}
-                                                                                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '2px 0' }}
+                                                                                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '2px 0', opacity: 0.7 }}
                                                                                     >
-                                                                                        <span style={{ color: colorMeta, fontSize: '0.8rem' }}>+</span>
+                                                                                        <span style={{ color: C.outline, fontSize: '0.78rem', fontWeight: 600 }}>+</span>
                                                                                         <input
                                                                                             type="text"
                                                                                             value={nuevaTareaTexto[keyInput] || ''}
                                                                                             onChange={e => setNuevaTareaTexto(prev => ({ ...prev, [keyInput]: e.target.value }))}
-                                                                                            placeholder={`+ Escribir tarea en ${nombrePropio.toLowerCase()}... (Enter)`}
+                                                                                            placeholder="Tarea..."
                                                                                             style={{
                                                                                                 border: 'none',
                                                                                                 background: 'transparent',
                                                                                                 outline: 'none',
                                                                                                 fontSize: '0.8rem',
-                                                                                                color: C.outline,
+                                                                                                color: C.onSurface,
                                                                                                 flex: 1,
                                                                                                 fontFamily: 'inherit',
                                                                                             }}
@@ -855,7 +855,7 @@ export const VistaListaMetas: React.FC<VistaListaMetasProps> = ({
                                                                                     type="text"
                                                                                     value={nuevaIdeaTexto[g.id] || ''}
                                                                                     onChange={e => setNuevaIdeaTexto(prev => ({ ...prev, [g.id]: e.target.value }))}
-                                                                                    placeholder="Anotar idea que podría hacer... (Enter)"
+                                                                                    placeholder="Idea..."
                                                                                     style={{
                                                                                         border: 'none',
                                                                                         background: 'transparent',
