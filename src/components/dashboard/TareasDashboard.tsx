@@ -107,15 +107,17 @@ export const TareasDashboard: React.FC<TareasDashboardProps> = ({
     updateGoal,
 }) => {
     const metaDe = (b: DailyBlock) => b.goalId !== undefined ? goals.find(g => g.id === b.goalId) : undefined;
-    // Tarea madre de una tarea suelta: la tarea de la meta (con sus pasos) de la que salió como paso enlazado.
+    // Tarea madre de una subtarea: la tarea de la meta (con sus pasos) de la que salió como paso enlazado.
     const madreDe = (b: DailyBlock) => {
-        const g = metaDe(b);
         const key = b.label.trim().toLowerCase();
-        const m = g?.milestones.find(x => (x.pasos || []).some(p => p.repetitiva && p.text.trim().toLowerCase() === key));
-        if (!g || !m) return undefined;
+        const g = (b.goalId !== undefined ? goals.find(x => x.id === b.goalId) : undefined)
+            || goals.find(x => x.milestones.some(m => (m.pasos || []).some(p => p.text.trim().toLowerCase() === key)));
+        if (!g) return undefined;
+        const m = g.milestones.find(x => (x.pasos || []).some(p => p.text.trim().toLowerCase() === key));
+        if (!m) return undefined;
         // Tarea simple (su único paso es ella misma): no hace falta cabecera, la fila ya es la tarea.
-        const enlazados = (m.pasos || []).filter(p => p.repetitiva);
-        if ((m.pasos || []).length === 1 && enlazados.length === 1 && enlazados[0].text.trim().toLowerCase() === m.text.trim().toLowerCase()) return undefined;
+        const pasos = m.pasos || [];
+        if (pasos.length === 1 && pasos[0].text.trim().toLowerCase() === m.text.trim().toLowerCase()) return undefined;
         return { g, m };
     };
     // Junta las tareas de una misma tarea madre, una al lado de otra, en el lugar de la primera.
@@ -881,17 +883,91 @@ Supermercado:
                                 return (
                                     <div key={g}>
                                         {hayHabitos && cabeceraGrupo(clave, g, items.length)}
-                                        {!(hayHabitos && cerrados[clave]) && items.map(b => {
+                                        {!(hayHabitos && cerrados[clave]) && agruparPorMadre(items).map(b => {
+                                const madre = madreDe(b);
+                                const primeraDeMadre = !!madre && agruparPorMadre(items).find(x => madreDe(x)?.m.id === madre.m.id) === b;
+                                const claveMadre = 'madre:rep:' + madre?.m.id;
+                                const estaPlegada = !!cerrados[claveMadre];
+                                const subtareasDeMadre = items.filter(x => madreDe(x)?.m.id === madre?.m.id);
+                                const todasEncendidas = subtareasDeMadre.every(s => s.isActive !== false);
+
                                 const project = projects.find(p => p.id === b.projectId);
                                 const isEncendida = b.isActive !== false;
                                 const toca = tocaHoy(b);
                                 const hecha = toca && hechaHoy(b);
 
                                 return (
+                                    <Fragment key={b.id}>
+                                    {primeraDeMadre && madre && (
+                                        <div
+                                            onClick={() => setCerrados(c => ({ ...c, [claveMadre]: !c[claveMadre] }))}
+                                            style={{
+                                                padding: '8px 10px 8px 12px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                background: 'rgba(15, 169, 122, 0.05)',
+                                                borderTop: `1px solid ${C.surfaceContainerHigh}`,
+                                                borderBottom: estaPlegada ? `1px solid ${C.surfaceContainerHigh}` : 'none',
+                                                cursor: 'pointer',
+                                                userSelect: 'none',
+                                            }}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); setCerrados(c => ({ ...c, [claveMadre]: !c[claveMadre] })); }}
+                                                title={estaPlegada ? 'Desplegar subtareas' : 'Plegar subtareas'}
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.primary, width: '22px', height: '22px' }}
+                                            >
+                                                <span className="material-symbols-outlined" style={{ fontSize: '18px', transform: estaPlegada ? 'rotate(-90deg)' : 'none', transition: 'transform .18s' }}>
+                                                    expand_more
+                                                </span>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); toggleGoalMilestone?.(madre.g.id, madre.m.id); }}
+                                                title="Marcar tarea completa"
+                                                style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${madre.m.completed ? C.primary : C.outlineVariant}`, background: madre.m.completed ? C.primary : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}
+                                            >
+                                                {madre.m.completed && <span className="material-symbols-outlined" style={{ fontSize: '13px', color: '#fff' }}>check</span>}
+                                            </button>
+
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                    <span style={{ fontSize: '0.88rem', fontWeight: 800, color: madre.m.completed ? C.outline : C.onSurface, textDecoration: madre.m.completed ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        {madre.m.text}
+                                                    </span>
+                                                    <span style={{ fontSize: '0.68rem', fontWeight: 800, color: C.primary, background: 'rgba(15, 169, 122, 0.12)', borderRadius: '999px', padding: '1px 8px' }}>
+                                                        {subtareasDeMadre.filter(s => s.completed || (tocaHoy(s) && hechaHoy(s))).length}/{subtareasDeMadre.length} subtareas
+                                                    </span>
+                                                </div>
+                                                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: C.outline }}>
+                                                    🎯 {madre.g.title}
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const nuevo = !todasEncendidas;
+                                                    subtareasDeMadre.forEach(s => toggleAlarmaActiva({ ...s, isActive: !nuevo }));
+                                                }}
+                                                title={todasEncendidas ? 'Pausar todas las subtareas' : 'Activar todas las subtareas'}
+                                                style={{ width: '34px', height: '20px', borderRadius: '999px', border: 'none', cursor: 'pointer', padding: 0, position: 'relative', flexShrink: 0, background: todasEncendidas ? C.primary : C.outlineVariant, transition: 'background .15s' }}
+                                            >
+                                                <span style={{ position: 'absolute', top: '2px', left: todasEncendidas ? '16px' : '2px', width: '16px', height: '16px', borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.25)', transition: 'left .15s' }} />
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {!estaPlegada && (
                                     <div
-                                        key={b.id}
                                         style={{
-                                            padding: '9px 8px 9px 14px', borderBottom: `1px solid ${C.surfaceContainerHigh}`,
+                                            padding: madre ? '9px 8px 9px 38px' : '9px 8px 9px 14px',
+                                            borderBottom: `1px solid ${C.surfaceContainerHigh}`,
+                                            borderLeft: madre ? `3px solid color-mix(in srgb, ${C.primary} 35%, transparent)` : 'none',
                                             display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
                                             opacity: !toca || !isEncendida ? 0.5 : 1,
                                             background: hecha ? 'rgba(15, 169, 122, 0.06)' : 'transparent',
@@ -966,6 +1042,8 @@ Supermercado:
                                         </button>
                                         {menuAcciones(b.id, () => handleStartEdit(b), () => handleDeleteRepetitiva(b), [{ icono: esHabito(b) ? 'spa' : 'local_fire_department', texto: esHabito(b) ? 'Quitar de hábitos' : 'Marcar como hábito', onClick: () => toggleHabito(b) }, { icono: isEncendida ? 'alarm_off' : 'alarm_on', texto: isEncendida ? 'Pausar alarma' : 'Activar alarma', onClick: () => toggleAlarmaActiva(b) }])}
                                     </div>
+                                    )}
+                                    </Fragment>
                                 );
                             })}
                                     </div>
@@ -1047,6 +1125,9 @@ Supermercado:
                                         {!cerrados[clave] && agruparPorMadre(items).map(b => {
                                 const madre = madreDe(b);
                                 const primeraDeMadre = !!madre && agruparPorMadre(items).find(x => madreDe(x)?.m.id === madre.m.id) === b;
+                                const claveMadre = 'madre:sue:' + madre?.m.id;
+                                const estaPlegada = !!cerrados[claveMadre];
+                                const subtareasDeMadre = items.filter(x => madreDe(x)?.m.id === madre?.m.id);
                                 const project = projects.find(p => p.id === b.projectId);
                                 const esHoy = b.date === todayStr;
 
@@ -1056,22 +1137,59 @@ Supermercado:
                                 return (
                                     <Fragment key={b.id}>
                                     {primeraDeMadre && madre && (
-                                        <div style={{ padding: '10px 8px 4px 14px', display: 'flex', alignItems: 'center', gap: '10px', borderTop: `1px solid ${C.surfaceContainerHigh}` }}>
+                                        <div
+                                            onClick={() => setCerrados(c => ({ ...c, [claveMadre]: !c[claveMadre] }))}
+                                            style={{
+                                                padding: '8px 10px 8px 12px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                background: 'rgba(15, 169, 122, 0.05)',
+                                                borderTop: `1px solid ${C.surfaceContainerHigh}`,
+                                                borderBottom: estaPlegada ? `1px solid ${C.surfaceContainerHigh}` : 'none',
+                                                cursor: 'pointer',
+                                                userSelect: 'none',
+                                            }}
+                                        >
                                             <button
-                                                onClick={() => toggleGoalMilestone?.(madre.g.id, madre.m.id)}
-                                                title="Marcar la tarea completa"
-                                                style={{ width: '22px', height: '22px', borderRadius: '50%', border: `2px solid ${madre.m.completed ? C.primary : C.outlineVariant}`, background: madre.m.completed ? C.primary : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); setCerrados(c => ({ ...c, [claveMadre]: !c[claveMadre] })); }}
+                                                title={estaPlegada ? 'Desplegar subtareas' : 'Plegar subtareas'}
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.primary, width: '22px', height: '22px' }}
                                             >
-                                                {madre.m.completed && <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#fff' }}>check</span>}
+                                                <span className="material-symbols-outlined" style={{ fontSize: '18px', transform: estaPlegada ? 'rotate(-90deg)' : 'none', transition: 'transform .18s' }}>
+                                                    expand_more
+                                                </span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); toggleGoalMilestone?.(madre.g.id, madre.m.id); }}
+                                                title="Marcar la tarea completa"
+                                                style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${madre.m.completed ? C.primary : C.outlineVariant}`, background: madre.m.completed ? C.primary : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}
+                                            >
+                                                {madre.m.completed && <span className="material-symbols-outlined" style={{ fontSize: '13px', color: '#fff' }}>check</span>}
                                             </button>
                                             <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ fontSize: '0.88rem', fontWeight: 800, color: madre.m.completed ? C.outline : C.onSurface, textDecoration: madre.m.completed ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{madre.m.text}</div>
-                                                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: C.outline }}>{madre.g.title}</div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                    <span style={{ fontSize: '0.88rem', fontWeight: 800, color: madre.m.completed ? C.outline : C.onSurface, textDecoration: madre.m.completed ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        {madre.m.text}
+                                                    </span>
+                                                    <span style={{ fontSize: '0.68rem', fontWeight: 800, color: C.primary, background: 'rgba(15, 169, 122, 0.12)', borderRadius: '999px', padding: '1px 8px' }}>
+                                                        {subtareasDeMadre.filter(s => s.completed).length}/{subtareasDeMadre.length} subtareas
+                                                    </span>
+                                                </div>
+                                                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: C.outline }}>{madre.g.title}</div>
                                             </div>
                                         </div>
                                     )}
+                                    {!estaPlegada && (
                                     <div
-                                        style={{ padding: madre ? '8px 8px 8px 34px' : '8px 8px 8px 14px', borderBottom: `1px solid ${C.surfaceContainerHigh}`, display: 'flex', alignItems: 'center', gap: '10px' }}
+                                        style={{
+                                            padding: madre ? '8px 8px 8px 38px' : '8px 8px 8px 14px',
+                                            borderBottom: `1px solid ${C.surfaceContainerHigh}`,
+                                            borderLeft: madre ? `3px solid color-mix(in srgb, ${C.primary} 35%, transparent)` : 'none',
+                                            display: 'flex', alignItems: 'center', gap: '10px',
+                                        }}
                                     >
                                         {/* Checkbox circular */}
                                         <button
@@ -1147,6 +1265,7 @@ Supermercado:
                                             }
                                         )}
                                     </div>
+                                    )}
                                     </Fragment>
                                 );
                             })}

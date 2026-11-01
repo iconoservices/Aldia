@@ -1559,51 +1559,78 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                             const bloquesRelacionados = (dailyBlocks || []).filter(b => b.goalId === goalId && textosAfectados.has(b.label.trim().toLowerCase()) && !!(b.repeatDays && b.repeatDays.length > 0));
                             if (bloquesRelacionados.length > 0) {
                                 const algunaActiva = bloquesRelacionados.some(b => b.isActive !== false);
+                                const primerBloque = bloquesRelacionados[0];
+                                const diasActuales = primerBloque?.repeatDays?.length ? primerBloque.repeatDays : [1, 2, 3, 4, 5];
                                 return (
-                                    <button
-                                        type="button"
-                                        role="switch"
-                                        aria-checked={algunaActiva}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (updateDailyBlock) {
-                                                const nuevoEstado = !algunaActiva;
-                                                bloquesRelacionados.forEach(b => updateDailyBlock(b.id, { isActive: nuevoEstado }));
-                                            }
-                                        }}
-                                        title={algunaActiva ? 'Tareas repetitivas activas · Toca para pausar todas' : 'Tareas repetitivas pausadas · Toca para activar todas'}
-                                        style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '5px',
-                                            padding: '2px 8px 2px 5px',
-                                            borderRadius: '999px',
-                                            border: `1px solid ${algunaActiva ? color : C.outlineVariant}`,
-                                            background: algunaActiva ? `color-mix(in srgb, ${color} 10%, white)` : C.surfaceContainerLow,
-                                            cursor: 'pointer',
-                                            fontSize: '0.68rem',
-                                            fontWeight: 700,
-                                            color: algunaActiva ? color : C.outline,
-                                            fontFamily: 'inherit',
-                                            flexShrink: 0,
-                                        }}
-                                    >
-                                        <span style={{
-                                            width: '20px', height: '12px', borderRadius: '999px',
-                                            background: algunaActiva ? color : C.outlineVariant,
-                                            position: 'relative', display: 'inline-block',
-                                            transition: 'background 0.15s ease',
-                                        }}>
+                                    <Fragment key="rep-actions">
+                                        <button
+                                            type="button"
+                                            onClick={() => setConvT(convT?.id === m.id ? null : { id: m.id, rep: true, dias: diasActuales })}
+                                            title="Editar frecuencia y días de repetición de la tarea"
+                                            style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '3px',
+                                                padding: '3px 8px',
+                                                borderRadius: '999px',
+                                                border: `1px solid ${convT?.id === m.id ? color : C.outlineVariant}`,
+                                                background: convT?.id === m.id ? `color-mix(in srgb, ${color} 14%, white)` : 'transparent',
+                                                cursor: 'pointer',
+                                                fontSize: '0.68rem',
+                                                fontWeight: 700,
+                                                color: convT?.id === m.id ? color : C.outline,
+                                                fontFamily: 'inherit',
+                                                flexShrink: 0,
+                                            }}
+                                        >
+                                            <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>edit_calendar</span>
+                                            <span>Frecuencia</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            role="switch"
+                                            aria-checked={algunaActiva}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (updateDailyBlock) {
+                                                    const nuevoEstado = !algunaActiva;
+                                                    bloquesRelacionados.forEach(b => updateDailyBlock(b.id, { isActive: nuevoEstado }));
+                                                }
+                                            }}
+                                            title={algunaActiva ? 'Tareas repetitivas activas · Toca para pausar todas' : 'Tareas repetitivas pausadas · Toca para activar todas'}
+                                            style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '5px',
+                                                padding: '2px 8px 2px 5px',
+                                                borderRadius: '999px',
+                                                border: `1px solid ${algunaActiva ? color : C.outlineVariant}`,
+                                                background: algunaActiva ? `color-mix(in srgb, ${color} 10%, white)` : C.surfaceContainerLow,
+                                                cursor: 'pointer',
+                                                fontSize: '0.68rem',
+                                                fontWeight: 700,
+                                                color: algunaActiva ? color : C.outline,
+                                                fontFamily: 'inherit',
+                                                flexShrink: 0,
+                                            }}
+                                        >
                                             <span style={{
-                                                position: 'absolute', top: '1px',
-                                                left: algunaActiva ? '9px' : '1px',
-                                                width: '10px', height: '10px', borderRadius: '50%',
-                                                background: '#fff', transition: 'left 0.15s ease',
-                                                boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
-                                            }} />
-                                        </span>
-                                        {algunaActiva ? 'Activa' : 'Desactivada'}
-                                    </button>
+                                                width: '20px', height: '12px', borderRadius: '999px',
+                                                background: algunaActiva ? color : C.outlineVariant,
+                                                position: 'relative', display: 'inline-block',
+                                                transition: 'background 0.15s ease',
+                                            }}>
+                                                <span style={{
+                                                    position: 'absolute', top: '1px',
+                                                    left: algunaActiva ? '9px' : '1px',
+                                                    width: '10px', height: '10px', borderRadius: '50%',
+                                                    background: '#fff', transition: 'left 0.15s ease',
+                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+                                                }} />
+                                            </span>
+                                            {algunaActiva ? 'Activa' : 'Desactivada'}
+                                        </button>
+                                    </Fragment>
                                 );
                             }
                             if (!detalle && onConvertirTarea && !m.completed) {
@@ -1633,36 +1660,49 @@ const ListaTareas = ({ tareas, color, movil, onToggle, onRemove, onEditar, onAdd
                         </button>}
                     </div>
                     {convT?.id === m.id && onConvertirTarea && (
-                        <div style={{ margin: '10px 0 0 34px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.outline }}>Convertir {tot > 0 ? 'los pasos pendientes' : 'esta tarea'} en…</div>
-                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                <button onClick={() => { onConvertirTarea(m); setConvT(null); }}
-                                    style={{ padding: '8px 14px', borderRadius: '10px', border: `1px solid ${C.outlineVariant}`, background: C.surfaceLowest, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.8rem', color: C.onSurface }}>
-                                    Tareas sueltas (hoy)
-                                </button>
-                                <button onClick={() => setConvT({ ...convT, rep: !convT.rep })}
-                                    style={{ padding: '8px 14px', borderRadius: '10px', border: `1px solid ${convT.rep ? color : C.outlineVariant}`, background: convT.rep ? `color-mix(in srgb, ${color} 12%, white)` : C.surfaceLowest, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.8rem', color: convT.rep ? color : C.onSurface }}>
-                                    Tareas repetitivas
+                        <div style={{ margin: '10px 0 0 34px', display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(15, 169, 122, 0.04)', padding: '12px 14px', borderRadius: '12px', border: `1px solid ${C.outlineVariant}` }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.outline }}>
+                                    Configurar frecuencia / destino en Tareas
+                                </div>
+                                <button type="button" onClick={() => setConvT(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline, padding: '2px', display: 'flex' }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
                                 </button>
                             </div>
-                            {convT.rep && (
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                <button type="button" onClick={() => setConvT({ ...convT, rep: false })}
+                                    style={{ padding: '7px 12px', borderRadius: '10px', border: `1px solid ${!convT.rep ? color : C.outlineVariant}`, background: !convT.rep ? `color-mix(in srgb, ${color} 12%, white)` : C.surfaceLowest, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.78rem', color: !convT.rep ? color : C.onSurface }}>
+                                    Tareas sueltas (hoy)
+                                </button>
+                                <button type="button" onClick={() => setConvT({ ...convT, rep: true })}
+                                    style={{ padding: '7px 12px', borderRadius: '10px', border: `1px solid ${convT.rep ? color : C.outlineVariant}`, background: convT.rep ? `color-mix(in srgb, ${color} 12%, white)` : C.surfaceLowest, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.78rem', color: convT.rep ? color : C.onSurface }}>
+                                    Tareas repetitivas (frecuencia)
+                                </button>
+                            </div>
+                            {convT.rep ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    <div style={{ fontSize: '0.74rem', color: C.outline }}>Elige qué días de la semana se repite:</div>
                                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                         {DIAS_SEMANA.map(({ l, d }) => {
                                             const on = convT.dias.includes(d);
                                             return (
-                                                <button key={d} onClick={() => setConvT({ ...convT, dias: on ? convT.dias.filter(x => x !== d) : [...convT.dias, d] })}
+                                                <button key={d} type="button" onClick={() => setConvT({ ...convT, dias: on ? convT.dias.filter(x => x !== d) : [...convT.dias, d] })}
                                                     style={{ width: '34px', height: '34px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800, fontSize: '0.78rem', background: on ? color : C.surfaceContainer, color: on ? '#fff' : C.onSurfaceVariant }}>
                                                     {l}
                                                 </button>
                                             );
                                         })}
                                     </div>
-                                    <button disabled={convT.dias.length === 0} onClick={() => { onConvertirTarea(m, convT.dias); setConvT(null); }}
-                                        style={{ alignSelf: 'flex-start', padding: '9px 16px', borderRadius: '12px', border: 'none', background: convT.dias.length ? color : C.surfaceContainerHigh, color: '#fff', fontWeight: 800, fontSize: '0.82rem', cursor: convT.dias.length ? 'pointer' : 'default', fontFamily: 'inherit' }}>
-                                        Crear repetitivas
+                                    <button type="button" disabled={convT.dias.length === 0} onClick={() => { onConvertirTarea(m, convT.dias); setConvT(null); }}
+                                        style={{ alignSelf: 'flex-start', padding: '8px 16px', borderRadius: '10px', border: 'none', background: convT.dias.length ? color : C.surfaceContainerHigh, color: '#fff', fontWeight: 800, fontSize: '0.8rem', cursor: convT.dias.length ? 'pointer' : 'default', fontFamily: 'inherit' }}>
+                                        Guardar frecuencia ({convT.dias.length} días)
                                     </button>
                                 </div>
+                            ) : (
+                                <button type="button" onClick={() => { onConvertirTarea(m); setConvT(null); }}
+                                    style={{ alignSelf: 'flex-start', padding: '8px 16px', borderRadius: '10px', border: 'none', background: color, color: '#fff', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                    Crear como tarea suelta de hoy
+                                </button>
                             )}
                         </div>
                     )}
