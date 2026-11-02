@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Inbox, Check, Trash2, CornerUpRight, ChevronDown, X, Plus, Tag as TagIcon, GripVertical, Sparkles, Target } from "lucide-react";
+import { Inbox, Check, Trash2, CornerUpRight, ChevronDown, X, Plus, Tag as TagIcon, GripVertical, Sparkles, Target, MoreVertical, Edit3 } from "lucide-react";
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, useDroppable,
 } from "@dnd-kit/core";
@@ -365,7 +365,15 @@ export const BandejaDashboard = ({ notes, addNote, updateNote, flotante = false,
                 ...bento, padding: 0, overflow: "hidden"
             }}>
                 {/* Filtro + gestión de etiquetas — arriba del todo */}
-                <div style={{ display: "flex", gap: "8px", flexWrap: movil ? "nowrap" : "wrap", overflowX: movil ? "auto" : "visible", alignItems: "center", padding: "10px 12px", borderBottom: `1px solid ${C.surfaceContainerHigh}` }}>
+                <div style={{
+                    display: "flex", gap: "6px",
+                    flexWrap: (movil || flotante) ? "nowrap" : "wrap",
+                    overflowX: (movil || flotante) ? "auto" : "visible",
+                    scrollbarWidth: "none",
+                    alignItems: "center",
+                    padding: flotante ? "10px 14px 4px" : "10px 12px",
+                    borderBottom: flotante ? "none" : `1px solid ${C.surfaceContainerHigh}`,
+                }}>
                     <TagIcon size={15} strokeWidth={2.5} style={{ color: C.outline, flexShrink: 0 }} />
                     {grupos.map(g => (
                         <button key={g.tag} onClick={() => toggleFiltro(g.tag)} style={chip(filtro.includes(g.tag))}>
@@ -400,7 +408,11 @@ export const BandejaDashboard = ({ notes, addNote, updateNote, flotante = false,
                 {/* Captura */}
                 <form
                     onSubmit={e => { e.preventDefault(); tirar(); }}
-                    style={{ padding: "12px", background: C.surfaceLowest, borderBottom: `1px solid ${C.surfaceContainerHigh}` }}
+                    style={{
+                        padding: flotante ? "4px 14px 10px" : "12px",
+                        background: C.surfaceLowest,
+                        borderBottom: flotante ? "none" : `1px solid ${C.surfaceContainerHigh}`,
+                    }}
                 >
                     <input
                         ref={inputRef}
@@ -409,65 +421,72 @@ export const BandejaDashboard = ({ notes, addNote, updateNote, flotante = false,
                         placeholder="¿Qué tienes en la cabeza? + Enter"
                         value={captura}
                         onChange={e => setCaptura(e.target.value)}
-                        style={inputStyle}
+                        style={flotante ? {
+                            ...inputStyle,
+                            padding: "10px 14px",
+                            fontSize: "0.88rem",
+                            background: "#F8FAF9",
+                            border: "1px solid #E2E8F0",
+                            borderRadius: "12px",
+                        } : inputStyle}
                     />
                     <button type="submit" style={{ display: "none" }} aria-hidden tabIndex={-1} />
                 </form>
 
                 {/* Lista agrupada */}
-                <div style={{ padding: movil ? "8px 12px 12px" : "12px 16px 16px", flex: 1, minHeight: 0, overflowY: "auto" }}>
-                {abiertas.length === 0 && hechos.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: "48px 16px", color: C.outline }}>
-                        <Inbox size={32} strokeWidth={2} style={{ opacity: 0.4, marginBottom: "8px" }} />
-                        <p style={{ margin: 0, fontSize: "0.88rem" }}>Vacía. Escribe arriba lo primero que se te cruce.</p>
-                    </div>
-                ) : (
-                    <>
-                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-                            {gruposMostrados.map((g, gi) => (
-                                <GrupoDrop key={g.tag} tag={g.tag} style={{ marginTop: gi === 0 ? 0 : "20px" }}>
-                                    <div style={{ ...etiqueta, fontSize: "0.72rem", color: g.tag === SIN ? C.outline : C.onSurfaceVariant, padding: "4px 0 8px", display: "flex", alignItems: "center", gap: "6px" }}>
-                                        {g.tag === SIN ? "SIN ETIQUETA" : g.tag}
-                                        <span style={{ opacity: 0.5 }}>· {g.items.length}</span>
-                                        <button
-                                            onClick={() => setGrupoAEnviar(g.tag)}
-                                            title="Mandar todo el grupo a Pendientes"
-                                            style={{ ...iconBtn, width: "26px", height: "26px", marginLeft: "auto", color: C.outline }}
-                                        >
-                                            <CornerUpRight size={15} strokeWidth={2.5} />
-                                        </button>
-                                    </div>
-                                    <SortableContext items={g.items.map(it => it.id)} strategy={verticalListSortingStrategy}>
-                                        {g.items.map(item => <SortableFila key={item.id} {...filaProps(item, g.tag)} />)}
-                                    </SortableContext>
-                                </GrupoDrop>
-                            ))}
-                        </DndContext>
+                <div style={{ padding: flotante ? "4px 10px 16px" : (movil ? "8px 12px 12px" : "12px 16px 16px"), flex: 1, minHeight: 0, overflowY: "auto" }}>
+                    {abiertas.length === 0 && hechos.length === 0 ? (
+                        <div style={{ textAlign: "center", padding: "48px 16px", color: C.outline }}>
+                            <Inbox size={32} strokeWidth={2} style={{ opacity: 0.4, marginBottom: "8px" }} />
+                            <p style={{ margin: 0, fontSize: "0.88rem" }}>Vacía. Escribe arriba lo primero que se te cruce.</p>
+                        </div>
+                    ) : (
+                        <>
+                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                                {gruposMostrados.map((g, gi) => (
+                                    <GrupoDrop key={g.tag} tag={g.tag} style={{ marginTop: gi === 0 ? 0 : "20px" }}>
+                                        <div style={{ ...etiqueta, fontSize: "0.72rem", color: g.tag === SIN ? C.outline : C.onSurfaceVariant, padding: "4px 0 8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                                            {g.tag === SIN ? "SIN ETIQUETA" : g.tag}
+                                            <span style={{ opacity: 0.5 }}>· {g.items.length}</span>
+                                            <button
+                                                onClick={() => setGrupoAEnviar(g.tag)}
+                                                title="Mandar todo el grupo a Pendientes"
+                                                style={{ ...iconBtn, width: "26px", height: "26px", marginLeft: "auto", color: C.outline }}
+                                            >
+                                                <CornerUpRight size={15} strokeWidth={2.5} />
+                                            </button>
+                                        </div>
+                                        <SortableContext items={g.items.map(it => it.id)} strategy={verticalListSortingStrategy}>
+                                            {g.items.map(item => <SortableFila key={item.id} {...filaProps(item, g.tag)} />)}
+                                        </SortableContext>
+                                    </GrupoDrop>
+                                ))}
+                            </DndContext>
 
-                        {hechos.length > 0 && (
-                            <div style={{ marginTop: "20px" }}>
-                                <button
-                                    onClick={() => setVerHechos(v => !v)}
-                                    style={{ ...etiqueta, display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", cursor: "pointer", padding: "8px 0" }}
-                                >
-                                    <ChevronDown size={14} strokeWidth={2.5} style={{ transform: verHechos ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
-                                    Hechos ({hechos.length})
-                                </button>
-                                {verHechos && (
-                                    <div style={{ marginTop: "4px" }}>
-                                        {hechos.map(item => <Fila key={item.id} {...filaProps(item)} />)}
-                                        <button
-                                            onClick={limpiarHechos}
-                                            style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "8px", background: "none", border: "none", cursor: "pointer", padding: "4px 0", color: C.rojo, fontSize: "0.72rem", fontWeight: 700 }}
-                                        >
-                                            <X size={12} strokeWidth={2.5} /> Limpiar hechos
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </>
-                )}
+                            {hechos.length > 0 && (
+                                <div style={{ marginTop: "20px" }}>
+                                    <button
+                                        onClick={() => setVerHechos(v => !v)}
+                                        style={{ ...etiqueta, display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", cursor: "pointer", padding: "8px 0" }}
+                                    >
+                                        <ChevronDown size={14} strokeWidth={2.5} style={{ transform: verHechos ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+                                        Hechos ({hechos.length})
+                                    </button>
+                                    {verHechos && (
+                                        <div style={{ marginTop: "4px" }}>
+                                            {hechos.map(item => <Fila key={item.id} {...filaProps(item)} />)}
+                                            <button
+                                                onClick={limpiarHechos}
+                                                style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "8px", background: "none", border: "none", cursor: "pointer", padding: "4px 0", color: C.rojo, fontSize: "0.72rem", fontWeight: 700 }}
+                                            >
+                                                <X size={12} strokeWidth={2.5} /> Limpiar hechos
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -618,87 +637,199 @@ interface FilaProps {
     onMandarAMeta?: () => void;
 }
 
+const MenuItem = ({ onClick, children, color }: { onClick: () => void; children: React.ReactNode; color?: string }) => {
+    const [hover, setHover] = useState(false);
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            onMouseEnter={() => setHover(true)}
+            onMouseLeave={() => setHover(false)}
+            style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "9px",
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: "8px",
+                border: "none",
+                background: hover ? C.surfaceContainerLow : "transparent",
+                color: color || C.onSurface,
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                textAlign: "left",
+                fontFamily: "inherit",
+                transition: "background 0.1s ease",
+            }}
+        >
+            {children}
+        </button>
+    );
+};
+
 const Fila = (p: FilaProps) => {
     const { item, grupoTag, editId, editText, setEditId, setEditText, guardarEdit, toggle, descartar, aPendientes, onEditar, abrirPick, dragHandle, pendienteIA, confirmarIA, onMandarAMeta } = p;
+    const [menuAbierto, setMenuAbierto] = useState(false);
+    const [hoverFila, setHoverFila] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!menuAbierto) return;
+        const clickAfuera = (e: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                setMenuAbierto(false);
+            }
+        };
+        document.addEventListener("mousedown", clickAfuera);
+        return () => document.removeEventListener("mousedown", clickAfuera);
+    }, [menuAbierto]);
+
     const tags = item.tags ?? [];
     // En la vista agrupada no repetimos el chip de la etiqueta del propio grupo.
     const chipsVisibles = tags.filter(t => t !== grupoTag);
 
     return (
-        <div style={{
-            display: "flex", flexDirection: "column", gap: "6px", padding: "8px 8px 8px 8px", marginBottom: "1px",
-            borderBottom: `1px solid ${C.surfaceContainerHigh}`,
-            ...(pendienteIA ? { background: `${C.ambar}14`, borderLeft: `3px solid ${C.ambar}`, borderRadius: RADIO.campo, paddingLeft: "8px" } : {}),
-        }}>
+        <div
+            onMouseEnter={() => setHoverFila(true)}
+            onMouseLeave={() => setHoverFila(false)}
+            style={{
+                display: "flex", flexDirection: "column", gap: "4px",
+                padding: "6px 8px",
+                marginBottom: "1px",
+                borderRadius: "8px",
+                border: "none",
+                background: hoverFila ? "rgba(0, 0, 0, 0.03)" : "transparent",
+                position: "relative",
+                transition: "background 0.12s ease",
+                ...(pendienteIA ? { background: `${C.ambar}14`, borderLeft: `3px solid ${C.ambar}`, borderRadius: RADIO.campo, paddingLeft: "8px" } : {}),
+            }}
+        >
             {pendienteIA && (
                 <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.62rem", fontWeight: 800, color: C.ambar }}>
                     <Sparkles size={11} strokeWidth={2.5} /> SUGERIDO POR IA — REVISA
                 </div>
             )}
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                {dragHandle}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", position: "relative" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0, paddingTop: "2px" }}>
+                    {dragHandle}
+                    <div
+                        onClick={() => toggle(item.id)}
+                        title="Marcar hecho"
+                        style={{
+                            width: "22px", height: "22px", borderRadius: "8px", flexShrink: 0, cursor: "pointer",
+                            border: `2px solid ${item.completed ? C.secondary : C.outlineVariant}`,
+                            background: item.completed ? C.secondary : "transparent",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            transition: "all 0.15s ease",
+                        }}
+                    >
+                        {item.completed && <Check size={14} color="#fff" strokeWidth={3} />}
+                    </div>
+                </div>
+
                 {editId === item.id ? (
                     <input
                         autoFocus value={editText}
                         onChange={e => setEditText(e.target.value)}
                         onKeyDown={e => { if (e.key === "Enter") guardarEdit(); if (e.key === "Escape") setEditId(null); }}
                         onBlur={guardarEdit}
-                        style={{ ...inputStyle, fontSize: "16px", padding: "8px", flex: 1 }}
+                        style={{ ...inputStyle, fontSize: "15px", padding: "6px 8px", flex: 1 }}
                     />
                 ) : (
                     <>
-                        <div
-                            onClick={() => toggle(item.id)}
-                            title="Marcar hecho"
-                            style={{
-                                width: "22px", height: "22px", borderRadius: "8px", flexShrink: 0, cursor: "pointer",
-                                border: `2px solid ${item.completed ? C.secondary : C.outlineVariant}`,
-                                background: item.completed ? C.secondary : "transparent",
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                            }}
-                        >
-                            {item.completed && <Check size={14} color="#fff" strokeWidth={3} />}
-                        </div>
                         <span
                             onClick={onEditar}
                             style={{
-                                flex: 1, minWidth: 0, fontSize: "0.9rem", cursor: "text",
+                                flex: 1, minWidth: 0, fontSize: "0.92rem", lineHeight: 1.45, cursor: "text",
                                 color: item.completed ? C.outline : C.onSurface,
                                 textDecoration: item.completed ? "line-through" : "none",
+                                wordBreak: "break-word",
+                                paddingTop: "2px",
                             }}
                         >
                             {item.text}
                         </span>
-                        {!item.completed && (
-                            <>
-                                {pendienteIA && confirmarIA && (
-                                    <button onClick={confirmarIA} title="Confirmar etiqueta sugerida" style={{ ...iconBtn, color: C.ambar }}>
-                                        <Check size={17} strokeWidth={3} />
-                                    </button>
-                                )}
-                                <button onClick={abrirPick} title="Etiqueta" style={iconBtn}>
-                                    <Plus size={17} strokeWidth={2.5} />
-                                </button>
-                                {onMandarAMeta && (
-                                    <button onClick={onMandarAMeta} title="Mandar a una Meta" style={{ ...iconBtn, color: '#0FA97A' }}>
-                                        <Target size={16} strokeWidth={2.5} />
-                                    </button>
-                                )}
-                                <button onClick={() => aPendientes(item.id)} title="Pasar a la pestaña Pendientes" style={iconBtn}>
-                                    <CornerUpRight size={16} strokeWidth={2.5} />
-                                </button>
-                            </>
+
+                        {pendienteIA && confirmarIA && !item.completed && (
+                            <button onClick={confirmarIA} title="Confirmar etiqueta sugerida" style={{ ...iconBtn, color: C.ambar, width: "28px", height: "28px", flexShrink: 0 }}>
+                                <Check size={16} strokeWidth={3} />
+                            </button>
                         )}
-                        <button onClick={() => descartar(item.id)} title="Borrar" style={iconBtn}>
-                            <Trash2 size={16} strokeWidth={2.5} />
-                        </button>
+
+                        {/* Menú de 3 puntitos */}
+                        <div ref={menuRef} style={{ position: "relative", flexShrink: 0 }}>
+                            <button
+                                type="button"
+                                onClick={() => setMenuAbierto(v => !v)}
+                                title="Más opciones"
+                                style={{
+                                    ...iconBtn,
+                                    width: "28px",
+                                    height: "28px",
+                                    color: menuAbierto ? C.primary : C.outline,
+                                    background: menuAbierto ? `${C.primary}18` : "transparent",
+                                    opacity: (hoverFila || menuAbierto) ? 1 : 0.35,
+                                    borderRadius: "8px",
+                                    transition: "all 0.15s ease",
+                                }}
+                            >
+                                <MoreVertical size={16} strokeWidth={2.4} />
+                            </button>
+
+                            {menuAbierto && (
+                                <div
+                                    style={{
+                                        position: "absolute",
+                                        right: 0,
+                                        top: "100%",
+                                        marginTop: "4px",
+                                        minWidth: "190px",
+                                        background: C.surfaceLowest,
+                                        borderRadius: "14px",
+                                        boxShadow: "0 12px 36px rgba(15,23,42,0.22), 0 0 0 1px rgba(0,0,0,0.08)",
+                                        padding: "6px",
+                                        zIndex: 100,
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: "2px",
+                                    }}
+                                >
+                                    {onMandarAMeta && !item.completed && (
+                                        <MenuItem onClick={() => { setMenuAbierto(false); onMandarAMeta(); }}>
+                                            <Target size={15} strokeWidth={2.5} color="#0FA97A" />
+                                            <span style={{ fontWeight: 700, color: '#0FA97A' }}>Mandar a Meta</span>
+                                        </MenuItem>
+                                    )}
+                                    {!item.completed && (
+                                        <MenuItem onClick={() => { setMenuAbierto(false); aPendientes(item.id); }}>
+                                            <CornerUpRight size={15} strokeWidth={2.5} color={C.onSurfaceVariant} />
+                                            <span>Mandar a Pendientes</span>
+                                        </MenuItem>
+                                    )}
+                                    <MenuItem onClick={() => { setMenuAbierto(false); abrirPick(); }}>
+                                        <TagIcon size={15} strokeWidth={2.5} color={C.onSurfaceVariant} />
+                                        <span>Etiquetas</span>
+                                    </MenuItem>
+                                    <MenuItem onClick={() => { setMenuAbierto(false); onEditar(); }}>
+                                        <Edit3 size={15} strokeWidth={2.5} color={C.onSurfaceVariant} />
+                                        <span>Editar texto</span>
+                                    </MenuItem>
+                                    <div style={{ height: "1px", background: C.surfaceContainerHigh, margin: "4px 2px" }} />
+                                    <MenuItem onClick={() => { setMenuAbierto(false); descartar(item.id); }} color={C.rojo}>
+                                        <Trash2 size={15} strokeWidth={2.5} color={C.rojo} />
+                                        <span style={{ fontWeight: 700 }}>Eliminar</span>
+                                    </MenuItem>
+                                </div>
+                            )}
+                        </div>
                     </>
                 )}
             </div>
 
             {/* Etiquetas de la fila (solo muestra; se editan en la ventanita) */}
             {chipsVisibles.length > 0 && (
-                <div style={{ paddingLeft: dragHandle ? "62px" : "30px", display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                <div style={{ paddingLeft: "54px", display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "2px" }}>
                     {chipsVisibles.map(t => (
                         <button key={t} onClick={abrirPick} style={miniChip(true)}>{t}</button>
                     ))}
@@ -730,9 +861,9 @@ const SortableFila = (p: FilaProps) => {
             {...attributes}
             {...listeners}
             title="Arrastrar para ordenar o mover de etiqueta"
-            style={{ ...iconBtn, cursor: "grab", color: C.outlineVariant, touchAction: "none" }}
+            style={{ ...iconBtn, width: "18px", height: "22px", cursor: "grab", color: C.outlineVariant, opacity: 0.35, touchAction: "none" }}
         >
-            <GripVertical size={16} strokeWidth={2.5} />
+            <GripVertical size={14} strokeWidth={2.3} />
         </button>
     );
     return (

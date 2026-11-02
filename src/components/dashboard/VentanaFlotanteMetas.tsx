@@ -161,9 +161,9 @@ export const VentanaFlotanteMetas = ({
                             exit={{ opacity: 0, scale: 0.93, y: 15 }}
                             transition={{ duration: 0.18, ease: 'easeOut' }}
                             style={{
-                                width: movil ? 'calc(100vw - 24px)' : '430px',
-                                height: movil ? 'min(580px, calc(100vh - 140px))' : 'min(660px, calc(100vh - 100px))',
-                                maxHeight: '85vh',
+                                width: movil ? 'calc(100vw - 24px)' : '480px',
+                                height: movil ? 'min(620px, calc(100vh - 110px))' : 'min(780px, calc(100vh - 80px))',
+                                maxHeight: '92vh',
                                 background: '#FFFFFF',
                                 borderRadius: '20px',
                                 boxShadow: arrastrando
