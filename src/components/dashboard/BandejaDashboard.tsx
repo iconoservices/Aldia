@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Inbox, Check, Trash2, CornerUpRight, ChevronDown, X, Plus, Tag as TagIcon, GripVertical, Sparkles } from "lucide-react";
+import { Inbox, Check, Trash2, CornerUpRight, ChevronDown, X, Plus, Tag as TagIcon, GripVertical, Sparkles, Target } from "lucide-react";
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, useDroppable,
 } from "@dnd-kit/core";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { Note } from "../../hooks/useAlDiaState";
+import type { Note, Goal } from "../../hooks/useAlDiaState";
 import { C, bento, useIsMobile, paddingPagina, cabecera, tituloPagina, subtituloPagina, RADIO, etiqueta } from "../../theme";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 
@@ -26,13 +26,17 @@ import { ConfirmDialog } from "../ui/ConfirmDialog";
    etiquetas viven en `item.tags` (campo opcional, no afecta otras vistas).
 ══════════════════════════════════════════════════════════════════ */
 
-interface BandejaProps {
+type Item = Note['items'][number];
+
+export interface BandejaProps {
     notes: Note[];
     addNote: (title: string, content: string, type: 'text' | 'checklist', items: any[], q: string, color: string) => void;
     updateNote: (id: number, updates: Partial<Note>) => void;
+    flotante?: boolean;
+    onMinimizar?: () => void;
+    goals?: Goal[];
+    onMandarAMeta?: (item: Item, goalId: number) => void;
 }
-
-type Item = Note['items'][number];
 
 const nuevoId = () => Date.now() + Math.floor(Math.random() * 100000);
 const SIN = "::sin::";
@@ -66,7 +70,7 @@ const iconBtn: React.CSSProperties = {
     display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
 };
 
-export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) => {
+export const BandejaDashboard = ({ notes, addNote, updateNote, flotante = false, goals, onMandarAMeta }: BandejaProps) => {
     const movil = useIsMobile();
 
     const bandeja = useMemo(
@@ -94,6 +98,7 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
     const [iaCargando, setIaCargando] = useState(false);
     const [iaError, setIaError] = useState<string | null>(null);
     const [iaPendientes, setIaPendientes] = useState<Set<number>>(new Set());
+    const [metaPickItemId, setMetaPickItemId] = useState<number | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const confirmarIA = (id: number) => setIaPendientes(prev => {
@@ -108,6 +113,18 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
     const setItems = (next: Item[]) => bandeja && updateNote(bandeja.id, { items: next });
     const patchItem = (id: number, patch: Partial<Item>) =>
         bandeja && setItems(bandeja.items.map(it => it.id === id ? { ...it, ...patch } : it));
+
+    const mandarItemAMeta = (itemId: number, goalId: number) => {
+        const item = bandeja?.items.find(i => i.id === itemId);
+        if (!item) return;
+        if (onMandarAMeta) {
+            onMandarAMeta(item, goalId);
+        }
+        if (bandeja) {
+            setItems(bandeja.items.filter(it => it.id !== itemId));
+        }
+        setMetaPickItemId(null);
+    };
 
     // Lista de etiquetas configurada: se guarda como JSON en el `content` de la
     // nota (campo libre que los checklist no usan). Persiste aunque nadie la use.
@@ -313,6 +330,7 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
         editId, editText, setEditId, setEditText, guardarEdit,
         toggle, descartar: (id: number) => setBorrarId(id), aPendientes,
         onEditar: () => { setEditId(item.id); setEditText(item.text); },
+        onMandarAMeta: goals && goals.length > 0 ? () => setMetaPickItemId(item.id) : undefined,
     });
 
     const itemAEtiquetar = pickId != null ? items.find(i => i.id === pickId) ?? null : null;
@@ -320,19 +338,32 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
     const totalAbiertas = abiertas.length;
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: movil ? "16px" : "24px", ...paddingPagina(movil), color: C.onSurface }}>
-            <div style={cabecera(movil)}>
-                <div>
-                    <h2 style={tituloPagina}>Bandeja</h2>
-                    <p style={subtituloPagina}>
-                        Tíralo acá y etiquétalo por contexto.
-                        {totalAbiertas > 0 ? ` ${totalAbiertas} sin repartir.` : ' Está vacía.'}
-                    </p>
+        <div style={flotante ? {
+            display: "flex", flexDirection: "column", height: "100%", width: "100%",
+            color: C.onSurface, overflow: "hidden", background: C.surfaceLowest,
+        } : {
+            display: "flex", flexDirection: "column", gap: movil ? "16px" : "24px",
+            ...paddingPagina(movil), color: C.onSurface
+        }}>
+            {!flotante && (
+                <div style={cabecera(movil)}>
+                    <div>
+                        <h2 style={tituloPagina}>Bandeja</h2>
+                        <p style={subtituloPagina}>
+                            Tíralo acá y etiquétalo por contexto.
+                            {totalAbiertas > 0 ? ` ${totalAbiertas} sin repartir.` : ' Está vacía.'}
+                        </p>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Un solo bloque: filtro + captura + lista */}
-            <div style={{ ...bento, padding: 0, overflow: "hidden" }}>
+            <div style={flotante ? {
+                display: "flex", flexDirection: "column", flex: 1, minHeight: 0,
+                overflow: "hidden", background: C.surfaceLowest, border: "none",
+            } : {
+                ...bento, padding: 0, overflow: "hidden"
+            }}>
                 {/* Filtro + gestión de etiquetas — arriba del todo */}
                 <div style={{ display: "flex", gap: "8px", flexWrap: movil ? "nowrap" : "wrap", overflowX: movil ? "auto" : "visible", alignItems: "center", padding: "10px 12px", borderBottom: `1px solid ${C.surfaceContainerHigh}` }}>
                     <TagIcon size={15} strokeWidth={2.5} style={{ color: C.outline, flexShrink: 0 }} />
@@ -384,7 +415,7 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
                 </form>
 
                 {/* Lista agrupada */}
-                <div style={{ padding: movil ? "8px 12px 12px" : "12px 16px 16px" }}>
+                <div style={{ padding: movil ? "8px 12px 12px" : "12px 16px 16px", flex: 1, minHeight: 0, overflowY: "auto" }}>
                 {abiertas.length === 0 && hechos.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "48px 16px", color: C.outline }}>
                         <Inbox size={32} strokeWidth={2} style={{ opacity: 0.4, marginBottom: "8px" }} />
@@ -484,6 +515,84 @@ export const BandejaDashboard = ({ notes, addNote, updateNote }: BandejaProps) =
                 onConfirm={() => { if (borrarId != null) descartar(borrarId); setBorrarId(null); }}
                 onCancel={() => setBorrarId(null)}
             />
+
+            {metaPickItemId != null && goals && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(0,0,0,0.45)',
+                        backdropFilter: 'blur(3px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 1100,
+                        padding: '16px',
+                    }}
+                    onClick={() => setMetaPickItemId(null)}
+                >
+                    <div
+                        style={{
+                            background: '#FFFFFF',
+                            borderRadius: '16px',
+                            padding: '18px',
+                            width: '100%',
+                            maxWidth: '360px',
+                            maxHeight: '80vh',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '12px',
+                            boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Target size={18} color="#0FA97A" />
+                                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: C.onSurface }}>Mandar a Meta</span>
+                            </div>
+                            <button
+                                onClick={() => setMetaPickItemId(null)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.outline }}
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <p style={{ margin: 0, fontSize: '0.78rem', color: C.onSurfaceVariant }}>
+                            Selecciona la meta a la que quieres mandar "{items.find(i => i.id === metaPickItemId)?.text}":
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', overflowY: 'auto', maxHeight: '300px' }}>
+                            {goals.map(g => (
+                                <button
+                                    key={g.id}
+                                    onClick={() => mandarItemAMeta(metaPickItemId, g.id)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '10px',
+                                        padding: '10px 12px',
+                                        borderRadius: '10px',
+                                        border: `1px solid ${C.outlineVariant}`,
+                                        background: '#F8FAF9',
+                                        cursor: 'pointer',
+                                        textAlign: 'left',
+                                    }}
+                                >
+                                    <span style={{ fontSize: '1.2rem' }}>{g.icon || '🎯'}</span>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: C.onSurface, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {g.title}
+                                        </div>
+                                        <div style={{ fontSize: '0.72rem', color: g.color || C.onSurfaceVariant }}>
+                                            {g.area || 'Meta'}
+                                        </div>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -506,10 +615,11 @@ interface FilaProps {
     dragHandle?: React.ReactNode;
     pendienteIA?: boolean;
     confirmarIA?: () => void;
+    onMandarAMeta?: () => void;
 }
 
 const Fila = (p: FilaProps) => {
-    const { item, grupoTag, editId, editText, setEditId, setEditText, guardarEdit, toggle, descartar, aPendientes, onEditar, abrirPick, dragHandle, pendienteIA, confirmarIA } = p;
+    const { item, grupoTag, editId, editText, setEditId, setEditText, guardarEdit, toggle, descartar, aPendientes, onEditar, abrirPick, dragHandle, pendienteIA, confirmarIA, onMandarAMeta } = p;
     const tags = item.tags ?? [];
     // En la vista agrupada no repetimos el chip de la etiqueta del propio grupo.
     const chipsVisibles = tags.filter(t => t !== grupoTag);
@@ -569,6 +679,11 @@ const Fila = (p: FilaProps) => {
                                 <button onClick={abrirPick} title="Etiqueta" style={iconBtn}>
                                     <Plus size={17} strokeWidth={2.5} />
                                 </button>
+                                {onMandarAMeta && (
+                                    <button onClick={onMandarAMeta} title="Mandar a una Meta" style={{ ...iconBtn, color: '#0FA97A' }}>
+                                        <Target size={16} strokeWidth={2.5} />
+                                    </button>
+                                )}
                                 <button onClick={() => aPendientes(item.id)} title="Pasar a la pestaña Pendientes" style={iconBtn}>
                                     <CornerUpRight size={16} strokeWidth={2.5} />
                                 </button>

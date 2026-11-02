@@ -526,6 +526,9 @@ function App() {
                   addGoalMilestone={state.addGoalMilestone}
                   toggleGoalMilestone={state.toggleGoalMilestone}
                   removeGoalMilestone={state.removeGoalMilestone}
+                  notes={state.notes}
+                  addNote={state.addNote}
+                  updateNote={state.updateNote}
                 />
               </>
             ) : activeTab === 'Rendimiento' || activeTab === 'Stats' ? (

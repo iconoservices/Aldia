@@ -5,7 +5,8 @@ import { NuevaMetaModal, PLAZOS_INFO } from './NuevaMetaModal';
 import type { NuevaMeta } from './NuevaMetaModal';
 import { PlanMaestroCard } from './PlanMaestroCard';
 import { VistaListaMetas } from './VistaListaMetas';
-import type { DailyBlock, Goal, GoalHorizon, GoalStatus, Project } from '../../hooks/useAlDiaState';
+import { VentanaFlotanteMetas } from './VentanaFlotanteMetas';
+import type { DailyBlock, Goal, GoalHorizon, GoalStatus, Project, Note } from '../../hooks/useAlDiaState';
 import { SelectPropio } from '../ui/SelectPropio';
 import { avance, tareasDeMeta, actualVigente, clavePeriodo, etiquetaDias } from './metasAvance';
 import type { TareaEnlazada } from './metasAvance';
@@ -36,6 +37,9 @@ interface MetasDashboardProps {
     addGoalMilestone: (goalId: number, text: string, plazo?: GoalHorizon) => void;
     toggleGoalMilestone: (goalId: number, milestoneId: number) => void;
     removeGoalMilestone: (goalId: number, milestoneId: number) => void;
+    notes?: Note[];
+    addNote?: (title: string, content: string, type: 'text' | 'checklist', items: any[], q: string, color: string) => void;
+    updateNote?: (id: number, updates: Partial<Note>) => void;
 }
 
 const STATUS_INFO: Record<GoalStatus, { label: string; color: string; bg: string }> = {
@@ -153,6 +157,7 @@ const moverEn = (goals: Goal[], hermanas: Goal[], id: number, dir: -1 | 1): Goal
 export const MetasDashboard = ({
     goals, projects = [], dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, addDailyBlock, removeDailyBlock, addProject,
     addGoal, updateGoal, removeGoal, reorderGoals, addGoalMilestone, toggleGoalMilestone, removeGoalMilestone,
+    notes = [], addNote, updateNote,
 }: MetasDashboardProps) => {
     const movil = useIsMobile();
     const [form, setForm] = useState<Form | null>(null);
@@ -737,6 +742,17 @@ export const MetasDashboard = ({
                 onToggleTarea={mid => sub && toggleGoalMilestone(sub.id, mid)}
                 onRemoveTarea={mid => sub && removeGoalMilestone(sub.id, mid)}
             />
+
+            {/* Ventana flotante al lado derecho (Bandeja) con botón flotante */}
+            {addNote && updateNote && (
+                <VentanaFlotanteMetas
+                    notes={notes}
+                    addNote={addNote}
+                    updateNote={updateNote}
+                    goals={goals}
+                    addGoalMilestone={addGoalMilestone}
+                />
+            )}
         </div>
     );
 };
