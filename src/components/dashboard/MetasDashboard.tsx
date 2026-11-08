@@ -5,7 +5,7 @@ import { NuevaMetaModal, PLAZOS_INFO } from './NuevaMetaModal';
 import type { NuevaMeta } from './NuevaMetaModal';
 import { PlanMaestroCard } from './PlanMaestroCard';
 import { VistaListaMetas } from './VistaListaMetas';
-import { VentanaFlotanteMetas } from './VentanaFlotanteMetas';
+import { VistaEstructuradaMetas } from './VistaEstructuradaMetas';
 import type { DailyBlock, Goal, GoalHorizon, GoalStatus, Project, Note } from '../../hooks/useAlDiaState';
 import { SelectPropio } from '../ui/SelectPropio';
 import { avance, tareasDeMeta, actualVigente, clavePeriodo, etiquetaDias } from './metasAvance';
@@ -157,7 +157,6 @@ const moverEn = (goals: Goal[], hermanas: Goal[], id: number, dir: -1 | 1): Goal
 export const MetasDashboard = ({
     goals, projects = [], dailyBlocks = [], toggleDailyBlock, updateDailyBlock, linkTaskToGoal, addDailyBlock, removeDailyBlock, addProject,
     addGoal, updateGoal, removeGoal, reorderGoals, addGoalMilestone, toggleGoalMilestone, removeGoalMilestone,
-    notes = [], addNote, updateNote,
 }: MetasDashboardProps) => {
     const movil = useIsMobile();
     const [form, setForm] = useState<Form | null>(null);
@@ -166,15 +165,6 @@ export const MetasDashboard = ({
         window.addEventListener('aldia:nueva-meta', abrir);
         return () => window.removeEventListener('aldia:nueva-meta', abrir);
     }, []);
-    const [metasColapsadas, setMetasColapsadas] = useState<Set<number>>(new Set());
-    const toggleColapso = (id: number) => {
-        setMetasColapsadas(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
-    };
     const [subAbierta, setSubAbierta] = useState<number | null>(null);
     const [plazoAbierto, setPlazoAbierto] = useState<{ goalId: number; plazo: GoalHorizon } | null>(null);
     const [detalle, setDetalle] = useState<{ goalId: number; milestoneId: number; plazo: GoalHorizon } | null>(null);
@@ -187,7 +177,6 @@ export const MetasDashboard = ({
     }, [modoVista]);
 
     const raiz = goals.filter(g => !g.parentId);
-    const subsDe = (id: number) => goals.filter(g => g.parentId === id);
 
     // Jerarquía: Niveles por encima de los proyectos
     // Nivel (1..4) -> Proyectos / Visiones -> Metas
@@ -214,71 +203,6 @@ export const MetasDashboard = ({
         };
     }).filter(gn => gn.totalMetas > 0 || gn.nivelNum === 1 || gn.nivelNum === 2);
 
-    // Compatibilidad plana para drag and drop
-    const grupos: { proyecto?: Project; metas: Goal[] }[] = [];
-    raiz.forEach(g => {
-        const p = projects.find(x => x.id === g.projectId);
-        const grupo = grupos.find(gr => gr.proyecto?.id === p?.id);
-        if (grupo) grupo.metas.push(g); else grupos.push({ proyecto: p, metas: [g] });
-    });
-    grupos.sort((a, b) => (a.proyecto ? 0 : 1) - (b.proyecto ? 0 : 1));
-    grupos.forEach(gr => gr.metas.sort((a, b) => Number(!!a.inactiva) - Number(!!b.inactiva)));
-
-    // Meta raíz: sube/baja dentro de su visión; en el borde del grupo, mueve la
-    // visión entera con respecto a la vecina (así también se pueden ordenar las
-    // metas cuando cada visión tiene una sola). "Sin visión" siempre queda al final.
-    const grupoVecino = (gi: number, dir: -1 | 1) => {
-        const g = grupos[gi], v = grupos[gi + dir];
-        return g && v && !!g.proyecto === !!v.proyecto ? v : undefined;
-    };
-    const puedeMover = (gi: number, i: number, dir: -1 | 1) => {
-        const gr = grupos[gi];
-        if (!gr || !gr.metas) return false;
-        const n = gr.metas.length;
-        return dir === -1 ? i > 0 || !!grupoVecino(gi, -1) : i < n - 1 || !!grupoVecino(gi, 1);
-    };
-    const mover = (gi: number, id: number, dir: -1 | 1) => {
-        if (!reorderGoals) return;
-        const gr = grupos[gi];
-        if (!gr || !gr.metas) return;
-        const metas = gr.metas;
-        const i = metas.findIndex(g => g.id === id);
-        const dentro = i + dir >= 0 && i + dir < metas.length;
-        if (dentro) { const nuevo = moverEn(goals, metas, id, dir); if (nuevo) reorderGoals(nuevo); return; }
-        if (!grupoVecino(gi, dir)) return;
-        const orden = [...grupos];
-        [orden[gi], orden[gi + dir]] = [orden[gi + dir], orden[gi]];
-        const planas = orden.flatMap(g => g.metas);
-        let k = 0;
-        reorderGoals(goals.map(g => (g.parentId ? g : planas[k++])));
-    };
-    // Arrastre desde el ⋮ de la tarjeta (solo escritorio): se suelta sobre otra meta
-    // y toma su lugar. Dentro de una visión reordena las metas; hacia otra visión
-    // mueve la visión entera a esa posición (sin cambiar a qué visión pertenece cada meta).
-    const [arrastrando, setArrastrando] = useState<number | null>(null);
-    const [sobreMeta, setSobreMeta] = useState<number | null>(null);
-    const soltarMeta = (destinoId: number) => {
-        const origenId = arrastrando;
-        setArrastrando(null); setSobreMeta(null);
-        if (!reorderGoals || origenId == null || origenId === destinoId) return;
-        const go = grupos.findIndex(gr => gr.metas.some(m => m.id === origenId));
-        const gd = grupos.findIndex(gr => gr.metas.some(m => m.id === destinoId));
-        if (go < 0 || gd < 0) return;
-        let orden = [...grupos];
-        if (go === gd) {
-            const metas = [...grupos[go].metas];
-            const dragged = metas.splice(metas.findIndex(m => m.id === origenId), 1)[0];
-            metas.splice(grupos[go].metas.findIndex(m => m.id === destinoId), 0, dragged);
-            orden[go] = { ...grupos[go], metas };
-        } else {
-            if (!!grupos[go].proyecto !== !!grupos[gd].proyecto) return; // "Sin visión" siempre al final
-            const [g] = orden.splice(go, 1);
-            orden.splice(gd, 0, g);
-        }
-        const planas = orden.flatMap(gr => gr.metas);
-        let k = 0;
-        reorderGoals(goals.map(g => (g.parentId ? g : planas[k++])));
-    };
     const moverSub = (hermanas: Goal[], id: number, dir: -1 | 1) => {
         const nuevo = reorderGoals && moverEn(goals, hermanas, id, dir);
         if (nuevo) reorderGoals!(nuevo);
@@ -320,64 +244,6 @@ export const MetasDashboard = ({
     const sub = subAbierta != null ? goals.find(g => g.id === subAbierta) : undefined;
     const padreDeSub = sub ? goals.find(g => g.id === sub.parentId) : undefined;
     const metaPlazo = plazoAbierto ? goals.find(g => g.id === plazoAbierto.goalId) : undefined;
-
-    const filaMeta = (goal: Goal) => {
-        const subs = subsDe(goal.id);
-        const gi = grupos.findIndex(gr => gr.metas.some(m => m.id === goal.id));
-        const i = gi >= 0 ? grupos[gi].metas.findIndex(m => m.id === goal.id) : 0;
-        const columnas = (
-            <Columnas
-                goal={goal} subs={subs} dailyBlocks={dailyBlocks} movil={movil}
-                onAbrirSub={id => setSubAbierta(id)}
-                onAbrirPlazo={plazo => setPlazoAbierto({ goalId: goal.id, plazo })}
-                onNuevaSub={plazo => setForm({ tipo: 'sub', padre: goal, inicial: { horizon: plazo, esTarea: true, metaId: goal.id } })}
-                onToggleTarea={mid => toggleGoalMilestone(goal.id, mid)}
-            />
-        );
-        const expandido = !metasColapsadas.has(goal.id);
-        const tarjeta = (
-            <TarjetaMeta
-                goal={goal} subs={subs} dailyBlocks={dailyBlocks} movil={movil}
-                expandido={expandido}
-                onToggleExpand={() => toggleColapso(goal.id)}
-                onSetStatus={status => updateGoal(goal.id, { status })}
-                onEditar={() => setForm({ tipo: 'meta', goal })}
-                onRemove={() => { if (subs.length === 0 || window.confirm(`Se borrará "${goal.title}" y sus ${subs.length} sub-meta(s).`)) removeGoal(goal.id); }}
-                onUpdate={u => updateGoal(goal.id, u)}
-                onSubir={reorderGoals && gi >= 0 && puedeMover(gi, i, -1) ? () => mover(gi, goal.id, -1) : undefined}
-                onBajar={reorderGoals && gi >= 0 && puedeMover(gi, i, 1) ? () => mover(gi, goal.id, 1) : undefined}
-                onArrastrar={reorderGoals && !movil ? {
-                    start: ev => {
-                        ev.dataTransfer.effectAllowed = 'move';
-                        ev.dataTransfer.setData('text/plain', String(goal.id));
-                        const fila = (ev.currentTarget as HTMLElement).closest('[data-meta-fila]') as HTMLElement | null;
-                        if (fila) ev.dataTransfer.setDragImage(fila, 24, 24);
-                        setArrastrando(goal.id);
-                    },
-                    end: () => { setArrastrando(null); setSobreMeta(null); },
-                } : undefined}
-                toggleDailyBlock={toggleDailyBlock} updateDailyBlock={updateDailyBlock} linkTaskToGoal={linkTaskToGoal}
-            >
-                {!goal.inactiva && columnas}
-            </TarjetaMeta>
-        );
-        return (
-            <div
-                key={goal.id} data-meta-fila
-                onDragOver={arrastrando != null ? ev => { ev.preventDefault(); if (sobreMeta !== goal.id) setSobreMeta(goal.id); } : undefined}
-                onDrop={arrastrando != null ? ev => { ev.preventDefault(); soltarMeta(goal.id); } : undefined}
-                style={{
-                    borderRadius: '16px',
-                    opacity: arrastrando === goal.id ? 0.45 : 1,
-                    outline: sobreMeta === goal.id && arrastrando !== goal.id ? `2px dashed ${C.primary}` : 'none', outlineOffset: '4px',
-                    marginBottom: '10px',
-                    width: '100%',
-                }}
-            >
-                {tarjeta}
-            </div>
-        );
-    };
 
     if (metaPlazo && plazoAbierto) {
         return (
@@ -491,7 +357,7 @@ export const MetasDashboard = ({
                             <span className="material-symbols-outlined" style={{ fontSize: '18px', color: modoVista === 'lista' ? '#0FA97A' : 'inherit' }}>
                                 format_list_bulleted
                             </span>
-                            <span>Lista estructurada</span>
+                            <span>Lista de tareas</span>
                         </button>
                     </div>
                 </div>
@@ -507,6 +373,7 @@ export const MetasDashboard = ({
                         onRemoveMilestone={removeGoalMilestone}
                         onAddMilestone={(gid, txt, plz) => addGoalMilestone(gid, txt, plz)}
                         onUpdateGoal={updateGoal}
+                        reorderGoals={reorderGoals}
                         onEditarMeta={g => setForm({ tipo: 'meta', goal: g })}
                         onAbrirPlazo={(gid, plz) => setPlazoAbierto({ goalId: gid, plazo: plz })}
                         onAbrirDetalle={(gid, mid, plz) => setDetalle({ goalId: gid, milestoneId: mid, plazo: plz })}
@@ -521,195 +388,23 @@ export const MetasDashboard = ({
                             projects={projects}
                             movil={movil}
                         />
-
-                {gruposNiveles.map(gn => (
-                    <section key={gn.nivelNum} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '6px' }}>
-
-                        {/* Cabecera del Nivel (por encima de los proyectos) */}
-                        <div style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            background: `${gn.info.color}0D`,
-                            border: `1px solid ${gn.info.color}35`,
-                            borderLeftWidth: '5px',
-                            borderLeftColor: gn.info.color,
-                            borderRadius: '14px',
-                            padding: movil ? '10px 12px' : '12px 18px',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                                <span className="material-symbols-outlined" style={{ fontSize: '22px', color: gn.info.color }}>
-                                    {gn.info.icono}
-                                </span>
-                                <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                        <span style={{ fontSize: '0.94rem', fontWeight: 900, color: gn.info.color, letterSpacing: '0.04em' }}>
-                                            {gn.info.titulo}
-                                        </span>
-                                        <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '1px 8px', borderRadius: '999px', background: `${gn.info.color}20`, color: gn.info.color }}>
-                                            {gn.info.horizonte}
-                                        </span>
-                                    </div>
-                                    <div style={{ fontSize: '0.76rem', color: C.onSurfaceVariant, marginTop: '2px', fontWeight: 500 }}>
-                                        {gn.info.subtitulo}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{
-                                    fontSize: '0.72rem', fontWeight: 800, padding: '3px 10px', borderRadius: '999px',
-                                    background: gn.completadas === gn.totalMetas && gn.totalMetas > 0 ? '#10B981' : C.surfaceLowest,
-                                    color: gn.completadas === gn.totalMetas && gn.totalMetas > 0 ? '#fff' : C.onSurface,
-                                    border: `1px solid ${C.outlineVariant}`,
-                                }}>
-                                    {gn.completadas}/{gn.totalMetas} metas logradas
-                                </span>
-                                <button
-                                    onClick={() => setForm({ tipo: 'meta', inicial: { nivel: gn.nivelNum, color: gn.info.color } })}
-                                    title={`Agregar meta al Paso ${gn.nivelNum}`}
-                                    style={{
-                                        display: 'inline-flex', alignItems: 'center', gap: '3px',
-                                        fontSize: '0.72rem', fontWeight: 800, padding: '3px 10px', borderRadius: '999px',
-                                        background: `${gn.info.color}15`, color: gn.info.color,
-                                        border: `1px solid ${gn.info.color}35`, cursor: 'pointer', fontFamily: 'inherit',
-                                    }}
-                                >
-                                    <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>add</span>
-                                    <span>Meta</span>
-                                </button>
-                            </div>
-                        </div>
-
-
-                        {gn.gruposProyecto.map(gr => (
-                            <div key={gr.proyecto?.id ?? 'sin'} style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: movil ? '2px' : '8px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '2px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
-                                        <span style={{ fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.outline }}>
-                                            {gr.proyecto ? '🧭 Visión' : 'Otras metas'}
-                                        </span>
-                                        {gr.proyecto && (
-                                            <span style={{ fontSize: '0.92rem', fontWeight: 800, color: gr.proyecto.color || C.onSurface }}>
-                                                {gr.proyecto.name}
-                                            </span>
-                                        )}
-                                    </div>
-                                    {movil && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setForm({
-                                                tipo: 'meta',
-                                                inicial: {
-                                                    projectId: gr.proyecto?.id,
-                                                    nivel: gn.nivelNum,
-                                                    color: gr.proyecto?.color || gn.info.color,
-                                                    area: gr.proyecto?.name ? 'Negocio' : 'Personal',
-                                                }
-                                            })}
-                                            title={`Agregar meta a ${gr.proyecto?.name || 'esta visión'}`}
-                                            style={{
-                                                display: 'inline-flex', alignItems: 'center', gap: '3px',
-                                                fontSize: '0.68rem', fontWeight: 800, padding: '2px 9px', borderRadius: '999px',
-                                                background: gr.proyecto?.color ? `${gr.proyecto.color}15` : `${C.primary}15`,
-                                                color: gr.proyecto?.color || C.primary,
-                                                border: `1px solid ${gr.proyecto?.color ? `${gr.proyecto.color}35` : `${C.primary}35`}`,
-                                                cursor: 'pointer', fontFamily: 'inherit',
-                                            }}
-                                        >
-                                            <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>add</span>
-                                            <span>Meta</span>
-                                        </button>
-                                    )}
-                                </div>
-
-                                <div style={{
-                                    display: 'flex',
-                                    flexDirection: movil ? 'column' : 'row',
-                                    flexWrap: 'wrap',
-                                    gap: '14px',
-                                    alignItems: 'stretch',
-                                }}>
-                                    <AnimatePresence initial={false}>
-                                        {gr.metas.map(g => (
-                                            <div
-                                                key={g.id}
-                                                style={{
-                                                    flex: movil ? '1 1 100%' : '0 1 430px',
-                                                    minWidth: movil ? '100%' : '300px',
-                                                    maxWidth: movil ? '100%' : '440px',
-                                                    display: 'flex',
-                                                }}
-                                            >
-                                                {filaMeta(g)}
-                                            </div>
-                                        ))}
-                                    </AnimatePresence>
-
-                                    {/* Tarjeta "+ Agregar meta" al costado (en móvil se usa el botón compacto en la cabecera) */}
-                                    {gr.metas.length === 0 && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setForm({
-                                            tipo: 'meta',
-                                            inicial: {
-                                                projectId: gr.proyecto?.id,
-                                                nivel: gn.nivelNum,
-                                                color: gr.proyecto?.color || gn.info.color,
-                                                area: gr.proyecto?.name ? 'Negocio' : 'Personal',
-                                            }
-                                        })}
-                                        style={{
-                                            flex: movil ? '1 1 auto' : '0 0 170px',
-                                            minHeight: movil ? '50px' : '140px',
-                                            borderRadius: '14px',
-                                            border: `1.5px dashed ${gr.proyecto?.color ? `${gr.proyecto.color}60` : C.outlineVariant}`,
-                                            background: gr.proyecto?.color ? `${gr.proyecto.color}06` : 'rgba(0,0,0,0.015)',
-                                            display: 'flex',
-                                            flexDirection: movil ? 'row' : 'column',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '8px',
-                                            cursor: 'pointer',
-                                            padding: movil ? '10px 14px' : '18px 14px',
-                                            color: gr.proyecto?.color || C.primary,
-                                            fontFamily: 'inherit',
-                                            transition: 'all 0.18s ease',
-                                            boxSizing: 'border-box',
-                                            marginBottom: '10px',
-                                        }}
-                                        onMouseEnter={e => {
-                                            e.currentTarget.style.borderColor = gr.proyecto?.color || C.primary;
-                                            e.currentTarget.style.background = gr.proyecto?.color ? `${gr.proyecto.color}15` : 'rgba(15,169,122,0.08)';
-                                        }}
-                                        onMouseLeave={e => {
-                                            e.currentTarget.style.borderColor = gr.proyecto?.color ? `${gr.proyecto.color}60` : C.outlineVariant;
-                                            e.currentTarget.style.background = gr.proyecto?.color ? `${gr.proyecto.color}06` : 'rgba(0,0,0,0.015)';
-                                        }}
-                                        title={`Agregar otra meta a ${gr.proyecto?.name || 'este paso'}`}
-                                    >
-                                        <div style={{
-                                            width: '34px', height: '34px', borderRadius: '50%',
-                                            background: gr.proyecto?.color ? `${gr.proyecto.color}18` : `${C.primary}18`,
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            flexShrink: 0,
-                                        }}>
-                                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>add</span>
-                                        </div>
-                                        <div style={{ textAlign: movil ? 'left' : 'center' }}>
-                                            <div style={{ fontSize: '0.82rem', fontWeight: 800 }}>+ Agregar meta</div>
-                                            {!movil && (
-                                                <div style={{ fontSize: '0.66rem', color: C.outline, marginTop: '2px' }}>
-                                                    {gr.proyecto ? gr.proyecto.name : `Paso ${gn.nivelNum}`}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </button>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </section>
-                ))}
+                <VistaEstructuradaMetas
+                    goals={goals}
+                    projects={projects}
+                    dailyBlocks={dailyBlocks}
+                    movil={movil}
+                    gruposNiveles={gruposNiveles}
+                    onToggleMilestone={toggleGoalMilestone}
+                    onRemoveMilestone={removeGoalMilestone}
+                    onAddMilestone={(gid, txt, plz) => addGoalMilestone(gid, txt, plz)}
+                    onUpdateGoal={updateGoal}
+                    onEditarMeta={g => setForm({ tipo: 'meta', goal: g })}
+                    onAbrirPlazo={(gid, plz) => setPlazoAbierto({ goalId: gid, plazo: plz })}
+                    onAbrirDetalle={(gid, mid, plz) => setDetalle({ goalId: gid, milestoneId: mid, plazo: plz })}
+                    setForm={setForm}
+                    updateDailyBlock={updateDailyBlock}
+                    addDailyBlock={addDailyBlock}
+                />
                 </>
             )}
             </div>
@@ -743,23 +438,14 @@ export const MetasDashboard = ({
                 onRemoveTarea={mid => sub && removeGoalMilestone(sub.id, mid)}
             />
 
-            {/* Ventana flotante al lado derecho (Bandeja) con botón flotante */}
-            {addNote && updateNote && (
-                <VentanaFlotanteMetas
-                    notes={notes}
-                    addNote={addNote}
-                    updateNote={updateNote}
-                    goals={goals}
-                    addGoalMilestone={addGoalMilestone}
-                />
-            )}
+            {/* Fin modal */}
         </div>
     );
 };
 
 /* ─── Tarjeta de la meta (izquierda en escritorio; en móvil se expande) ─── */
 
-interface TarjetaMetaProps {
+export interface TarjetaMetaProps {
     goal: Goal;
     subs: Goal[];
     dailyBlocks: DailyBlock[];
@@ -779,7 +465,7 @@ interface TarjetaMetaProps {
     children?: React.ReactNode;
 }
 
-const TarjetaMeta = ({ goal, subs, dailyBlocks, movil, expandido = true, onToggleExpand, onSetStatus, onEditar, onRemove, onUpdate, onSubir, onBajar, onArrastrar, toggleDailyBlock, updateDailyBlock, linkTaskToGoal, children }: TarjetaMetaProps) => {
+export const TarjetaMeta = ({ goal, subs, dailyBlocks, movil, expandido = true, onToggleExpand, onSetStatus, onEditar, onRemove, onUpdate, onSubir, onBajar, onArrastrar, toggleDailyBlock, updateDailyBlock, linkTaskToGoal, children }: TarjetaMetaProps) => {
     const [menu, setMenu] = useState(false);
     const [detalles, setDetalles] = useState(false);
     const av = avance(goal, subs, dailyBlocks);
@@ -1114,7 +800,7 @@ const AvanceNumero = ({ goal, onUpdate, movil }: { goal: Goal; onUpdate: (u: Par
 
 /* ─── Columnas Corto → Mediano → Largo con sub-metas y tareas sueltas ─── */
 
-interface ColumnasProps {
+export interface ColumnasProps {
     goal: Goal;
     subs: Goal[];
     dailyBlocks: DailyBlock[];
@@ -1142,7 +828,7 @@ const savePlazosGuardados = (goalId: number, list: GoalHorizon[]) => {
     } catch {}
 };
 
-const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, onNuevaSub: _onNuevaSub, onAbrirTarea }: ColumnasProps) => {
+export const Columnas = ({ goal, subs, dailyBlocks, movil, onAbrirSub, onAbrirPlazo, onNuevaSub: _onNuevaSub, onAbrirTarea }: ColumnasProps) => {
     const [plazosExtra, setPlazosExtra] = useState<GoalHorizon[]>(() => getPlazosGuardados(goal.id));
     // Plazos que actualmente tienen contenido (tareas o sub-metas)
     const plazosConContenido = PLAZOS_INFO.filter(pl => {

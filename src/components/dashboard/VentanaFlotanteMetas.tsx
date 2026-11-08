@@ -52,7 +52,7 @@ export const VentanaFlotanteMetas = ({
         e.preventDefault();
         try {
             e.currentTarget.setPointerCapture(e.pointerId);
-        } catch {}
+        } catch { }
 
         arrastreRef.current = {
             startX: e.clientX,
@@ -77,7 +77,7 @@ export const VentanaFlotanteMetas = ({
         if (arrastreRef.current) {
             try {
                 e.currentTarget.releasePointerCapture(e.pointerId);
-            } catch {}
+            } catch { }
             arrastreRef.current = null;
             setArrastrando(false);
         }
@@ -299,3 +299,5 @@ export const VentanaFlotanteMetas = ({
         </>
     );
 };
+
+export { VentanaFlotanteMetas as VentanaFlotanteBandeja };

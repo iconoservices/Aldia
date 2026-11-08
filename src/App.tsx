@@ -67,6 +67,7 @@ const NotionDashboard = named(() => import('./components/dashboard/NotionDashboa
 const AgendaDashboard = named(() => import('./components/dashboard/AgendaDashboard'), 'AgendaDashboard');
 const TranqueoDeVidaDashboard = named(() => import('./components/dashboard/TranqueoDeVidaDashboard'), 'TranqueoDeVidaDashboard');
 const MetasDashboard = named(() => import('./components/dashboard/MetasDashboard'), 'MetasDashboard');
+const VentanaFlotanteMetas = named(() => import('./components/dashboard/VentanaFlotanteMetas'), 'VentanaFlotanteMetas');
 const ResumenDashboard = named(() => import('./components/dashboard/ResumenDashboard'), 'ResumenDashboard');
 const TareasDashboard = named(() => import('./components/dashboard/TareasDashboard'), 'TareasDashboard');
 const UpcomingList = named(() => import('./components/dashboard/UpcomingList'), 'UpcomingList');
@@ -927,6 +928,19 @@ function App() {
       />
       )}
       </Suspense>
+
+      {/* Botón flotante y ventana de Bandeja (disponible en todas las pestañas) */}
+      {activeTab !== 'Bandeja' && (
+        <Suspense fallback={null}>
+          <VentanaFlotanteMetas
+            notes={state.notes}
+            addNote={state.addNote}
+            updateNote={state.updateNote}
+            goals={state.goals}
+            addGoalMilestone={state.addGoalMilestone}
+          />
+        </Suspense>
+      )}
 
     </div>
   );
