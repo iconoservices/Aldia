@@ -185,28 +185,93 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
        ingresos fijos reales: es una copia aparte. ── */
     type SimFixedExpense = { id: number; text: string; amount: number; active: boolean; dueDay?: number; lastPaidMonth?: string; custom?: boolean; excluido?: boolean; grupo?: string };
     type SimFixedIncome = { id: number; name: string; amount: number; active: boolean; lastReceivedMonth?: string; custom?: boolean; excluido?: boolean; grupo?: string };
-    type Plan = { fixedExpenses: SimFixedExpense[]; fixedIncomes: SimFixedIncome[]; usarSaldo?: boolean };
+    type SimMovSuelto = { id: number; text: string; amount: number; type: 'gasto' | 'ingreso'; excluido?: boolean; grupo?: string };
+    type Plan = {
+        fixedExpenses: SimFixedExpense[];
+        fixedIncomes: SimFixedIncome[];
+        movs?: SimMovSuelto[];
+        usarSaldo?: boolean;
+        mostrarGastosFijos?: boolean;
+        mostrarIngresosFijos?: boolean;
+        mostrarSueltos?: boolean;
+    };
 
     const seedPlan = (): Plan => ({
         fixedExpenses: fixedExpenses.filter(f => f.active).map(f => ({ id: f.id, text: f.text, amount: f.amount, active: f.active, dueDay: f.dueDay, lastPaidMonth: f.lastPaidMonth })),
         fixedIncomes: fixedIncomeItems.filter(f => f.active).map(f => ({ id: f.id, name: f.name, amount: f.amount, active: f.active, lastReceivedMonth: f.lastReceivedMonth })),
+        movs: [],
+        mostrarGastosFijos: true,
+        mostrarIngresosFijos: true,
+        mostrarSueltos: true,
     });
 
     const plan: Plan = useMemo(() => {
         try {
             const parsed = preferences.planDelMes ? JSON.parse(preferences.planDelMes) : null;
             if (parsed && Array.isArray(parsed.fixedExpenses) && Array.isArray(parsed.fixedIncomes)) {
-                let fe: SimFixedExpense[] = parsed.fixedExpenses;
-                let fi: SimFixedIncome[] = parsed.fixedIncomes;
-                // Migración: la sección "Simular otro movimiento" (separada) se eliminó;
-                // lo que hubiera quedado ahí guardado se suma directo a las listas de arriba.
-                if (Array.isArray(parsed.movs) && parsed.movs.length > 0) {
-                    for (const m of parsed.movs) {
-                        if (m.type === 'gasto') fe = [...fe, { id: m.id, text: m.text, amount: m.amount, active: true, custom: true }];
-                        else fi = [...fi, { id: m.id, name: m.text, amount: m.amount, active: true, custom: true }];
+                let fe: SimFixedExpense[] = [];
+                let fi: SimFixedIncome[] = [];
+                let movs: SimMovSuelto[] = Array.isArray(parsed.movs) ? [...parsed.movs] : [];
+
+                // Separar movimientos sueltos que hayan sido agregados como custom: true
+                // para que no contaminen los gastos/ingresos fijos.
+                for (const f of parsed.fixedExpenses) {
+                    if (f.custom) {
+                        if (!movs.some(m => m.id === f.id)) {
+                            movs.push({
+                                id: f.id,
+                                text: f.text,
+                                amount: f.amount,
+                                type: 'gasto',
+                                excluido: f.excluido,
+                                grupo: f.grupo,
+                            });
+                        }
+                    } else {
+                        fe.push(f);
                     }
                 }
-                return { fixedExpenses: fe, fixedIncomes: fi, usarSaldo: !!parsed.usarSaldo };
+
+                for (const f of parsed.fixedIncomes) {
+                    if (f.custom) {
+                        if (!movs.some(m => m.id === f.id)) {
+                            movs.push({
+                                id: f.id,
+                                text: f.name || f.text,
+                                amount: f.amount,
+                                type: 'ingreso',
+                                excluido: f.excluido,
+                                grupo: f.grupo,
+                            });
+                        }
+                    } else {
+                        fi.push(f);
+                    }
+                }
+
+                // Deducir visibilidad: si el usuario los tenía todos excluidos en su sesión anterior
+                // (desactivados desde arriba), mantenerlos ocultos como esperaba.
+                const mostrarGastosFijos = parsed.mostrarGastosFijos !== undefined
+                    ? !!parsed.mostrarGastosFijos
+                    : !(fe.length > 0 && fe.every(f => f.excluido));
+
+                const mostrarIngresosFijos = parsed.mostrarIngresosFijos !== undefined
+                    ? !!parsed.mostrarIngresosFijos
+                    : !(fi.length > 0 && fi.every(f => f.excluido));
+
+                const mostrarSueltos = parsed.mostrarSueltos !== undefined
+                    ? !!parsed.mostrarSueltos
+                    : true;
+
+                return {
+                    fixedExpenses: fe,
+                    fixedIncomes: fi,
+                    movs,
+                    usarSaldo: !!parsed.usarSaldo,
+                    mostrarGastosFijos,
+                    mostrarIngresosFijos,
+                    mostrarSueltos,
+                };
             }
         } catch { /* si el JSON guardado quedó corrupto, se re-siembra abajo */ }
         return seedPlan();
@@ -236,55 +301,102 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
         setCargadaId(foto.id);
         setNombreGuardar(null);
     };
-    const resultadoDe = (p: Plan) => (p.usarSaldo ? currentBalance : 0)
-        + p.fixedIncomes.filter(f => !f.excluido).reduce((s, f) => s + (Number(f.amount) || 0), 0)
-        - p.fixedExpenses.filter(f => !f.excluido).reduce((s, f) => s + (Number(f.amount) || 0), 0);
+    const resultadoDe = (p: Plan) => {
+        const saldo = p.usarSaldo ? currentBalance : 0;
+        const gf = p.mostrarGastosFijos !== false
+            ? (p.fixedExpenses || []).filter(f => !f.excluido).reduce((s, f) => s + (Number(f.amount) || 0), 0)
+            : 0;
+        const fi = p.mostrarIngresosFijos !== false
+            ? (p.fixedIncomes || []).filter(f => !f.excluido).reduce((s, f) => s + (Number(f.amount) || 0), 0)
+            : 0;
+        const msG = p.mostrarSueltos !== false
+            ? (p.movs || []).filter(m => m.type === 'gasto' && !m.excluido).reduce((s, m) => s + (Number(m.amount) || 0), 0)
+            : 0;
+        const msI = p.mostrarSueltos !== false
+            ? (p.movs || []).filter(m => m.type === 'ingreso' && !m.excluido).reduce((s, m) => s + (Number(m.amount) || 0), 0)
+            : 0;
+        return saldo + fi + msI - gf - msG;
+    };
 
     const [nuevoGasto, setNuevoGasto] = useState({ text: '', amount: '', cantidad: '' });
     const [usarCantidadGasto, setUsarCantidadGasto] = useState(false);
     const [nuevoGrupoGasto, setNuevoGrupoGasto] = useState('');
     const [nuevoGrupoIngreso, setNuevoGrupoIngreso] = useState('');
-    // Grupos: cerrados salvo que los abras. Listas: abiertas salvo que las contraigas.
-    const [abiertos, setAbiertos] = useState<Record<string, boolean>>({});
-    const [listaCerrada, setListaCerrada] = useState<{ gastos: boolean; ingresos: boolean }>({ gastos: false, ingresos: false });
     const nuevoGastoTotal = usarCantidadGasto ? (parseFloat(nuevoGasto.cantidad) || 0) * (parseFloat(nuevoGasto.amount) || 0) : (parseFloat(nuevoGasto.amount) || 0);
 
     const [nuevoIngresoFijo, setNuevoIngresoFijo] = useState({ name: '', amount: '', cantidad: '' });
     const [usarCantidadIngreso, setUsarCantidadIngreso] = useState(false);
     const nuevoIngresoTotal = usarCantidadIngreso ? (parseFloat(nuevoIngresoFijo.cantidad) || 0) * (parseFloat(nuevoIngresoFijo.amount) || 0) : (parseFloat(nuevoIngresoFijo.amount) || 0);
 
+    const [nuevoSuelto, setNuevoSuelto] = useState({ text: '', amount: '', cantidad: '', tipo: 'gasto' as 'gasto' | 'ingreso' });
+    const [usarCantidadSuelto, setUsarCantidadSuelto] = useState(false);
+    const [nuevoGrupoSuelto, setNuevoGrupoSuelto] = useState('');
+    const nuevoSueltoTotal = usarCantidadSuelto ? (parseFloat(nuevoSuelto.cantidad) || 0) * (parseFloat(nuevoSuelto.amount) || 0) : (parseFloat(nuevoSuelto.amount) || 0);
+
+    // Grupos: cerrados salvo que los abras. Listas: abiertas salvo que las contraigas.
+    const [abiertos, setAbiertos] = useState<Record<string, boolean>>({});
+    const [listaCerrada, setListaCerrada] = useState<{ gastos: boolean; ingresos: boolean; sueltos: boolean }>({ gastos: false, ingresos: false, sueltos: false });
+
     const reiniciarSimulacion = () => savePlan({ ...seedPlan(), usarSaldo: plan.usarSaldo });
 
-    const simFijosTotal = useMemo(() => plan.fixedExpenses.filter(f => !f.excluido).reduce((s, f) => s + (Number(f.amount) || 0), 0), [plan.fixedExpenses]);
+    const mostrarGastos = plan.mostrarGastosFijos !== false;
+    const mostrarIngresos = plan.mostrarIngresosFijos !== false;
+    const mostrarSueltos = plan.mostrarSueltos !== false;
 
-    const simIngresoPrevisto = useMemo(() => plan.fixedIncomes.filter(f => !f.excluido).reduce((s, f) => s + (Number(f.amount) || 0), 0), [plan.fixedIncomes]);
+    const simFijosTotal = useMemo(() => {
+        if (!mostrarGastos) return 0;
+        return plan.fixedExpenses.filter(f => !f.excluido).reduce((s, f) => s + (Number(f.amount) || 0), 0);
+    }, [plan.fixedExpenses, mostrarGastos]);
 
+    const simIngresoPrevisto = useMemo(() => {
+        if (!mostrarIngresos) return 0;
+        return plan.fixedIncomes.filter(f => !f.excluido).reduce((s, f) => s + (Number(f.amount) || 0), 0);
+    }, [plan.fixedIncomes, mostrarIngresos]);
+
+    const simSueltosGastos = useMemo(() => {
+        if (!mostrarSueltos) return 0;
+        return (plan.movs || []).filter(m => m.type === 'gasto' && !m.excluido).reduce((s, m) => s + (Number(m.amount) || 0), 0);
+    }, [plan.movs, mostrarSueltos]);
+
+    const simSueltosIngresos = useMemo(() => {
+        if (!mostrarSueltos) return 0;
+        return (plan.movs || []).filter(m => m.type === 'ingreso' && !m.excluido).reduce((s, m) => s + (Number(m.amount) || 0), 0);
+    }, [plan.movs, mostrarSueltos]);
+
+    const totalIngresos = simIngresoPrevisto + simSueltosIngresos;
+    const totalGastos = simFijosTotal + simSueltosGastos;
     const saldoBase = plan.usarSaldo ? currentBalance : 0;
-    const simQueda = saldoBase + simIngresoPrevisto - simFijosTotal;
+    const simQueda = saldoBase + totalIngresos - totalGastos;
 
-    // Interruptores en bloque: lo que viene de tus fijos reales vs. lo que agregaste vos.
-    const gastosReales = plan.fixedExpenses.filter(f => !f.custom);
-    const ingresosReales = plan.fixedIncomes.filter(f => !f.custom);
-    const propios = [...plan.fixedExpenses, ...plan.fixedIncomes].filter(f => f.custom);
-    const gastosRealesOn = gastosReales.length > 0 && gastosReales.every(f => !f.excluido);
-    const ingresosRealesOn = ingresosReales.length > 0 && ingresosReales.every(f => !f.excluido);
-    const propiosOn = propios.length > 0 && propios.every(f => !f.excluido);
-    const toggleReales = (tipo: 'gastos' | 'ingresos', incluir: boolean) => savePlan({
-        ...plan,
-        fixedExpenses: tipo === 'gastos' ? plan.fixedExpenses.map(f => f.custom ? f : { ...f, excluido: !incluir }) : plan.fixedExpenses,
-        fixedIncomes: tipo === 'ingresos' ? plan.fixedIncomes.map(f => f.custom ? f : { ...f, excluido: !incluir }) : plan.fixedIncomes,
-    });
-    const toggleGrupo = (custom: boolean, incluir: boolean) => savePlan({
-        ...plan,
-        fixedExpenses: plan.fixedExpenses.map(f => !!f.custom === custom ? { ...f, excluido: !incluir } : f),
-        fixedIncomes: plan.fixedIncomes.map(f => !!f.custom === custom ? { ...f, excluido: !incluir } : f),
-    });
+    const toggleTopGastos = (mostrar: boolean) => {
+        savePlan({
+            ...plan,
+            mostrarGastosFijos: mostrar,
+            fixedExpenses: mostrar && plan.fixedExpenses.every(f => f.excluido)
+                ? plan.fixedExpenses.map(f => ({ ...f, excluido: false }))
+                : plan.fixedExpenses,
+        });
+    };
 
-    // Resultado de solo lo que agregaste vos a mano (no lo sembrado desde tus gastos/ingresos fijos reales).
-    const customGastos = useMemo(() => plan.fixedExpenses.filter(f => f.custom && !f.excluido).reduce((s, f) => s + (Number(f.amount) || 0), 0), [plan.fixedExpenses]);
-    const customIngresos = useMemo(() => plan.fixedIncomes.filter(f => f.custom && !f.excluido).reduce((s, f) => s + (Number(f.amount) || 0), 0), [plan.fixedIncomes]);
-    const hayCustom = customGastos > 0 || customIngresos > 0;
-    const customNeto = customIngresos - customGastos;
+    const toggleTopIngresos = (mostrar: boolean) => {
+        savePlan({
+            ...plan,
+            mostrarIngresosFijos: mostrar,
+            fixedIncomes: mostrar && plan.fixedIncomes.every(f => f.excluido)
+                ? plan.fixedIncomes.map(f => ({ ...f, excluido: false }))
+                : plan.fixedIncomes,
+        });
+    };
+
+    const toggleTopSueltos = (mostrar: boolean) => {
+        savePlan({
+            ...plan,
+            mostrarSueltos: mostrar,
+            movs: mostrar && (plan.movs || []).every(m => m.excluido)
+                ? (plan.movs || []).map(m => ({ ...m, excluido: false }))
+                : plan.movs,
+        });
+    };
 
     const money = (n: number) => `S/ ${n.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
 
@@ -355,7 +467,7 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
     const tarjeta = (tipo: 'gasto' | 'ingreso') => {
         const esGasto = tipo === 'gasto';
         const items: (SimFixedExpense | SimFixedIncome)[] = esGasto ? plan.fixedExpenses : plan.fixedIncomes;
-        const total = esGasto ? simFijosTotal : simIngresoPrevisto;
+        const total = items.filter(f => !f.excluido).reduce((s, f) => s + (Number(f.amount) || 0), 0);
         const cerrada = esGasto ? listaCerrada.gastos : listaCerrada.ingresos;
         const nuevo = esGasto ? { nombre: nuevoGasto.text, amount: nuevoGasto.amount, cantidad: nuevoGasto.cantidad } : { nombre: nuevoIngresoFijo.name, amount: nuevoIngresoFijo.amount, cantidad: nuevoIngresoFijo.cantidad };
         const setNuevo = (campo: 'nombre' | 'amount' | 'cantidad', v: string) => esGasto
@@ -375,10 +487,10 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
             const nombre = nuevo.nombre.trim();
             if (!nombre || !nuevoTotal) return;
             if (esGasto) {
-                savePlan({ ...plan, fixedExpenses: [...plan.fixedExpenses, { id: Date.now(), text: nombre, amount: nuevoTotal, active: true, custom: true, grupo: nuevoGrupoGasto || undefined }] });
+                savePlan({ ...plan, fixedExpenses: [...plan.fixedExpenses, { id: Date.now(), text: nombre, amount: nuevoTotal, active: true, grupo: nuevoGrupoGasto || undefined }] });
                 setNuevoGasto({ text: '', amount: '', cantidad: '' });
             } else {
-                savePlan({ ...plan, fixedIncomes: [...plan.fixedIncomes, { id: Date.now(), name: nombre, amount: nuevoTotal, active: true, custom: true, grupo: nuevoGrupoIngreso || undefined }] });
+                savePlan({ ...plan, fixedIncomes: [...plan.fixedIncomes, { id: Date.now(), name: nombre, amount: nuevoTotal, active: true, grupo: nuevoGrupoIngreso || undefined }] });
                 setNuevoIngresoFijo({ name: '', amount: '', cantidad: '' });
             }
         };
@@ -407,7 +519,7 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                 {/* Agregar: siempre visible, una sola barra */}
                 <form onSubmit={agregar} style={{ padding: '10px', background: '#F7FAF8', borderTop: '1px solid #EDF3F0' }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', background: '#FFFFFF', border: '1px solid #DCE7E1', borderRadius: '10px', overflow: 'hidden' }}>
-                        <input value={nuevo.nombre} onChange={e => setNuevo('nombre', e.target.value)} placeholder={esGasto ? 'Agregar gasto fijo…' : 'Agregar ingreso fijo…'} style={{ ...campo, flex: movil ? '1 1 100%' : '1 1 100px', borderBottom: movil ? '1px solid #EDF3F0' : 'none' }} />
+                        <input value={nuevo.nombre} onChange={e => setNuevo('nombre', e.target.value)} placeholder={esGasto ? 'Agregar gasto fijo adicional…' : 'Agregar ingreso fijo adicional…'} style={{ ...campo, flex: movil ? '1 1 100%' : '1 1 100px', borderBottom: movil ? '1px solid #EDF3F0' : 'none' }} />
                         {porCantidad ? (
                             <>
                                 <input value={nuevo.cantidad} onChange={e => setNuevo('cantidad', e.target.value)} type="number" inputMode="decimal" placeholder="Cant." style={{ ...campo, ...sep, width: '58px', fontFamily: MONO }} />
@@ -423,6 +535,263 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                         </select>
                         <button type="submit" disabled={!listo} title={porCantidad && nuevoTotal ? `Agregar ${money(nuevoTotal)}` : 'Agregar'} style={{ height: '32px', minWidth: '32px', margin: '0 4px', padding: porCantidad && nuevoTotal ? '0 10px' : 0, border: 'none', borderRadius: '8px', background: listo ? '#F59E0B' : '#EDF3F0', color: listo ? '#fff' : '#A3B3AD', cursor: listo ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontFamily: MONO, fontSize: '0.74rem', fontWeight: 800, flexShrink: 0, transition: 'background .15s' }}>
                             <Plus size={17} />{porCantidad && nuevoTotal > 0 && money(nuevoTotal)}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        );
+    };
+
+    // Tarjeta para movimientos sueltos (extras, salidas, pandero, imprevistos, simulaciones sueltas)
+    const tarjetaSueltos = () => {
+        const movs = plan.movs || [];
+        const cerrada = listaCerrada.sueltos;
+        const totalGastosSueltos = movs.filter(m => m.type === 'gasto' && !m.excluido).reduce((s, m) => s + (Number(m.amount) || 0), 0);
+        const totalIngresosSueltos = movs.filter(m => m.type === 'ingreso' && !m.excluido).reduce((s, m) => s + (Number(m.amount) || 0), 0);
+        const netoSueltos = totalIngresosSueltos - totalGastosSueltos;
+        const color = netoSueltos === 0 ? '#6C8079' : netoSueltos > 0 ? '#0E9F6E' : '#C63C3C';
+        const todosOn = movs.length > 0 && movs.every(m => !m.excluido);
+
+        const marcarTodo = (on: boolean) => savePlan({
+            ...plan,
+            movs: movs.map(m => ({ ...m, excluido: !on })),
+        });
+
+        const agregar = (e: React.FormEvent) => {
+            e.preventDefault();
+            const text = nuevoSuelto.text.trim();
+            if (!text || !nuevoSueltoTotal) return;
+            const nuevo: SimMovSuelto = {
+                id: Date.now(),
+                text,
+                amount: nuevoSueltoTotal,
+                type: nuevoSuelto.tipo,
+                grupo: nuevoGrupoSuelto || undefined,
+            };
+            savePlan({
+                ...plan,
+                movs: [...movs, nuevo],
+            });
+            setNuevoSuelto(s => ({ ...s, text: '', amount: '', cantidad: '' }));
+        };
+
+        const campo: React.CSSProperties = {
+            minWidth: 0,
+            height: '40px',
+            padding: '0 10px',
+            border: 'none',
+            fontSize: movil ? '16px' : '0.8rem',
+            background: 'transparent',
+            color: '#0C2A20',
+            outline: 'none',
+            fontFamily: 'inherit',
+        };
+        const sep: React.CSSProperties = { borderLeft: '1px solid #EDF3F0' };
+        const listo = !!nuevoSuelto.text.trim() && nuevoSueltoTotal > 0;
+        const catsDisponibles = nuevoSuelto.tipo === 'gasto' ? catsGasto : catsIngreso;
+
+        return (
+            <div style={{ background: '#FFFFFF', border: '1px solid #DCE7E1', borderRadius: '14px', overflow: 'hidden', alignSelf: 'start' }}>
+                {/* Cabecera */}
+                <div
+                    onClick={() => setListaCerrada(v => ({ ...v, sueltos: !cerrada }))}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', cursor: 'pointer', borderBottom: cerrada ? 'none' : '1px solid #EDF3F0' }}
+                >
+                    <input
+                        type="checkbox"
+                        checked={todosOn}
+                        ref={el => { if (el) el.indeterminate = movs.some(m => !m.excluido) && movs.some(m => m.excluido); }}
+                        disabled={movs.length === 0}
+                        title="Contar movimientos sueltos en la proyección"
+                        onClick={e => e.stopPropagation()}
+                        onChange={e => marcarTodo(e.target.checked)}
+                        style={{ accentColor: '#0FA97A', flexShrink: 0 }}
+                    />
+                    <ChevronDown size={15} color="#6C8079" style={{ transform: cerrada ? 'rotate(-90deg)' : 'none', transition: 'transform .15s', flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.84rem', fontWeight: 800, color: '#0C2A20' }}>Movimientos sueltos / extras</div>
+                        <div style={{ fontSize: '0.64rem', fontWeight: 600, color: '#6C8079' }}>{movs.filter(m => !m.excluido).length} de {movs.length} en cuenta</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontFamily: MONO, fontSize: '1rem', fontWeight: 800, color }}>
+                            {netoSueltos < 0 ? '−' : netoSueltos > 0 ? '+' : ''}{money(Math.abs(netoSueltos))}
+                        </div>
+                        {(totalGastosSueltos > 0 && totalIngresosSueltos > 0) && (
+                            <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#6C8079' }}>
+                                +{money(totalIngresosSueltos)} / −{money(totalGastosSueltos)}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {!cerrada && (
+                    <div style={{ padding: '2px 14px 6px' }}>
+                        {movs.length === 0 ? (
+                            <p style={{ fontSize: '0.72rem', color: '#6C8079', margin: '10px 0' }}>
+                                Sin movimientos sueltos. Agrega gastos o ingresos extras abajo para simularlos sin mezclarlos con tus fijos.
+                            </p>
+                        ) : (
+                            movs.map(m => (
+                                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 2px', borderBottom: '1px solid #EDF3F0', opacity: m.excluido ? 0.4 : 1 }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={!m.excluido}
+                                        title="Contar en la proyección"
+                                        onChange={e => savePlan({
+                                            ...plan,
+                                            movs: movs.map(x => x.id === m.id ? { ...x, excluido: !e.target.checked } : x),
+                                        })}
+                                        style={{ accentColor: '#0FA97A', flexShrink: 0 }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => savePlan({
+                                            ...plan,
+                                            movs: movs.map(x => x.id === m.id ? { ...x, type: x.type === 'gasto' ? 'ingreso' : 'gasto' } : x),
+                                        })}
+                                        title="Toca para cambiar entre Gasto e Ingreso"
+                                        style={{
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            padding: '2px 6px',
+                                            fontSize: '0.62rem',
+                                            fontWeight: 800,
+                                            cursor: 'pointer',
+                                            background: m.type === 'gasto' ? '#FEE2E2' : 'rgba(15,169,122,0.12)',
+                                            color: m.type === 'gasto' ? '#C63C3C' : '#0E9F6E',
+                                            flexShrink: 0,
+                                        }}
+                                    >
+                                        {m.type === 'gasto' ? 'Gasto' : 'Ingreso'}
+                                    </button>
+                                    <span style={{ flex: 1, fontSize: '0.8rem', fontWeight: 600, color: '#0C2A20', textDecoration: m.excluido ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {m.text}
+                                    </span>
+                                    <MontoEditable value={m.amount} onChange={n => savePlan({ ...plan, movs: movs.map(x => x.id === m.id ? { ...x, amount: n } : x) })} />
+                                    <select
+                                        value={m.grupo || inferirGrupo(m.text, m.type, m.type === 'gasto' ? catsGasto : catsIngreso)}
+                                        onChange={e => savePlan({ ...plan, movs: movs.map(x => x.id === m.id ? { ...x, grupo: e.target.value } : x) })}
+                                        title="Cambiar grupo"
+                                        style={{ maxWidth: '92px', border: 'none', background: 'transparent', fontSize: '0.66rem', fontWeight: 700, color: '#6C8079', cursor: 'pointer', outline: 'none' }}
+                                    >
+                                        {(m.type === 'gasto' ? catsGasto : catsIngreso).map(g => <option key={g} value={g}>{g}</option>)}
+                                    </select>
+                                    <button
+                                        onClick={() => savePlan({ ...plan, movs: movs.filter(x => x.id !== m.id) })}
+                                        style={{ background: 'none', border: 'none', color: '#6C8079', cursor: 'pointer', display: 'flex', flexShrink: 0 }}
+                                        title="Eliminar"
+                                    >
+                                        <Trash2 size={13} />
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+
+                {/* Formulario para agregar movimiento suelto */}
+                <form onSubmit={agregar} style={{ padding: '10px', background: '#F7FAF8', borderTop: '1px solid #EDF3F0' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', background: '#FFFFFF', border: '1px solid #DCE7E1', borderRadius: '10px', overflow: 'hidden' }}>
+                        {/* Selector Gasto / Ingreso */}
+                        <div style={{ display: 'flex', borderRight: '1px solid #EDF3F0', padding: '3px' }}>
+                            <button
+                                type="button"
+                                onClick={() => setNuevoSuelto(s => ({ ...s, tipo: 'gasto' }))}
+                                style={{
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    padding: '4px 8px',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 800,
+                                    cursor: 'pointer',
+                                    background: nuevoSuelto.tipo === 'gasto' ? '#C63C3C' : 'transparent',
+                                    color: nuevoSuelto.tipo === 'gasto' ? '#FFFFFF' : '#6C8079',
+                                    transition: 'all .12s',
+                                }}
+                            >
+                                Gasto
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setNuevoSuelto(s => ({ ...s, tipo: 'ingreso' }))}
+                                style={{
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    padding: '4px 8px',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 800,
+                                    cursor: 'pointer',
+                                    background: nuevoSuelto.tipo === 'ingreso' ? '#0E9F6E' : 'transparent',
+                                    color: nuevoSuelto.tipo === 'ingreso' ? '#FFFFFF' : '#6C8079',
+                                    transition: 'all .12s',
+                                }}
+                            >
+                                Ingreso
+                            </button>
+                        </div>
+
+                        <input
+                            value={nuevoSuelto.text}
+                            onChange={e => setNuevoSuelto(s => ({ ...s, text: e.target.value }))}
+                            placeholder={nuevoSuelto.tipo === 'gasto' ? 'Gasto suelto (ej: Pandero, salida)…' : 'Ingreso suelto (ej: Venta extra)…'}
+                            style={{ ...campo, flex: movil ? '1 1 100%' : '1 1 100px', borderBottom: movil ? '1px solid #EDF3F0' : 'none' }}
+                        />
+
+                        {usarCantidadSuelto ? (
+                            <>
+                                <input value={nuevoSuelto.cantidad} onChange={e => setNuevoSuelto(s => ({ ...s, cantidad: e.target.value }))} type="number" inputMode="decimal" placeholder="Cant." style={{ ...campo, ...sep, width: '58px', fontFamily: MONO }} />
+                                <span style={{ fontSize: '0.72rem', color: '#6C8079' }}>×</span>
+                                <input value={nuevoSuelto.amount} onChange={e => setNuevoSuelto(s => ({ ...s, amount: e.target.value }))} type="number" inputMode="decimal" placeholder="S/ c/u" style={{ ...campo, width: '72px', fontFamily: MONO }} />
+                            </>
+                        ) : (
+                            <input value={nuevoSuelto.amount} onChange={e => setNuevoSuelto(s => ({ ...s, amount: e.target.value }))} type="number" inputMode="decimal" placeholder="S/ 0.00" style={{ ...campo, ...sep, width: movil ? undefined : '84px', flex: movil ? '1 1 0' : undefined, fontFamily: MONO }} />
+                        )}
+
+                        <button
+                            type="button"
+                            onClick={() => setUsarCantidadSuelto(v => !v)}
+                            title="Cantidad × precio unitario (ej: 5 × S/10)"
+                            style={{ ...campo, ...sep, width: '40px', padding: 0, cursor: 'pointer', fontWeight: 800, fontSize: '0.74rem', background: usarCantidadSuelto ? '#FEF3C7' : 'transparent', color: usarCantidadSuelto ? '#B45309' : '#6C8079' }}
+                        >
+                            ×n
+                        </button>
+
+                        <select
+                            value={nuevoGrupoSuelto}
+                            onChange={e => setNuevoGrupoSuelto(e.target.value)}
+                            title="Grupo (si no eliges, se deduce del nombre)"
+                            style={{ ...campo, ...sep, width: movil ? undefined : '92px', flex: movil ? '1 1 0' : undefined, padding: '0 4px 0 8px', cursor: 'pointer', fontSize: '0.74rem', color: nuevoGrupoSuelto ? '#0C2A20' : '#6C8079' }}
+                        >
+                            <option value="">Grupo</option>
+                            {catsDisponibles.map(g => <option key={g} value={g}>{g}</option>)}
+                        </select>
+
+                        <button
+                            type="submit"
+                            disabled={!listo}
+                            title={usarCantidadSuelto && nuevoSueltoTotal ? `Agregar ${money(nuevoSueltoTotal)}` : 'Agregar'}
+                            style={{
+                                height: '32px',
+                                minWidth: '32px',
+                                margin: '0 4px',
+                                padding: usarCantidadSuelto && nuevoSueltoTotal ? '0 10px' : 0,
+                                border: 'none',
+                                borderRadius: '8px',
+                                background: listo ? (nuevoSuelto.tipo === 'gasto' ? '#C63C3C' : '#0FA97A') : '#EDF3F0',
+                                color: listo ? '#fff' : '#A3B3AD',
+                                cursor: listo ? 'pointer' : 'default',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px',
+                                fontFamily: MONO,
+                                fontSize: '0.74rem',
+                                fontWeight: 800,
+                                flexShrink: 0,
+                                transition: 'background .15s',
+                            }}
+                        >
+                            <Plus size={17} />{usarCantidadSuelto && nuevoSueltoTotal > 0 && money(nuevoSueltoTotal)}
                         </button>
                     </div>
                 </form>
@@ -450,8 +819,8 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                         <div style={{ display: "flex", flexWrap: "wrap", gap: "10px 28px" }}>
                             {([
                                 plan.usarSaldo ? { t: 'Saldo', v: money(currentBalance), c: '#0C2A20' } : null,
-                                { t: 'Ingresos', v: `+${money(simIngresoPrevisto)}`, c: '#0E9F6E' },
-                                { t: 'Gastos', v: `−${money(simFijosTotal)}`, c: '#C63C3C' },
+                                { t: 'Ingresos', v: `+${money(totalIngresos)}`, c: '#0E9F6E' },
+                                { t: 'Gastos', v: `−${money(totalGastos)}`, c: '#C63C3C' },
                             ].filter(Boolean) as { t: string; v: string; c: string }[]).map(x => (
                                 <div key={x.t}>
                                     <div style={{ fontSize: "0.62rem", fontWeight: 700, color: "#6C8079", textTransform: "uppercase", letterSpacing: "0.06em" }}>{x.t}</div>
@@ -484,9 +853,9 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                         <span style={{ ...LABEL, marginRight: "4px" }}>Contar</span>
                         {([
                             { key: 'saldo', texto: `Saldo actual (${money(currentBalance)})`, on: !!plan.usarSaldo, disabled: false, set: (v: boolean) => savePlan({ ...plan, usarSaldo: v }) },
-                            { key: 'gastos', texto: 'Mis gastos fijos', on: gastosRealesOn, disabled: gastosReales.length === 0, set: (v: boolean) => toggleReales('gastos', v) },
-                            { key: 'ingresos', texto: 'Mis ingresos fijos', on: ingresosRealesOn, disabled: ingresosReales.length === 0, set: (v: boolean) => toggleReales('ingresos', v) },
-                            { key: 'propios', texto: 'Lo que agregué yo', on: propiosOn, disabled: propios.length === 0, set: (v: boolean) => toggleGrupo(true, v) },
+                            { key: 'gastos', texto: 'Mis gastos fijos', on: mostrarGastos, disabled: false, set: (v: boolean) => toggleTopGastos(v) },
+                            { key: 'ingresos', texto: 'Mis ingresos fijos', on: mostrarIngresos, disabled: false, set: (v: boolean) => toggleTopIngresos(v) },
+                            { key: 'sueltos', texto: 'Movimientos sueltos', on: mostrarSueltos, disabled: false, set: (v: boolean) => toggleTopSueltos(v) },
                         ]).filter(o => !o.disabled).map(o => (
                             <label key={o.key} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 10px", borderRadius: "999px", cursor: "pointer", background: o.on ? "rgba(15,169,122,0.10)" : "#FFFFFF", border: `1px solid ${o.on ? "#0FA97A" : "#DCE7E1"}`, fontSize: "0.72rem", fontWeight: 700, color: o.on ? "#0C2A20" : "#6C8079" }}>
                                 <input type="checkbox" checked={o.on} onChange={e => o.set(e.target.checked)} style={{ accentColor: "#0FA97A", margin: 0 }} />
@@ -496,22 +865,22 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                     </div>
                 </div>
 
-                {hayCustom && (
-                    <div style={{ padding: "0", marginBottom: "0.8rem" }}>
-                        <span style={{ ...LABEL, color: "#B45309" }}>Resultado de solo lo que agregaste vos</span>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px", fontSize: "0.78rem", color: "#6C8079", marginTop: "4px" }}>
-                            <span>Ingresos: <b style={{ color: "#0E9F6E" }}>+{money(customIngresos)}</b></span>
-                            <span>Gastos: <b style={{ color: "#C63C3C" }}>−{money(customGastos)}</b></span>
-                            <span>Neto: <b style={{ color: customNeto < 0 ? "#C63C3C" : "#0E9F6E" }}>{customNeto < 0 ? "−" : "+"}{money(Math.abs(customNeto))}</b></span>
-                        </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "0.75rem" }}>
+                    {mostrarGastos && tarjeta('gasto')}
+                    {mostrarIngresos && tarjeta('ingreso')}
+                    {mostrarSueltos && tarjetaSueltos()}
+                </div>
+
+                {!mostrarGastos && !mostrarIngresos && !mostrarSueltos && (
+                    <div style={{ padding: '36px 20px', textAlign: 'center', background: '#FFFFFF', border: '2px dashed #DCE7E1', borderRadius: '16px', color: '#6C8079', marginTop: '0.75rem' }}>
+                        <p style={{ margin: '0 0 6px', fontWeight: 700, fontSize: '0.9rem', color: '#0C2A20' }}>
+                            Todas las secciones están ocultas
+                        </p>
+                        <p style={{ margin: 0, fontSize: '0.78rem' }}>
+                            Activa <b>Mis gastos fijos</b>, <b>Mis ingresos fijos</b> o <b>Movimientos sueltos</b> en la barra <b>CONTAR</b> de arriba para mostrarlas.
+                        </p>
                     </div>
                 )}
-
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "0.75rem" }}>
-
-                    {tarjeta('gasto')}
-                    {tarjeta('ingreso')}
-                </div>
             </div>
 
             {/* ── Guardadas: columna chica a la derecha (abajo en el celular) ── */}
@@ -549,8 +918,16 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
 
             {calcAbierta ? (
             <MiniCalculator flotante onMinimizar={() => setCalcAbierta(false)} onUsar={(tipo, n) => {
-                if (tipo === 'gasto') { setUsarCantidadGasto(false); setNuevoGasto(v => ({ ...v, amount: String(n) })); }
-                else { setUsarCantidadIngreso(false); setNuevoIngresoFijo(v => ({ ...v, amount: String(n) })); }
+                if (mostrarSueltos) {
+                    setUsarCantidadSuelto(false);
+                    setNuevoSuelto(s => ({ ...s, tipo, amount: String(n) }));
+                } else if (tipo === 'gasto' && mostrarGastos) {
+                    setUsarCantidadGasto(false);
+                    setNuevoGasto(v => ({ ...v, amount: String(n) }));
+                } else if (tipo === 'ingreso' && mostrarIngresos) {
+                    setUsarCantidadIngreso(false);
+                    setNuevoIngresoFijo(v => ({ ...v, amount: String(n) }));
+                }
             }} />
             ) : (
                 <button
