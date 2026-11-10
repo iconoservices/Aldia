@@ -124,7 +124,7 @@ const MiniCalculator = ({ onUsar, onMinimizar, flotante }: { onUsar: (tipo: 'gas
         }}
         onPointerUp={() => { arrastre.current = null; }}
         style={flotante
-            ? { cursor: 'grab', touchAction: 'none', userSelect: 'none', position: 'fixed', right: movil ? '12px' : '24px', bottom: movil ? '84px' : '24px', zIndex: 900, width: movil ? 'calc(100vw - 24px)' : '232px', background: '#FFFFFF', border: '1px solid #DCE7E1', borderRadius: '14px', padding: movil ? '8px' : '10px', boxShadow: '0 12px 40px rgba(15,23,42,0.22)', transform: `translate(${pos.x}px, ${pos.y}px)` }
+            ? { cursor: 'grab', touchAction: 'none', userSelect: 'none', position: 'fixed', right: movil ? '12px' : '24px', bottom: movil ? '152px' : '92px', zIndex: 920, width: movil ? 'calc(100vw - 24px)' : '232px', background: '#FFFFFF', border: '1px solid #DCE7E1', borderRadius: '14px', padding: movil ? '8px' : '10px', boxShadow: '0 12px 40px rgba(15,23,42,0.22)', transform: `translate(${pos.x}px, ${pos.y}px)` }
             : { width: '260px', flexShrink: 0, alignSelf: 'flex-start', background: '#FFFFFF', border: '1px solid #DCE7E1', borderRadius: '16px', padding: '16px', boxShadow: '0px 4px 12px rgba(15,23,42,0.04)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                 <CalculatorIcon size={15} color="#F59E0B" />
@@ -1598,7 +1598,7 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
             ) : (
                 <button
                     onClick={() => setCalcAbierta(true)} title="Abrir calculadora"
-                    style={{ position: 'fixed', right: '16px', bottom: movil ? '88px' : '24px', zIndex: 900, width: '54px', height: '54px', borderRadius: '50%', border: 'none', background: '#F59E0B', color: '#fff', cursor: 'pointer', boxShadow: '0 8px 24px rgba(245,158,11,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ position: 'fixed', right: '20px', bottom: movil ? '152px' : '92px', zIndex: 900, width: '54px', height: '54px', borderRadius: '50%', border: 'none', background: '#F59E0B', color: '#fff', cursor: 'pointer', boxShadow: '0 8px 24px rgba(245,158,11,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
                     <CalculatorIcon size={24} />
                 </button>
