@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
-import { Plus, Minus, ChevronDown, Trash2, RotateCcw, FlaskConical, Calculator as CalculatorIcon, Delete, Save, Check, X, Bookmark, Columns2, LayoutGrid } from 'lucide-react';
+import { Plus, Minus, ChevronDown, Trash2, RotateCcw, FlaskConical, Calculator as CalculatorIcon, Delete, Save, Check, X, Bookmark, Columns2, LayoutGrid, FolderPlus } from 'lucide-react';
 import type { FixedExpense, UserPreferences } from '../../hooks/useAlDiaState';
 import { MONO, useIsMobile, paddingPagina } from '../../theme';
 
@@ -164,10 +164,51 @@ const MiniCalculator = ({ onUsar, onMinimizar, flotante }: { onUsar: (tipo: 'gas
     );
 };
 
+// Selector de grupo con opción de crear uno nuevo exclusivo para la proyección
+const SelectGrupo = ({
+    value,
+    tipo: _tipo,
+    categorias,
+    placeholder = 'Grupo',
+    style,
+    title = 'Cambiar de grupo',
+    onSelect,
+    onPedirCrear,
+}: {
+    value: string;
+    tipo: 'gasto' | 'ingreso';
+    categorias: string[];
+    placeholder?: string;
+    style?: React.CSSProperties;
+    title?: string;
+    onSelect: (val: string) => void;
+    onPedirCrear: () => void;
+}) => {
+    return (
+        <select
+            value={value}
+            onChange={e => {
+                if (e.target.value === '__crear_nuevo__') {
+                    onPedirCrear();
+                } else {
+                    onSelect(e.target.value);
+                }
+            }}
+            title={title}
+            style={style}
+        >
+            <option value="">{placeholder}</option>
+            <option value="__crear_nuevo__" style={{ fontWeight: 800, color: '#0FA97A' }}>+ Crear nuevo grupo…</option>
+            <option disabled style={{ fontSize: '0.6rem', color: '#9CA3AF' }}>──────────</option>
+            {categorias.map(g => (
+                <option key={g} value={g}>{g}</option>
+            ))}
+        </select>
+    );
+};
+
 export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, currentBalance, expenseCategories, incomeCategories, preferences, updatePreference }: Props) => {
     const movil = useIsMobile();
-    const catsGasto = expenseCategories.length ? expenseCategories : ['Otros'];
-    const catsIngreso = incomeCategories.length ? incomeCategories : ['Otros'];
     const [calcAbierta, setCalcAbiertaRaw] = useState<boolean>(() => {
         try { const v = localStorage.getItem('aldia_calc_abierta'); if (v !== null) return v === '1'; } catch { /* sin almacenamiento */ }
         return false;
@@ -194,6 +235,8 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
         mostrarGastosFijos?: boolean;
         mostrarIngresosFijos?: boolean;
         mostrarSueltos?: boolean;
+        gruposGasto?: string[];   // nuevos grupos creados solo para la simulación
+        gruposIngreso?: string[]; // nuevos grupos creados solo para la simulación
     };
 
     const seedPlan = (): Plan => ({
@@ -203,6 +246,8 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
         mostrarGastosFijos: true,
         mostrarIngresosFijos: true,
         mostrarSueltos: true,
+        gruposGasto: [],
+        gruposIngreso: [],
     });
 
     const plan: Plan = useMemo(() => {
@@ -263,6 +308,9 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                     ? !!parsed.mostrarSueltos
                     : true;
 
+                const gruposGasto: string[] = Array.isArray(parsed.gruposGasto) ? parsed.gruposGasto : [];
+                const gruposIngreso: string[] = Array.isArray(parsed.gruposIngreso) ? parsed.gruposIngreso : [];
+
                 return {
                     fixedExpenses: fe,
                     fixedIncomes: fi,
@@ -271,6 +319,8 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                     mostrarGastosFijos,
                     mostrarIngresosFijos,
                     mostrarSueltos,
+                    gruposGasto,
+                    gruposIngreso,
                 };
             }
         } catch { /* si el JSON guardado quedó corrupto, se re-siembra abajo */ }
@@ -279,6 +329,50 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
     }, [preferences.planDelMes]);
 
     const savePlan = (next: Plan) => updatePreference('planDelMes', JSON.stringify(next));
+
+    // Categorías combinadas para la simulación: base global + grupos creados en esta proyección
+    const catsGasto = useMemo(() => {
+        const base = expenseCategories.length ? expenseCategories : ['Otros'];
+        const extras = plan.gruposGasto || [];
+        const deItems = [
+            ...plan.fixedExpenses.map(f => f.grupo),
+            ...(plan.movs || []).filter(m => m.type === 'gasto').map(m => m.grupo)
+        ].filter(Boolean) as string[];
+        return Array.from(new Set([...base, ...extras, ...deItems]));
+    }, [expenseCategories, plan.gruposGasto, plan.fixedExpenses, plan.movs]);
+
+    const catsIngreso = useMemo(() => {
+        const base = incomeCategories.length ? incomeCategories : ['Otros'];
+        const extras = plan.gruposIngreso || [];
+        const deItems = [
+            ...plan.fixedIncomes.map(f => f.grupo),
+            ...(plan.movs || []).filter(m => m.type === 'ingreso').map(m => m.grupo)
+        ].filter(Boolean) as string[];
+        return Array.from(new Set([...base, ...extras, ...deItems]));
+    }, [incomeCategories, plan.gruposIngreso, plan.fixedIncomes, plan.movs]);
+
+    // Modal para crear nuevo grupo solo para la simulación de proyección
+    const [modalCrearGrupo, setModalCrearGrupo] = useState<{
+        tipo: 'gasto' | 'ingreso';
+        onCrear: (nuevoGrupo: string) => void;
+    } | null>(null);
+    const [nombreNuevoGrupo, setNombreNuevoGrupo] = useState('');
+
+    const confirmarCrearGrupo = (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        const clean = nombreNuevoGrupo.trim();
+        if (!clean || !modalCrearGrupo) return;
+        const tipo = modalCrearGrupo.tipo;
+        const actual = tipo === 'gasto' ? (plan.gruposGasto || []) : (plan.gruposIngreso || []);
+        const next = Array.from(new Set([...actual, clean]));
+        savePlan({
+            ...plan,
+            [tipo === 'gasto' ? 'gruposGasto' : 'gruposIngreso']: next,
+        });
+        modalCrearGrupo.onCrear(clean);
+        setModalCrearGrupo(null);
+        setNombreNuevoGrupo('');
+    };
 
     /* ── Proyecciones guardadas: copias con nombre del plan (sirven como presupuestos).
        Guardar = foto del plan actual; Cargar = reemplaza el plan actual por esa foto. ── */
@@ -440,21 +534,43 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
 
     const filaGasto = (f: SimFixedExpense) => (
         <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 2px", borderBottom: "1px solid #EDF3F0", opacity: f.excluido ? 0.4 : 1 }}>
-                                    <input type="checkbox" checked={!f.excluido} title="Contar en la proyección" onChange={e => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, excluido: !e.target.checked } : x) })} style={{ accentColor: "#0FA97A", flexShrink: 0 }} />
-                                    <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0C2A20", textDecoration: f.excluido ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.text}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
-                                    <MontoEditable value={f.amount} onChange={n => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, amount: n } : x) })} />
-                                    <select value={f.grupo || inferirGrupo(f.text, 'gasto', catsGasto)} onChange={e => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, grupo: e.target.value } : x) })} title="Cambiar de grupo" style={{ maxWidth: "92px", border: "none", background: "transparent", fontSize: "0.66rem", fontWeight: 700, color: "#6C8079", cursor: "pointer", outline: "none" }}>{catsGasto.map(g => <option key={g} value={g}>{g}</option>)}</select>
-                                    <button onClick={() => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.filter(x => x.id !== f.id) })} style={{ background: "none", border: "none", color: "#6C8079", cursor: "pointer", display: "flex", flexShrink: 0 }}><Trash2 size={13} /></button>
-                                </div>
+            <input type="checkbox" checked={!f.excluido} title="Contar en la proyección" onChange={e => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, excluido: !e.target.checked } : x) })} style={{ accentColor: "#0FA97A", flexShrink: 0 }} />
+            <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0C2A20", textDecoration: f.excluido ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.text}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
+            <MontoEditable value={f.amount} onChange={n => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, amount: n } : x) })} />
+            <SelectGrupo
+                value={f.grupo || inferirGrupo(f.text, 'gasto', catsGasto)}
+                tipo="gasto"
+                categorias={catsGasto}
+                title="Cambiar de grupo"
+                style={{ maxWidth: "92px", border: "none", background: "transparent", fontSize: "0.66rem", fontWeight: 700, color: "#6C8079", cursor: "pointer", outline: "none" }}
+                onSelect={g => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, grupo: g } : x) })}
+                onPedirCrear={() => setModalCrearGrupo({
+                    tipo: 'gasto',
+                    onCrear: (g) => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, grupo: g } : x) })
+                })}
+            />
+            <button onClick={() => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.filter(x => x.id !== f.id) })} style={{ background: "none", border: "none", color: "#6C8079", cursor: "pointer", display: "flex", flexShrink: 0 }}><Trash2 size={13} /></button>
+        </div>
     );
     const filaIngreso = (f: SimFixedIncome) => (
         <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 2px", borderBottom: "1px solid #EDF3F0", opacity: f.excluido ? 0.4 : 1 }}>
-                                    <input type="checkbox" checked={!f.excluido} title="Contar en la proyección" onChange={e => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, excluido: !e.target.checked } : x) })} style={{ accentColor: "#0FA97A", flexShrink: 0 }} />
-                                    <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0C2A20", textDecoration: f.excluido ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
-                                    <MontoEditable value={f.amount} onChange={n => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, amount: n } : x) })} />
-                                    <select value={f.grupo || inferirGrupo(f.name, 'ingreso', catsIngreso)} onChange={e => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, grupo: e.target.value } : x) })} title="Cambiar de grupo" style={{ maxWidth: "92px", border: "none", background: "transparent", fontSize: "0.66rem", fontWeight: 700, color: "#6C8079", cursor: "pointer", outline: "none" }}>{catsIngreso.map(g => <option key={g} value={g}>{g}</option>)}</select>
-                                    <button onClick={() => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.filter(x => x.id !== f.id) })} style={{ background: "none", border: "none", color: "#6C8079", cursor: "pointer", display: "flex", flexShrink: 0 }}><Trash2 size={13} /></button>
-                                </div>
+            <input type="checkbox" checked={!f.excluido} title="Contar en la proyección" onChange={e => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, excluido: !e.target.checked } : x) })} style={{ accentColor: "#0FA97A", flexShrink: 0 }} />
+            <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0C2A20", textDecoration: f.excluido ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
+            <MontoEditable value={f.amount} onChange={n => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, amount: n } : x) })} />
+            <SelectGrupo
+                value={f.grupo || inferirGrupo(f.name, 'ingreso', catsIngreso)}
+                tipo="ingreso"
+                categorias={catsIngreso}
+                title="Cambiar de grupo"
+                style={{ maxWidth: "92px", border: "none", background: "transparent", fontSize: "0.66rem", fontWeight: 700, color: "#6C8079", cursor: "pointer", outline: "none" }}
+                onSelect={g => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, grupo: g } : x) })}
+                onPedirCrear={() => setModalCrearGrupo({
+                    tipo: 'ingreso',
+                    onCrear: (g) => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, grupo: g } : x) })
+                })}
+            />
+            <button onClick={() => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.filter(x => x.id !== f.id) })} style={{ background: "none", border: "none", color: "#6C8079", cursor: "pointer", display: "flex", flexShrink: 0 }}><Trash2 size={13} /></button>
+        </div>
     );
 
     const filaGastoSuelto = (m: SimMovSuelto) => (
@@ -471,14 +587,18 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                 <span style={{ marginLeft: 6, fontSize: '0.62rem', fontWeight: 700, color: '#B45309', background: 'rgba(180,83,9,0.08)', padding: '1px 5px', borderRadius: '4px' }}>suelto</span>
             </span>
             <MontoEditable value={m.amount} onChange={n => savePlan({ ...plan, movs: (plan.movs || []).map(x => x.id === m.id ? { ...x, amount: n } : x) })} />
-            <select
+            <SelectGrupo
                 value={m.grupo || inferirGrupo(m.text, 'gasto', catsGasto)}
-                onChange={e => savePlan({ ...plan, movs: (plan.movs || []).map(x => x.id === m.id ? { ...x, grupo: e.target.value } : x) })}
+                tipo="gasto"
+                categorias={catsGasto}
                 title="Cambiar grupo"
                 style={{ maxWidth: '92px', border: 'none', background: 'transparent', fontSize: '0.66rem', fontWeight: 700, color: '#6C8079', cursor: 'pointer', outline: 'none' }}
-            >
-                {catsGasto.map(g => <option key={g} value={g}>{g}</option>)}
-            </select>
+                onSelect={g => savePlan({ ...plan, movs: (plan.movs || []).map(x => x.id === m.id ? { ...x, grupo: g } : x) })}
+                onPedirCrear={() => setModalCrearGrupo({
+                    tipo: 'gasto',
+                    onCrear: (g) => savePlan({ ...plan, movs: (plan.movs || []).map(x => x.id === m.id ? { ...x, grupo: g } : x) })
+                })}
+            />
             <button
                 onClick={() => savePlan({ ...plan, movs: (plan.movs || []).filter(x => x.id !== m.id) })}
                 style={{ background: 'none', border: 'none', color: '#6C8079', cursor: 'pointer', display: 'flex', flexShrink: 0 }}
@@ -503,14 +623,18 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                 <span style={{ marginLeft: 6, fontSize: '0.62rem', fontWeight: 700, color: '#0E9F6E', background: 'rgba(14,159,110,0.08)', padding: '1px 5px', borderRadius: '4px' }}>suelto</span>
             </span>
             <MontoEditable value={m.amount} onChange={n => savePlan({ ...plan, movs: (plan.movs || []).map(x => x.id === m.id ? { ...x, amount: n } : x) })} />
-            <select
+            <SelectGrupo
                 value={m.grupo || inferirGrupo(m.text, 'ingreso', catsIngreso)}
-                onChange={e => savePlan({ ...plan, movs: (plan.movs || []).map(x => x.id === m.id ? { ...x, grupo: e.target.value } : x) })}
+                tipo="ingreso"
+                categorias={catsIngreso}
                 title="Cambiar grupo"
                 style={{ maxWidth: '92px', border: 'none', background: 'transparent', fontSize: '0.66rem', fontWeight: 700, color: '#6C8079', cursor: 'pointer', outline: 'none' }}
-            >
-                {catsIngreso.map(g => <option key={g} value={g}>{g}</option>)}
-            </select>
+                onSelect={g => savePlan({ ...plan, movs: (plan.movs || []).map(x => x.id === m.id ? { ...x, grupo: g } : x) })}
+                onPedirCrear={() => setModalCrearGrupo({
+                    tipo: 'ingreso',
+                    onCrear: (g) => savePlan({ ...plan, movs: (plan.movs || []).map(x => x.id === m.id ? { ...x, grupo: g } : x) })
+                })}
+            />
             <button
                 onClick={() => savePlan({ ...plan, movs: (plan.movs || []).filter(x => x.id !== m.id) })}
                 style={{ background: 'none', border: 'none', color: '#6C8079', cursor: 'pointer', display: 'flex', flexShrink: 0 }}
@@ -631,9 +755,19 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                             <input value={nuevo.amount} onChange={e => setNuevo('amount', e.target.value)} type="number" inputMode="decimal" placeholder="S/ 0.00" style={{ ...campo, ...sep, width: movil ? undefined : '84px', flex: movil ? '1 1 0' : undefined, fontFamily: MONO }} />
                         )}
                         <button type="button" onClick={togglePorCantidad} title="Cantidad × precio unitario (ej: 5 × S/10)" style={{ ...campo, ...sep, width: '40px', padding: 0, cursor: 'pointer', fontWeight: 800, fontSize: '0.74rem', background: porCantidad ? '#FEF3C7' : 'transparent', color: porCantidad ? '#B45309' : '#6C8079' }}>×n</button>
-                        <select value={grupoNuevo} onChange={e => (esGasto ? setNuevoGrupoGasto : setNuevoGrupoIngreso)(e.target.value)} title="Grupo (si no eliges, se deduce del nombre)" style={{ ...campo, ...sep, width: movil ? undefined : '92px', flex: movil ? '1 1 0' : undefined, padding: '0 4px 0 8px', cursor: 'pointer', fontSize: '0.74rem', color: grupoNuevo ? '#0C2A20' : '#6C8079' }}>
-                            <option value="">Grupo</option>{(esGasto ? catsGasto : catsIngreso).map(g => <option key={g} value={g}>{g}</option>)}
-                        </select>
+                        <SelectGrupo
+                            value={grupoNuevo}
+                            tipo={esGasto ? 'gasto' : 'ingreso'}
+                            categorias={esGasto ? catsGasto : catsIngreso}
+                            placeholder="Grupo"
+                            title="Grupo (si no eliges, se deduce del nombre)"
+                            style={{ ...campo, ...sep, width: movil ? undefined : '92px', flex: movil ? '1 1 0' : undefined, padding: '0 4px 0 8px', cursor: 'pointer', fontSize: '0.74rem', color: grupoNuevo ? '#0C2A20' : '#6C8079' }}
+                            onSelect={g => (esGasto ? setNuevoGrupoGasto : setNuevoGrupoIngreso)(g)}
+                            onPedirCrear={() => setModalCrearGrupo({
+                                tipo: esGasto ? 'gasto' : 'ingreso',
+                                onCrear: (g) => (esGasto ? setNuevoGrupoGasto : setNuevoGrupoIngreso)(g)
+                            })}
+                        />
                         <button type="submit" disabled={!listo} title={porCantidad && nuevoTotal ? `Agregar ${money(nuevoTotal)}` : 'Agregar'} style={{ height: '32px', minWidth: '32px', margin: '0 4px', padding: porCantidad && nuevoTotal ? '0 10px' : 0, border: 'none', borderRadius: '8px', background: listo ? '#F59E0B' : '#EDF3F0', color: listo ? '#fff' : '#A3B3AD', cursor: listo ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontFamily: MONO, fontSize: '0.74rem', fontWeight: 800, flexShrink: 0, transition: 'background .15s' }}>
                             <Plus size={17} />{porCantidad && nuevoTotal > 0 && money(nuevoTotal)}
                         </button>
@@ -769,14 +903,18 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                                         {m.text}
                                     </span>
                                     <MontoEditable value={m.amount} onChange={n => savePlan({ ...plan, movs: movs.map(x => x.id === m.id ? { ...x, amount: n } : x) })} />
-                                    <select
+                                    <SelectGrupo
                                         value={m.grupo || inferirGrupo(m.text, m.type, m.type === 'gasto' ? catsGasto : catsIngreso)}
-                                        onChange={e => savePlan({ ...plan, movs: movs.map(x => x.id === m.id ? { ...x, grupo: e.target.value } : x) })}
+                                        tipo={m.type}
+                                        categorias={m.type === 'gasto' ? catsGasto : catsIngreso}
                                         title="Cambiar grupo"
                                         style={{ maxWidth: '92px', border: 'none', background: 'transparent', fontSize: '0.66rem', fontWeight: 700, color: '#6C8079', cursor: 'pointer', outline: 'none' }}
-                                    >
-                                        {(m.type === 'gasto' ? catsGasto : catsIngreso).map(g => <option key={g} value={g}>{g}</option>)}
-                                    </select>
+                                        onSelect={g => savePlan({ ...plan, movs: movs.map(x => x.id === m.id ? { ...x, grupo: g } : x) })}
+                                        onPedirCrear={() => setModalCrearGrupo({
+                                            tipo: m.type,
+                                            onCrear: g => savePlan({ ...plan, movs: movs.map(x => x.id === m.id ? { ...x, grupo: g } : x) }),
+                                        })}
+                                    />
                                     <button
                                         onClick={() => savePlan({ ...plan, movs: movs.filter(x => x.id !== m.id) })}
                                         style={{ background: 'none', border: 'none', color: '#6C8079', cursor: 'pointer', display: 'flex', flexShrink: 0 }}
@@ -857,15 +995,19 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                             ×n
                         </button>
 
-                        <select
+                        <SelectGrupo
                             value={nuevoGrupoSuelto}
-                            onChange={e => setNuevoGrupoSuelto(e.target.value)}
+                            tipo={nuevoSuelto.tipo}
+                            categorias={catsDisponibles}
+                            placeholder="Grupo"
                             title="Grupo (si no eliges, se deduce del nombre)"
                             style={{ ...campo, ...sep, width: movil ? undefined : '92px', flex: movil ? '1 1 0' : undefined, padding: '0 4px 0 8px', cursor: 'pointer', fontSize: '0.74rem', color: nuevoGrupoSuelto ? '#0C2A20' : '#6C8079' }}
-                        >
-                            <option value="">Grupo</option>
-                            {catsDisponibles.map(g => <option key={g} value={g}>{g}</option>)}
-                        </select>
+                            onSelect={setNuevoGrupoSuelto}
+                            onPedirCrear={() => setModalCrearGrupo({
+                                tipo: nuevoSuelto.tipo,
+                                onCrear: setNuevoGrupoSuelto,
+                            })}
+                        />
 
                         <button
                             type="submit"
@@ -1104,15 +1246,19 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                         >
                             ×n
                         </button>
-                        <select
+                        <SelectGrupo
                             value={formColGasto.grupo}
-                            onChange={e => setFormColGasto(v => ({ ...v, grupo: e.target.value }))}
+                            tipo="gasto"
+                            categorias={catsGasto}
+                            placeholder="Grupo"
                             title="Grupo (si no eliges, se deduce del nombre)"
                             style={{ ...campo, ...sep, width: movil ? undefined : '92px', flex: movil ? '1 1 0' : undefined, padding: '0 4px 0 8px', cursor: 'pointer', fontSize: '0.74rem', color: formColGasto.grupo ? '#0C2A20' : '#6C8079' }}
-                        >
-                            <option value="">Grupo</option>
-                            {catsGasto.map(g => <option key={g} value={g}>{g}</option>)}
-                        </select>
+                            onSelect={g => setFormColGasto(v => ({ ...v, grupo: g }))}
+                            onPedirCrear={() => setModalCrearGrupo({
+                                tipo: 'gasto',
+                                onCrear: g => setFormColGasto(v => ({ ...v, grupo: g })),
+                            })}
+                        />
                         <button
                             type="submit"
                             disabled={!listo}
@@ -1350,15 +1496,19 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                         >
                             ×n
                         </button>
-                        <select
+                        <SelectGrupo
                             value={formColIngreso.grupo}
-                            onChange={e => setFormColIngreso(v => ({ ...v, grupo: e.target.value }))}
+                            tipo="ingreso"
+                            categorias={catsIngreso}
+                            placeholder="Grupo"
                             title="Grupo (si no eliges, se deduce del nombre)"
                             style={{ ...campo, ...sep, width: movil ? undefined : '92px', flex: movil ? '1 1 0' : undefined, padding: '0 4px 0 8px', cursor: 'pointer', fontSize: '0.74rem', color: formColIngreso.grupo ? '#0C2A20' : '#6C8079' }}
-                        >
-                            <option value="">Grupo</option>
-                            {catsIngreso.map(g => <option key={g} value={g}>{g}</option>)}
-                        </select>
+                            onSelect={g => setFormColIngreso(v => ({ ...v, grupo: g }))}
+                            onPedirCrear={() => setModalCrearGrupo({
+                                tipo: 'ingreso',
+                                onCrear: g => setFormColIngreso(v => ({ ...v, grupo: g })),
+                            })}
+                        />
                         <button
                             type="submit"
                             disabled={!listo}
@@ -1604,6 +1754,114 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                 </button>
             )}
 
+            {/* Modal para crear nuevo grupo exclusivo para la proyección */}
+            {modalCrearGrupo && (
+                <div
+                    onClick={() => { setModalCrearGrupo(null); setNombreNuevoGrupo(''); }}
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        zIndex: 9999,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '16px',
+                    }}
+                >
+                    <div
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                            background: '#FFFFFF',
+                            borderRadius: '16px',
+                            padding: '22px',
+                            maxWidth: '380px',
+                            width: '100%',
+                            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '14px',
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{
+                                width: '36px',
+                                height: '36px',
+                                borderRadius: '10px',
+                                background: modalCrearGrupo.tipo === 'gasto' ? 'rgba(198,60,60,0.1)' : 'rgba(15,169,122,0.1)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: modalCrearGrupo.tipo === 'gasto' ? '#C63C3C' : '#0FA97A',
+                            }}>
+                                <FolderPlus size={20} />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0C2A20' }}>
+                                    Nuevo grupo de {modalCrearGrupo.tipo === 'gasto' ? 'gasto' : 'ingreso'}
+                                </h3>
+                                <p style={{ margin: 0, fontSize: '0.72rem', color: '#6C8079' }}>
+                                    Solo para esta simulación de proyección
+                                </p>
+                            </div>
+                        </div>
+
+                        <form onSubmit={confirmarCrearGrupo} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <input
+                                autoFocus
+                                value={nombreNuevoGrupo}
+                                onChange={e => setNombreNuevoGrupo(e.target.value)}
+                                placeholder="Ej: Publicidad, Regalos, Viajes..."
+                                style={{
+                                    width: '100%',
+                                    padding: '10px 14px',
+                                    borderRadius: '10px',
+                                    border: '1.5px solid #0FA97A',
+                                    outline: 'none',
+                                    fontSize: '0.9rem',
+                                    color: '#0C2A20',
+                                    background: '#F7FAF8',
+                                    boxSizing: 'border-box',
+                                }}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => { setModalCrearGrupo(null); setNombreNuevoGrupo(''); }}
+                                    style={{
+                                        padding: '8px 14px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #DCE7E1',
+                                        background: '#fff',
+                                        color: '#6C8079',
+                                        fontSize: '0.8rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={!nombreNuevoGrupo.trim()}
+                                    style={{
+                                        padding: '8px 16px',
+                                        borderRadius: '8px',
+                                        border: 'none',
+                                        background: nombreNuevoGrupo.trim() ? '#0FA97A' : '#DCE7E1',
+                                        color: '#fff',
+                                        fontSize: '0.8rem',
+                                        fontWeight: 800,
+                                        cursor: nombreNuevoGrupo.trim() ? 'pointer' : 'default',
+                                    }}
+                                >
+                                    Crear grupo
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
