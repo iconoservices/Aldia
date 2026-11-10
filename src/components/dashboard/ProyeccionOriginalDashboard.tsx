@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
-import { Plus, Minus, ChevronDown, Trash2, RotateCcw, FlaskConical, Calculator as CalculatorIcon, Delete, Save, Check, X, Bookmark } from 'lucide-react';
+import { Plus, Minus, ChevronDown, Trash2, RotateCcw, FlaskConical, Calculator as CalculatorIcon, Delete, Save, Check, X, Bookmark, Columns2, LayoutGrid } from 'lucide-react';
 import type { FixedExpense, UserPreferences } from '../../hooks/useAlDiaState';
 import { MONO, useIsMobile, paddingPagina } from '../../theme';
 
@@ -337,6 +337,43 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
     const [abiertos, setAbiertos] = useState<Record<string, boolean>>({});
     const [listaCerrada, setListaCerrada] = useState<{ gastos: boolean; ingresos: boolean; sueltos: boolean }>({ gastos: false, ingresos: false, sueltos: false });
 
+    // Vista: 2 Columnas (Gastos / Ingresos) por defecto, o Tarjetas independientes
+    const [vista, setVista] = useState<'columnas' | 'tarjetas'>(() => {
+        try {
+            const v = localStorage.getItem('aldia_proyeccion_vista');
+            if (v === 'tarjetas' || v === 'columnas') return v;
+        } catch {}
+        return 'columnas';
+    });
+    const cambiarVista = (v: 'columnas' | 'tarjetas') => {
+        setVista(v);
+        try { localStorage.setItem('aldia_proyeccion_vista', v); } catch {}
+    };
+
+    // Subsecciones contraíbles dentro de las 2 columnas
+    const [colCerrada, setColCerrada] = useState<{ gastosFijos: boolean; gastosSueltos: boolean; ingresosFijos: boolean; ingresosSueltos: boolean }>({
+        gastosFijos: false,
+        gastosSueltos: false,
+        ingresosFijos: false,
+        ingresosSueltos: false,
+    });
+
+    // Formulario de agregar en la columna de Gastos
+    const [modoColGasto, setModoColGasto] = useState<'suelto' | 'fijo'>('suelto');
+    const [formColGasto, setFormColGasto] = useState({ text: '', amount: '', cantidad: '', grupo: '' });
+    const [usarCantColGasto, setUsarCantColGasto] = useState(false);
+    const formColGastoTotal = usarCantColGasto
+        ? (parseFloat(formColGasto.cantidad) || 0) * (parseFloat(formColGasto.amount) || 0)
+        : (parseFloat(formColGasto.amount) || 0);
+
+    // Formulario de agregar en la columna de Ingresos
+    const [modoColIngreso, setModoColIngreso] = useState<'suelto' | 'fijo'>('suelto');
+    const [formColIngreso, setFormColIngreso] = useState({ name: '', amount: '', cantidad: '', grupo: '' });
+    const [usarCantColIngreso, setUsarCantColIngreso] = useState(false);
+    const formColIngresoTotal = usarCantColIngreso
+        ? (parseFloat(formColIngreso.cantidad) || 0) * (parseFloat(formColIngreso.amount) || 0)
+        : (parseFloat(formColIngreso.amount) || 0);
+
     const reiniciarSimulacion = () => savePlan({ ...seedPlan(), usarSaldo: plan.usarSaldo });
 
     const mostrarGastos = plan.mostrarGastosFijos !== false;
@@ -418,6 +455,70 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                                     <select value={f.grupo || inferirGrupo(f.name, 'ingreso', catsIngreso)} onChange={e => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, grupo: e.target.value } : x) })} title="Cambiar de grupo" style={{ maxWidth: "92px", border: "none", background: "transparent", fontSize: "0.66rem", fontWeight: 700, color: "#6C8079", cursor: "pointer", outline: "none" }}>{catsIngreso.map(g => <option key={g} value={g}>{g}</option>)}</select>
                                     <button onClick={() => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.filter(x => x.id !== f.id) })} style={{ background: "none", border: "none", color: "#6C8079", cursor: "pointer", display: "flex", flexShrink: 0 }}><Trash2 size={13} /></button>
                                 </div>
+    );
+
+    const filaGastoSuelto = (m: SimMovSuelto) => (
+        <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 2px', borderBottom: '1px solid #EDF3F0', opacity: m.excluido ? 0.4 : 1 }}>
+            <input
+                type="checkbox"
+                checked={!m.excluido}
+                title="Contar en la proyección"
+                onChange={e => savePlan({ ...plan, movs: (plan.movs || []).map(x => x.id === m.id ? { ...x, excluido: !e.target.checked } : x) })}
+                style={{ accentColor: '#0FA97A', flexShrink: 0 }}
+            />
+            <span style={{ flex: 1, fontSize: '0.8rem', fontWeight: 600, color: '#0C2A20', textDecoration: m.excluido ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {m.text}
+                <span style={{ marginLeft: 6, fontSize: '0.62rem', fontWeight: 700, color: '#B45309', background: 'rgba(180,83,9,0.08)', padding: '1px 5px', borderRadius: '4px' }}>suelto</span>
+            </span>
+            <MontoEditable value={m.amount} onChange={n => savePlan({ ...plan, movs: (plan.movs || []).map(x => x.id === m.id ? { ...x, amount: n } : x) })} />
+            <select
+                value={m.grupo || inferirGrupo(m.text, 'gasto', catsGasto)}
+                onChange={e => savePlan({ ...plan, movs: (plan.movs || []).map(x => x.id === m.id ? { ...x, grupo: e.target.value } : x) })}
+                title="Cambiar grupo"
+                style={{ maxWidth: '92px', border: 'none', background: 'transparent', fontSize: '0.66rem', fontWeight: 700, color: '#6C8079', cursor: 'pointer', outline: 'none' }}
+            >
+                {catsGasto.map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
+            <button
+                onClick={() => savePlan({ ...plan, movs: (plan.movs || []).filter(x => x.id !== m.id) })}
+                style={{ background: 'none', border: 'none', color: '#6C8079', cursor: 'pointer', display: 'flex', flexShrink: 0 }}
+                title="Eliminar"
+            >
+                <Trash2 size={13} />
+            </button>
+        </div>
+    );
+
+    const filaIngresoSuelto = (m: SimMovSuelto) => (
+        <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 2px', borderBottom: '1px solid #EDF3F0', opacity: m.excluido ? 0.4 : 1 }}>
+            <input
+                type="checkbox"
+                checked={!m.excluido}
+                title="Contar en la proyección"
+                onChange={e => savePlan({ ...plan, movs: (plan.movs || []).map(x => x.id === m.id ? { ...x, excluido: !e.target.checked } : x) })}
+                style={{ accentColor: '#0FA97A', flexShrink: 0 }}
+            />
+            <span style={{ flex: 1, fontSize: '0.8rem', fontWeight: 600, color: '#0C2A20', textDecoration: m.excluido ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {m.text}
+                <span style={{ marginLeft: 6, fontSize: '0.62rem', fontWeight: 700, color: '#0E9F6E', background: 'rgba(14,159,110,0.08)', padding: '1px 5px', borderRadius: '4px' }}>suelto</span>
+            </span>
+            <MontoEditable value={m.amount} onChange={n => savePlan({ ...plan, movs: (plan.movs || []).map(x => x.id === m.id ? { ...x, amount: n } : x) })} />
+            <select
+                value={m.grupo || inferirGrupo(m.text, 'ingreso', catsIngreso)}
+                onChange={e => savePlan({ ...plan, movs: (plan.movs || []).map(x => x.id === m.id ? { ...x, grupo: e.target.value } : x) })}
+                title="Cambiar grupo"
+                style={{ maxWidth: '92px', border: 'none', background: 'transparent', fontSize: '0.66rem', fontWeight: 700, color: '#6C8079', cursor: 'pointer', outline: 'none' }}
+            >
+                {catsIngreso.map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
+            <button
+                onClick={() => savePlan({ ...plan, movs: (plan.movs || []).filter(x => x.id !== m.id) })}
+                style={{ background: 'none', border: 'none', color: '#6C8079', cursor: 'pointer', display: 'flex', flexShrink: 0 }}
+                title="Eliminar"
+            >
+                <Trash2 size={13} />
+            </button>
+        </div>
     );
 
     // Lista agrupada: cada grupo muestra su subtotal y se abre/cierra al tocarlo.
@@ -799,6 +900,498 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
         );
     };
 
+    // ── Columna de Gastos (Vista 2 Columnas) ──
+    const columnaGastos = () => {
+        if (!mostrarGastos && !mostrarSueltos) return null;
+
+        const gastosSueltos = (plan.movs || []).filter(m => m.type === 'gasto');
+        const fijosCount = plan.fixedExpenses.filter(f => !f.excluido).length;
+        const sueltosCount = gastosSueltos.filter(m => !m.excluido).length;
+
+        const hayFijos = mostrarGastos;
+        const haySueltos = mostrarSueltos;
+        const ambos = hayFijos && haySueltos;
+
+        const totalCount = (hayFijos ? fijosCount : 0) + (haySueltos ? sueltosCount : 0);
+        const totalItems = (hayFijos ? plan.fixedExpenses.length : 0) + (haySueltos ? gastosSueltos.length : 0);
+        const totalColumna = (hayFijos ? simFijosTotal : 0) + (haySueltos ? simSueltosGastos : 0);
+        const tituloColumna = ambos ? 'Gastos' : hayFijos ? 'Gastos fijos' : 'Gastos sueltos / extras';
+
+        const todosOn = totalItems > 0 && (
+            (!hayFijos || plan.fixedExpenses.every(f => !f.excluido)) &&
+            (!haySueltos || gastosSueltos.every(m => !m.excluido))
+        );
+        const algunoOn = totalCount > 0;
+
+        const marcarTodo = (on: boolean) => savePlan({
+            ...plan,
+            fixedExpenses: hayFijos ? plan.fixedExpenses.map(f => ({ ...f, excluido: !on })) : plan.fixedExpenses,
+            movs: haySueltos ? (plan.movs || []).map(m => m.type === 'gasto' ? { ...m, excluido: !on } : m) : plan.movs,
+        });
+
+        const tipoEfectivo = (!haySueltos && hayFijos) ? 'fijo' : (!hayFijos && haySueltos) ? 'suelto' : modoColGasto;
+
+        const agregar = (e: React.FormEvent) => {
+            e.preventDefault();
+            const text = formColGasto.text.trim();
+            if (!text || !formColGastoTotal) return;
+            if (tipoEfectivo === 'suelto') {
+                savePlan({
+                    ...plan,
+                    movs: [...(plan.movs || []), {
+                        id: Date.now(),
+                        text,
+                        amount: formColGastoTotal,
+                        type: 'gasto',
+                        grupo: formColGasto.grupo || undefined,
+                    }],
+                });
+            } else {
+                savePlan({
+                    ...plan,
+                    fixedExpenses: [...plan.fixedExpenses, {
+                        id: Date.now(),
+                        text,
+                        amount: formColGastoTotal,
+                        active: true,
+                        grupo: formColGasto.grupo || undefined,
+                    }],
+                });
+            }
+            setFormColGasto({ text: '', amount: '', cantidad: '', grupo: '' });
+        };
+
+        const campo: React.CSSProperties = { minWidth: 0, height: '40px', padding: '0 10px', border: 'none', fontSize: movil ? '16px' : '0.8rem', background: 'transparent', color: '#0C2A20', outline: 'none', fontFamily: 'inherit' };
+        const sep: React.CSSProperties = { borderLeft: '1px solid #EDF3F0' };
+        const listo = !!formColGasto.text.trim() && formColGastoTotal > 0;
+
+        return (
+            <div style={{ background: '#FFFFFF', border: '1px solid #DCE7E1', borderTop: '3px solid #C63C3C', borderRadius: '14px', overflow: 'hidden' }}>
+                {/* Cabecera de la columna */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderBottom: '1px solid #EDF3F0', background: '#FFFFFF' }}>
+                    <input
+                        type="checkbox"
+                        checked={todosOn}
+                        ref={el => { if (el) el.indeterminate = algunoOn && !todosOn; }}
+                        disabled={totalItems === 0}
+                        title="Contar todos los gastos"
+                        onChange={e => marcarTodo(e.target.checked)}
+                        style={{ accentColor: '#0FA97A', flexShrink: 0 }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#0C2A20' }}>{tituloColumna}</div>
+                        <div style={{ fontSize: '0.64rem', fontWeight: 600, color: '#6C8079' }}>{totalCount} de {totalItems} en cuenta</div>
+                    </div>
+                    <span style={{ fontFamily: MONO, fontSize: '1.05rem', fontWeight: 800, color: '#C63C3C' }}>−{money(totalColumna)}</span>
+                </div>
+
+                {/* Subsecciones */}
+                {ambos ? (
+                    <>
+                        <div style={{ borderBottom: '1px solid #EDF3F0' }}>
+                            <div
+                                onClick={() => setColCerrada(v => ({ ...v, gastosFijos: !v.gastosFijos }))}
+                                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', background: '#F7FAF8', cursor: 'pointer', borderBottom: colCerrada.gastosFijos ? 'none' : '1px solid #EDF3F0' }}
+                            >
+                                <ChevronDown size={14} color="#6C8079" style={{ transform: colCerrada.gastosFijos ? 'rotate(-90deg)' : 'none', transition: 'transform .15s' }} />
+                                <span style={{ ...LABEL, flex: 1, fontSize: '0.66rem' }}>Mis gastos fijos ({fijosCount} de {plan.fixedExpenses.length})</span>
+                                <span style={{ fontFamily: MONO, fontSize: '0.82rem', fontWeight: 800, color: '#C63C3C' }}>−{money(simFijosTotal)}</span>
+                            </div>
+                            {!colCerrada.gastosFijos && (
+                                <div style={{ padding: '2px 14px 6px' }}>
+                                    {plan.fixedExpenses.length === 0
+                                        ? <p style={{ fontSize: '0.72rem', color: '#6C8079', margin: '8px 0' }}>Sin gastos fijos todavía.</p>
+                                        : renderGrupos('gasto')
+                                    }
+                                </div>
+                            )}
+                        </div>
+
+                        <div>
+                            <div
+                                onClick={() => setColCerrada(v => ({ ...v, gastosSueltos: !v.gastosSueltos }))}
+                                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', background: '#F7FAF8', cursor: 'pointer', borderBottom: colCerrada.gastosSueltos ? 'none' : '1px solid #EDF3F0' }}
+                            >
+                                <ChevronDown size={14} color="#6C8079" style={{ transform: colCerrada.gastosSueltos ? 'rotate(-90deg)' : 'none', transition: 'transform .15s' }} />
+                                <span style={{ ...LABEL, flex: 1, fontSize: '0.66rem', color: '#B45309' }}>Gastos sueltos / extras ({sueltosCount} de {gastosSueltos.length})</span>
+                                <span style={{ fontFamily: MONO, fontSize: '0.82rem', fontWeight: 800, color: '#C63C3C' }}>−{money(simSueltosGastos)}</span>
+                            </div>
+                            {!colCerrada.gastosSueltos && (
+                                <div style={{ padding: '2px 14px 6px' }}>
+                                    {gastosSueltos.length === 0
+                                        ? <p style={{ fontSize: '0.72rem', color: '#6C8079', margin: '8px 0' }}>Sin gastos sueltos aún.</p>
+                                        : gastosSueltos.map(m => filaGastoSuelto(m))
+                                    }
+                                </div>
+                            )}
+                        </div>
+                    </>
+                ) : hayFijos ? (
+                    <div style={{ padding: '2px 14px 6px' }}>
+                        {plan.fixedExpenses.length === 0
+                            ? <p style={{ fontSize: '0.72rem', color: '#6C8079', margin: '8px 0' }}>Sin gastos fijos todavía.</p>
+                            : renderGrupos('gasto')
+                        }
+                    </div>
+                ) : (
+                    <div style={{ padding: '2px 14px 6px' }}>
+                        {gastosSueltos.length === 0
+                            ? <p style={{ fontSize: '0.72rem', color: '#6C8079', margin: '8px 0' }}>Sin gastos sueltos aún.</p>
+                            : gastosSueltos.map(m => filaGastoSuelto(m))
+                        }
+                    </div>
+                )}
+
+                {/* Barra para agregar gasto al pie */}
+                <form onSubmit={agregar} style={{ padding: '10px', background: '#F7FAF8', borderTop: '1px solid #EDF3F0' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', background: '#FFFFFF', border: '1px solid #DCE7E1', borderRadius: '10px', overflow: 'hidden' }}>
+                        {ambos && (
+                            <div style={{ display: 'flex', borderRight: '1px solid #EDF3F0', padding: '3px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setModoColGasto('suelto')}
+                                    style={{
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        padding: '4px 7px',
+                                        fontSize: '0.68rem',
+                                        fontWeight: 800,
+                                        cursor: 'pointer',
+                                        background: modoColGasto === 'suelto' ? '#FEF3C7' : 'transparent',
+                                        color: modoColGasto === 'suelto' ? '#B45309' : '#6C8079',
+                                    }}
+                                >
+                                    Suelto
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setModoColGasto('fijo')}
+                                    style={{
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        padding: '4px 7px',
+                                        fontSize: '0.68rem',
+                                        fontWeight: 800,
+                                        cursor: 'pointer',
+                                        background: modoColGasto === 'fijo' ? '#FEE2E2' : 'transparent',
+                                        color: modoColGasto === 'fijo' ? '#C63C3C' : '#6C8079',
+                                    }}
+                                >
+                                    Fijo
+                                </button>
+                            </div>
+                        )}
+                        <input
+                            value={formColGasto.text}
+                            onChange={e => setFormColGasto(v => ({ ...v, text: e.target.value }))}
+                            placeholder={tipoEfectivo === 'suelto' ? 'Agregar gasto suelto (ej: Pandero)…' : 'Agregar gasto fijo…'}
+                            style={{ ...campo, flex: movil ? '1 1 100%' : '1 1 100px', borderBottom: movil ? '1px solid #EDF3F0' : 'none' }}
+                        />
+                        {usarCantColGasto ? (
+                            <>
+                                <input value={formColGasto.cantidad} onChange={e => setFormColGasto(v => ({ ...v, cantidad: e.target.value }))} type="number" inputMode="decimal" placeholder="Cant." style={{ ...campo, ...sep, width: '58px', fontFamily: MONO }} />
+                                <span style={{ fontSize: '0.72rem', color: '#6C8079' }}>×</span>
+                                <input value={formColGasto.amount} onChange={e => setFormColGasto(v => ({ ...v, amount: e.target.value }))} type="number" inputMode="decimal" placeholder="S/ c/u" style={{ ...campo, width: '72px', fontFamily: MONO }} />
+                            </>
+                        ) : (
+                            <input value={formColGasto.amount} onChange={e => setFormColGasto(v => ({ ...v, amount: e.target.value }))} type="number" inputMode="decimal" placeholder="S/ 0.00" style={{ ...campo, ...sep, width: movil ? undefined : '84px', flex: movil ? '1 1 0' : undefined, fontFamily: MONO }} />
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => setUsarCantColGasto(v => !v)}
+                            title="Cantidad × precio unitario (ej: 5 × S/10)"
+                            style={{ ...campo, ...sep, width: '40px', padding: 0, cursor: 'pointer', fontWeight: 800, fontSize: '0.74rem', background: usarCantColGasto ? '#FEF3C7' : 'transparent', color: usarCantColGasto ? '#B45309' : '#6C8079' }}
+                        >
+                            ×n
+                        </button>
+                        <select
+                            value={formColGasto.grupo}
+                            onChange={e => setFormColGasto(v => ({ ...v, grupo: e.target.value }))}
+                            title="Grupo (si no eliges, se deduce del nombre)"
+                            style={{ ...campo, ...sep, width: movil ? undefined : '92px', flex: movil ? '1 1 0' : undefined, padding: '0 4px 0 8px', cursor: 'pointer', fontSize: '0.74rem', color: formColGasto.grupo ? '#0C2A20' : '#6C8079' }}
+                        >
+                            <option value="">Grupo</option>
+                            {catsGasto.map(g => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                        <button
+                            type="submit"
+                            disabled={!listo}
+                            title={usarCantColGasto && formColGastoTotal ? `Agregar ${money(formColGastoTotal)}` : 'Agregar gasto'}
+                            style={{
+                                height: '32px',
+                                minWidth: '32px',
+                                margin: '0 4px',
+                                padding: usarCantColGasto && formColGastoTotal ? '0 10px' : 0,
+                                border: 'none',
+                                borderRadius: '8px',
+                                background: listo ? '#C63C3C' : '#EDF3F0',
+                                color: listo ? '#fff' : '#A3B3AD',
+                                cursor: listo ? 'pointer' : 'default',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px',
+                                fontFamily: MONO,
+                                fontSize: '0.74rem',
+                                fontWeight: 800,
+                                flexShrink: 0,
+                                transition: 'background .15s',
+                            }}
+                        >
+                            <Plus size={17} />{usarCantColGasto && formColGastoTotal > 0 && money(formColGastoTotal)}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        );
+    };
+
+    // ── Columna de Ingresos (Vista 2 Columnas) ──
+    const columnaIngresos = () => {
+        if (!mostrarIngresos && !mostrarSueltos) return null;
+
+        const ingresosSueltos = (plan.movs || []).filter(m => m.type === 'ingreso');
+        const fijosCount = plan.fixedIncomes.filter(f => !f.excluido).length;
+        const sueltosCount = ingresosSueltos.filter(m => !m.excluido).length;
+
+        const hayFijos = mostrarIngresos;
+        const haySueltos = mostrarSueltos;
+        const ambos = hayFijos && haySueltos;
+
+        const totalCount = (hayFijos ? fijosCount : 0) + (haySueltos ? sueltosCount : 0);
+        const totalItems = (hayFijos ? plan.fixedIncomes.length : 0) + (haySueltos ? ingresosSueltos.length : 0);
+        const totalColumna = (hayFijos ? simIngresoPrevisto : 0) + (haySueltos ? simSueltosIngresos : 0);
+        const tituloColumna = ambos ? 'Ingresos' : hayFijos ? 'Ingresos fijos' : 'Ingresos sueltos / extras';
+
+        const todosOn = totalItems > 0 && (
+            (!hayFijos || plan.fixedIncomes.every(f => !f.excluido)) &&
+            (!haySueltos || ingresosSueltos.every(m => !m.excluido))
+        );
+        const algunoOn = totalCount > 0;
+
+        const marcarTodo = (on: boolean) => savePlan({
+            ...plan,
+            fixedIncomes: hayFijos ? plan.fixedIncomes.map(f => ({ ...f, excluido: !on })) : plan.fixedIncomes,
+            movs: haySueltos ? (plan.movs || []).map(m => m.type === 'ingreso' ? { ...m, excluido: !on } : m) : plan.movs,
+        });
+
+        const tipoEfectivo = (!haySueltos && hayFijos) ? 'fijo' : (!hayFijos && haySueltos) ? 'suelto' : modoColIngreso;
+
+        const agregar = (e: React.FormEvent) => {
+            e.preventDefault();
+            const name = formColIngreso.name.trim();
+            if (!name || !formColIngresoTotal) return;
+            if (tipoEfectivo === 'suelto') {
+                savePlan({
+                    ...plan,
+                    movs: [...(plan.movs || []), {
+                        id: Date.now(),
+                        text: name,
+                        amount: formColIngresoTotal,
+                        type: 'ingreso',
+                        grupo: formColIngreso.grupo || undefined,
+                    }],
+                });
+            } else {
+                savePlan({
+                    ...plan,
+                    fixedIncomes: [...plan.fixedIncomes, {
+                        id: Date.now(),
+                        name,
+                        amount: formColIngresoTotal,
+                        active: true,
+                        grupo: formColIngreso.grupo || undefined,
+                    }],
+                });
+            }
+            setFormColIngreso({ name: '', amount: '', cantidad: '', grupo: '' });
+        };
+
+        const campo: React.CSSProperties = { minWidth: 0, height: '40px', padding: '0 10px', border: 'none', fontSize: movil ? '16px' : '0.8rem', background: 'transparent', color: '#0C2A20', outline: 'none', fontFamily: 'inherit' };
+        const sep: React.CSSProperties = { borderLeft: '1px solid #EDF3F0' };
+        const listo = !!formColIngreso.name.trim() && formColIngresoTotal > 0;
+
+        return (
+            <div style={{ background: '#FFFFFF', border: '1px solid #DCE7E1', borderTop: '3px solid #0E9F6E', borderRadius: '14px', overflow: 'hidden' }}>
+                {/* Cabecera de la columna */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderBottom: '1px solid #EDF3F0', background: '#FFFFFF' }}>
+                    <input
+                        type="checkbox"
+                        checked={todosOn}
+                        ref={el => { if (el) el.indeterminate = algunoOn && !todosOn; }}
+                        disabled={totalItems === 0}
+                        title="Contar todos los ingresos"
+                        onChange={e => marcarTodo(e.target.checked)}
+                        style={{ accentColor: '#0FA97A', flexShrink: 0 }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#0C2A20' }}>{tituloColumna}</div>
+                        <div style={{ fontSize: '0.64rem', fontWeight: 600, color: '#6C8079' }}>{totalCount} de {totalItems} en cuenta</div>
+                    </div>
+                    <span style={{ fontFamily: MONO, fontSize: '1.05rem', fontWeight: 800, color: '#0E9F6E' }}>+{money(totalColumna)}</span>
+                </div>
+
+                {/* Subsecciones */}
+                {ambos ? (
+                    <>
+                        <div style={{ borderBottom: '1px solid #EDF3F0' }}>
+                            <div
+                                onClick={() => setColCerrada(v => ({ ...v, ingresosFijos: !v.ingresosFijos }))}
+                                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', background: '#F7FAF8', cursor: 'pointer', borderBottom: colCerrada.ingresosFijos ? 'none' : '1px solid #EDF3F0' }}
+                            >
+                                <ChevronDown size={14} color="#6C8079" style={{ transform: colCerrada.ingresosFijos ? 'rotate(-90deg)' : 'none', transition: 'transform .15s' }} />
+                                <span style={{ ...LABEL, flex: 1, fontSize: '0.66rem' }}>Mis ingresos fijos ({fijosCount} de {plan.fixedIncomes.length})</span>
+                                <span style={{ fontFamily: MONO, fontSize: '0.82rem', fontWeight: 800, color: '#0E9F6E' }}>+{money(simIngresoPrevisto)}</span>
+                            </div>
+                            {!colCerrada.ingresosFijos && (
+                                <div style={{ padding: '2px 14px 6px' }}>
+                                    {plan.fixedIncomes.length === 0
+                                        ? <p style={{ fontSize: '0.72rem', color: '#6C8079', margin: '8px 0' }}>Sin ingresos fijos todavía.</p>
+                                        : renderGrupos('ingreso')
+                                    }
+                                </div>
+                            )}
+                        </div>
+
+                        <div>
+                            <div
+                                onClick={() => setColCerrada(v => ({ ...v, ingresosSueltos: !v.ingresosSueltos }))}
+                                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', background: '#F7FAF8', cursor: 'pointer', borderBottom: colCerrada.ingresosSueltos ? 'none' : '1px solid #EDF3F0' }}
+                            >
+                                <ChevronDown size={14} color="#6C8079" style={{ transform: colCerrada.ingresosSueltos ? 'rotate(-90deg)' : 'none', transition: 'transform .15s' }} />
+                                <span style={{ ...LABEL, flex: 1, fontSize: '0.66rem', color: '#0E9F6E' }}>Ingresos sueltos / extras ({sueltosCount} de {ingresosSueltos.length})</span>
+                                <span style={{ fontFamily: MONO, fontSize: '0.82rem', fontWeight: 800, color: '#0E9F6E' }}>+{money(simSueltosIngresos)}</span>
+                            </div>
+                            {!colCerrada.ingresosSueltos && (
+                                <div style={{ padding: '2px 14px 6px' }}>
+                                    {ingresosSueltos.length === 0
+                                        ? <p style={{ fontSize: '0.72rem', color: '#6C8079', margin: '8px 0' }}>Sin ingresos sueltos aún.</p>
+                                        : ingresosSueltos.map(m => filaIngresoSuelto(m))
+                                    }
+                                </div>
+                            )}
+                        </div>
+                    </>
+                ) : hayFijos ? (
+                    <div style={{ padding: '2px 14px 6px' }}>
+                        {plan.fixedIncomes.length === 0
+                            ? <p style={{ fontSize: '0.72rem', color: '#6C8079', margin: '8px 0' }}>Sin ingresos fijos todavía.</p>
+                            : renderGrupos('ingreso')
+                        }
+                    </div>
+                ) : (
+                    <div style={{ padding: '2px 14px 6px' }}>
+                        {ingresosSueltos.length === 0
+                            ? <p style={{ fontSize: '0.72rem', color: '#6C8079', margin: '8px 0' }}>Sin ingresos sueltos aún.</p>
+                            : ingresosSueltos.map(m => filaIngresoSuelto(m))
+                        }
+                    </div>
+                )}
+
+                {/* Barra para agregar ingreso al pie */}
+                <form onSubmit={agregar} style={{ padding: '10px', background: '#F7FAF8', borderTop: '1px solid #EDF3F0' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', background: '#FFFFFF', border: '1px solid #DCE7E1', borderRadius: '10px', overflow: 'hidden' }}>
+                        {ambos && (
+                            <div style={{ display: 'flex', borderRight: '1px solid #EDF3F0', padding: '3px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setModoColIngreso('suelto')}
+                                    style={{
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        padding: '4px 7px',
+                                        fontSize: '0.68rem',
+                                        fontWeight: 800,
+                                        cursor: 'pointer',
+                                        background: modoColIngreso === 'suelto' ? 'rgba(15,169,122,0.12)' : 'transparent',
+                                        color: modoColIngreso === 'suelto' ? '#0E9F6E' : '#6C8079',
+                                    }}
+                                >
+                                    Suelto
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setModoColIngreso('fijo')}
+                                    style={{
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        padding: '4px 7px',
+                                        fontSize: '0.68rem',
+                                        fontWeight: 800,
+                                        cursor: 'pointer',
+                                        background: modoColIngreso === 'fijo' ? '#FEF3C7' : 'transparent',
+                                        color: modoColIngreso === 'fijo' ? '#B45309' : '#6C8079',
+                                    }}
+                                >
+                                    Fijo
+                                </button>
+                            </div>
+                        )}
+                        <input
+                            value={formColIngreso.name}
+                            onChange={e => setFormColIngreso(v => ({ ...v, name: e.target.value }))}
+                            placeholder={tipoEfectivo === 'suelto' ? 'Agregar ingreso suelto (ej: Venta)…' : 'Agregar ingreso fijo…'}
+                            style={{ ...campo, flex: movil ? '1 1 100%' : '1 1 100px', borderBottom: movil ? '1px solid #EDF3F0' : 'none' }}
+                        />
+                        {usarCantColIngreso ? (
+                            <>
+                                <input value={formColIngreso.cantidad} onChange={e => setFormColIngreso(v => ({ ...v, cantidad: e.target.value }))} type="number" inputMode="decimal" placeholder="Cant." style={{ ...campo, ...sep, width: '58px', fontFamily: MONO }} />
+                                <span style={{ fontSize: '0.72rem', color: '#6C8079' }}>×</span>
+                                <input value={formColIngreso.amount} onChange={e => setFormColIngreso(v => ({ ...v, amount: e.target.value }))} type="number" inputMode="decimal" placeholder="S/ c/u" style={{ ...campo, width: '72px', fontFamily: MONO }} />
+                            </>
+                        ) : (
+                            <input value={formColIngreso.amount} onChange={e => setFormColIngreso(v => ({ ...v, amount: e.target.value }))} type="number" inputMode="decimal" placeholder="S/ 0.00" style={{ ...campo, ...sep, width: movil ? undefined : '84px', flex: movil ? '1 1 0' : undefined, fontFamily: MONO }} />
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => setUsarCantColIngreso(v => !v)}
+                            title="Cantidad × precio unitario (ej: 5 × S/10)"
+                            style={{ ...campo, ...sep, width: '40px', padding: 0, cursor: 'pointer', fontWeight: 800, fontSize: '0.74rem', background: usarCantColIngreso ? '#FEF3C7' : 'transparent', color: usarCantColIngreso ? '#B45309' : '#6C8079' }}
+                        >
+                            ×n
+                        </button>
+                        <select
+                            value={formColIngreso.grupo}
+                            onChange={e => setFormColIngreso(v => ({ ...v, grupo: e.target.value }))}
+                            title="Grupo (si no eliges, se deduce del nombre)"
+                            style={{ ...campo, ...sep, width: movil ? undefined : '92px', flex: movil ? '1 1 0' : undefined, padding: '0 4px 0 8px', cursor: 'pointer', fontSize: '0.74rem', color: formColIngreso.grupo ? '#0C2A20' : '#6C8079' }}
+                        >
+                            <option value="">Grupo</option>
+                            {catsIngreso.map(g => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                        <button
+                            type="submit"
+                            disabled={!listo}
+                            title={usarCantColIngreso && formColIngresoTotal ? `Agregar ${money(formColIngresoTotal)}` : 'Agregar ingreso'}
+                            style={{
+                                height: '32px',
+                                minWidth: '32px',
+                                margin: '0 4px',
+                                padding: usarCantColIngreso && formColIngresoTotal ? '0 10px' : 0,
+                                border: 'none',
+                                borderRadius: '8px',
+                                background: listo ? '#0FA97A' : '#EDF3F0',
+                                color: listo ? '#fff' : '#A3B3AD',
+                                cursor: listo ? 'pointer' : 'default',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px',
+                                fontFamily: MONO,
+                                fontSize: '0.74rem',
+                                fontWeight: 800,
+                                flexShrink: 0,
+                                transition: 'background .15s',
+                            }}
+                        >
+                            <Plus size={17} />{usarCantColIngreso && formColIngresoTotal > 0 && money(formColIngresoTotal)}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        );
+    };
+
     return (
         <div style={{ ...paddingPagina(movil), display: 'flex', gap: '1.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
 
@@ -848,28 +1441,91 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                         </div>
                     </div>
 
-                    {/* Qué se cuenta en la proyección */}
-                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px", padding: movil ? "8px 14px" : "8px 20px", background: "#F7FAF8", borderTop: "1px solid #EDF3F0" }}>
-                        <span style={{ ...LABEL, marginRight: "4px" }}>Contar</span>
-                        {([
-                            { key: 'saldo', texto: `Saldo actual (${money(currentBalance)})`, on: !!plan.usarSaldo, disabled: false, set: (v: boolean) => savePlan({ ...plan, usarSaldo: v }) },
-                            { key: 'gastos', texto: 'Mis gastos fijos', on: mostrarGastos, disabled: false, set: (v: boolean) => toggleTopGastos(v) },
-                            { key: 'ingresos', texto: 'Mis ingresos fijos', on: mostrarIngresos, disabled: false, set: (v: boolean) => toggleTopIngresos(v) },
-                            { key: 'sueltos', texto: 'Movimientos sueltos', on: mostrarSueltos, disabled: false, set: (v: boolean) => toggleTopSueltos(v) },
-                        ]).filter(o => !o.disabled).map(o => (
-                            <label key={o.key} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 10px", borderRadius: "999px", cursor: "pointer", background: o.on ? "rgba(15,169,122,0.10)" : "#FFFFFF", border: `1px solid ${o.on ? "#0FA97A" : "#DCE7E1"}`, fontSize: "0.72rem", fontWeight: 700, color: o.on ? "#0C2A20" : "#6C8079" }}>
-                                <input type="checkbox" checked={o.on} onChange={e => o.set(e.target.checked)} style={{ accentColor: "#0FA97A", margin: 0 }} />
-                                {o.texto}
-                            </label>
-                        ))}
+                    {/* Qué se cuenta en la proyección y selector de vista */}
+                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "8px", padding: movil ? "8px 14px" : "8px 20px", background: "#F7FAF8", borderTop: "1px solid #EDF3F0" }}>
+                        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px" }}>
+                            <span style={{ ...LABEL, marginRight: "4px" }}>Contar</span>
+                            {([
+                                { key: 'saldo', texto: `Saldo actual (${money(currentBalance)})`, on: !!plan.usarSaldo, disabled: false, set: (v: boolean) => savePlan({ ...plan, usarSaldo: v }) },
+                                { key: 'gastos', texto: 'Mis gastos fijos', on: mostrarGastos, disabled: false, set: (v: boolean) => toggleTopGastos(v) },
+                                { key: 'ingresos', texto: 'Mis ingresos fijos', on: mostrarIngresos, disabled: false, set: (v: boolean) => toggleTopIngresos(v) },
+                                { key: 'sueltos', texto: 'Movimientos sueltos', on: mostrarSueltos, disabled: false, set: (v: boolean) => toggleTopSueltos(v) },
+                            ]).filter(o => !o.disabled).map(o => (
+                                <label key={o.key} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 10px", borderRadius: "999px", cursor: "pointer", background: o.on ? "rgba(15,169,122,0.10)" : "#FFFFFF", border: `1px solid ${o.on ? "#0FA97A" : "#DCE7E1"}`, fontSize: "0.72rem", fontWeight: 700, color: o.on ? "#0C2A20" : "#6C8079" }}>
+                                    <input type="checkbox" checked={o.on} onChange={e => o.set(e.target.checked)} style={{ accentColor: "#0FA97A", margin: 0 }} />
+                                    {o.texto}
+                                </label>
+                            ))}
+                        </div>
+
+                        {/* Selector de Vista: 2 Columnas (Por defecto) vs Tarjetas */}
+                        <div style={{ display: "inline-flex", background: "#EDF3F0", padding: "3px", borderRadius: "10px", gap: "2px", flexShrink: 0 }}>
+                            <button
+                                type="button"
+                                onClick={() => cambiarVista('columnas')}
+                                title="Ver en 2 columnas: Columna de Gastos y Columna de Ingresos"
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "5px",
+                                    border: "none",
+                                    borderRadius: "7px",
+                                    padding: "4px 10px",
+                                    fontSize: "0.72rem",
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                    background: vista === 'columnas' ? "#FFFFFF" : "transparent",
+                                    color: vista === 'columnas' ? "#0C2A20" : "#6C8079",
+                                    boxShadow: vista === 'columnas' ? "0 1px 3px rgba(15,23,42,0.08)" : "none",
+                                    transition: "all .15s",
+                                }}
+                            >
+                                <Columns2 size={13} /> 2 Columnas
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => cambiarVista('tarjetas')}
+                                title="Ver en tarjetas independientes"
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "5px",
+                                    border: "none",
+                                    borderRadius: "7px",
+                                    padding: "4px 10px",
+                                    fontSize: "0.72rem",
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                    background: vista === 'tarjetas' ? "#FFFFFF" : "transparent",
+                                    color: vista === 'tarjetas' ? "#0C2A20" : "#6C8079",
+                                    boxShadow: vista === 'tarjetas' ? "0 1px 3px rgba(15,23,42,0.08)" : "none",
+                                    transition: "all .15s",
+                                }}
+                            >
+                                <LayoutGrid size={13} /> Tarjetas
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "0.75rem" }}>
-                    {mostrarGastos && tarjeta('gasto')}
-                    {mostrarIngresos && tarjeta('ingreso')}
-                    {mostrarSueltos && tarjetaSueltos()}
-                </div>
+                {/* Renderizado de vistas */}
+                {vista === 'columnas' ? (
+                    <div style={{
+                        display: (mostrarGastos || mostrarSueltos || mostrarIngresos) ? "grid" : "none",
+                        gridTemplateColumns: movil ? "1fr" : ((mostrarGastos || mostrarSueltos) && (mostrarIngresos || mostrarSueltos)) ? "1fr 1fr" : "1fr",
+                        gap: "0.9rem",
+                        alignItems: "start"
+                    }}>
+                        {columnaGastos()}
+                        {columnaIngresos()}
+                    </div>
+                ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "0.75rem" }}>
+                        {mostrarGastos && tarjeta('gasto')}
+                        {mostrarIngresos && tarjeta('ingreso')}
+                        {mostrarSueltos && tarjetaSueltos()}
+                    </div>
+                )}
 
                 {!mostrarGastos && !mostrarIngresos && !mostrarSueltos && (
                     <div style={{ padding: '36px 20px', textAlign: 'center', background: '#FFFFFF', border: '2px dashed #DCE7E1', borderRadius: '16px', color: '#6C8079', marginTop: '0.75rem' }}>
@@ -918,15 +1574,25 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
 
             {calcAbierta ? (
             <MiniCalculator flotante onMinimizar={() => setCalcAbierta(false)} onUsar={(tipo, n) => {
-                if (mostrarSueltos) {
-                    setUsarCantidadSuelto(false);
-                    setNuevoSuelto(s => ({ ...s, tipo, amount: String(n) }));
-                } else if (tipo === 'gasto' && mostrarGastos) {
-                    setUsarCantidadGasto(false);
-                    setNuevoGasto(v => ({ ...v, amount: String(n) }));
-                } else if (tipo === 'ingreso' && mostrarIngresos) {
-                    setUsarCantidadIngreso(false);
-                    setNuevoIngresoFijo(v => ({ ...v, amount: String(n) }));
+                if (vista === 'columnas') {
+                    if (tipo === 'gasto') {
+                        setUsarCantColGasto(false);
+                        setFormColGasto(v => ({ ...v, amount: String(n) }));
+                    } else {
+                        setUsarCantColIngreso(false);
+                        setFormColIngreso(v => ({ ...v, amount: String(n) }));
+                    }
+                } else {
+                    if (mostrarSueltos) {
+                        setUsarCantidadSuelto(false);
+                        setNuevoSuelto(s => ({ ...s, tipo, amount: String(n) }));
+                    } else if (tipo === 'gasto' && mostrarGastos) {
+                        setUsarCantidadGasto(false);
+                        setNuevoGasto(v => ({ ...v, amount: String(n) }));
+                    } else if (tipo === 'ingreso' && mostrarIngresos) {
+                        setUsarCantidadIngreso(false);
+                        setNuevoIngresoFijo(v => ({ ...v, amount: String(n) }));
+                    }
                 }
             }} />
             ) : (
