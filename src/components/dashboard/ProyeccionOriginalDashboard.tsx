@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
-import { Plus, Minus, ChevronDown, Trash2, RotateCcw, FlaskConical, Calculator as CalculatorIcon, Delete, Save, Check, X, Bookmark, Columns2, LayoutGrid, FolderPlus } from 'lucide-react';
+import { Plus, Minus, ChevronDown, Trash2, RotateCcw, FlaskConical, Calculator as CalculatorIcon, Delete, Save, Check, X, Bookmark, Columns2, LayoutGrid, FolderPlus, MoreVertical } from 'lucide-react';
 import type { FixedExpense, UserPreferences } from '../../hooks/useAlDiaState';
 import { MONO, useIsMobile, paddingPagina } from '../../theme';
 
@@ -248,79 +248,94 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
         gruposIngreso: [],
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const normalizarPlan = (parsed: any): Plan | null => {
+        if (!parsed || typeof parsed !== 'object') return null;
+        if (!Array.isArray(parsed.fixedExpenses) && !Array.isArray(parsed.fixedIncomes) && !Array.isArray(parsed.movs)) {
+            return null;
+        }
+        const fe: SimFixedExpense[] = [];
+        const fi: SimFixedIncome[] = [];
+        const movs: SimMovSuelto[] = Array.isArray(parsed.movs) ? [...parsed.movs] : [];
+        let migroSueltosVisibles = false;
+
+        // Separar movimientos sueltos que hayan sido agregados como custom: true
+        // para que no contaminen los gastos/ingresos fijos.
+        for (const f of (Array.isArray(parsed.fixedExpenses) ? parsed.fixedExpenses : [])) {
+            if (f.custom) {
+                if (!movs.some(m => m.id === f.id)) {
+                    movs.push({
+                        id: f.id,
+                        text: f.text,
+                        amount: f.amount,
+                        type: 'gasto',
+                        excluido: f.excluido,
+                        grupo: f.grupo,
+                    });
+                    if (parsed.mostrarGastosFijos !== false && !f.excluido) {
+                        migroSueltosVisibles = true;
+                    }
+                }
+            } else {
+                fe.push(f);
+            }
+        }
+
+        for (const f of (Array.isArray(parsed.fixedIncomes) ? parsed.fixedIncomes : [])) {
+            if (f.custom) {
+                if (!movs.some(m => m.id === f.id)) {
+                    movs.push({
+                        id: f.id,
+                        text: f.name || f.text,
+                        amount: f.amount,
+                        type: 'ingreso',
+                        excluido: f.excluido,
+                        grupo: f.grupo,
+                    });
+                    if (parsed.mostrarIngresosFijos !== false && !f.excluido) {
+                        migroSueltosVisibles = true;
+                    }
+                }
+            } else {
+                fi.push(f);
+            }
+        }
+
+        // Deducir visibilidad: si el usuario los tenía todos excluidos en su sesión anterior
+        // (desactivados desde arriba), mantenerlos ocultos como esperaba.
+        const mostrarGastosFijos = parsed.mostrarGastosFijos !== undefined
+            ? !!parsed.mostrarGastosFijos
+            : !(fe.length > 0 && fe.every(f => f.excluido));
+
+        const mostrarIngresosFijos = parsed.mostrarIngresosFijos !== undefined
+            ? !!parsed.mostrarIngresosFijos
+            : !(fi.length > 0 && fi.every(f => f.excluido));
+
+        const mostrarSueltos = parsed.mostrarSueltos !== undefined
+            ? (!!parsed.mostrarSueltos || migroSueltosVisibles)
+            : true;
+
+        const gruposGasto: string[] = Array.isArray(parsed.gruposGasto) ? parsed.gruposGasto : [];
+        const gruposIngreso: string[] = Array.isArray(parsed.gruposIngreso) ? parsed.gruposIngreso : [];
+
+        return {
+            fixedExpenses: fe,
+            fixedIncomes: fi,
+            movs,
+            usarSaldo: !!parsed.usarSaldo,
+            mostrarGastosFijos,
+            mostrarIngresosFijos,
+            mostrarSueltos,
+            gruposGasto,
+            gruposIngreso,
+        };
+    };
+
     const plan: Plan = useMemo(() => {
         try {
             const parsed = preferences.planDelMes ? JSON.parse(preferences.planDelMes) : null;
-            if (parsed && Array.isArray(parsed.fixedExpenses) && Array.isArray(parsed.fixedIncomes)) {
-                let fe: SimFixedExpense[] = [];
-                let fi: SimFixedIncome[] = [];
-                let movs: SimMovSuelto[] = Array.isArray(parsed.movs) ? [...parsed.movs] : [];
-
-                // Separar movimientos sueltos que hayan sido agregados como custom: true
-                // para que no contaminen los gastos/ingresos fijos.
-                for (const f of parsed.fixedExpenses) {
-                    if (f.custom) {
-                        if (!movs.some(m => m.id === f.id)) {
-                            movs.push({
-                                id: f.id,
-                                text: f.text,
-                                amount: f.amount,
-                                type: 'gasto',
-                                excluido: f.excluido,
-                                grupo: f.grupo,
-                            });
-                        }
-                    } else {
-                        fe.push(f);
-                    }
-                }
-
-                for (const f of parsed.fixedIncomes) {
-                    if (f.custom) {
-                        if (!movs.some(m => m.id === f.id)) {
-                            movs.push({
-                                id: f.id,
-                                text: f.name || f.text,
-                                amount: f.amount,
-                                type: 'ingreso',
-                                excluido: f.excluido,
-                                grupo: f.grupo,
-                            });
-                        }
-                    } else {
-                        fi.push(f);
-                    }
-                }
-
-                // Deducir visibilidad: si el usuario los tenía todos excluidos en su sesión anterior
-                // (desactivados desde arriba), mantenerlos ocultos como esperaba.
-                const mostrarGastosFijos = parsed.mostrarGastosFijos !== undefined
-                    ? !!parsed.mostrarGastosFijos
-                    : !(fe.length > 0 && fe.every(f => f.excluido));
-
-                const mostrarIngresosFijos = parsed.mostrarIngresosFijos !== undefined
-                    ? !!parsed.mostrarIngresosFijos
-                    : !(fi.length > 0 && fi.every(f => f.excluido));
-
-                const mostrarSueltos = parsed.mostrarSueltos !== undefined
-                    ? !!parsed.mostrarSueltos
-                    : true;
-
-                const gruposGasto: string[] = Array.isArray(parsed.gruposGasto) ? parsed.gruposGasto : [];
-                const gruposIngreso: string[] = Array.isArray(parsed.gruposIngreso) ? parsed.gruposIngreso : [];
-
-                return {
-                    fixedExpenses: fe,
-                    fixedIncomes: fi,
-                    movs,
-                    usarSaldo: !!parsed.usarSaldo,
-                    mostrarGastosFijos,
-                    mostrarIngresosFijos,
-                    mostrarSueltos,
-                    gruposGasto,
-                    gruposIngreso,
-                };
-            }
+            const norm = normalizarPlan(parsed);
+            if (norm) return norm;
         } catch { /* si el JSON guardado quedó corrupto, se re-siembra abajo */ }
         return seedPlan();
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -400,6 +415,19 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
         setNombreNuevoGrupo('');
     };
 
+    type MenuFilaConfig = {
+        idKey: string;
+        rect: DOMRect;
+        tipo: 'gasto' | 'ingreso';
+        grupoActual: string;
+        gruposDisponibles: string[];
+        defaultGrupoLabel?: string;
+        onCambiarGrupo: (grupo: string) => void;
+        onCrearGrupo: () => void;
+        onEliminar: () => void;
+    };
+    const [menuFila, setMenuFila] = useState<MenuFilaConfig | null>(null);
+
     /* ── Proyecciones guardadas: copias con nombre del plan (sirven como presupuestos).
        Guardar = foto del plan actual; Cargar = reemplaza el plan actual por esa foto. ── */
     type Guardada = { id: number; nombre: string; fecha: string; plan: Plan };
@@ -411,6 +439,17 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
     const [cargadaId, setCargadaId] = useState<number | null>(null);
     const [deshacer, setDeshacer] = useState<Plan | null>(null); // plan que había antes de cargar una guardada
     const cargada = guardadas.find(g => g.id === cargadaId);
+    const cargadaNormalizada = useMemo(() => (cargada ? normalizarPlan(cargada.plan) : null), [cargada]);
+    const cargadaModificada = !!cargadaNormalizada && JSON.stringify(plan) !== JSON.stringify(cargadaNormalizada);
+    const cargarGuardada = (g: Guardada) => {
+        const normalizado = normalizarPlan(g.plan) ?? seedPlan();
+        const yaIdentica = g.id === cargadaId && JSON.stringify(plan) === JSON.stringify(normalizado);
+        if (!yaIdentica) {
+            setDeshacer(plan);
+        }
+        savePlan(normalizado);
+        setCargadaId(g.id);
+    };
     const [borrarId, setBorrarId] = useState<number | null>(null); // borrar pide un segundo toque
     const guardarProyeccion = () => {
         const nombre = (nombreGuardar ?? '').trim();
@@ -421,7 +460,8 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
         setCargadaId(foto.id);
         setNombreGuardar(null);
     };
-    const resultadoDe = (p: Plan) => {
+    const resultadoDe = (rawPlan: Plan) => {
+        const p = normalizarPlan(rawPlan) ?? rawPlan;
         const saldo = p.usarSaldo ? currentBalance : 0;
         const gf = p.mostrarGastosFijos !== false
             ? (p.fixedExpenses || []).filter(f => !f.excluido).reduce((s, f) => s + (Number(f.amount) || 0), 0)
@@ -495,7 +535,11 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
         ? (parseFloat(formColIngreso.cantidad) || 0) * (parseFloat(formColIngreso.amount) || 0)
         : (parseFloat(formColIngreso.amount) || 0);
 
-    const reiniciarSimulacion = () => savePlan({ ...seedPlan(), usarSaldo: plan.usarSaldo });
+    const reiniciarSimulacion = () => {
+        savePlan({ ...seedPlan(), usarSaldo: plan.usarSaldo });
+        setCargadaId(null);
+        setDeshacer(null);
+    };
 
     const mostrarGastos = plan.mostrarGastosFijos !== false;
     const mostrarIngresos = plan.mostrarIngresosFijos !== false;
@@ -559,23 +603,54 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
     const money = (n: number) => `S/ ${n.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
 
 
+    const botonMenuFila = (config: Omit<MenuFilaConfig, 'rect'>) => {
+        const abierto = menuFila?.idKey === config.idKey;
+        return (
+            <button
+                type="button"
+                onClick={e => {
+                    e.stopPropagation();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setMenuFila(prev => prev?.idKey === config.idKey ? null : { ...config, rect });
+                }}
+                title="Cambiar de grupo o eliminar"
+                style={{
+                    background: abierto ? 'rgba(15,169,122,0.12)' : 'transparent',
+                    border: 'none',
+                    borderRadius: '8px',
+                    width: '28px',
+                    height: '28px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: abierto ? '#0FA97A' : '#6C8079',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    transition: 'background .15s, color .15s',
+                }}
+            >
+                <MoreVertical size={15} />
+            </button>
+        );
+    };
+
     const filaGasto = (f: SimFixedExpense) => (
         <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 2px", borderBottom: "1px solid #EDF3F0", opacity: f.excluido ? 0.4 : 1 }}>
             <input type="checkbox" checked={!f.excluido} title="Contar en la proyección" onChange={e => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, excluido: !e.target.checked } : x) })} style={{ accentColor: "#0FA97A", flexShrink: 0 }} />
             <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0C2A20", textDecoration: f.excluido ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.text}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
             <MontoEditable value={f.amount} onChange={n => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, amount: n } : x) })} />
-            <SelectGrupo
-                value={f.grupo || inferirGrupo(f.text, 'gasto', catsGasto)}
-                categorias={catsGasto}
-                title="Cambiar de grupo"
-                style={{ maxWidth: movil ? "95px" : "135px", border: "none", background: "transparent", fontSize: "0.66rem", fontWeight: 700, color: "#6C8079", cursor: "pointer", outline: "none" }}
-                onSelect={g => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, grupo: g } : x) })}
-                onPedirCrear={() => setModalCrearGrupo({
+            {botonMenuFila({
+                idKey: `fijo:gasto:${f.id}`,
+                tipo: 'gasto',
+                grupoActual: f.grupo || inferirGrupo(f.text, 'gasto', catsGasto),
+                gruposDisponibles: catsGasto,
+                onCambiarGrupo: g => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.map(x => x.id === f.id ? { ...x, grupo: g } : x) }),
+                onCrearGrupo: () => setModalCrearGrupo({
                     tipo: 'gasto',
                     onCrear: (g, p) => ({ ...p, fixedExpenses: p.fixedExpenses.map(x => x.id === f.id ? { ...x, grupo: g } : x) }),
-                })}
-            />
-            <button onClick={() => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.filter(x => x.id !== f.id) })} style={{ background: "none", border: "none", color: "#6C8079", cursor: "pointer", display: "flex", flexShrink: 0 }}><Trash2 size={13} /></button>
+                }),
+                onEliminar: () => savePlan({ ...plan, fixedExpenses: plan.fixedExpenses.filter(x => x.id !== f.id) }),
+            })}
         </div>
     );
     const filaIngreso = (f: SimFixedIncome) => (
@@ -583,18 +658,18 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
             <input type="checkbox" checked={!f.excluido} title="Contar en la proyección" onChange={e => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, excluido: !e.target.checked } : x) })} style={{ accentColor: "#0FA97A", flexShrink: 0 }} />
             <span style={{ flex: 1, fontSize: "0.8rem", fontWeight: 600, color: "#0C2A20", textDecoration: f.excluido ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}{f.custom && <span style={{ marginLeft: 6, fontSize: "0.62rem", fontWeight: 700, color: "#B45309" }}>tuyo</span>}</span>
             <MontoEditable value={f.amount} onChange={n => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, amount: n } : x) })} />
-            <SelectGrupo
-                value={f.grupo || inferirGrupo(f.name, 'ingreso', catsIngreso)}
-                categorias={catsIngreso}
-                title="Cambiar de grupo"
-                style={{ maxWidth: movil ? "95px" : "135px", border: "none", background: "transparent", fontSize: "0.66rem", fontWeight: 700, color: "#6C8079", cursor: "pointer", outline: "none" }}
-                onSelect={g => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, grupo: g } : x) })}
-                onPedirCrear={() => setModalCrearGrupo({
+            {botonMenuFila({
+                idKey: `fijo:ingreso:${f.id}`,
+                tipo: 'ingreso',
+                grupoActual: f.grupo || inferirGrupo(f.name, 'ingreso', catsIngreso),
+                gruposDisponibles: catsIngreso,
+                onCambiarGrupo: g => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.map(x => x.id === f.id ? { ...x, grupo: g } : x) }),
+                onCrearGrupo: () => setModalCrearGrupo({
                     tipo: 'ingreso',
                     onCrear: (g, p) => ({ ...p, fixedIncomes: p.fixedIncomes.map(x => x.id === f.id ? { ...x, grupo: g } : x) }),
-                })}
-            />
-            <button onClick={() => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.filter(x => x.id !== f.id) })} style={{ background: "none", border: "none", color: "#6C8079", cursor: "pointer", display: "flex", flexShrink: 0 }}><Trash2 size={13} /></button>
+                }),
+                onEliminar: () => savePlan({ ...plan, fixedIncomes: plan.fixedIncomes.filter(x => x.id !== f.id) }),
+            })}
         </div>
     );
 
@@ -650,28 +725,22 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                     )}
                 </span>
                 <MontoEditable value={m.amount} onChange={n => savePlan({ ...plan, movs: (plan.movs || []).map(x => x.id === m.id ? { ...x, amount: n } : x) })} />
-                <SelectGrupo
-                    value={valorGrupo}
-                    categorias={catsSinDef}
-                    placeholder={defGrupo}
-                    title="Cambiar grupo"
-                    style={{ maxWidth: movil ? '95px' : '135px', border: 'none', background: 'transparent', fontSize: '0.66rem', fontWeight: 700, color: '#6C8079', cursor: 'pointer', outline: 'none' }}
-                    onSelect={g => savePlan({ ...plan, movs: (plan.movs || []).map(x => x.id === m.id ? { ...x, grupo: g || undefined } : x) })}
-                    onPedirCrear={() => setModalCrearGrupo({
+                {botonMenuFila({
+                    idKey: `suelto:${m.id}`,
+                    tipo: m.type,
+                    grupoActual: valorGrupo,
+                    defaultGrupoLabel: defGrupo,
+                    gruposDisponibles: catsSinDef,
+                    onCambiarGrupo: g => savePlan({ ...plan, movs: (plan.movs || []).map(x => x.id === m.id ? { ...x, grupo: g || undefined } : x) }),
+                    onCrearGrupo: () => setModalCrearGrupo({
                         tipo: m.type,
                         onCrear: (g, p) => ({
                             ...p,
                             movs: (p.movs || []).map(x => x.id === m.id ? { ...x, grupo: g } : x),
                         }),
-                    })}
-                />
-                <button
-                    onClick={() => savePlan({ ...plan, movs: (plan.movs || []).filter(x => x.id !== m.id) })}
-                    style={{ background: 'none', border: 'none', color: '#6C8079', cursor: 'pointer', display: 'flex', flexShrink: 0 }}
-                    title="Eliminar"
-                >
-                    <Trash2 size={13} />
-                </button>
+                    }),
+                    onEliminar: () => savePlan({ ...plan, movs: (plan.movs || []).filter(x => x.id !== m.id) }),
+                })}
             </div>
         );
     };
@@ -1410,7 +1479,19 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                         <div style={{ flex: "1 1 200px", minWidth: 0 }}>
                             <span style={{ ...LABEL, display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
                                 <FlaskConical size={13} /> Te quedaría a fin de mes
-                                {cargada && <span style={{ textTransform: "none", letterSpacing: 0, background: "rgba(15,169,122,0.10)", color: "#0E9F6E", borderRadius: "999px", padding: "1px 8px", fontSize: "0.66rem" }}>{cargada.nombre}</span>}
+                                {cargada && (
+                                    <span style={{
+                                        textTransform: "none",
+                                        letterSpacing: 0,
+                                        background: cargadaModificada ? "#FEF3C7" : "rgba(15,169,122,0.10)",
+                                        color: cargadaModificada ? "#B45309" : "#0E9F6E",
+                                        borderRadius: "999px",
+                                        padding: "1px 8px",
+                                        fontSize: "0.66rem",
+                                    }}>
+                                        {cargada.nombre}{cargadaModificada ? " · editado" : ""}
+                                    </span>
+                                )}
                             </span>
                             <div style={{ fontFamily: MONO, fontSize: movil ? "1.8rem" : "2.1rem", fontWeight: 800, letterSpacing: "-0.03em", color: simQueda < 0 ? "#C63C3C" : "#0C2A20", lineHeight: 1.1, marginTop: "4px" }}>
                                 {simQueda < 0 ? "−" : ""}{money(Math.abs(simQueda))}
@@ -1559,14 +1640,29 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                     {guardadas.map(g => {
                         const r = resultadoDe(g.plan);
                         const activa = g.id === cargadaId;
+                        const modificada = activa && cargadaModificada;
                         return (
-                            <div key={g.id} onClick={() => { if (!activa) { setDeshacer(plan); savePlan(g.plan); setCargadaId(g.id); } }} title={activa ? 'Es la que estás viendo' : 'Cargar esta proyección'}
-                                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 6px', marginBottom: '3px', borderRadius: '8px', cursor: activa ? 'default' : 'pointer', background: activa ? 'rgba(15,169,122,0.10)' : 'transparent', border: `1px solid ${activa ? '#0FA97A' : 'transparent'}` }}>
+                            <div
+                                key={g.id}
+                                onClick={() => cargarGuardada(g)}
+                                title={activa && !modificada ? 'Es la que estás viendo' : 'Cargar esta proyección'}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '6px 6px',
+                                    marginBottom: '3px',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    background: modificada ? '#FEF3C7' : activa ? 'rgba(15,169,122,0.10)' : 'transparent',
+                                    border: `1px solid ${modificada ? '#F59E0B' : activa ? '#0FA97A' : 'transparent'}`,
+                                }}
+                            >
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ fontSize: '0.76rem', fontWeight: 700, color: '#0C2A20', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.nombre}</div>
                                     <div style={{ fontSize: '0.62rem', color: '#6C8079' }}>
                                         <span style={{ fontFamily: MONO, fontWeight: 700, color: r < 0 ? '#C63C3C' : '#0E9F6E' }}>{r < 0 ? '−' : '+'}{money(Math.abs(r))}</span>
-                                        {' · '}{new Date(g.fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'short' })}
+                                        {' · '}{modificada ? 'toca para restaurar' : new Date(g.fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'short' })}
                                     </div>
                                 </div>
                                 <button onClick={e => { e.stopPropagation(); if (borrarId === g.id) { saveGuardadas(guardadas.filter(x => x.id !== g.id)); if (activa) { setCargadaId(null); setDeshacer(null); } setBorrarId(null); } else setBorrarId(g.id); }} onBlur={() => setBorrarId(null)} title={borrarId === g.id ? 'Toca de nuevo para borrar' : 'Borrar'}
@@ -1610,6 +1706,128 @@ export const ProyeccionOriginalDashboard = ({ fixedExpenses, fixedIncomeItems, c
                     <CalculatorIcon size={24} />
                 </button>
             )}
+
+            {/* Menú flotante de 3 puntos para cambiar de grupo o eliminar */}
+            {menuFila && (() => {
+                const abrirArriba = window.innerHeight - menuFila.rect.bottom < 290 && menuFila.rect.top > 290;
+                const opciones: Array<{ label: string; value: string }> = [
+                    ...(menuFila.defaultGrupoLabel ? [{ label: menuFila.defaultGrupoLabel, value: '' }] : []),
+                    ...menuFila.gruposDisponibles.map(g => ({ label: g, value: g })),
+                ];
+                return (
+                    <>
+                        <div
+                            onClick={() => setMenuFila(null)}
+                            style={{ position: 'fixed', inset: 0, zIndex: 9990 }}
+                        />
+                        <div
+                            onClick={e => e.stopPropagation()}
+                            style={{
+                                position: 'fixed',
+                                right: Math.max(8, window.innerWidth - menuFila.rect.right),
+                                ...(abrirArriba
+                                    ? { bottom: window.innerHeight - menuFila.rect.top + 6 }
+                                    : { top: menuFila.rect.bottom + 6 }),
+                                width: '225px',
+                                zIndex: 9991,
+                                background: '#FFFFFF',
+                                border: '1px solid #DCE7E1',
+                                borderRadius: '14px',
+                                boxShadow: '0 14px 36px rgba(15,23,42,0.18)',
+                                padding: '6px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '2px',
+                            }}
+                        >
+                            <div style={{ padding: '4px 8px 2px', fontSize: '0.62rem', fontWeight: 800, color: '#6C8079', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                Mover a grupo
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const fn = menuFila.onCrearGrupo;
+                                    setMenuFila(null);
+                                    fn();
+                                }}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '7px',
+                                    padding: '7px 8px',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    background: 'rgba(15,169,122,0.08)',
+                                    color: '#0FA97A',
+                                    fontSize: '0.76rem',
+                                    fontWeight: 800,
+                                    cursor: 'pointer',
+                                    textAlign: 'left',
+                                }}
+                            >
+                                <FolderPlus size={14} /> + Crear nuevo grupo…
+                            </button>
+                            <div style={{ maxHeight: '190px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1px', marginTop: '2px' }}>
+                                {opciones.map(op => {
+                                    const activo = menuFila.grupoActual === op.value;
+                                    return (
+                                        <button
+                                            key={op.value || '__default__'}
+                                            type="button"
+                                            onClick={() => {
+                                                menuFila.onCambiarGrupo(op.value);
+                                                setMenuFila(null);
+                                            }}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                gap: '8px',
+                                                padding: '6px 8px',
+                                                borderRadius: '8px',
+                                                border: 'none',
+                                                background: activo ? 'rgba(15,169,122,0.08)' : 'transparent',
+                                                color: activo ? '#0C2A20' : '#3E524B',
+                                                fontSize: '0.76rem',
+                                                fontWeight: activo ? 800 : 600,
+                                                cursor: 'pointer',
+                                                textAlign: 'left',
+                                            }}
+                                        >
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{op.label}</span>
+                                            {activo && <Check size={14} color="#0FA97A" style={{ flexShrink: 0 }} />}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <div style={{ height: '1px', background: '#EDF3F0', margin: '4px 2px' }} />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    menuFila.onEliminar();
+                                    setMenuFila(null);
+                                }}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '7px',
+                                    padding: '7px 8px',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    background: 'transparent',
+                                    color: '#C63C3C',
+                                    fontSize: '0.76rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    textAlign: 'left',
+                                }}
+                            >
+                                <Trash2 size={14} /> Eliminar
+                            </button>
+                        </div>
+                    </>
+                );
+            })()}
 
             {/* Modal para crear nuevo grupo exclusivo para la proyección */}
             {modalCrearGrupo && (
