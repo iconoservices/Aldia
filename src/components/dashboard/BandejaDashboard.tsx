@@ -942,18 +942,6 @@ const Fila = (p: FilaProps) => {
                                         gap: "2px",
                                     }}
                                 >
-                                    {onMandarAMeta && !item.completed && (
-                                        <MenuItem onClick={() => { setMenuAbierto(false); onMandarAMeta(); }}>
-                                            <Target size={15} strokeWidth={2.5} color="#0FA97A" />
-                                            <span style={{ fontWeight: 700, color: '#0FA97A' }}>Mandar a Meta</span>
-                                        </MenuItem>
-                                    )}
-                                    {!item.completed && (
-                                        <MenuItem onClick={() => { setMenuAbierto(false); aPendientes(item.id); }}>
-                                            <CornerUpRight size={15} strokeWidth={2.5} color={C.onSurfaceVariant} />
-                                            <span>Mandar a Pendientes</span>
-                                        </MenuItem>
-                                    )}
                                     <MenuItem onClick={() => { setMenuAbierto(false); abrirPick(); }}>
                                         <TagIcon size={15} strokeWidth={2.5} color={C.onSurfaceVariant} />
                                         <span>Etiquetas</span>
@@ -962,7 +950,22 @@ const Fila = (p: FilaProps) => {
                                         <Edit3 size={15} strokeWidth={2.5} color={C.onSurfaceVariant} />
                                         <span>Editar texto</span>
                                     </MenuItem>
-                                    <div style={{ height: "1px", background: C.surfaceContainerHigh, margin: "4px 2px" }} />
+                                    {!item.completed && (
+                                        <>
+                                            <div style={{ height: "1px", background: C.surfaceContainerHigh, margin: "3px 2px" }} />
+                                            {onMandarAMeta && (
+                                                <MenuItem onClick={() => { setMenuAbierto(false); onMandarAMeta(); }}>
+                                                    <Target size={15} strokeWidth={2.5} color="#0FA97A" />
+                                                    <span style={{ fontWeight: 700, color: '#0FA97A' }}>Mandar a Meta</span>
+                                                </MenuItem>
+                                            )}
+                                            <MenuItem onClick={() => { setMenuAbierto(false); aPendientes(item.id); }}>
+                                                <CornerUpRight size={15} strokeWidth={2.5} color={C.onSurfaceVariant} />
+                                                <span>Mandar a Pendientes</span>
+                                            </MenuItem>
+                                        </>
+                                    )}
+                                    <div style={{ height: "1px", background: C.surfaceContainerHigh, margin: "3px 2px" }} />
                                     <MenuItem onClick={() => { setMenuAbierto(false); descartar(item.id); }} color={C.rojo}>
                                         <Trash2 size={15} strokeWidth={2.5} color={C.rojo} />
                                         <span style={{ fontWeight: 700 }}>Eliminar</span>
