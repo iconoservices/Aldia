@@ -48,12 +48,22 @@ const inputStyle: React.CSSProperties = {
     boxSizing: "border-box", width: "100%", fontFamily: "inherit",
 };
 
-const chip = (activo: boolean): React.CSSProperties => ({
-    display: "inline-flex", alignItems: "center", gap: "5px", flexShrink: 0,
-    background: activo ? C.primary : C.surfaceContainer,
-    color: activo ? "#fff" : C.onSurfaceVariant,
-    border: "none", borderRadius: RADIO.chip, padding: "6px 12px",
-    fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+const pestanaStyle = (activa: boolean): React.CSSProperties => ({
+    display: "inline-flex", alignItems: "center", gap: "6px", flexShrink: 0,
+    background: activa ? C.primary : "transparent",
+    color: activa ? "#FFFFFF" : C.onSurfaceVariant,
+    border: "none", borderRadius: RADIO.chip, padding: "5px 12px",
+    fontSize: "0.76rem", fontWeight: activa ? 700 : 600,
+    cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s ease",
+    boxShadow: activa ? "0 1px 3px rgba(0,0,0,0.12)" : "none",
+});
+
+const badgePestana = (activa: boolean): React.CSSProperties => ({
+    fontSize: "0.68rem", fontWeight: 700, padding: "1px 6px",
+    borderRadius: "999px",
+    background: activa ? "rgba(255, 255, 255, 0.25)" : C.surfaceContainerHigh,
+    color: activa ? "#FFFFFF" : C.onSurfaceVariant,
+    minWidth: "16px", textAlign: "center",
 });
 
 const miniChip = (activo: boolean): React.CSSProperties => ({
@@ -91,7 +101,7 @@ export const BandejaDashboard = ({ notes, addNote, updateNote, flotante = false,
     const [editId, setEditId] = useState<number | null>(null);
     const [editText, setEditText] = useState("");
     const [pickId, setPickId] = useState<number | null>(null);
-    const [filtro, setFiltro] = useState<string[]>([]);
+    const [tabActiva, setTabActiva] = useState<string>(SIN);
     const [borrarId, setBorrarId] = useState<number | null>(null);
     const [grupoAEnviar, setGrupoAEnviar] = useState<string | null>(null);
     const [gestionAbierta, setGestionAbierta] = useState(false);
@@ -166,7 +176,7 @@ export const BandejaDashboard = ({ notes, addNote, updateNote, flotante = false,
             return { ...i, tags: nextTags.length ? nextTags : undefined };
         });
         updateNote(bandeja.id, { content: JSON.stringify(nextCfg), items: items2 });
-        setFiltro(f => Array.from(new Set(f.map(x => (x === antigua ? nueva : x)))));
+        if (tabActiva === antigua) setTabActiva(nueva);
     };
     const borrarEtiqueta = (t: string) => {
         if (!bandeja) return;
@@ -176,7 +186,7 @@ export const BandejaDashboard = ({ notes, addNote, updateNote, flotante = false,
             return { ...i, tags: rest.length ? rest : undefined };
         });
         updateNote(bandeja.id, { content: JSON.stringify(todasEtiquetas.filter(x => x !== t)), items: items2 });
-        setFiltro(f => f.filter(x => x !== t));
+        if (tabActiva === t) setTabActiva(SIN);
     };
     // Para el modal por ítem: crea la etiqueta (si es nueva) y la asigna.
     const crearYAsignar = (id: number, nombre: string) => {
@@ -188,26 +198,53 @@ export const BandejaDashboard = ({ notes, addNote, updateNote, flotante = false,
         confirmarIA(id);
     };
 
-    // Grupos: "sin etiqueta" primero (la bandeja cruda), luego una por etiqueta con líneas abiertas.
-    const { chipsFiltro, gruposMostrados } = useMemo(() => {
+    // Pestañas (separadas como pestañas, no etiquetas mezcladas):
+    // "Sin etiqueta" primero, luego cada etiqueta con elementos abiertos (o la activa), y "Todas".
+    const pestanas = useMemo(() => {
+        const sin = abiertas.filter(it => (it.tags ?? []).length === 0);
+        const list: { id: string; label: string; count: number }[] = [];
+
+        list.push({ id: SIN, label: "Sin etiqueta", count: sin.length });
+
+        for (const tag of todasEtiquetas) {
+            const count = abiertas.filter(it => (it.tags ?? []).includes(tag)).length;
+            if (count > 0 || tabActiva === tag) {
+                list.push({ id: tag, label: tag, count });
+            }
+        }
+
+        list.push({ id: "todas", label: "Todas", count: abiertas.length });
+        return list;
+    }, [abiertas, todasEtiquetas, tabActiva]);
+
+    // Grupos a mostrar según la pestaña activa:
+    const gruposMostrados = useMemo(() => {
         const sin = abiertas.filter(it => (it.tags ?? []).length === 0);
         const porTag = todasEtiquetas
             .map(tag => ({ tag, items: abiertas.filter(it => (it.tags ?? []).includes(tag)) }))
-            .filter(g => g.items.length > 0);
-        const out: { tag: string; items: Item[] }[] = [];
-        if (sin.length) out.push({ tag: SIN, items: sin });
-        out.push(...porTag);
+            .filter(g => g.items.length > 0 || tabActiva === g.tag);
 
-        const chips = out.map(g => ({ tag: g.tag, count: g.items.length }));
-        const mostrados = filtro.length ? out.filter(g => filtro.includes(g.tag)) : out;
+        if (tabActiva === "todas") {
+            const out: { tag: string; items: Item[] }[] = [];
+            if (sin.length) out.push({ tag: SIN, items: sin });
+            out.push(...porTag.filter(g => g.items.length > 0));
+            return out;
+        }
 
-        return { chipsFiltro: chips, gruposMostrados: mostrados };
-    }, [abiertas, todasEtiquetas, filtro]);
+        if (tabActiva === SIN) {
+            return [{ tag: SIN, items: sin }];
+        }
+
+        const match = porTag.find(g => g.tag === tabActiva);
+        if (match) return [match];
+        return [{ tag: tabActiva, items: abiertas.filter(it => (it.tags ?? []).includes(tabActiva)) }];
+    }, [abiertas, todasEtiquetas, tabActiva]);
 
     const tirar = () => {
         const t = captura.trim();
         if (!t || !bandeja) return;
-        setItems([{ id: nuevoId(), text: t, completed: false }, ...bandeja.items]);
+        const tagParaItem = (tabActiva !== 'todas' && tabActiva !== SIN) ? [tabActiva] : undefined;
+        setItems([{ id: nuevoId(), text: t, completed: false, tags: tagParaItem }, ...bandeja.items]);
         setCaptura("");
         inputRef.current?.focus();
     };
@@ -262,8 +299,6 @@ export const BandejaDashboard = ({ notes, addNote, updateNote, flotante = false,
         const lineas = abiertas.filter(it => tag === SIN ? (it.tags ?? []).length === 0 : (it.tags ?? []).includes(tag));
         enviarAPendientes(lineas, tag === SIN ? "De la Bandeja" : cap(tag));
     };
-
-    const toggleFiltro = (t: string) => setFiltro(f => f.includes(t) ? f.filter(x => x !== t) : [...f, t]);
 
     // ── Etiquetar con IA: reparte lo sin etiquetar en sus grupos (reales o nuevos)
     // de una vez; cada línea queda marcada "pendiente" (acento ámbar) hasta que el
@@ -390,12 +425,13 @@ export const BandejaDashboard = ({ notes, addNote, updateNote, flotante = false,
             } : {
                 ...bento, padding: 0, overflow: "hidden"
             }}>
-                {/* Filtro + gestión de etiquetas — arriba del todo */}
+                {/* Pestañas + gestión de etiquetas — separadas como pestañas limpias */}
                 <div style={{
                     display: "flex", gap: "6px",
                     alignItems: "center",
-                    padding: flotante ? "10px 14px 4px" : "10px 12px",
-                    borderBottom: flotante ? "none" : `1px solid ${C.surfaceContainerHigh}`,
+                    padding: flotante ? "8px 12px 6px" : "10px 14px",
+                    borderBottom: `1px solid ${C.surfaceContainerHigh}`,
+                    background: C.surfaceLowest,
                 }}>
                     <button
                         type="button"
@@ -403,9 +439,9 @@ export const BandejaDashboard = ({ notes, addNote, updateNote, flotante = false,
                         title="Administrar etiquetas (crear, editar, borrar)"
                         style={{
                             ...iconBtn,
-                            width: "28px",
-                            height: "28px",
-                            borderRadius: "999px",
+                            width: "30px",
+                            height: "30px",
+                            borderRadius: "8px",
                             background: C.surfaceContainer,
                             color: C.onSurfaceVariant,
                         }}
@@ -413,36 +449,47 @@ export const BandejaDashboard = ({ notes, addNote, updateNote, flotante = false,
                         <TagIcon size={14} strokeWidth={2.5} />
                     </button>
                     <div style={{
-                        display: "flex", gap: "6px", flex: 1, minWidth: 0,
-                        flexWrap: (movil || flotante) ? "nowrap" : "wrap",
-                        overflowX: (movil || flotante) ? "auto" : "visible",
+                        display: "flex", gap: "4px", flex: 1, minWidth: 0,
+                        overflowX: "auto",
                         scrollbarWidth: "none",
                         alignItems: "center",
+                        padding: "3px",
+                        background: C.surfaceContainer,
+                        borderRadius: RADIO.chip,
                     }}>
-                        {chipsFiltro.map(c => (
-                            <button key={c.tag} onClick={() => toggleFiltro(c.tag)} style={chip(filtro.includes(c.tag))}>
-                                {c.tag === SIN ? "sin etiqueta" : c.tag} <span style={{ opacity: 0.65 }}>{c.count}</span>
-                            </button>
-                        ))}
-                    </div>
-                    {(filtro.length > 0 || sinEtiquetar.length > 0) && (
-                        <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
-                            {filtro.length > 0 && (
-                                <button onClick={() => setFiltro([])} title="Ver todas" style={{ ...chip(false), padding: "5px 8px", background: "transparent", color: C.rojo }}>
-                                    <X size={13} strokeWidth={2.5} /> {!flotante && "ver todo"}
-                                </button>
-                            )}
-                            {sinEtiquetar.length > 0 && (
+                        {pestanas.map(p => {
+                            const activa = tabActiva === p.id;
+                            return (
                                 <button
-                                    onClick={pedirSugerenciasIA}
-                                    disabled={iaCargando}
-                                    title="Sugerir etiquetas con IA para lo sin repartir"
-                                    style={{ ...chip(false), padding: "5px 8px", background: "transparent", color: C.primary, opacity: iaCargando ? 0.6 : 1 }}
+                                    key={p.id}
+                                    type="button"
+                                    onClick={() => setTabActiva(p.id)}
+                                    style={pestanaStyle(activa)}
                                 >
-                                    <Sparkles size={14} strokeWidth={2.5} /> {!flotante && (iaCargando ? "pensando…" : "IA")}
+                                    <span>{p.label}</span>
+                                    <span style={badgePestana(activa)}>{p.count}</span>
                                 </button>
-                            )}
-                        </div>
+                            );
+                        })}
+                    </div>
+                    {sinEtiquetar.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={pedirSugerenciasIA}
+                            disabled={iaCargando}
+                            title="Sugerir etiquetas con IA para lo sin repartir"
+                            style={{
+                                ...iconBtn,
+                                width: "30px",
+                                height: "30px",
+                                borderRadius: "8px",
+                                background: C.surfaceContainer,
+                                color: C.primary,
+                                opacity: iaCargando ? 0.6 : 1,
+                            }}
+                        >
+                            <Sparkles size={14} strokeWidth={2.5} />
+                        </button>
                     )}
                 </div>
                 {iaError && (
@@ -455,7 +502,7 @@ export const BandejaDashboard = ({ notes, addNote, updateNote, flotante = false,
                 <form
                     onSubmit={e => { e.preventDefault(); tirar(); }}
                     style={{
-                        padding: flotante ? "4px 14px 8px" : "12px",
+                        padding: flotante ? "6px 12px 8px" : "12px",
                         background: C.surfaceLowest,
                         borderBottom: flotante ? "none" : `1px solid ${C.surfaceContainerHigh}`,
                     }}
@@ -464,7 +511,11 @@ export const BandejaDashboard = ({ notes, addNote, updateNote, flotante = false,
                         ref={inputRef}
                         autoFocus
                         enterKeyHint="done"
-                        placeholder="¿Qué tienes en la cabeza? + Enter"
+                        placeholder={
+                            tabActiva === SIN || tabActiva === "todas"
+                                ? "¿Qué tienes en la cabeza? + Enter"
+                                : `Agregar a "${tabActiva}" + Enter`
+                        }
                         value={captura}
                         onChange={e => setCaptura(e.target.value)}
                         style={flotante ? {
@@ -479,7 +530,7 @@ export const BandejaDashboard = ({ notes, addNote, updateNote, flotante = false,
                     <button type="submit" style={{ display: "none" }} aria-hidden tabIndex={-1} />
                 </form>
 
-                {/* Lista agrupada */}
+                {/* Lista agrupada separada por pestaña */}
                 <div style={{ padding: flotante ? "2px 10px 14px" : (movil ? "8px 12px 12px" : "10px 16px 16px"), flex: 1, minHeight: 0, overflowY: "auto" }}>
                     {abiertas.length === 0 && hechos.length === 0 ? (
                         <div style={{ textAlign: "center", padding: "48px 16px", color: C.outline }}>
@@ -489,48 +540,72 @@ export const BandejaDashboard = ({ notes, addNote, updateNote, flotante = false,
                     ) : (
                         <>
                             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-                                {gruposMostrados.map((g, gi) => (
-                                    <GrupoDrop
-                                        key={g.tag}
-                                        tag={g.tag}
-                                        style={{
-                                            marginTop: gi === 0 ? 0 : "6px",
-                                            paddingTop: gi === 0 ? 0 : "6px",
-                                            borderTop: gi === 0 ? "none" : `1px solid ${C.surfaceContainerHigh}`,
-                                        }}
-                                    >
-                                        <div style={{
-                                            ...etiqueta,
-                                            fontSize: "0.66rem",
-                                            color: g.tag === SIN ? C.outline : C.onSurfaceVariant,
-                                            padding: "0 4px 2px 6px",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: "5px",
-                                        }}>
-                                            {g.tag === SIN ? "SIN ETIQUETA" : g.tag}
-                                            <span style={{ opacity: 0.5 }}>· {g.items.length}</span>
-                                            {g.items.length > 0 && (
-                                                <button
-                                                    onClick={() => setGrupoAEnviar(g.tag)}
-                                                    title="Mandar todo el grupo a Pendientes"
-                                                    style={{ ...iconBtn, width: "22px", height: "22px", marginLeft: "auto", color: C.outline }}
-                                                >
-                                                    <CornerUpRight size={13} strokeWidth={2.4} />
-                                                </button>
+                                {gruposMostrados.map((g, gi) => {
+                                    const esTodas = tabActiva === "todas";
+                                    return (
+                                        <GrupoDrop
+                                            key={g.tag}
+                                            tag={g.tag}
+                                            style={esTodas ? {
+                                                marginTop: gi === 0 ? 0 : "10px",
+                                                padding: "8px 10px 10px",
+                                                background: C.surfaceLowest,
+                                                borderRadius: "12px",
+                                                border: `1px solid ${C.surfaceContainerHigh}`,
+                                            } : {
+                                                marginTop: gi === 0 ? 0 : "6px",
+                                                paddingTop: gi === 0 ? 0 : "4px",
+                                            }}
+                                        >
+                                            <div style={{
+                                                ...etiqueta,
+                                                fontSize: "0.7rem",
+                                                fontWeight: 700,
+                                                color: g.tag === SIN ? C.outline : C.onSurfaceVariant,
+                                                padding: "0 4px 6px 4px",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "space-between",
+                                                gap: "6px",
+                                            }}>
+                                                <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                                                    <span>{g.tag === SIN ? "SIN ETIQUETA" : g.tag.toUpperCase()}</span>
+                                                    <span style={{ opacity: 0.5, fontWeight: 500 }}>· {g.items.length}</span>
+                                                </div>
+                                                {g.items.length > 0 && (
+                                                    <button
+                                                        onClick={() => setGrupoAEnviar(g.tag)}
+                                                        title="Mandar todo el grupo a Pendientes"
+                                                        style={{
+                                                            ...iconBtn,
+                                                            width: "auto",
+                                                            height: "22px",
+                                                            padding: "0 6px",
+                                                            color: C.outline,
+                                                            fontSize: "0.7rem",
+                                                            gap: "4px",
+                                                        }}
+                                                    >
+                                                        <CornerUpRight size={13} strokeWidth={2.4} />
+                                                        <span>Mandar a Pendientes</span>
+                                                    </button>
+                                                )}
+                                            </div>
+                                            {g.items.length === 0 ? (
+                                                <div style={{ textAlign: "center", padding: "28px 12px", color: C.outline }}>
+                                                    <Inbox size={24} strokeWidth={2} style={{ opacity: 0.35, marginBottom: "4px" }} />
+                                                    <p style={{ margin: 0, fontSize: "0.8rem" }}>
+                                                        {g.tag === SIN ? "No hay elementos sin etiqueta." : `No hay elementos en "${g.tag}".`}
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <SortableContext items={g.items.map(it => it.id)} strategy={verticalListSortingStrategy}>
+                                                    {g.items.map(item => <SortableFila key={item.id} {...filaProps(item, g.tag)} />)}
+                                                </SortableContext>
                                             )}
-                                        </div>
-                                        {g.items.length === 0 ? (
-                                            <p style={{ margin: "4px 6px 2px", fontSize: "0.74rem", color: C.outline }}>
-                                                Sin líneas con esta etiqueta todavía.
-                                            </p>
-                                        ) : (
-                                            <SortableContext items={g.items.map(it => it.id)} strategy={verticalListSortingStrategy}>
-                                                {g.items.map(item => <SortableFila key={item.id} {...filaProps(item, g.tag)} />)}
-                                            </SortableContext>
-                                        )}
-                                    </GrupoDrop>
-                                ))}
+                                        </GrupoDrop>
+                                    );
+                                })}
                             </DndContext>
 
                             {hechos.length > 0 && (
