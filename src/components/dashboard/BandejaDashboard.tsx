@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Inbox, Check, Trash2, CornerUpRight, ChevronDown, X, Plus, Tag as TagIcon, GripVertical, Sparkles, Target, MoreVertical, Edit3 } from "lucide-react";
+import { Inbox, Check, Trash2, CornerUpRight, ChevronDown, ChevronUp, X, Plus, Tag as TagIcon, GripVertical, Sparkles, Target, MoreVertical, Edit3 } from "lucide-react";
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, useDroppable,
 } from "@dnd-kit/core";
@@ -187,6 +187,10 @@ export const BandejaDashboard = ({ notes, addNote, updateNote, flotante = false,
         });
         updateNote(bandeja.id, { content: JSON.stringify(todasEtiquetas.filter(x => x !== t)), items: items2 });
         if (tabActiva === t) setTabActiva(SIN);
+    };
+    const reordenarEtiquetas = (nuevoOrden: string[]) => {
+        if (!bandeja) return;
+        updateNote(bandeja.id, { content: JSON.stringify(nuevoOrden) });
     };
     // Para el modal por ítem: crea la etiqueta (si es nueva) y la asigna.
     const crearYAsignar = (id: number, nombre: string) => {
@@ -653,6 +657,7 @@ export const BandejaDashboard = ({ notes, addNote, updateNote, flotante = false,
                     crear={crearEtiqueta}
                     editar={editarEtiqueta}
                     borrar={borrarEtiqueta}
+                    reordenar={reordenarEtiquetas}
                     onClose={() => setGestionAbierta(false)}
                 />
             )}
@@ -1110,19 +1115,25 @@ const TagModal = ({ item, todasEtiquetas, toggleTag, crearYAsignar, onGestionar,
     );
 };
 
-/* Ventanita para administrar etiquetas: crear, editar nombre y borrar. */
-const TagManagerModal = ({ todas, conteos, crear, editar, borrar, onClose }: {
+/* Ventanita para administrar etiquetas: crear, reordenar, editar nombre y borrar. */
+const TagManagerModal = ({ todas, conteos, crear, editar, borrar, reordenar, onClose }: {
     todas: string[];
     conteos: Record<string, number>;
     crear: (n: string) => void;
     editar: (antigua: string, nueva: string) => void;
     borrar: (t: string) => void;
+    reordenar: (nuevoOrden: string[]) => void;
     onClose: () => void;
 }) => {
     const [nueva, setNueva] = useState("");
     const [editandoTag, setEditandoTag] = useState<string | null>(null);
     const [editValor, setEditValor] = useState("");
     const [porBorrar, setPorBorrar] = useState<string | null>(null);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    );
 
     const agregar = () => {
         if (nueva.trim()) {
@@ -1145,6 +1156,23 @@ const TagManagerModal = ({ todas, conteos, crear, editar, borrar, onClose }: {
         onClose();
     };
 
+    const mover = (idx: number, dir: -1 | 1) => {
+        const dest = idx + dir;
+        if (dest < 0 || dest >= todas.length) return;
+        const next = arrayMove(todas, idx, dest);
+        reordenar(next);
+    };
+
+    const onDragEnd = (e: DragEndEvent) => {
+        const { active, over } = e;
+        if (!over || active.id === over.id) return;
+        const oi = todas.indexOf(String(active.id));
+        const ni = todas.indexOf(String(over.id));
+        if (oi >= 0 && ni >= 0) {
+            reordenar(arrayMove(todas, oi, ni));
+        }
+    };
+
     return (
         <div
             onClick={cerrarYGuardar}
@@ -1152,7 +1180,7 @@ const TagManagerModal = ({ todas, conteos, crear, editar, borrar, onClose }: {
         >
             <div
                 onClick={e => e.stopPropagation()}
-                style={{ background: C.surfaceLowest, borderRadius: "24px", padding: "22px", width: "100%", maxWidth: "400px", boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}
+                style={{ background: C.surfaceLowest, borderRadius: "24px", padding: "22px", width: "100%", maxWidth: "420px", boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}
             >
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
                     <div style={{ ...etiqueta, fontSize: "0.68rem", color: C.outline }}>Administrar etiquetas</div>
@@ -1161,7 +1189,7 @@ const TagManagerModal = ({ todas, conteos, crear, editar, borrar, onClose }: {
                     </button>
                 </div>
                 <p style={{ margin: "0 0 14px", fontSize: "0.78rem", color: C.onSurfaceVariant }}>
-                    Crea, renombra o elimina tus etiquetas. Se guardan siempre aunque aún no tengan tareas.
+                    Crea, renombra, reordena o elimina tus etiquetas. El orden se refleja en las pestañas.
                 </p>
 
                 <form onSubmit={e => { e.preventDefault(); agregar(); }} style={{ display: "flex", gap: "8px", marginBottom: "14px" }}>
@@ -1180,79 +1208,28 @@ const TagManagerModal = ({ todas, conteos, crear, editar, borrar, onClose }: {
                 {todas.length === 0 ? (
                     <p style={{ fontSize: "0.8rem", color: C.outline, margin: "0 0 16px" }}>Todavía no hay etiquetas.</p>
                 ) : (
-                    <div style={{ maxHeight: "260px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px", marginBottom: "16px", paddingRight: "2px" }}>
-                        {todas.map(t => {
-                            const n = conteos[t] ?? 0;
-                            const editando = editandoTag === t;
-                            return (
-                                <div
-                                    key={t}
-                                    style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "8px",
-                                        padding: "6px 10px",
-                                        borderRadius: "10px",
-                                        background: "#F8FAF9",
-                                        border: `1px solid ${editando ? C.primary : "#EDF3F0"}`,
-                                    }}
-                                >
-                                    {editando ? (
-                                        <>
-                                            <input
-                                                autoFocus
-                                                value={editValor}
-                                                onChange={e => setEditValor(e.target.value)}
-                                                onKeyDown={e => {
-                                                    if (e.key === "Enter") { e.preventDefault(); guardarEdicion(); }
-                                                    if (e.key === "Escape") { setEditandoTag(null); setEditValor(""); }
-                                                }}
-                                                style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", fontSize: "0.84rem", fontWeight: 700, color: C.onSurface, fontFamily: "inherit" }}
-                                            />
-                                            <button type="button" onClick={guardarEdicion} title="Guardar" style={{ ...iconBtn, width: "26px", height: "26px", color: C.primary }}>
-                                                <Check size={15} strokeWidth={2.8} />
-                                            </button>
-                                            <button type="button" onClick={() => { setEditandoTag(null); setEditValor(""); }} title="Cancelar" style={{ ...iconBtn, width: "26px", height: "26px", color: C.outline }}>
-                                                <X size={14} strokeWidth={2.5} />
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <TagIcon size={13} color={C.primary} style={{ flexShrink: 0 }} />
-                                            <span
-                                                onClick={() => { setEditandoTag(t); setEditValor(t); }}
-                                                title="Toca para editar"
-                                                style={{ flex: 1, minWidth: 0, fontSize: "0.84rem", fontWeight: 700, color: C.onSurface, cursor: "text", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                                            >
-                                                {t}
-                                            </span>
-                                            <span style={{ fontSize: "0.68rem", fontWeight: 700, color: C.outline, flexShrink: 0 }}>
-                                                {n === 0 ? "0" : n}
-                                            </span>
-                                            <button
-                                                type="button"
-                                                onClick={() => { setEditandoTag(t); setEditValor(t); }}
-                                                title="Editar etiqueta"
-                                                style={{ ...iconBtn, width: "26px", height: "26px", color: C.outline }}
-                                            >
-                                                <Edit3 size={13} strokeWidth={2.4} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    if (n > 0) setPorBorrar(t);
-                                                    else borrar(t);
-                                                }}
-                                                title="Borrar etiqueta"
-                                                style={{ ...iconBtn, width: "26px", height: "26px", color: C.rojo }}
-                                            >
-                                                <Trash2 size={13} strokeWidth={2.4} />
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
-                            );
-                        })}
+                    <div style={{ maxHeight: "280px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px", marginBottom: "16px", paddingRight: "2px" }}>
+                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                            <SortableContext items={todas} strategy={verticalListSortingStrategy}>
+                                {todas.map((t, idx) => (
+                                    <SortableTagRow
+                                        key={t}
+                                        t={t}
+                                        idx={idx}
+                                        total={todas.length}
+                                        n={conteos[t] ?? 0}
+                                        editando={editandoTag === t}
+                                        editValor={editValor}
+                                        setEditValor={setEditValor}
+                                        setEditandoTag={setEditandoTag}
+                                        guardarEdicion={guardarEdicion}
+                                        borrar={borrar}
+                                        setPorBorrar={setPorBorrar}
+                                        mover={mover}
+                                    />
+                                ))}
+                            </SortableContext>
+                        </DndContext>
                     </div>
                 )}
 
@@ -1268,11 +1245,147 @@ const TagManagerModal = ({ todas, conteos, crear, editar, borrar, onClose }: {
                 open={porBorrar != null}
                 title="Borrar etiqueta"
                 message={`¿Borrar "${porBorrar}"? Se quita de las ${porBorrar ? (conteos[porBorrar] ?? 0) : 0} línea(s) que la tienen.`}
-                confirmLabel="Borrar"
-                cancelLabel="Cancelar"
+                confirmLabel="Borrar etiqueta"
                 onConfirm={() => { if (porBorrar) borrar(porBorrar); setPorBorrar(null); }}
                 onCancel={() => setPorBorrar(null)}
             />
+        </div>
+    );
+};
+
+/* Fila ordenable dentro de la administración de etiquetas */
+const SortableTagRow = ({
+    t, idx, total, n, editando, editValor, setEditValor, setEditandoTag,
+    guardarEdicion, borrar, setPorBorrar, mover,
+}: {
+    t: string;
+    idx: number;
+    total: number;
+    n: number;
+    editando: boolean;
+    editValor: string;
+    setEditValor: (v: string) => void;
+    setEditandoTag: (v: string | null) => void;
+    guardarEdicion: () => void;
+    borrar: (t: string) => void;
+    setPorBorrar: (t: string) => void;
+    mover: (idx: number, dir: -1 | 1) => void;
+}) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: t });
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        padding: "6px 8px",
+        borderRadius: "10px",
+        background: isDragging ? `${C.primary}12` : "#F8FAF9",
+        border: `1px solid ${editando ? C.primary : "#EDF3F0"}`,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style}>
+            {editando ? (
+                <>
+                    <input
+                        autoFocus
+                        value={editValor}
+                        onChange={e => setEditValor(e.target.value)}
+                        onKeyDown={e => {
+                            if (e.key === "Enter") { e.preventDefault(); guardarEdicion(); }
+                            if (e.key === "Escape") { setEditandoTag(null); setEditValor(""); }
+                        }}
+                        style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", fontSize: "0.84rem", fontWeight: 700, color: C.onSurface, fontFamily: "inherit" }}
+                    />
+                    <button type="button" onClick={guardarEdicion} title="Guardar" style={{ ...iconBtn, width: "26px", height: "26px", color: C.primary }}>
+                        <Check size={15} strokeWidth={2.8} />
+                    </button>
+                    <button type="button" onClick={() => { setEditandoTag(null); setEditValor(""); }} title="Cancelar" style={{ ...iconBtn, width: "26px", height: "26px", color: C.outline }}>
+                        <X size={14} strokeWidth={2.5} />
+                    </button>
+                </>
+            ) : (
+                <>
+                    <button
+                        type="button"
+                        {...attributes}
+                        {...listeners}
+                        title="Arrastra para reordenar"
+                        style={{ ...iconBtn, width: "22px", height: "22px", cursor: "grab", color: C.outline, padding: 0 }}
+                    >
+                        <GripVertical size={14} strokeWidth={2.2} />
+                    </button>
+                    <TagIcon size={13} color={C.primary} style={{ flexShrink: 0 }} />
+                    <span
+                        onClick={() => { setEditandoTag(t); setEditValor(t); }}
+                        title="Toca para editar"
+                        style={{ flex: 1, minWidth: 0, fontSize: "0.84rem", fontWeight: 700, color: C.onSurface, cursor: "text", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                    >
+                        {t}
+                    </span>
+                    <span style={{ fontSize: "0.68rem", fontWeight: 700, color: C.outline, flexShrink: 0, minWidth: "12px", textAlign: "right" }}>
+                        {n === 0 ? "0" : n}
+                    </span>
+
+                    {/* Botones de orden arriba / abajo */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "1px", flexShrink: 0 }}>
+                        <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={() => mover(idx, -1)}
+                            title="Subir etiqueta"
+                            style={{
+                                ...iconBtn,
+                                width: "22px",
+                                height: "22px",
+                                color: idx === 0 ? `${C.outline}35` : C.onSurfaceVariant,
+                                cursor: idx === 0 ? "default" : "pointer",
+                                opacity: idx === 0 ? 0.35 : 1,
+                            }}
+                        >
+                            <ChevronUp size={14} strokeWidth={2.5} />
+                        </button>
+                        <button
+                            type="button"
+                            disabled={idx === total - 1}
+                            onClick={() => mover(idx, 1)}
+                            title="Bajar etiqueta"
+                            style={{
+                                ...iconBtn,
+                                width: "22px",
+                                height: "22px",
+                                color: idx === total - 1 ? `${C.outline}35` : C.onSurfaceVariant,
+                                cursor: idx === total - 1 ? "default" : "pointer",
+                                opacity: idx === total - 1 ? 0.35 : 1,
+                            }}
+                        >
+                            <ChevronDown size={14} strokeWidth={2.5} />
+                        </button>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={() => { setEditandoTag(t); setEditValor(t); }}
+                        title="Editar etiqueta"
+                        style={{ ...iconBtn, width: "24px", height: "24px", color: C.outline }}
+                    >
+                        <Edit3 size={13} strokeWidth={2.4} />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (n > 0) setPorBorrar(t);
+                            else borrar(t);
+                        }}
+                        title="Borrar etiqueta"
+                        style={{ ...iconBtn, width: "24px", height: "24px", color: C.rojo }}
+                    >
+                        <Trash2 size={13} strokeWidth={2.4} />
+                    </button>
+                </>
+            )}
         </div>
     );
 };
